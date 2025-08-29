@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>گزارش تایید پیکربندی روتر (Auth-Only)</title>
+  <link rel="stylesheet" href="{{ css_path }}" />
+  <style>
+    .pill{display:inline-block;border:1px solid #0f0;border-radius:999px;padding:2px 8px;margin-left:6px}
+  </style>
+  <!-- Nostalgic hacker vibe with Matrix theme -->
+</head>
+<body>
+  <div class="header">
+    <h1>گزارش تایید پیکربندی روتر</h1>
+    <div class="muted">تحلیل بر اساس داده‌های غیرتهاجمی Nmap و سیستم امتیازدهی</div>
+  </div>
+
+  <div class="grid">
+  {% for host in results %}
+    <div class="card">
+      <h3>آی‌پی: {{ host.address }}</h3>
+      {% if host.hostnames %}
+      <div>نام‌ها: {{ host.hostnames | join(", ") }}</div>
+      {% endif %}
+      {% if host.os %}
+      <div>سیستم‌عامل احتمالی: {{ host.os }}</div>
+      {% endif %}
+      <hr />
+      {% for p in host.ports %}
+        <div>
+          <div><span class="pill">پورت {{ p.port }}/{{ p.protocol }}</span> وضعیت: {{ p.state }}</div>
+          <div class="muted">سرویس: {{ p.service.name or '-' }} | محصول: {{ p.service.product or '-' }} {{ p.service.version or '' }}</div>
+          {% if p.service.http_title %}
+            <div>عنوان صفحه: <code>{{ p.service.http_title }}</code></div>
+          {% endif %}
+          {% if p.service.http_server_header %}
+            <div>Server: <code>{{ p.service.http_server_header }}</code></div>
+          {% endif %}
+          <div>برند احتمالی: <b>{{ p.brand.name or '-' }}</b> | امتیاز: {{ '%.1f'|format(p.brand.score) }}</div>
+          {% if p.brand.matched_indicators %}
+            <div class="muted">شاخص‌ها: {{ p.brand.matched_indicators | join(', ') }}</div>
+          {% endif %}
+          <div>امتیاز صفحه لاگین: {{ '%.1f'|format(p.login.score) }}</div>
+          {% if p.login.matched_indicators %}
+            <div class="muted">شاخص‌های لاگین: {{ p.login.matched_indicators | join(', ') }}</div>
+          {% endif %}
+          <hr />
+        </div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+  </div>
+
+  <footer class="muted" style="margin:20px 0;text-align:center">
+    تولید شده با ابزار تأیید پیکربندی مجاز (بدون اسکن/حمله) | هدف: کاهش مثبت کاذب
+  </footer>
+</body>
+</html>
