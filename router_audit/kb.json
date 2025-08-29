@@ -1,0 +1,76 @@
+{
+  "brands": {
+    "MikroTik": {
+      "indicators": {
+        "title_contains": ["MikroTik", "RouterOS", "WebFig"],
+        "server_header_contains": ["RouterOS", "MikroTik"],
+        "product_contains": ["RouterOS", "Mikrotik"],
+        "service_name_contains": ["http", "ssl"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "admin", "password": ""}
+      ]
+    },
+    "Ubiquiti": {
+      "indicators": {
+        "title_contains": ["Ubiquiti", "airOS", "UniFi", "EdgeOS"],
+        "server_header_contains": ["UBNT", "Ubiquiti"],
+        "product_contains": ["airOS", "EdgeRouter", "UniFi"],
+        "service_name_contains": ["http"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "ubnt", "password": "ubnt"}
+      ]
+    },
+    "TP-Link": {
+      "indicators": {
+        "title_contains": ["TP-LINK", "TP-Link"],
+        "server_header_contains": ["TP-LINK"],
+        "product_contains": ["TP-Link"],
+        "service_name_contains": ["http"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "admin", "password": "admin"}
+      ]
+    },
+    "Huawei": {
+      "indicators": {
+        "title_contains": ["Huawei", "HG"],
+        "server_header_contains": ["Huawei"],
+        "product_contains": ["Huawei"],
+        "service_name_contains": ["http"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "admin", "password": "admin"}
+      ]
+    },
+    "ZTE": {
+      "indicators": {
+        "title_contains": ["ZTE"],
+        "server_header_contains": ["ZTE"],
+        "product_contains": ["ZTE"],
+        "service_name_contains": ["http"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "admin", "password": "admin"}
+      ]
+    },
+    "Cisco": {
+      "indicators": {
+        "title_contains": ["Cisco"],
+        "server_header_contains": ["Cisco"],
+        "product_contains": ["Cisco"],
+        "service_name_contains": ["http"],
+        "favicon_md5": []
+      },
+      "defaults": [
+        {"username": "cisco", "password": "cisco"}
+      ]
+    }
+  }
+}
