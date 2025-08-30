@@ -1,214 +1,236 @@
-# Advanced Router Vulnerability Scanner - Phase 3
+# Advanced XSS Scanner
+## ابزار پیشرفته تشخیص XSS
 
-🔒 **Professional Router Security Assessment Tool**
+یک ابزار حرفه‌ای و پیشرفته برای تشخیص آسیب‌پذیری‌های Cross-Site Scripting (XSS) که با الهام از `store.xss0r.com` طراحی شده است.
 
-## Overview
+## ویژگی‌های کلیدی
 
-This is a comprehensive router vulnerability scanner designed for Phase 3 security assessments, focusing on brute force attacks against router login pages and configuration extraction.
+### 🔍 **Crawling و Reconnaissance عمیق**
+- شناسایی خودکار نقاط تست (پارامترها، فرم‌ها، هدرها)
+- Crawling عمیق لینک‌های داخلی تا عمق قابل تنظیم
+- تحلیل فایل‌های JavaScript برای DOM XSS
+- شناسایی endpoint های مخفی
 
-## Features
+### 🎯 **تست‌های پیشرفته**
+- **Context-Aware Testing**: تشخیص context و استفاده از پیلود مناسب
+- **Fuzzing پیشرفته**: تست کاراکترهای مسدود و فیلتر شده
+- **WAF Bypass**: تکنیک‌های مختلف دور زدن Web Application Firewall
+- **Multi-Method Testing**: تست GET و POST
+- **Header Testing**: تست هدرهای HTTP برای XSS
+- **CRLF Injection**: تست تزریق CRLF در تمام پارامترها
 
-### 🎯 Core Capabilities
-- **Multi-threaded Scanning**: High-speed parallel processing for large networks
-- **Smart Login Detection**: AI-powered scoring system for accurate login page identification
-- **Brand Recognition**: Comprehensive database of router brands with specific indicators
-- **Brute Force Engine**: Intelligent credential testing with rate limiting and evasion
-- **Configuration Extraction**: Automated config file discovery and SIP data extraction
-- **Professional Reporting**: Beautiful HTML and JSON reports with detailed findings
+### 🛡️ **امنیت و مخفی‌کاری**
+- Rate limiting برای جلوگیری از تشخیص WAF
+- User-Agent های متنوع و تصادفی
+- تاخیر قابل تنظیم بین درخواست‌ها
+- پردازش موازی با کنترل تعداد thread
 
-### 🌍 Supported Router Brands
-- **Asian**: TP-Link, Huawei, ZTE, Xiaomi, Tenda
-- **European**: AVM Fritz!Box, Technicolor
-- **American**: Netgear, Linksys, D-Link
-- **Global**: ASUS, and many more
-- **Legacy & Generic**: Comprehensive fallback support
+### ✅ **سیستم تایید باگ**
+- **Popup مخصوص**: استفاده از popup منحصر به فرد برای تایید
+- **Selenium Integration**: تایید باگ با WebDriver
+- **Screenshot**: گرفتن عکس از باگ‌های تایید شده
+- **امتیازبندی هوشمند**: سیستم امتیازدهی بر اساس نوع و تاثیر باگ
 
-### 🛡️ Anti-Detection Features
-- Random user agents rotation
-- Rate limiting with jitter
-- Request timing randomization
-- Connection persistence
-- Header randomization
+### 📊 **گزارش‌گیری حرفه‌ای**
+- گزارش HTML زیبا و کامل
+- گزارش JSON برای پردازش خودکار
+- نمایش آمار کامل اسکن
+- ذخیره اسکرین‌شات باگ‌های تایید شده
 
-## Installation
+## نصب و راه‌اندازی
 
-### Requirements
+### پیش‌نیازها
 - Python 3.7+
-- pip package manager
+- Google Chrome Browser
+- ChromeDriver
 
-### Setup
+### نصب خودکار
 ```bash
-# Clone or download the scanner
-# Install dependencies
+# دانلود فایل‌ها
+git clone [repository-url]
+cd advanced-xss-scanner
+
+# اجرای اسکریپت نصب
+python setup.py
+```
+
+### نصب دستی
+```bash
+# نصب پکیج‌های Python
 pip install -r requirements.txt
 
-# Make executable (Linux/macOS)
-chmod +x router_vulnerability_scanner.py
+# نصب ChromeDriver (Linux)
+sudo apt-get install chromium-chromedriver
+
+# نصب ChromeDriver (macOS)
+brew install chromedriver
+
+# نصب ChromeDriver (Windows)
+# دانلود از https://chromedriver.chromium.org/
 ```
 
-## Usage
+## استفاده
 
-### Basic Usage
+### استفاده پایه
 ```bash
-# Scan single IP
-python router_vulnerability_scanner.py -t 192.168.1.1
-
-# Scan CIDR range
-python router_vulnerability_scanner.py -t 192.168.1.0/24
-
-# Scan IP range
-python router_vulnerability_scanner.py -t 192.168.1.1-192.168.1.254
-
-# Scan from file
-python router_vulnerability_scanner.py -t targets.txt
+python advanced_xss_scanner.py -u https://example.com
 ```
 
-### Advanced Options
+### استفاده پیشرفته
 ```bash
-# High-speed scan with 100 threads
-python router_vulnerability_scanner.py -t 10.0.0.0/16 -T 100
+# اسکن عمیق با تنظیمات سفارشی
+python advanced_xss_scanner.py -u https://example.com -d 5 -t 10 --delay 2
 
-# Custom timeout
-python router_vulnerability_scanner.py -t targets.txt --timeout 15
+# اسکن با سرور Stored XSS
+python advanced_xss_scanner.py -u https://example.com --stored-server http://your-server.com
+
+# نمایش راهنما
+python advanced_xss_scanner.py -h
 ```
 
-### Target File Format
-Create a `targets.txt` file with one IP per line:
+### پارامترهای خط فرمان
+- `-u, --url`: URL هدف (اجباری)
+- `-d, --depth`: حداکثر عمق crawling (پیش‌فرض: 3)
+- `-t, --threads`: تعداد thread ها (پیش‌فرض: 5)
+- `--delay`: تاخیر بین درخواست‌ها به ثانیه (پیش‌فرض: 1.0)
+- `--stored-server`: سرور برای تست Stored/Blind XSS
+
+## انواع آسیب‌پذیری‌های قابل تشخیص
+
+### 1. Reflected XSS
+- تست پارامترهای URL
+- تست فیلدهای فرم
+- تست هدرهای HTTP
+
+### 2. Stored XSS
+- تست فرم‌هایی که داده ذخیره می‌کنند
+- بررسی بازتاب در صفحات مختلف
+
+### 3. DOM-based XSS
+- تحلیل کد JavaScript
+- تست پارامترهای پردازش شده در سمت کلاینت
+
+### 4. CRLF Injection
+- تست تزریق در هدرهای HTTP
+- بررسی امکان تزریق Set-Cookie
+
+## Context های پشتیبانی شده
+
+### HTML Context
+```html
+<div>USER_INPUT</div>
 ```
-192.168.1.1
-192.168.1.254
-10.0.0.1
-172.16.0.1
+پیلودها: `<script>`, `<img>`, `<svg>`, و غیره
+
+### Attribute Context
+```html
+<input value="USER_INPUT">
+```
+پیلودها: `" onmouseover="`, `" onfocus="`, و غیره
+
+### JavaScript Context
+```html
+<script>var data = 'USER_INPUT';</script>
+```
+پیلودها: `'; alert(1); //`, `</script><script>`, و غیره
+
+### URL Context
+```html
+<a href="USER_INPUT">
+```
+پیلودها: `javascript:alert(1)`, `data:text/html,`, و غیره
+
+## تکنیک‌های WAF Bypass
+
+- **Case Manipulation**: `<ScRiPt>alert(1)</ScRiPt>`
+- **URL Encoding**: `%3Cscript%3Ealert(1)%3C/script%3E`
+- **HTML Entities**: `&lt;script&gt;alert(1)&lt;/script&gt;`
+- **Alternative Tags**: `<img>`, `<svg>`, `<iframe>`
+- **Event Handlers**: `onload`, `onerror`, `onfocus`
+- **JavaScript Alternatives**: `eval()`, `setTimeout()`
+
+## سیستم امتیازبندی
+
+### معیارهای امتیازدهی
+- **Reflected XSS**: 20 امتیاز
+- **Stored XSS**: 25 امتیاز
+- **Header-based XSS**: 15 امتیاز
+- **CRLF Injection**: 15 امتیاز
+
+### شرایط تایید باگ
+1. **اجرا در Context درست**: پیلود باید در context مناسب اجرا شود
+2. **نمایش Popup مخصوص**: popup با signature منحصر به فرد نمایش داده شود
+3. **تایید با Selenium**: باگ توسط WebDriver تایید شود
+4. **Screenshot**: عکس از باگ تایید شده گرفته شود
+
+## فایل‌های خروجی
+
+### گزارش HTML
+- گزارش کامل و زیبا
+- آمار تفصیلی اسکن
+- نمایش تمام باگ‌های یافت شده
+- لینک به اسکرین‌شات‌ها
+
+### گزارش JSON
+- داده‌های خام برای پردازش
+- قابل import در سایر ابزارها
+- شامل تمام جزئیات تکنیکی
+
+### اسکرین‌شات‌ها
+- عکس از هر باگ تایید شده
+- ذخیره در پوشه `screenshots/`
+- نام‌گذاری منظم و قابل ردیابی
+
+## مثال خروجی
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║                    Advanced XSS Scanner                      ║
+║                  ابزار پیشرفته تشخیص XSS                    ║
+╠══════════════════════════════════════════════════════════════╣
+║ Target: https://example.com                                  ║
+║ Max Depth: 3   | Threads: 5   | Delay: 1.0s                 ║
+╚══════════════════════════════════════════════════════════════╝
+
+============================================================
+Phase 1: شناسایی نقاط تست و Crawling عمیق
+============================================================
+
+🔍 Crawling: https://example.com (depth: 0)
+  ✓ Form found: /contact (3 inputs)
+  ✓ Parameter found: search
+
+============================================================
+Phase 2: کشف پیشرفته و Fuzzing
+============================================================
+
+🔍 Testing URL Parameters...
+  Testing parameter: search in https://example.com
+
+✓ CONFIRMED XSS: search in https://example.com
+  Payload: <script>alert("XSS_SCANNER_CONFIRMED_abc123")</script>
+  Score: 20/20
+  📸 Screenshot saved: screenshots/xss_param_search_1.png
 ```
 
-## Scanning Process
+## توجهات امنیتی
 
-### Phase 1: Port Discovery
-- Scans common web ports (80, 8080, 443, 8443, etc.)
-- Fast socket-based detection
-- Parallel port scanning
+⚠️ **هشدار مهم**: این ابزار فقط برای تست امنیت سایت‌های مجاز خودتان استفاده کنید. استفاده غیرمجاز از این ابزار ممکن است مغایر با قوانین محلی و بین‌المللی باشد.
 
-### Phase 2: Login Page Detection
-Uses intelligent scoring system based on:
-- **Form Analysis**: Detects login forms and input fields
-- **Content Analysis**: Searches for authentication keywords
-- **Header Analysis**: Examines server headers
-- **Brand Detection**: Identifies router manufacturers
-- **Scoring Threshold**: Requires score ≥3 for positive detection
+## سازگاری
 
-### Phase 3: Brute Force Attack
-- **Smart Credentials**: Uses brand-specific default credentials
-- **Rate Limiting**: Prevents detection and blocking
-- **Live Display**: Shows current credential attempts
-- **Success Detection**: Multiple verification methods
-- **Anti-Lockout**: Intelligent timing and retry logic
+- ✅ Linux (Ubuntu, CentOS, Debian)
+- ✅ Windows (10, 11)
+- ✅ macOS (Big Sur, Monterey, Ventura)
 
-### Phase 4: Post-Exploitation
-- **Admin Panel Access**: Extracts management information
-- **Configuration Files**: Discovers and downloads config files
-- **SIP Extraction**: Extracts VoIP credentials as POC
-- **Information Gathering**: Collects firmware, model, network data
+## لایسنس
 
-## Scoring System
+این پروژه تحت لایسنس MIT منتشر شده است.
 
-The scanner uses a comprehensive scoring system:
+## حمایت و گزارش باگ
 
-| Phase | Success Criteria | Points |
-|-------|------------------|--------|
-| Login Detection | Page score ≥3 | +1 |
-| Credential Success | Valid login found | +2 |
-| Config Access | Files discovered | +1 |
-| **Total Maximum** | **All phases complete** | **4** |
-
-## Report Generation
-
-### HTML Report
-- **Visual Dashboard**: Clean, professional interface
-- **IP Cards**: Individual profiles for each target
-- **Vulnerability Details**: Complete exploitation chain
-- **Configuration Data**: Extracted sensitive information
-- **Matrix Theme**: Hacker-aesthetic design
-
-### JSON Report
-- **Structured Data**: Machine-readable format
-- **Detailed Results**: Complete scan metadata
-- **Integration Ready**: API-compatible output
-- **Timestamps**: Full audit trail
-
-## Example Output
-
-```
-🔒 VULNERABLE: 192.168.1.1 - Default credentials work!
-[+] SUCCESS! Default credential found: admin:admin
-[+] Configuration file found: http://192.168.1.1/config.bin
-[+] SIP credentials extracted: user@sip.provider.com
-
-[+] Reports generated:
-  - JSON: router_scan_report_20241218_143022.json
-  - HTML: router_scan_report_20241218_143022.html
-```
-
-## Safety Features
-
-- **Ctrl+C Handling**: Graceful shutdown
-- **Rate Limiting**: Prevents network flooding
-- **Error Handling**: Robust exception management
-- **Resource Management**: Efficient memory usage
-- **Clean Exit**: Proper session cleanup
-
-## Legal Notice
-
-⚠️ **FOR EDUCATIONAL AND AUTHORIZED TESTING ONLY**
-
-This tool is designed for:
-- Security professionals
-- Penetration testers
-- Network administrators
-- Educational purposes
-
-**Users are responsible for:**
-- Obtaining proper authorization
-- Complying with local laws
-- Following ethical guidelines
-- Using responsibly
-
-## Technical Details
-
-### Architecture
-- **Async HTTP**: High-performance networking
-- **Thread Pool**: Concurrent execution
-- **Session Management**: Connection reuse
-- **Memory Efficient**: Optimized for large scans
-
-### Database Structure
-```python
-ROUTER_DATABASE = {
-    "Brand": {
-        "models": [...],
-        "default_credentials": [...],
-        "indicators": [...],
-        "login_paths": [...],
-        "config_paths": [...]
-    }
-}
-```
-
-### Performance
-- **Large Networks**: Supports thousands of IPs
-- **Multi-threading**: Configurable thread count
-- **Memory Usage**: ~50MB for 1000 targets
-- **Speed**: 100+ IPs/minute (network dependent)
-
-## Support
-
-For issues, questions, or contributions:
-- Review the code for implementation details
-- Check error messages for troubleshooting
-- Verify network connectivity and permissions
-- Ensure target authorization
+برای گزارش باگ یا درخواست ویژگی جدید، لطفاً یک issue ایجاد کنید.
 
 ---
 
-**Created with ❤️ for the cybersecurity community**
-
-*"Follow the white rabbit..."* 🐰
+**Happy Hunting! 🔍🛡️**
