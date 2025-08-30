@@ -590,16 +590,36 @@ class AdvancedXSSScanner:
             for param_name, param_value in params.items():
                 print(f"{Fore.GREEN}[{Fore.RED}TARGET{Fore.GREEN}] {Fore.WHITE}Parameter: {param_name} in {url}")
                 
-                # Test different contexts
+                # Check if this parameter already has a confirmed vulnerability
+                param_key = f"{url}#{param_name}"
+                if param_key in getattr(self, 'confirmed_params', set()):
+                    print(f"{Fore.CYAN}[{Fore.RED}SKIP{Fore.CYAN}] {Fore.WHITE}Parameter {param_name} already confirmed vulnerable")
+                    continue
+                
+                # Test different contexts until vulnerability found
+                vulnerability_found = False
                 for context, payloads in self.payloads.items():
-                    for payload in payloads[:3]:  # Test top 3 payloads per context
-                        self.test_parameter(url, param_name, payload, 'GET', context)
+                    if vulnerability_found:
+                        break
+                    for payload in payloads[:2]:  # Test top 2 payloads per context
+                        if self.test_parameter(url, param_name, payload, 'GET', context):
+                            vulnerability_found = True
+                            if not hasattr(self, 'confirmed_params'):
+                                self.confirmed_params = set()
+                            self.confirmed_params.add(param_key)
+                            print(f"{Fore.GREEN}[{Fore.RED}STOP{Fore.GREEN}] {Fore.WHITE}Vulnerability confirmed - stopping tests for {param_name}")
+                            break
                         time.sleep(self.delay)
                 
-                # Test WAF bypass payloads
-                for payload in self.waf_bypass_payloads[:5]:  # Test top 5 bypass payloads
-                    self.test_parameter(url, param_name, payload, 'GET', 'waf_bypass')
-                    time.sleep(self.delay)
+                # Only test WAF bypass if no vulnerability found yet
+                if not vulnerability_found:
+                    for payload in self.waf_bypass_payloads[:3]:  # Test top 3 bypass payloads
+                        if self.test_parameter(url, param_name, payload, 'GET', 'waf_bypass'):
+                            if not hasattr(self, 'confirmed_params'):
+                                self.confirmed_params = set()
+                            self.confirmed_params.add(param_key)
+                            break
+                        time.sleep(self.delay)
 
     def test_forms(self):
         """Test forms for XSS"""
@@ -614,12 +634,29 @@ class AdvancedXSSScanner:
             
             for input_field in form['inputs']:
                 if input_field['type'] not in ['submit', 'button', 'hidden']:
-                    print(f"{Fore.GREEN}[{Fore.RED}INPUT{Fore.GREEN}] {Fore.WHITE}Testing: {input_field['name']} ({input_field['type']})")
+                    input_name = input_field['name']
+                    form_key = f"{form['action']}#{input_name}"
                     
-                    # Test different contexts
+                    # Skip if already confirmed vulnerable
+                    if form_key in getattr(self, 'confirmed_inputs', set()):
+                        print(f"{Fore.CYAN}[{Fore.RED}SKIP{Fore.CYAN}] {Fore.WHITE}Input {input_name} already confirmed vulnerable")
+                        continue
+                    
+                    print(f"{Fore.GREEN}[{Fore.RED}INPUT{Fore.GREEN}] {Fore.WHITE}Testing: {input_name} ({input_field['type']})")
+                    
+                    # Test until vulnerability found
+                    vulnerability_found = False
                     for context, payloads in self.payloads.items():
-                        for payload in payloads[:2]:  # Test top 2 payloads per context
-                            self.test_form_input(form, input_field['name'], payload, context)
+                        if vulnerability_found:
+                            break
+                        for payload in payloads[:1]:  # Test best payload per context
+                            if self.test_form_input(form, input_name, payload, context):
+                                vulnerability_found = True
+                                if not hasattr(self, 'confirmed_inputs'):
+                                    self.confirmed_inputs = set()
+                                self.confirmed_inputs.add(form_key)
+                                print(f"{Fore.GREEN}[{Fore.RED}STOP{Fore.GREEN}] {Fore.WHITE}Vulnerability confirmed - stopping tests for {input_name}")
+                                break
                             time.sleep(self.delay)
 
     def test_http_headers(self):
@@ -675,7 +712,7 @@ class AdvancedXSSScanner:
                     'timestamp': datetime.now().isoformat()
                 }
                 
-                # Verify with Selenium
+                # CRITICAL: Verify with Selenium - ONLY confirm if popup is shown
                 if self.verify_xss_with_selenium(test_url):
                     vulnerability['confirmed'] = True
                     vulnerability['score'] = 20
@@ -683,16 +720,21 @@ class AdvancedXSSScanner:
                     self.scan_results['vulnerabilities'].append(vulnerability)
                     self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
                     
-                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}XSS VULNERABILITY FOUND!")
+                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}XSS VULNERABILITY CONFIRMED WITH POPUP!")
                     print(f"{Fore.GREEN}[{Fore.RED}PARAM{Fore.GREEN}] {Fore.WHITE}{param_name}")
-                    print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{url}")
+                    print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{test_url}")
                     print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
                     print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}20/20")
                     
-                    # Take screenshot
-                    self.take_screenshot(test_url, f"xss_param_{param_name}_{len(self.found_vulnerabilities)}")
+                    # Take screenshot ONLY after popup confirmation
+                    screenshot_path = self.take_screenshot(test_url, f"xss_param_{param_name}_{len(self.found_vulnerabilities)}")
+                    if screenshot_path:
+                        print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}Saved: {screenshot_path}")
+                    
+                    return True  # Return True to indicate vulnerability found
                 else:
-                    print(f"{Fore.YELLOW}[{Fore.RED}UNCONFIRMED{Fore.YELLOW}] {Fore.WHITE}Could not verify with browser")
+                    print(f"{Fore.RED}[{Fore.YELLOW}NO_POPUP{Fore.RED}] {Fore.WHITE}No popup shown - vulnerability NOT confirmed")
+                    return False  # Return False to continue testing
                 
         except requests.exceptions.ConnectionError:
             print(f"{Fore.RED}[{Fore.YELLOW}CONN{Fore.RED}] {Fore.WHITE}Connection failed")
@@ -741,22 +783,32 @@ class AdvancedXSSScanner:
                 if form['method'] == 'GET':
                     test_url += '?' + urllib.parse.urlencode(form_data)
                 
-                if self.verify_xss_with_selenium(test_url, form_data if form['method'] == 'POST' else None):
+                # CRITICAL: Verify form XSS with proper form submission
+                if self.verify_form_with_selenium(form, form_data):
                     vulnerability['confirmed'] = True
                     vulnerability['score'] = 20
                     self.found_vulnerabilities.append(vulnerability)
                     self.scan_results['vulnerabilities'].append(vulnerability)
                     self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
                     
-                    print(f"{Fore.GREEN}✓ CONFIRMED XSS: {input_name} in form {form['action']}")
-                    print(f"  Payload: {payload}")
-                    print(f"  Score: 20/20")
+                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}FORM XSS CONFIRMED WITH POPUP!")
+                    print(f"{Fore.GREEN}[{Fore.RED}INPUT{Fore.GREEN}] {Fore.WHITE}{input_name}")
+                    print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
+                    print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}20/20")
                     
-                    # Take screenshot
-                    self.take_screenshot(test_url, f"xss_form_{input_name}_{len(self.found_vulnerabilities)}")
+                    # Take screenshot ONLY after popup confirmation
+                    screenshot_path = self.take_screenshot(test_url, f"xss_form_{input_name}_{len(self.found_vulnerabilities)}")
+                    if screenshot_path:
+                        print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}Saved: {screenshot_path}")
+                    
+                    return True  # Return True to stop further testing
+                else:
+                    print(f"{Fore.RED}[{Fore.YELLOW}NO_POPUP{Fore.RED}] {Fore.WHITE}No popup shown - vulnerability NOT confirmed")
+                    return False  # Return False to continue testing
                 
         except Exception as e:
-            pass
+            print(f"{Fore.RED}[{Fore.YELLOW}ERROR{Fore.RED}] {Fore.WHITE}Form test failed: {str(e)[:30]}")
+            return False
 
     def test_header(self, url, header_name, payload):
         """Test HTTP header for XSS"""
@@ -940,43 +992,118 @@ class AdvancedXSSScanner:
             return False
 
     def verify_xss_with_selenium(self, url, post_data=None):
-        """Verify XSS using Selenium WebDriver"""
+        """CRITICAL: Verify XSS using Selenium WebDriver - ONLY confirm if popup is shown"""
         if not self.driver:
+            print(f"{Fore.RED}[{Fore.YELLOW}NO_BROWSER{Fore.RED}] {Fore.WHITE}Cannot verify popup - no browser driver")
             return False
         
         try:
+            print(f"{Fore.CYAN}[{Fore.RED}VERIFY{Fore.CYAN}] {Fore.WHITE}Loading page to verify popup...")
+            
             if post_data:
                 # For POST requests, we need to create a form and submit it
-                # This is a simplified approach
                 self.driver.get(url)
             else:
                 self.driver.get(url)
             
             # Wait for page to load
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            from selenium.common.exceptions import TimeoutException
+            
             WebDriverWait(self.driver, 5).until(
                 lambda driver: driver.execute_script("return document.readyState") == "complete"
             )
             
-            # Check for our custom popup signature in alerts or page content
+            # CRITICAL: Only check for JavaScript alerts (popups)
             try:
-                # Check for JavaScript alerts
-                alert = WebDriverWait(self.driver, 2).until(EC.alert_is_present())
+                # Wait for alert popup to appear
+                alert = WebDriverWait(self.driver, 3).until(EC.alert_is_present())
                 alert_text = alert.text
-                alert.accept()
                 
+                print(f"{Fore.CYAN}[{Fore.RED}POPUP{Fore.CYAN}] {Fore.WHITE}Alert popup detected: {alert_text}")
+                
+                # Check if our signature is in the alert
                 if self.popup_signature in alert_text:
+                    alert.accept()
+                    print(f"{Fore.GREEN}[{Fore.RED}VERIFIED{Fore.GREEN}] {Fore.WHITE}Popup contains our signature - XSS CONFIRMED!")
                     return True
+                else:
+                    alert.accept()
+                    print(f"{Fore.RED}[{Fore.YELLOW}WRONG{Fore.RED}] {Fore.WHITE}Popup found but wrong signature")
+                    return False
+                    
             except TimeoutException:
-                pass
-            
-            # Check page content for our signature
-            page_source = self.driver.page_source
-            if self.popup_signature in page_source:
-                return True
-            
-            return False
+                print(f"{Fore.RED}[{Fore.YELLOW}NO_POPUP{Fore.RED}] {Fore.WHITE}No popup appeared - XSS NOT confirmed")
+                return False
             
         except Exception as e:
+            print(f"{Fore.RED}[{Fore.YELLOW}ERROR{Fore.RED}] {Fore.WHITE}Popup verification failed: {e}")
+            return False
+
+    def verify_form_with_selenium(self, form, form_data):
+        """Verify form XSS with proper form submission and popup detection"""
+        if not self.driver:
+            print(f"{Fore.RED}[{Fore.YELLOW}NO_BROWSER{Fore.RED}] {Fore.WHITE}Cannot verify popup - no browser driver")
+            return False
+        
+        try:
+            print(f"{Fore.CYAN}[{Fore.RED}VERIFY{Fore.CYAN}] {Fore.WHITE}Submitting form to verify popup...")
+            
+            # Navigate to form page
+            self.driver.get(form['base_url'])
+            time.sleep(2)
+            
+            # Fill form fields
+            from selenium.webdriver.common.by import By
+            for field_name, field_value in form_data.items():
+                try:
+                    element = self.driver.find_element(By.NAME, field_name)
+                    element.clear()
+                    element.send_keys(str(field_value))
+                except Exception as e:
+                    print(f"{Fore.YELLOW}[{Fore.RED}FIELD{Fore.YELLOW}] {Fore.WHITE}Could not fill field {field_name}: {e}")
+            
+            # Submit form
+            try:
+                submit_button = self.driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], button")
+                submit_button.click()
+            except:
+                try:
+                    form_element = self.driver.find_element(By.TAG_NAME, "form")
+                    form_element.submit()
+                except Exception as e:
+                    print(f"{Fore.YELLOW}[{Fore.RED}SUBMIT{Fore.YELLOW}] {Fore.WHITE}Could not submit form: {e}")
+                    return False
+            
+            time.sleep(3)  # Wait for response and JavaScript execution
+            
+            # Check for alert popup
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.common.exceptions import TimeoutException
+                
+                alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
+                alert_text = alert.text
+                
+                print(f"{Fore.CYAN}[{Fore.RED}POPUP{Fore.CYAN}] {Fore.WHITE}Alert popup detected: {alert_text}")
+                
+                if self.popup_signature in alert_text:
+                    alert.accept()
+                    print(f"{Fore.GREEN}[{Fore.RED}VERIFIED{Fore.GREEN}] {Fore.WHITE}Popup contains our signature - FORM XSS CONFIRMED!")
+                    return True
+                else:
+                    alert.accept()
+                    print(f"{Fore.RED}[{Fore.YELLOW}WRONG{Fore.RED}] {Fore.WHITE}Popup found but wrong signature")
+                    return False
+                    
+            except TimeoutException:
+                print(f"{Fore.RED}[{Fore.YELLOW}NO_POPUP{Fore.RED}] {Fore.WHITE}No popup appeared - FORM XSS NOT confirmed")
+                return False
+            
+        except Exception as e:
+            print(f"{Fore.RED}[{Fore.YELLOW}ERROR{Fore.RED}] {Fore.WHITE}Form popup verification failed: {e}")
             return False
 
     def take_screenshot(self, url, filename):

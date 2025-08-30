@@ -1,0 +1,93 @@
+{
+  "target": "http://localhost:8083",
+  "timestamp": "2025-08-30T22:30:33.199849",
+  "statistics": {
+    "urls_crawled": 5,
+    "forms_found": 5,
+    "parameters_found": 2,
+    "payloads_tested": 18,
+    "vulnerabilities_found": 8
+  },
+  "vulnerabilities": [
+    {
+      "type": "Reflected XSS",
+      "url": "http://localhost:8083/search?q=%3Cscript%3Ealert%28%22XSS_CONFIRMED_21a01ff6%22%29%3C%2Fscript%3E",
+      "parameter": "q",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "GET",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:28"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083",
+      "parameter": "name",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "GET",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/search",
+      "parameter": "q",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "GET",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/contact",
+      "parameter": "name",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "POST",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/contact",
+      "parameter": "email",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "POST",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/contact",
+      "parameter": "subject",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "POST",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/contact",
+      "parameter": "message",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "POST",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    },
+    {
+      "type": "Form XSS",
+      "url": "http://localhost:8083/?search=test",
+      "parameter": "name",
+      "payload": "<script>alert(\"XSS_CONFIRMED_21a01ff6\")</script>",
+      "context": "html",
+      "method": "GET",
+      "score": 20,
+      "timestamp": "2025-08-30 22:30:33"
+    }
+  ]
+}
