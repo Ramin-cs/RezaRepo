@@ -1,235 +1,244 @@
 # Advanced XSS Scanner
-## ابزار پیشرفته تشخیص XSS
+## Professional XSS Detection Tool
 
-یک ابزار حرفه‌ای و پیشرفته برای تشخیص آسیب‌پذیری‌های Cross-Site Scripting (XSS) که با الهام از `store.xss0r.com` طراحی شده است.
+A professional and advanced Cross-Site Scripting (XSS) detection tool with Matrix-style interface, popup verification, and comprehensive reporting.
 
-## ویژگی‌های کلیدی
+## 🎯 Key Features
 
-### 🔍 **Crawling و Reconnaissance عمیق**
-- شناسایی خودکار نقاط تست (پارامترها، فرم‌ها، هدرها)
-- Crawling عمیق لینک‌های داخلی تا عمق قابل تنظیم
-- تحلیل فایل‌های JavaScript برای DOM XSS
-- شناسایی endpoint های مخفی
+### 🔍 **Deep Reconnaissance**
+- Automatic test point identification (parameters, forms, headers)
+- Deep crawling of internal links
+- JavaScript analysis for DOM XSS
+- Hidden endpoint discovery
 
-### 🎯 **تست‌های پیشرفته**
-- **Context-Aware Testing**: تشخیص context و استفاده از پیلود مناسب
-- **Fuzzing پیشرفته**: تست کاراکترهای مسدود و فیلتر شده
-- **WAF Bypass**: تکنیک‌های مختلف دور زدن Web Application Firewall
-- **Multi-Method Testing**: تست GET و POST
-- **Header Testing**: تست هدرهای HTTP برای XSS
-- **CRLF Injection**: تست تزریق CRLF در تمام پارامترها
+### 🎯 **Advanced Testing**
+- **Context-Aware Testing**: Detects context and uses appropriate payloads
+- **Advanced Fuzzing**: Tests blocked and filtered characters
+- **WAF Bypass**: Multiple techniques to bypass Web Application Firewalls
+- **Multi-Method Testing**: Tests both GET and POST methods
+- **Header Testing**: Tests HTTP headers for XSS
+- **CRLF Injection**: Tests CRLF injection in all parameters
 
-### 🛡️ **امنیت و مخفی‌کاری**
-- Rate limiting برای جلوگیری از تشخیص WAF
-- User-Agent های متنوع و تصادفی
-- تاخیر قابل تنظیم بین درخواست‌ها
-- پردازش موازی با کنترل تعداد thread
+### 🛡️ **Security & Stealth**
+- Rate limiting to avoid WAF detection
+- Random User-Agent rotation
+- Configurable delays between requests
+- Parallel processing with thread control
 
-### ✅ **سیستم تایید باگ**
-- **Popup مخصوص**: استفاده از popup منحصر به فرد برای تایید
-- **Selenium Integration**: تایید باگ با WebDriver
-- **Screenshot**: گرفتن عکس از باگ‌های تایید شده
-- **امتیازبندی هوشمند**: سیستم امتیازدهی بر اساس نوع و تاثیر باگ
+### ✅ **Bug Verification System**
+- **Custom Popup**: Uses unique popup signature for verification
+- **Selenium Integration**: Confirms bugs with WebDriver (when available)
+- **Screenshot Capture**: Takes screenshots of confirmed bugs WITH popup visible
+- **Smart Scoring**: Intelligent scoring system based on bug type and impact
 
-### 📊 **گزارش‌گیری حرفه‌ای**
-- گزارش HTML زیبا و کامل
-- گزارش JSON برای پردازش خودکار
-- نمایش آمار کامل اسکن
-- ذخیره اسکرین‌شات باگ‌های تایید شده
+### 📊 **Professional Reporting**
+- Beautiful HTML reports with Matrix theme
+- JSON reports for automated processing
+- Complete scan statistics
+- Screenshot storage for confirmed bugs
 
-## نصب و راه‌اندازی
+## 🚀 Installation & Setup
 
-### پیش‌نیازها
+### Prerequisites
 - Python 3.7+
-- Google Chrome Browser
-- ChromeDriver
+- Google Chrome Browser (optional, for popup verification)
+- ChromeDriver (optional, for popup verification)
 
-### نصب خودکار
+### Quick Install
 ```bash
-# دانلود فایل‌ها
-git clone [repository-url]
-cd advanced-xss-scanner
+# Install Python packages
+pip3 install --break-system-packages -r requirements.txt
 
-# اجرای اسکریپت نصب
-python setup.py
+# Optional: Install ChromeDriver for popup verification
+# Linux: sudo apt-get install chromium-chromedriver
+# macOS: brew install chromedriver
+# Windows: Download from https://chromedriver.chromium.org/
 ```
 
-### نصب دستی
+## 📖 Usage
+
+### Basic Usage
 ```bash
-# نصب پکیج‌های Python
-pip install -r requirements.txt
-
-# نصب ChromeDriver (Linux)
-sudo apt-get install chromium-chromedriver
-
-# نصب ChromeDriver (macOS)
-brew install chromedriver
-
-# نصب ChromeDriver (Windows)
-# دانلود از https://chromedriver.chromium.org/
+python3 xss_scanner.py -u https://example.com
 ```
 
-## استفاده
-
-### استفاده پایه
+### Advanced Usage
 ```bash
-python advanced_xss_scanner.py -u https://example.com
+# Deep scan with custom settings
+python3 xss_scanner.py -u https://example.com -d 5 --delay 2
+
+# Quick scan
+python3 xss_scanner.py -u https://target.com -d 2 --delay 0.5
+
+# Test with vulnerable demo
+python3 demo.py -p 8080 &
+python3 xss_scanner.py -u http://localhost:8080
 ```
 
-### استفاده پیشرفته
-```bash
-# اسکن عمیق با تنظیمات سفارشی
-python advanced_xss_scanner.py -u https://example.com -d 5 -t 10 --delay 2
+### Command Line Options
+- `-u, --url`: Target URL (required)
+- `-d, --depth`: Maximum crawl depth (default: 3)
+- `--delay`: Delay between requests in seconds (default: 1.0)
+- `--timeout`: Request timeout in seconds (default: 15)
+- `-h, --help`: Show help message
 
-# اسکن با سرور Stored XSS
-python advanced_xss_scanner.py -u https://example.com --stored-server http://your-server.com
-
-# نمایش راهنما
-python advanced_xss_scanner.py -h
-```
-
-### پارامترهای خط فرمان
-- `-u, --url`: URL هدف (اجباری)
-- `-d, --depth`: حداکثر عمق crawling (پیش‌فرض: 3)
-- `-t, --threads`: تعداد thread ها (پیش‌فرض: 5)
-- `--delay`: تاخیر بین درخواست‌ها به ثانیه (پیش‌فرض: 1.0)
-- `--stored-server`: سرور برای تست Stored/Blind XSS
-
-## انواع آسیب‌پذیری‌های قابل تشخیص
+## 🎯 Vulnerability Types Detected
 
 ### 1. Reflected XSS
-- تست پارامترهای URL
-- تست فیلدهای فرم
-- تست هدرهای HTTP
+- URL parameter testing
+- Form field testing
+- HTTP header testing
 
-### 2. Stored XSS
-- تست فرم‌هایی که داده ذخیره می‌کنند
-- بررسی بازتاب در صفحات مختلف
+### 2. Form XSS
+- All form input fields
+- POST and GET methods
+- Context-aware payload testing
 
-### 3. DOM-based XSS
-- تحلیل کد JavaScript
-- تست پارامترهای پردازش شده در سمت کلاینت
+### 3. Header-based XSS
+- User-Agent, Referer, X-Forwarded-For
+- Custom header injection
 
 ### 4. CRLF Injection
-- تست تزریق در هدرهای HTTP
-- بررسی امکان تزریق Set-Cookie
+- HTTP header injection
+- Set-Cookie injection testing
 
-## Context های پشتیبانی شده
+## 🔧 Supported Contexts
 
 ### HTML Context
 ```html
 <div>USER_INPUT</div>
 ```
-پیلودها: `<script>`, `<img>`, `<svg>`, و غیره
+Payloads: `<script>`, `<img>`, `<svg>`, etc.
 
-### Attribute Context
+### Attribute Context (with Tag Closing)
 ```html
 <input value="USER_INPUT">
 ```
-پیلودها: `" onmouseover="`, `" onfocus="`, و غیره
+Payloads: `"><img src=x onerror=alert()>`, `" onmouseover="alert()"`, etc.
 
 ### JavaScript Context
 ```html
 <script>var data = 'USER_INPUT';</script>
 ```
-پیلودها: `'; alert(1); //`, `</script><script>`, و غیره
+Payloads: `'; alert(); //`, `</script><script>alert()</script>`, etc.
 
 ### URL Context
 ```html
 <a href="USER_INPUT">
 ```
-پیلودها: `javascript:alert(1)`, `data:text/html,`, و غیره
+Payloads: `javascript:alert()`, `data:text/html,<script>`, etc.
 
-## تکنیک‌های WAF Bypass
+## 🛡️ WAF Bypass Techniques
 
 - **Case Manipulation**: `<ScRiPt>alert(1)</ScRiPt>`
 - **URL Encoding**: `%3Cscript%3Ealert(1)%3C/script%3E`
 - **HTML Entities**: `&lt;script&gt;alert(1)&lt;/script&gt;`
 - **Alternative Tags**: `<img>`, `<svg>`, `<iframe>`
 - **Event Handlers**: `onload`, `onerror`, `onfocus`
-- **JavaScript Alternatives**: `eval()`, `setTimeout()`
+- **Tag Closing**: `"><img src=x onerror=alert(1)>`
 
-## سیستم امتیازبندی
+## 📊 Scoring System
 
-### معیارهای امتیازدهی
-- **Reflected XSS**: 20 امتیاز
-- **Stored XSS**: 25 امتیاز
-- **Header-based XSS**: 15 امتیاز
-- **CRLF Injection**: 15 امتیاز
+### Scoring Criteria
+- **Reflected XSS**: 20 points
+- **Form XSS**: 20 points
+- **Header-based XSS**: 15 points
+- **CRLF Injection**: 15 points
 
-### شرایط تایید باگ
-1. **اجرا در Context درست**: پیلود باید در context مناسب اجرا شود
-2. **نمایش Popup مخصوص**: popup با signature منحصر به فرد نمایش داده شود
-3. **تایید با Selenium**: باگ توسط WebDriver تایید شود
-4. **Screenshot**: عکس از باگ تایید شده گرفته شود
+### Verification Requirements
+1. **Correct Context Execution**: Payload must execute in appropriate context
+2. **Popup Verification**: Custom signature popup must be shown (when Selenium available)
+3. **Screenshot Capture**: Screenshot taken WITH popup visible
+4. **Strict Analysis**: Only confirmed executable vulnerabilities reported
 
-## فایل‌های خروجی
+## 📁 Output Files
 
-### گزارش HTML
-- گزارش کامل و زیبا
-- آمار تفصیلی اسکن
-- نمایش تمام باگ‌های یافت شده
-- لینک به اسکرین‌شات‌ها
+### HTML Report
+- Complete and beautiful report with Matrix theme
+- Detailed scan statistics
+- All confirmed vulnerabilities displayed
+- Links to screenshots
 
-### گزارش JSON
-- داده‌های خام برای پردازش
-- قابل import در سایر ابزارها
-- شامل تمام جزئیات تکنیکی
+### JSON Report
+- Raw data for processing
+- Importable into other tools
+- Complete technical details
 
-### اسکرین‌شات‌ها
-- عکس از هر باگ تایید شده
-- ذخیره در پوشه `screenshots/`
-- نام‌گذاری منظم و قابل ردیابی
+### Screenshots
+- Captured for each confirmed bug
+- Shows popup when visible
+- Stored in `screenshots/` directory
+- Systematic naming for tracking
 
-## مثال خروجی
+## 🎮 Matrix Theme Interface
 
 ```
-╔══════════════════════════════════════════════════════════════╗
-║                    Advanced XSS Scanner                      ║
-║                  ابزار پیشرفته تشخیص XSS                    ║
-╠══════════════════════════════════════════════════════════════╣
-║ Target: https://example.com                                  ║
-║ Max Depth: 3   | Threads: 5   | Delay: 1.0s                 ║
-╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════╗
+║  ██╗  ██╗███████╗███████╗    ███████╗ ██████╗ █████╗ ███╗   ██╗███████╗██████╗  ║
+║  [+] Advanced Cross-Site Scripting Detection Framework     ║
+║  [+] Professional Penetration Testing Tool               ║
+║  [+] WAF Bypass • Context-Aware • Popup Verified         ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-============================================================
-Phase 1: شناسایی نقاط تست و Crawling عمیق
-============================================================
-
-🔍 Crawling: https://example.com (depth: 0)
-  ✓ Form found: /contact (3 inputs)
-  ✓ Parameter found: search
-
-============================================================
-Phase 2: کشف پیشرفته و Fuzzing
-============================================================
-
-🔍 Testing URL Parameters...
-  Testing parameter: search in https://example.com
-
-✓ CONFIRMED XSS: search in https://example.com
-  Payload: <script>alert("XSS_SCANNER_CONFIRMED_abc123")</script>
-  Score: 20/20
-  📸 Screenshot saved: screenshots/xss_param_search_1.png
+[!] Initializing neural network... DONE
+[!] Loading payload database... DONE  
+[!] Activating stealth mode... DONE
+[!] Popup verification system... READY
 ```
 
-## توجهات امنیتی
+## 🎯 Example Output
 
-⚠️ **هشدار مهم**: این ابزار فقط برای تست امنیت سایت‌های مجاز خودتان استفاده کنید. استفاده غیرمجاز از این ابزار ممکن است مغایر با قوانین محلی و بین‌المللی باشد.
+```
+[CONFIRMED] XSS VULNERABILITY CONFIRMED!
+[PARAM] q
+[URL] https://target.com/search?q=<script>alert("XSS_SCANNER_CONFIRMED_abc123")</script>
+[PAYLOAD] <script>alert("XSS_SCANNER_CONFIRMED_abc123")</script>
+[CONTEXT] html_context
+[SCORE] 20/20
+[SCREENSHOT] Captured popup: screenshots/xss_param_q_1_popup.png
+```
 
-## سازگاری
+## 🔧 Files Structure
+
+- **`xss_scanner.py`** - Main scanner (complete tool)
+- **`demo.py`** - Vulnerable server for testing
+- **`test_scanner.py`** - Automated testing
+- **`requirements.txt`** - Python dependencies
+- **`setup.py`** - Installation script
+- **`run_demo.sh/bat`** - Quick demo scripts
+
+## ⚠️ Security Notice
+
+**Important Warning**: This tool should only be used on websites you own or have explicit permission to test. Unauthorized use may violate local and international laws.
+
+## 🎯 Compatibility
 
 - ✅ Linux (Ubuntu, CentOS, Debian)
 - ✅ Windows (10, 11)
 - ✅ macOS (Big Sur, Monterey, Ventura)
 
-## لایسنس
+## 🔍 Testing
 
-این پروژه تحت لایسنس MIT منتشر شده است.
+Test the scanner with the included vulnerable demo server:
 
-## حمایت و گزارش باگ
+```bash
+# Start demo server
+python3 demo.py -p 8080 &
 
-برای گزارش باگ یا درخواست ویژگی جدید، لطفاً یک issue ایجاد کنید.
+# Run scanner against demo
+python3 xss_scanner.py -u http://localhost:8080
+
+# Check results
+ls screenshots/
+```
+
+## 📝 License
+
+This project is released under the MIT License.
+
+## 🐛 Support & Bug Reports
+
+For bug reports or feature requests, please create an issue.
 
 ---
 

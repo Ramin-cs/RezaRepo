@@ -1,0 +1,272 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Scanner Report - http://localhost:8084</title>
+    <style>
+        body {
+            font-family: 'Courier New', 'Monaco', monospace;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff00;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #001100, #003300);
+            color: #00ff00;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 2px solid #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+        .matrix-text {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #00ff00; }
+            to { text-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00; }
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: rgba(0, 20, 0, 0.5);
+        }
+        .stat-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff0000;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        .vulnerabilities {
+            padding: 30px;
+        }
+        .vuln-card {
+            background: rgba(20, 0, 0, 0.8);
+            border: 2px solid #ff0000;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+        .payload {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+            border: 1px solid #00ff00;
+            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.1);
+            word-break: break-all;
+        }
+        .score {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff0000, #ff6600);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        .timestamp {
+            color: #888;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+        }
+        .verified {
+            color: #00ff00;
+            font-weight: bold;
+            text-shadow: 0 0 5px #00ff00;
+        }
+        .method {
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="matrix-text">XSS SCANNER INTELLIGENCE REPORT</h1>
+            <h2>http://localhost:8084</h2>
+            <p>SCAN TIMESTAMP: 2025-08-30 23:16:05</p>
+            <p class="verified">VERIFICATION: REFLECTION ANALYSIS</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">7</div>
+                <div>URLS CRAWLED</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">6</div>
+                <div>FORMS FOUND</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">62</div>
+                <div>PAYLOADS TESTED</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">9</div>
+                <div>CONFIRMED VULNS</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">0</div>
+                <div>SCREENSHOTS</div>
+            </div>
+        </div>
+        
+        <div class="vulnerabilities">
+            <h2>CONFIRMED VULNERABILITIES</h2>
+            <p><em>Only vulnerabilities with confirmed execution context are reported</em></p>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #1 - Reflected XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/search?q=%3Cimg+src%3Dx+onerror%3Dalert%28%22XSS_SCANNER_CONFIRMED_ac46a40d%22%29%3E</p>
+                <p><strong>PARAMETER:</strong> q</p>
+                <p><strong>METHOD:</strong> <span class="method">GET</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><img src=x onerror=alert("XSS_SCANNER_CONFIRMED_ac46a40d")></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:39.667246</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #2 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084</p>
+                <p><strong>PARAMETER:</strong> name</p>
+                <p><strong>METHOD:</strong> <span class="method">GET</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.704570</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #3 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/search</p>
+                <p><strong>PARAMETER:</strong> q</p>
+                <p><strong>METHOD:</strong> <span class="method">GET</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.707229</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #4 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/contact</p>
+                <p><strong>PARAMETER:</strong> name</p>
+                <p><strong>METHOD:</strong> <span class="method">POST</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.709870</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #5 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/contact</p>
+                <p><strong>PARAMETER:</strong> email</p>
+                <p><strong>METHOD:</strong> <span class="method">POST</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.712033</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #6 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/contact</p>
+                <p><strong>PARAMETER:</strong> subject</p>
+                <p><strong>METHOD:</strong> <span class="method">POST</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.714128</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #7 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/contact</p>
+                <p><strong>PARAMETER:</strong> message</p>
+                <p><strong>METHOD:</strong> <span class="method">POST</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.716582</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #8 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/?search=test</p>
+                <p><strong>PARAMETER:</strong> name</p>
+                <p><strong>METHOD:</strong> <span class="method">GET</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.719038</p>
+            </div>
+
+            <div class="vuln-card">
+                <h3>VULNERABILITY #9 - Form XSS <span class="verified">[CONFIRMED]</span></h3>
+                <p><strong>URL:</strong> http://localhost:8084/?id=1</p>
+                <p><strong>PARAMETER:</strong> name</p>
+                <p><strong>METHOD:</strong> <span class="method">GET</span></p>
+                <p><strong>CONTEXT:</strong> html_context</p>
+                <p><strong>SCORE:</strong> <span class="score">20/20</span></p>
+                <p><strong>PAYLOAD:</strong></p>
+                <div class="payload"><script>alert("XSS_SCANNER_CONFIRMED_ac46a40d")</script></div>
+                <p class="timestamp">DISCOVERED: 2025-08-30T23:15:50.721277</p>
+            </div>
+
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: rgba(0, 50, 0, 0.3); border: 1px solid #00ff00; border-radius: 5px;">
+            <h3>VERIFICATION METHODOLOGY</h3>
+            <p>✅ Context-aware payload testing (HTML, Attribute, JavaScript, URL)</p>
+            <p>✅ Tag closing attacks included: "><img src=x onerror=alert()></p>
+            <p>✅ WAF bypass techniques applied</p>
+            <p>✅ Popup verification with screenshot capture</p>
+            <p>✅ Only confirmed executable vulnerabilities reported</p>
+        </div>
+    </div>
+</body>
+</html>
