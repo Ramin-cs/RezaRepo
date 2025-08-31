@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DOM XSS Test Lab</title>
+</head>
+<body>
+    <h1>DOM XSS Test Laboratory</h1>
+    <div id="output"></div>
+    <div id="result"></div>
+    
+    <script>
+        // Example 1: Hash-based DOM XSS (like domgo.at)
+        if(location.hash) {
+            document.getElementById('output').innerHTML = location.hash.substr(1);
+        }
+        
+        // Example 2: URL parameter DOM XSS
+        var params = new URLSearchParams(location.search);
+        if(params.get('input')) {
+            document.getElementById('result').innerHTML = params.get('input');
+        }
+        
+        // Example 3: document.write DOM XSS
+        if(params.get('code')) {
+            document.write(params.get('code'));
+        }
+        
+        // Example 4: eval DOM XSS
+        if(params.get('eval')) {
+            try {
+                eval(params.get('eval'));
+            } catch(e) {}
+        }
+        
+        // Example 5: setTimeout DOM XSS
+        if(params.get('timeout')) {
+            try {
+                setTimeout(params.get('timeout'), 100);
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
