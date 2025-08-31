@@ -687,7 +687,8 @@ class AdvancedXSSScanner:
                 
                 # Check if our signature is in the alert
                 if self.popup_signature in alert_text:
-                    # Don't accept alert yet - we need it for screenshot
+                    # Accept alert first, then confirm
+                    alert.accept()
                     print(f"{Fore.GREEN}[{Fore.RED}VERIFIED{Fore.GREEN}] {Fore.WHITE}Popup contains our signature - XSS CONFIRMED!")
                     return True
                 else:
@@ -761,7 +762,7 @@ class AdvancedXSSScanner:
                 alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
                 
                 # Take screenshot with popup visible
-                screenshot_path = os.path.join(screenshot_dir, f"{filename}_with_popup.png")
+                screenshot_path = os.path.join(screenshot_dir, f"{filename}_popup.png")
                 self.driver.save_screenshot(screenshot_path)
                 
                 # Now accept the alert
@@ -1037,13 +1038,14 @@ class AdvancedXSSScanner:
                 
                 alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
                 
-                # Take screenshot with popup visible
+                # Take screenshot with popup visible (before accepting alert)
                 screenshot_path = os.path.join(screenshot_dir, f"{filename}_popup.png")
                 self.driver.save_screenshot(screenshot_path)
                 
                 # Accept alert after screenshot
                 alert.accept()
                 
+                print(f"{Fore.GREEN}[{Fore.RED}CAPTURED{Fore.GREEN}] {Fore.WHITE}Screenshot with popup saved")
                 return screenshot_path
                 
             except:

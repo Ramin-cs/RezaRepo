@@ -1,0 +1,36 @@
+===============================================================================
+                        ADVANCED XSS SCANNER - HOW TO USE
+===============================================================================
+
+🎯 MAIN FILE: xss_scanner.py (This is the ONLY file you need to run!)
+
+📋 QUICK START:
+1. pip3 install --break-system-packages -r requirements.txt
+2. python3 xss_scanner.py -u https://target.com
+
+🔍 EXAMPLES:
+- Basic scan:     python3 xss_scanner.py -u https://example.com
+- Deep scan:      python3 xss_scanner.py -u https://example.com -d 5 --delay 2
+- Quick scan:     python3 xss_scanner.py -u https://example.com -d 1 --delay 0.5
+- Demo test:      python3 demo.py -p 8080 & python3 xss_scanner.py -u http://localhost:8080
+
+📊 WHAT IT DOES:
+✅ Finds XSS vulnerabilities in parameters and forms
+✅ Tests tag closing attacks: "><img src=x onerror=alert()>
+✅ Bypasses WAF with multiple techniques
+✅ Verifies vulnerabilities with popup detection (if ChromeDriver available)
+✅ Takes screenshots of confirmed vulnerabilities
+✅ Generates beautiful HTML and JSON reports
+✅ Uses Matrix theme for professional output
+
+⚠️  IMPORTANT:
+- Only use on websites you own or have permission to test
+- Install ChromeDriver for popup verification (optional but recommended)
+- Check internet connection if scanning external sites
+
+🎯 OUTPUT:
+- HTML Report: xss_scan_report_YYYYMMDD_HHMMSS.html
+- JSON Report: xss_scan_report_YYYYMMDD_HHMMSS.json
+- Screenshots: screenshots/ directory (if vulnerabilities found)
+
+===============================================================================
