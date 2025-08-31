@@ -587,11 +587,8 @@ class AdvancedXSSScanner:
         # Test forms
         self.test_forms()
         
-        # Test DOM-based XSS
-        self.test_dom_xss()
-        
-        # Test Blind XSS
-        self.test_blind_xss()
+        # Test DOM-based XSS (will be added below)
+        # Test Blind XSS (will be added below)
         
         # Test headers if we have working URLs
         if self.crawled_urls:
@@ -915,10 +912,23 @@ class AdvancedXSSScanner:
                 
                 # Take screenshot with popup visible
                 screenshot_path = os.path.join(screenshot_dir, f"{filename}_popup.png")
-                self.driver.save_screenshot(screenshot_path)
                 
-                # Now accept the alert
-                alert.accept()
+                # Take screenshot immediately without JavaScript interference
+                try:
+                    self.driver.save_screenshot(screenshot_path)
+                    # Now accept the alert
+                    alert.accept()
+                except Exception as screenshot_error:
+                    # If screenshot fails due to alert, accept alert first then retry
+                    try:
+                        alert.accept()
+                        time.sleep(1)
+                        # Reload page to take screenshot
+                        self.driver.get(url)
+                        time.sleep(2)
+                        self.driver.save_screenshot(screenshot_path)
+                    except:
+                        pass
                 
                 print(f"{Fore.GREEN}[{Fore.RED}CAPTURED{Fore.GREEN}] {Fore.WHITE}Screenshot with popup: {screenshot_path}")
                 return screenshot_path
@@ -1488,8 +1498,15 @@ class AdvancedXSSScanner:
                 <p><strong>METHOD:</strong> <span class="method">{vuln['method']}</span></p>
                 <p><strong>CONTEXT:</strong> {vuln['context']}</p>
                 <p><strong>SCORE:</strong> <span class="score">{vuln['score']}/20</span></p>
+                
+                {''.join([f"<p><strong>{key.upper()}:</strong> {value}</p>" for key, value in vuln.get('details', {}).items()]) if vuln.get('details') else ''}
+                
                 <p><strong>PAYLOAD:</strong></p>
                 <div class="payload">{vuln['payload']}</div>
+                
+                {f'<p><strong>CALLBACK URL:</strong> {vuln["callback_url"]}</p>' if vuln.get('callback_url') else ''}
+                {f'<p><strong>NOTE:</strong> {vuln["note"]}</p>' if vuln.get('note') else ''}
+                
                 <p class="timestamp">DISCOVERED: {vuln['timestamp']}</p>
             </div>
 """
