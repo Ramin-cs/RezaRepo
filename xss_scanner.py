@@ -1232,59 +1232,131 @@ class UltimateXSSScanner:
         
         print(f"{Fore.CYAN}[{Fore.RED}DOM_INFO{Fore.CYAN}] {Fore.WHITE}Testing {len(dom_sources)} sources and {len(dom_sinks)} sinks...")
         
-        # Test both hash and query parameter DOM XSS
+        # Test DOM XSS for each crawled URL
         for url in list(self.crawled_urls)[:5]:
             print(f"{Fore.GREEN}[{Fore.RED}DOM{Fore.GREEN}] {Fore.WHITE}Testing DOM XSS in: {url}")
             
-            # Test hash-based DOM XSS
-            for payload in [p for p in dom_payloads if p.startswith('#')]:
-                dom_url = url + payload
-                if self.test_advanced_dom_payload(dom_url, payload, 'hash'):
-                    break
-                time.sleep(self.delay * 0.5)
-            
-            # Test query-based DOM XSS  
-            for payload in [p for p in dom_payloads if p.startswith('?')]:
-                dom_url = url + payload
-                if self.test_advanced_dom_payload(dom_url, payload, 'query'):
-                    break
-                time.sleep(self.delay * 0.5)
+            # First analyze the page for DOM XSS patterns
+            if self.analyze_page_for_dom_xss(url):
+                # Test hash-based DOM XSS
+                for payload in [p for p in dom_payloads if p.startswith('#')]:
+                    dom_url = url + payload
+                    if self.test_dom_payload_advanced(dom_url, payload):
+                        break
+                    time.sleep(self.delay * 0.5)
+                
+                # Test query-based DOM XSS  
+                for payload in [p for p in dom_payloads if p.startswith('?')]:
+                    dom_url = url + payload
+                    if self.test_dom_payload_advanced(dom_url, payload):
+                        break
+                    time.sleep(self.delay * 0.5)
+            else:
+                print(f"{Fore.YELLOW}[{Fore.RED}NO_DOM_SINKS{Fore.YELLOW}] {Fore.WHITE}No DOM XSS patterns found in {url}")
 
-    def test_advanced_dom_payload(self, url, payload, method_type='hash'):
-        """Enhanced DOM XSS testing for domgo.at level challenges"""
+    def analyze_page_for_dom_xss(self, url):
+        """Analyze page for DOM XSS patterns"""
         try:
-            print(f"{Fore.CYAN}[{Fore.RED}DOM_TEST{Fore.CYAN}] {Fore.WHITE}Testing {method_type} DOM payload: {payload[:50]}...")
+            print(f"{Fore.CYAN}[{Fore.RED}DOM_ANALYZE{Fore.CYAN}] {Fore.WHITE}Analyzing page for DOM XSS patterns...")
             
+            # Get page source
+            response = self.session.get(url, timeout=self.timeout)
+            page_source = response.text
+            
+            # Look for DOM XSS sources
+            dom_sources_found = []
+            dom_sinks_found = []
+            
+            # Check for common DOM sources
+            source_patterns = [
+                r'location\.hash', r'location\.search', r'location\.href',
+                r'document\.URL', r'document\.documentURI', r'window\.name',
+                r'document\.referrer', r'sessionStorage', r'localStorage'
+            ]
+            
+            for pattern in source_patterns:
+                if re.search(pattern, page_source, re.IGNORECASE):
+                    dom_sources_found.append(pattern)
+            
+            # Check for common DOM sinks
+            sink_patterns = [
+                r'\.innerHTML\s*=', r'\.outerHTML\s*=', r'document\.write\s*\(',
+                r'document\.writeln\s*\(', r'eval\s*\(', r'setTimeout\s*\(',
+                r'setInterval\s*\(', r'insertAdjacentHTML\s*\('
+            ]
+            
+            for pattern in sink_patterns:
+                if re.search(pattern, page_source, re.IGNORECASE):
+                    dom_sinks_found.append(pattern)
+            
+            if dom_sources_found and dom_sinks_found:
+                print(f"{Fore.GREEN}[{Fore.RED}DOM_PATTERN{Fore.GREEN}] {Fore.WHITE}Found {len(dom_sources_found)} sources and {len(dom_sinks_found)} sinks")
+                return True
+            else:
+                print(f"{Fore.YELLOW}[{Fore.RED}NO_PATTERN{Fore.YELLOW}] {Fore.WHITE}No DOM XSS patterns detected")
+                return False
+                
+        except Exception as e:
+            return False
+
+    def test_dom_payload_advanced(self, url, payload):
+        """Advanced DOM XSS payload testing"""
+        try:
+            print(f"{Fore.CYAN}[{Fore.RED}DOM_TEST{Fore.CYAN}] {Fore.WHITE}Testing DOM payload: {payload[:50]}...")
+            
+            # Load page with payload
             self.driver.get(url)
-            time.sleep(4)  # Wait for DOM processing
+            time.sleep(3)
             
-            # Execute JavaScript to trigger DOM XSS if needed
-            if method_type == 'hash':
-                # Trigger hash-based DOM XSS
-                self.driver.execute_script("""
-                    if(location.hash) {
-                        try {
-                            var hash = location.hash.substr(1);
-                            if(hash.includes('script')) {
-                                document.body.innerHTML = hash;
+            # Execute JavaScript to trigger common DOM XSS patterns
+            self.driver.execute_script("""
+                // Common DOM XSS trigger patterns
+                try {
+                    // Hash-based triggers
+                    if(location.hash && location.hash.length > 1) {
+                        var hash = location.hash.substr(1);
+                        
+                        // Try common element IDs
+                        ['output', 'result', 'content', 'data', 'input'].forEach(id => {
+                            var elem = document.getElementById(id);
+                            if(elem) {
+                                elem.innerHTML = hash;
                             }
-                        } catch(e) {}
+                        });
+                        
+                        // Try first div
+                        var divs = document.getElementsByTagName('div');
+                        if(divs.length > 0) {
+                            divs[0].innerHTML = hash;
+                        }
                     }
-                """)
-            elif method_type == 'query':
-                # Trigger query-based DOM XSS
-                self.driver.execute_script("""
-                    if(location.search) {
-                        try {
-                            var params = new URLSearchParams(location.search);
-                            ['xss', 'payload', 'input', 'code'].forEach(param => {
-                                if(params.get(param)) {
-                                    document.body.innerHTML += params.get(param);
+                    
+                    // Query parameter triggers
+                    var params = new URLSearchParams(location.search);
+                    ['xss', 'payload', 'input', 'code', 'eval', 'data'].forEach(param => {
+                        var value = params.get(param);
+                        if(value) {
+                            // Try innerHTML
+                            ['output', 'result', 'content'].forEach(id => {
+                                var elem = document.getElementById(id);
+                                if(elem) {
+                                    elem.innerHTML = value;
                                 }
                             });
-                        } catch(e) {}
-                    }
-                """)
+                            
+                            // Try document.write
+                            if(param === 'code') {
+                                document.write(value);
+                            }
+                            
+                            // Try eval
+                            if(param === 'eval') {
+                                eval(value);
+                            }
+                        }
+                    });
+                } catch(e) {}
+            """)
             
             time.sleep(2)  # Wait for execution
             
@@ -1296,15 +1368,16 @@ class UltimateXSSScanner:
                 alert = WebDriverWait(self.driver, 3).until(EC.alert_is_present())
                 alert_text = alert.text
                 
-                print(f"{Fore.CYAN}[{Fore.RED}DOM_POPUP{Fore.CYAN}] {Fore.WHITE}DOM alert detected: {alert_text}")
+                print(f"{Fore.CYAN}[{Fore.RED}DOM_POPUP{Fore.CYAN}] {Fore.WHITE}DOM XSS alert: {alert_text}")
                 
                 if self.popup_signature in alert_text:
                     alert.accept()
                     
+                    # Create DOM XSS vulnerability
                     vulnerability = {
                         'type': 'DOM-based XSS',
                         'url': url,
-                        'parameter': f'{method_type}/fragment',
+                        'parameter': 'DOM_manipulation',
                         'payload': payload,
                         'context': 'dom_context',
                         'method': 'GET',
@@ -1313,15 +1386,12 @@ class UltimateXSSScanner:
                         'timestamp': datetime.now().isoformat(),
                         'details': {
                             'vulnerability_type': 'DOM-based XSS',
-                            'execution_context': f'Client-side JavaScript DOM manipulation via {method_type}',
-                            'payload_analysis': f'DOM payload "{payload}" processed by client-side JavaScript',
-                            'request_details': f'GET request with {method_type} fragment/parameter',
+                            'execution_context': 'Client-side JavaScript DOM manipulation',
+                            'payload_analysis': f'DOM payload "{payload}" executed via client-side JavaScript',
+                            'request_details': f'GET request with DOM payload',
                             'response_analysis': 'Payload executed in browser DOM without server involvement',
-                            'html_context': f'DOM manipulation via JavaScript {method_type} processing',
-                            'impact': 'Client-side code execution via DOM manipulation',
-                            'dom_method': method_type,
-                            'sources_tested': ', '.join(['location.hash', 'location.search', 'document.URL'][:5]),
-                            'sinks_tested': ', '.join(['innerHTML', 'document.write', 'eval'][:5])
+                            'html_context': 'DOM manipulation via JavaScript processing',
+                            'impact': 'Client-side code execution via DOM manipulation'
                         }
                     }
                     
@@ -1333,10 +1403,10 @@ class UltimateXSSScanner:
                     print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}DOM-BASED XSS CONFIRMED!")
                     print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{url}")
                     print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
-                    print(f"{Fore.GREEN}[{Fore.RED}METHOD{Fore.GREEN}] {Fore.WHITE}{method_type}")
                     print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}25/20")
                     
-                    screenshot_path = self.capture_dom_screenshot(url, f"dom_xss_{method_type}_{len(self.vulnerabilities)}")
+                    # Take screenshot
+                    screenshot_path = self.capture_vulnerability_screenshot(url, f"dom_xss_{len(self.vulnerabilities)}")
                     if screenshot_path:
                         print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}DOM evidence: {screenshot_path}")
                         self.scan_results['statistics']['screenshots_taken'] += 1
@@ -1347,12 +1417,14 @@ class UltimateXSSScanner:
                     return False
                     
             except:
-                print(f"{Fore.RED}[{Fore.YELLOW}NO_DOM_POPUP{Fore.RED}] {Fore.WHITE}No DOM popup for {method_type} method")
+                print(f"{Fore.RED}[{Fore.YELLOW}NO_DOM_POPUP{Fore.RED}] {Fore.WHITE}No DOM popup detected")
                 return False
             
         except Exception as e:
             print(f"{Fore.RED}[{Fore.YELLOW}DOM_ERROR{Fore.RED}] {Fore.WHITE}DOM test failed: {e}")
             return False
+
+
 
     def test_advanced_dom_payload(self, url, payload):
         """Test advanced DOM XSS payload"""
