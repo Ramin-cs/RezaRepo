@@ -1353,42 +1353,6 @@ class UltimateXSSScanner:
         except Exception as e:
             print(f"{Fore.RED}[{Fore.YELLOW}DOM_ERROR{Fore.RED}] {Fore.WHITE}DOM test failed: {e}")
             return False
-                        'context': 'dom_context',
-                        'method': 'GET',
-                        'confirmed': True,
-                        'score': 25,
-                        'timestamp': datetime.now().isoformat(),
-                        'details': {
-                            'vulnerability_type': 'DOM-based XSS',
-                            'execution_context': 'Client-side JavaScript DOM manipulation',
-                            'payload_analysis': f'Advanced DOM payload "{payload}" processed by client-side JavaScript',
-                            'request_details': f'GET request with hash fragment {payload}',
-                            'response_analysis': 'Payload executed in browser DOM without server processing',
-                            'html_context': 'DOM manipulation via JavaScript hash processing',
-                            'impact': 'Client-side code execution via DOM manipulation',
-                            'sources_tested': ', '.join(dom_sources[:10]),
-                            'sinks_tested': ', '.join(dom_sinks[:10])
-                        }
-                    }
-                    
-                    self.vulnerabilities.append(vulnerability)
-                    self.scan_results['vulnerabilities'].append(vulnerability)
-                    self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
-                    self.scan_results['statistics']['dom_xss_tests'] += 1
-                    
-                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}ADVANCED DOM-BASED XSS CONFIRMED!")
-                    print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{dom_url}")
-                    print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
-                    print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}25/20")
-                    
-                    screenshot_path = self.capture_dom_screenshot(dom_url, f"dom_xss_{len(self.vulnerabilities)}")
-                    if screenshot_path:
-                        print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}DOM evidence: {screenshot_path}")
-                        self.scan_results['statistics']['screenshots_taken'] += 1
-                    
-                    break
-                
-                time.sleep(self.delay)
 
     def test_advanced_dom_payload(self, url, payload):
         """Test advanced DOM XSS payload"""
