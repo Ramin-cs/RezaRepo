@@ -26,6 +26,17 @@ from urllib3.util.retry import Retry
 import warnings
 warnings.filterwarnings('ignore')
 
+# Try to import screenshot libraries
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    SCREENSHOT_AVAILABLE = True
+except ImportError:
+    SCREENSHOT_AVAILABLE = False
+
 # Cross-platform color support
 class Colors:
     if os.name == 'nt':  # Windows
@@ -172,7 +183,7 @@ BRAND_PATTERNS = {
     'draytek': {
         'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'vigor', 'DrayTek', 'DRAYTEK', 'VigorOS', 'VigorOS'],
         'headers': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR'],
-        'paths': ['/', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi'],
+        'paths': ['/', '/weblogin.htm', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi', '/login.html', '/web/login', '/cgi-bin/weblogin'],
         'models': ['Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS']
     },
     'mikrotik': {
@@ -229,10 +240,16 @@ BRAND_PATTERNS = {
         'paths': ['/cgi-bin/login', '/admin', '/login', '/cgi-bin/webif'],
         'models': ['F@ST', 'F@ST 5366', 'F@ST 5365']
     },
+    'yealink': {
+        'content': ['yealink', 'YEALINK', 'DECT', 'W70B', 'W80B', 'W90B', 'T4', 'T5', 'CP'],
+        'headers': ['yealink', 'YEALINK'],
+        'paths': ['/cgi-bin/login', '/admin', '/login', '/cgi-bin/webif', '/login.htm', '/admin.htm'],
+        'models': ['W70B', 'W80B', 'W90B', 'T4', 'T5', 'CP']
+    },
     'generic': {
         'content': [],
         'headers': [],
-        'paths': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html'],
+        'paths': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html', '/cgi-bin/login', '/cgi-bin/webif', '/cgi-bin/webproc', '/login.asp', '/login.php', '/login.cgi', '/weblogin.htm', '/web/login', '/manager', '/control', '/config', '/settings', '/system', '/dashboard', '/panel', '/console', '/interface', '/cgi-bin/weblogin', '/cgi-bin/login.cgi', '/login.html', '/admin.html', '/user', '/users', '/account', '/accounts', '/auth', '/authentication', '/signin', '/sign-in', '/signin.html', '/sign-in.html'],
         'models': []
     }
 }
@@ -384,9 +401,23 @@ class RouterScannerPro:
             if is_fp:
                 return f'false_positive_{fp_reason}', response, final_url
             
-            # Check for login forms
-            if '<form' in content and ('password' in content or 'username' in content):
-                return 'form_based', response, final_url
+            # Enhanced form detection - check for various form field patterns
+            form_indicators = [
+                'password', 'username', 'user', 'pass', 'passwd', 'pwd', 'login', 'admin',
+                'name', 'email', 'account', 'auth', 'authentication'
+            ]
+            
+            # Check for login forms with more comprehensive field detection
+            if '<form' in content:
+                form_field_count = sum(1 for indicator in form_indicators if indicator in content)
+                if form_field_count >= 2:  # At least 2 form-related fields
+                    return 'form_based', response, final_url
+            
+            # Check for input fields that might be login forms
+            if '<input' in content:
+                input_field_count = sum(1 for indicator in form_indicators if indicator in content)
+                if input_field_count >= 2:
+                    return 'form_based', response, final_url
             
             # Check for API endpoints
             if any(keyword in content for keyword in ['api', 'json', 'rest', 'ajax']):
@@ -395,6 +426,10 @@ class RouterScannerPro:
             # Check for redirect patterns
             if response.history or 'location' in headers_str:
                 return 'redirect_based', response, final_url
+            
+            # Check for basic authentication indicators
+            if any(keyword in content for keyword in ['login', 'sign in', 'authentication', 'admin', 'user']):
+                return 'form_based', response, final_url
             
             return None, response, final_url
             
@@ -603,6 +638,13 @@ class RouterScannerPro:
         """Extract comprehensive router information"""
         info = {}
         
+        # Extract page title
+        title_patterns = [
+            r'<title[^>]*>([^<]+)</title>',
+            r'<title>([^<]+)</title>'
+        ]
+        info['page_title'] = self.extract_pattern(content, title_patterns)
+        
         # Extract MAC address
         mac_patterns = [
             r'mac[^:]*:?\s*([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})',
@@ -671,7 +713,84 @@ class RouterScannerPro:
         ]
         info['connection_type'] = self.extract_pattern(content, connection_patterns)
         
+        # Extract admin panel information
+        admin_info_patterns = [
+            r'welcome[^:]*:?\s*([^<\n]+)',
+            r'dashboard[^:]*:?\s*([^<\n]+)',
+            r'status[^:]*:?\s*([^<\n]+)',
+            r'system[^:]*:?\s*([^<\n]+)'
+        ]
+        info['admin_info'] = self.extract_pattern(content, admin_info_patterns)
+        
         return info
+    
+    def take_screenshot(self, url, username, password, auth_type):
+        """Take screenshot of admin panel for POC"""
+        if not SCREENSHOT_AVAILABLE:
+            return None
+        
+        try:
+            # Setup Chrome options
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
+            
+            # Create driver
+            driver = webdriver.Chrome(options=chrome_options)
+            
+            try:
+                # Navigate to URL
+                driver.get(url)
+                time.sleep(2)
+                
+                # Handle authentication
+                if auth_type == 'http_basic':
+                    # For HTTP Basic Auth, we need to include credentials in URL
+                    parsed_url = urlparse(url)
+                    auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
+                    driver.get(auth_url)
+                else:
+                    # For form-based auth, find and fill form
+                    try:
+                        username_field = driver.find_element(By.NAME, "username")
+                        password_field = driver.find_element(By.NAME, "password")
+                        username_field.send_keys(username)
+                        password_field.send_keys(password)
+                        
+                        # Try to find and click submit button
+                        submit_button = driver.find_element(By.XPATH, "//input[@type='submit'] | //button[@type='submit'] | //input[@value='Login'] | //button[contains(text(), 'Login')]")
+                        submit_button.click()
+                    except:
+                        # Try alternative field names
+                        try:
+                            user_field = driver.find_element(By.NAME, "user")
+                            pass_field = driver.find_element(By.NAME, "pass")
+                            user_field.send_keys(username)
+                            pass_field.send_keys(password)
+                            submit_button = driver.find_element(By.XPATH, "//input[@type='submit'] | //button[@type='submit']")
+                            submit_button.click()
+                        except:
+                            pass
+                
+                # Wait for page to load
+                time.sleep(3)
+                
+                # Take screenshot
+                screenshot_filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                driver.save_screenshot(screenshot_filename)
+                
+                return screenshot_filename
+                
+            finally:
+                driver.quit()
+                
+        except Exception as e:
+            print(f"{Colors.YELLOW}[!] Screenshot failed: {e}{Colors.END}")
+            return None
     
     def extract_pattern(self, content, patterns):
         """Extract information using regex patterns"""
@@ -768,13 +887,20 @@ class RouterScannerPro:
                                         if value and value != "Unknown":
                                             print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
                                     
+                                    # Take screenshot for POC
+                                    print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
+                                    screenshot_file = self.take_screenshot(admin_url, username, password, auth_type)
+                                    if screenshot_file:
+                                        print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                    
                                     vulnerability = {
                                         'type': 'Default Credentials',
                                         'credentials': f"{username}:{password}",
                                         'admin_url': admin_url,
                                         'auth_type': auth_type,
                                         'router_info': router_info,
-                                        'verified': True
+                                        'verified': True,
+                                        'screenshot': screenshot_file
                                     }
                                     result['vulnerabilities'].append(vulnerability)
                                     
@@ -848,10 +974,10 @@ class RouterScannerPro:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Router Scanner Pro v7.0 - Scan Report</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@300;400;500;700&family=Source+Code+Pro:wght@300;400;500;600;700&display=swap');
         
         body {{
-            font-family: 'Orbitron', monospace;
+            font-family: 'Roboto Mono', 'Source Code Pro', 'Orbitron', monospace;
             margin: 0;
             padding: 20px;
             background: #000;
@@ -1230,6 +1356,7 @@ class RouterScannerPro:
                         <p><strong>Admin URL:</strong> {vuln['admin_url']}</p>
                         <p><strong>Auth Type:</strong> {vuln['auth_type']}</p>
                         <p><strong>Verified:</strong> {'✅ Yes' if vuln['verified'] else '❌ No'}</p>
+                        {f"<p><strong>Screenshot:</strong> <a href='{vuln['screenshot']}' target='_blank'>{vuln['screenshot']}</a></p>" if vuln.get('screenshot') else ""}
 """
                         
                         if vuln['router_info']:
