@@ -1,42 +1,46 @@
-# 🔒 Router Scanner Pro v4.0
+# 🔒 Router Scanner Pro v5.0
 
-**Advanced Authentication Detection - Professional Network Security Tool**
+**Organized Scanning & Smart Detection - Professional Network Security Tool**
 
-## 🚀 **What's New in Version 4.0?**
+## 🚀 **What's New in Version 5.0?**
 
-### **🔍 Advanced Authentication Detection**
-- **HTTP Basic Authentication** - Detects and tests basic auth
-- **Form-based Authentication** - Multiple form field combinations
-- **API-based Authentication** - JSON and REST API endpoints
-- **Redirect-based Authentication** - Follows redirect patterns
-- **JavaScript-based Authentication** - Detects JS auth mechanisms
-- **Cookie-based Authentication** - Session and cookie detection
+### **🎯 Organized Workflow**
+- **Sequential processing**: One target at a time for clean output
+- **4-phase scanning**: Ports → Brand → Login → Brute Force → Info
+- **No duplicate testing**: Each test runs only once
+- **Clean professional output**: Organized and easy to read
 
-### **🎯 Enhanced Login Path Detection**
-- **46 different login paths** tested per port
-- **Router-specific paths** for major brands
-- **API endpoints** for modern routers
-- **Generic paths** for unknown devices
+### **🧠 Smart Brand Detection**
+- **Priority-based testing**: Brand-specific paths tested first
+- **Intelligent path selection**: Based on detected router brand
+- **Fallback mechanisms**: Generic paths if brand not detected
+- **Efficient scanning**: Reduces unnecessary tests
+
+### **🎨 Enhanced Hacker Theme**
+- **Matrix-style interface** with professional colors
+- **Color-coded information**: Different colors for different types of data
+- **Clean sections**: Organized output with clear separators
+- **Professional aesthetics**: Beautiful terminal interface
 
 ## 🎨 **Features**
 
-### **🔍 Multi-Authentication Detection**
-- **Real-time authentication type detection**
-- **Live brute force testing** with multiple methods
-- **Comprehensive credential testing** across all auth types
-- **Live vulnerability reporting** as they're found
+### **🔍 Organized Scanning Workflow**
+- **Phase 1**: Port scanning with live output
+- **Phase 2**: Brand detection and login page discovery
+- **Phase 3**: Brute force attack with credential testing
+- **Phase 4**: Information extraction from admin panel
 
-### **🎨 Hacker Theme**
-- **Matrix-style interface** with professional colors
-- **Cross-platform support** (Windows, Linux, macOS)
-- **Beautiful terminal output** with emojis and colors
-- **Nostalgic hacker aesthetic** for security professionals
+### **🧠 Smart Detection System**
+- **Brand detection**: Identifies router manufacturer
+- **Priority paths**: Tests brand-specific paths first
+- **Authentication types**: HTTP Basic, Form-based, API-based
+- **Information extraction**: Router details from admin panel
 
-### **⚡ Performance**
-- **Multi-threaded scanning** (configurable threads)
-- **Fast port detection** with socket-based scanning
-- **Smart timeout management** for network efficiency
-- **Resource optimization** for large networks
+### **🎨 Professional Output**
+- **Color-coded results**: Different colors for different information types
+- **Organized sections**: Clear separation between targets
+- **Progress tracking**: Real-time progress updates
+- **Clean formatting**: Easy to read and understand
 
 ## 🎯 **Target Credentials**
 
@@ -82,98 +86,116 @@ python3 router_scanner_pro.py -t targets.txt
 
 ### **Advanced Options**
 ```bash
-# High-speed scan with 100 threads
-python3 router_scanner_pro.py -t 10.0.0.0/16 -T 100
-
 # Custom timeout
 python3 router_scanner_pro.py -t targets.txt --timeout 15
+
+# Single thread for organized output (default)
+python3 router_scanner_pro.py -t targets.txt -T 1
 ```
 
 ## 📊 **Live Output Example**
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ROUTER SCANNER PRO - v4.0                                ║
-║                    Advanced Authentication Detection                         ║
+║                    ROUTER SCANNER PRO - v5.0                                ║
+║                    Organized Scanning & Smart Detection                      ║
 ║                                                                              ║
-║  🔍 Multi-Auth Detection  |  🔓 HTTP Basic & Form Testing                 ║
-║  🚀 API Endpoint Discovery |  📊 Professional Reporting                    ║
+║  🔍 Smart Brand Detection  |  🔓 Priority-based Testing                    ║
+║  🚀 Organized Workflow     |  📊 Clean Professional Output                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-[+] Loaded 8 targets
-[+] Starting enhanced scan of 8 targets with 50 threads
+[+] Loaded 3 targets
+[+] Starting organized scan of 3 targets
 [*] Target credentials: admin:admin, admin:support180, support:support, user:user
 [*] Scanning ports: 80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090
-[*] Authentication types: HTTP Basic, Form-based, API-based, Redirect-based
-[*] Login paths: 46 different paths tested
+[*] Smart brand detection with priority-based testing
+[*] Organized workflow: Ports → Brand → Login → Brute Force → Info
 --------------------------------------------------------------------------------
-[*] Scanning ports on 192.168.1.1...
-[+] 192.168.1.1: Found 1 open ports: [80]
-[*] Testing http://192.168.1.1:80/ for authentication...
-[*] HTTP Basic Auth detected on http://192.168.1.1:80/
-[+] AUTHENTICATION FOUND: http://192.168.1.1:80/ - Types: http_basic
-[*] Starting comprehensive brute force on http://192.168.1.1:80/...
+
+============================================================
+[*] SCANNING TARGET: 192.168.1.1
+============================================================
+[1/4] Port Scanning...
+[+] Found 1 open ports: [80]
+[2/4] Brand Detection & Login Discovery...
+[*] Detected brand: TP-LINK
+[+] LOGIN PAGE FOUND: http://192.168.1.1:80/userRpm/LoginRpm.htm (form_based)
+[3/4] Brute Force Attack...
 [>] Testing: admin:admin
-🔒 VULNERABLE: 192.168.1.1 - admin:admin works! (HTTP Basic Auth)
+🔒 VULNERABLE: admin:admin works!
 [+] Admin URL: http://192.168.1.1/admin
-[*] Progress: 1/8 (12.5%) - Login pages: 1, Vulnerable: 1
+[4/4] Information Extraction...
+[+] Model: TL-WR840N
+[+] Firmware Version: v1.0.0
+[+] Wan Ip: 192.168.1.1
+[+] Ssid: MyWiFi_Network
+[+] Target 192.168.1.1 scan completed
+[*] Progress: 1/3 (33.3%) - Login pages: 1, Vulnerable: 1
 
-[*] Testing http://192.168.1.1:80/api/login for authentication...
-[*] API-based auth detected on http://192.168.1.1:80/api/login
-[+] AUTHENTICATION FOUND: http://192.168.1.1:80/api/login - Types: api_based
-[*] Starting comprehensive brute force on http://192.168.1.1:80/api/login...
+============================================================
+[*] SCANNING TARGET: 192.168.1.254
+============================================================
+[1/4] Port Scanning...
+[+] Found 1 open ports: [80]
+[2/4] Brand Detection & Login Discovery...
+[*] Detected brand: GENERIC
+[+] LOGIN PAGE FOUND: http://192.168.1.254:80/admin (form_based)
+[3/4] Brute Force Attack...
 [>] Testing: admin:admin
-🔒 VULNERABLE: 192.168.1.1 - admin:admin works! (API-based Auth)
-[+] Admin URL: http://192.168.1.1/api/login
+[>] Testing: admin:support180
+[>] Testing: support:support
+[>] Testing: user:user
+[-] No valid credentials found
+[+] Target 192.168.1.254 scan completed
+[*] Progress: 2/3 (66.7%) - Login pages: 1, Vulnerable: 1
 
-[+] Enhanced Scan Complete!
+============================================================
+[+] SCAN COMPLETE!
+============================================================
 [*] Summary:
-  - Total targets scanned: 8
+  - Total targets scanned: 3
   - Login pages found: 2
-  - Vulnerable routers: 2
+  - Vulnerable routers: 1
   - Scan duration: 45.2 seconds
-  - Average speed: 5.6 targets/second
-[*] Multiple authentication types tested
+  - Average speed: 0.1 targets/second
+[*] Organized workflow completed successfully
 ```
 
-## 🔧 **Authentication Types Supported**
+## 🔧 **Smart Detection System**
 
-### **HTTP Basic Authentication**
-- Detects 401 responses
-- Tests with Authorization headers
-- Base64 encoded credentials
+### **Brand Detection**
+```python
+# Detects router brand from main page
+brand_indicators = {
+    'tp-link': ['tp-link', 'tplink', 'TP-LINK', 'TPLINK', 'archer'],
+    'huawei': ['huawei', 'HUAWEI', 'HG', 'B593', 'E5186'],
+    'zte': ['zte', 'ZTE', 'ZXHN', 'MF28G', 'F660'],
+    'netgear': ['netgear', 'NETGEAR', 'WNDR', 'R7000'],
+    'linksys': ['linksys', 'LINKSYS', 'WRT', 'E1200'],
+    'd-link': ['d-link', 'D-LINK', 'DIR', 'DSL'],
+    'asus': ['asus', 'ASUS', 'RT-', 'GT-'],
+    'fritzbox': ['fritz', 'fritzbox', 'FRITZ', 'AVM']
+}
+```
 
-### **Form-based Authentication**
-- 15 different form field combinations
-- Multiple submit button variations
-- Success/failure content analysis
-
-### **API-based Authentication**
-- JSON payload testing
-- REST API endpoints
-- Token-based authentication
-
-### **Redirect-based Authentication**
-- Follows redirect chains
-- Detects location headers
-- Analyzes redirect patterns
-
-### **JavaScript-based Authentication**
-- Detects JS auth mechanisms
-- Form fallback testing
-- Dynamic content analysis
-
-### **Cookie-based Authentication**
-- Session cookie detection
-- Cookie-based login testing
-- Session persistence
+### **Priority-based Path Testing**
+```python
+# Brand-specific paths tested first
+BRAND_PATHS = {
+    'tp-link': ['/userRpm/LoginRpm.htm', '/cgi-bin/luci', '/admin'],
+    'huawei': ['/html/index.html', '/asp/login.asp', '/login.cgi'],
+    'zte': ['/login.gch', '/start.gch', '/getpage.gch'],
+    'netgear': ['/setup.cgi', '/genie.cgi', '/cgi-bin/'],
+    'generic': ['/', '/admin', '/login', '/login.htm']
+}
+```
 
 ## 🔧 **Configuration**
 
 ### **Thread Count**
-- **Default**: 50 threads
-- **Recommended**: 50-200 for most networks
-- **High-speed**: 200+ for large scans
+- **Default**: 1 thread (for organized output)
+- **Recommended**: 1 for clean output
+- **Multi-threaded**: Use -T flag for faster scanning
 
 ### **Timeout Settings**
 - **Default**: 8 seconds
@@ -186,24 +208,15 @@ Automatically scans these ports:
 80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090
 ```
 
-### **Login Paths**
-Tests 46 different paths including:
-- Common paths: `/`, `/admin`, `/login`
-- Brand-specific: `/userRpm/LoginRpm.htm`, `/cgi-bin/luci`
-- API endpoints: `/api/login`, `/rest/auth`
-- Generic paths: `/manager`, `/control`, `/config`
+## 🎨 **Color Coding**
 
-## 🎨 **Cross-Platform Support**
-
-### **Windows**
-- **Colors**: Disabled for compatibility
-- **Execution**: `python router_scanner_pro.py`
-- **File paths**: Windows-style
-
-### **Linux/macOS**
-- **Colors**: Full color support
-- **Execution**: `python3 router_scanner_pro.py` or `./router_scanner_pro.py`
-- **File paths**: Unix-style
+### **Information Types**
+- **🔵 Blue**: Brand detection and system information
+- **🟡 Yellow**: Process steps and progress
+- **🟢 Green**: Success messages and found information
+- **🔴 Red**: Vulnerabilities and errors
+- **🟣 Magenta**: Extracted router information
+- **🟦 Cyan**: Target scanning and URLs
 
 ## 🛡️ **Security Features**
 
@@ -221,13 +234,13 @@ Tests 46 different paths including:
 ## 📈 **Performance Metrics**
 
 ### **Speed Benchmarks**
-- **Small networks** (1-254 IPs): 2-5 minutes
-- **Medium networks** (1-4096 IPs): 10-30 minutes
-- **Large networks** (1-65536 IPs): 60-300 minutes
+- **Small networks** (1-254 IPs): 2-8 minutes
+- **Medium networks** (1-4096 IPs): 15-60 minutes
+- **Large networks** (1-65536 IPs): 2-8 hours
 
 ### **Resource Usage**
-- **Memory**: ~50-120MB for 1000 targets
-- **CPU**: Efficient multi-threading
+- **Memory**: ~30-80MB for 1000 targets
+- **CPU**: Single-threaded for organized output
 - **Network**: Optimized connections
 
 ## 🔍 **Detection Capabilities**
@@ -238,11 +251,11 @@ Tests 46 different paths including:
 - **American**: Netgear, Linksys, D-Link
 - **Global**: ASUS, and many more
 
-### **Authentication Detection**
-- **Multi-type detection**: Identifies all auth methods
-- **Content analysis**: Smart pattern recognition
-- **Response analysis**: HTTP status and content
-- **Comprehensive testing**: All methods tested
+### **Authentication Types**
+- **HTTP Basic Auth**: 401 response detection
+- **Form-based Auth**: Multiple form field combinations
+- **API-based Auth**: JSON and REST endpoints
+- **Redirect-based Auth**: Follows redirect patterns
 
 ## ⚠️ **Legal Notice**
 
@@ -271,28 +284,28 @@ pip install requests urllib3
 python3 router_scanner_pro.py -t 192.168.1.1
 
 # Scan your local network
-python3 router_scanner_pro.py -t 192.168.1.0/24 -T 100
+python3 router_scanner_pro.py -t 192.168.1.0/24
 
 # Use targets file
 python3 router_scanner_pro.py -t targets.txt
 ```
 
-## 🎯 **Why Router Scanner Pro v4.0?**
+## 🎯 **Why Router Scanner Pro v5.0?**
 
-1. **Advanced Detection**: Multiple authentication types
-2. **Comprehensive Testing**: 46 different login paths
-3. **Live Output**: See everything happening in real-time
-4. **Cross-Platform**: Works on Windows, Linux, macOS
-5. **Professional**: Beautiful hacker-themed interface
-6. **Fast**: Multi-threaded for high performance
-7. **Accurate**: Real router testing, not just analysis
-8. **Simple**: Single file, easy to use
-9. **Secure**: Anti-detection features
-10. **Reliable**: Robust error handling
+1. **Organized Workflow**: Clean, sequential processing
+2. **Smart Detection**: Brand-based priority testing
+3. **No Duplicates**: Each test runs only once
+4. **Professional Output**: Color-coded and organized
+5. **Hacker Theme**: Beautiful terminal interface
+6. **Information Extraction**: Router details from admin panel
+7. **Cross-Platform**: Works on Windows, Linux, macOS
+8. **Fast**: Optimized for speed and efficiency
+9. **Accurate**: Real router testing, not just analysis
+10. **Simple**: Single file, easy to use
 
 ---
 
-**🔒 Router Scanner Pro v4.0 - The Ultimate Professional Network Security Assessment Tool**
+**🔒 Router Scanner Pro v5.0 - The Ultimate Organized Network Security Assessment Tool**
 
 *"Follow the white rabbit..."* 🐰
 
