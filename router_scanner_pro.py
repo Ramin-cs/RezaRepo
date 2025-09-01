@@ -181,10 +181,10 @@ BRAND_PATTERNS = {
         'models': ['FRITZ!Box', 'FRITZ!Repeater', 'FRITZ!Powerline']
     },
     'draytek': {
-        'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'vigor', 'DrayTek', 'DRAYTEK', 'VigorOS', 'VigorOS'],
-        'headers': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR'],
-        'paths': ['/', '/weblogin.htm', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi', '/login.html', '/web/login', '/cgi-bin/weblogin'],
-        'models': ['Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS']
+        'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'vigor', 'DrayTek', 'DRAYTEK', 'VigorOS', 'VigorOS', 'vigorrouter', 'vigor switch', 'vigor router', 'draytek vigor', 'vigor 2860', 'vigor 2920', 'vigor 2950', 'vigor 3900', 'vigor 2130', 'vigor 2130n', 'vigor 2130v', 'vigor 2130vn', 'vigor 2130v2', 'vigor 2130v2n', 'vigor 2130v2vn', 'vigor 2130v3', 'vigor 2130v3n', 'vigor 2130v3vn', 'vigor 2130v4', 'vigor 2130v4n', 'vigor 2130v4vn', 'vigor 2130v5', 'vigor 2130v5n', 'vigor 2130v5vn', 'vigor 2130v6', 'vigor 2130v6n', 'vigor 2130v6vn', 'vigor 2130v7', 'vigor 2130v7n', 'vigor 2130v7vn', 'vigor 2130v8', 'vigor 2130v8n', 'vigor 2130v8vn', 'vigor 2130v9', 'vigor 2130v9n', 'vigor 2130v9vn', 'vigor 2130v10', 'vigor 2130v10n', 'vigor 2130v10vn'],
+        'headers': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'vigor', 'vigorrouter', 'vigor switch', 'vigor router', 'draytek vigor'],
+        'paths': ['/', '/weblogin.htm', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi', '/login.html', '/web/login', '/cgi-bin/weblogin', '/cgi-bin/webif', '/cgi-bin/webproc', '/cgi-bin/webif.cgi', '/cgi-bin/webproc.cgi', '/cgi-bin/webif.asp', '/cgi-bin/webproc.asp', '/cgi-bin/webif.php', '/cgi-bin/webproc.php', '/cgi-bin/webif.pl', '/cgi-bin/webproc.pl', '/cgi-bin/webif.py', '/cgi-bin/webproc.py', '/cgi-bin/webif.rb', '/cgi-bin/webproc.rb', '/cgi-bin/webif.jsp', '/cgi-bin/webproc.jsp', '/cgi-bin/webif.aspx', '/cgi-bin/webproc.aspx', '/cgi-bin/webif.cfm', '/cgi-bin/webproc.cfm', '/cgi-bin/webif.dhtml', '/cgi-bin/webproc.dhtml', '/cgi-bin/webif.shtml', '/cgi-bin/webproc.shtml', '/cgi-bin/webif.xhtml', '/cgi-bin/webproc.xhtml', '/cgi-bin/webif.xml', '/cgi-bin/webproc.xml', '/cgi-bin/webif.json', '/cgi-bin/webproc.json', '/cgi-bin/webif.yaml', '/cgi-bin/webproc.yaml', '/cgi-bin/webif.yml', '/cgi-bin/webproc.yml', '/cgi-bin/webif.txt', '/cgi-bin/webproc.txt', '/cgi-bin/webif.html', '/cgi-bin/webproc.html', '/cgi-bin/webif.htm', '/cgi-bin/webproc.htm'],
+        'models': ['Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS', 'Vigor 2860', 'Vigor 2920', 'Vigor 2950', 'Vigor 3900', 'Vigor 2130', 'Vigor 2130N', 'Vigor 2130V', 'Vigor 2130VN', 'Vigor 2130V2', 'Vigor 2130V2N', 'Vigor 2130V2VN', 'Vigor 2130V3', 'Vigor 2130V3N', 'Vigor 2130V3VN', 'Vigor 2130V4', 'Vigor 2130V4N', 'Vigor 2130V4VN', 'Vigor 2130V5', 'Vigor 2130V5N', 'Vigor 2130V5VN', 'Vigor 2130V6', 'Vigor 2130V6N', 'Vigor 2130V6VN', 'Vigor 2130V7', 'Vigor 2130V7N', 'Vigor 2130V7VN', 'Vigor 2130V8', 'Vigor 2130V8N', 'Vigor 2130V8VN', 'Vigor 2130V9', 'Vigor 2130V9N', 'Vigor 2130V9VN', 'Vigor 2130V10', 'Vigor 2130V10N', 'Vigor 2130V10VN']
     },
     'mikrotik': {
         'content': ['mikrotik', 'MIKROTIK', 'RouterOS', 'routerboard', 'RB', 'CCR', 'CRS'],
@@ -264,10 +264,11 @@ ADMIN_INDICATORS = [
 ]
 
 class RouterScannerPro:
-    def __init__(self, targets, threads=1, timeout=8):
+    def __init__(self, targets, threads=1, timeout=8, enable_screenshot=True):
         self.targets = list(set(targets))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
+        self.enable_screenshot = enable_screenshot
         self.session = self.create_session()
         self.lock = threading.Lock()
         
@@ -724,7 +725,7 @@ class RouterScannerPro:
         
         return info
     
-    def take_screenshot(self, url, username, password, auth_type):
+    def take_screenshot(self, url, username, password, auth_type, ip_address):
         """Take screenshot of admin panel for POC"""
         if not SCREENSHOT_AVAILABLE:
             return None
@@ -737,6 +738,10 @@ class RouterScannerPro:
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--disable-logging')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--disable-plugins')
+            chrome_options.add_argument('--disable-images')
             chrome_options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
             
             # Create driver
@@ -745,7 +750,7 @@ class RouterScannerPro:
             try:
                 # Navigate to URL
                 driver.get(url)
-                time.sleep(2)
+                time.sleep(3)
                 
                 # Handle authentication
                 if auth_type == 'http_basic':
@@ -753,34 +758,75 @@ class RouterScannerPro:
                     parsed_url = urlparse(url)
                     auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
                     driver.get(auth_url)
+                    time.sleep(3)
                 else:
                     # For form-based auth, find and fill form
                     try:
-                        username_field = driver.find_element(By.NAME, "username")
-                        password_field = driver.find_element(By.NAME, "password")
-                        username_field.send_keys(username)
-                        password_field.send_keys(password)
+                        # Try multiple field name combinations
+                        field_combinations = [
+                            ("username", "password"),
+                            ("user", "pass"),
+                            ("login", "passwd"),
+                            ("admin", "admin"),
+                            ("name", "pwd")
+                        ]
                         
-                        # Try to find and click submit button
-                        submit_button = driver.find_element(By.XPATH, "//input[@type='submit'] | //button[@type='submit'] | //input[@value='Login'] | //button[contains(text(), 'Login')]")
-                        submit_button.click()
-                    except:
-                        # Try alternative field names
-                        try:
-                            user_field = driver.find_element(By.NAME, "user")
-                            pass_field = driver.find_element(By.NAME, "pass")
-                            user_field.send_keys(username)
-                            pass_field.send_keys(password)
-                            submit_button = driver.find_element(By.XPATH, "//input[@type='submit'] | //button[@type='submit']")
-                            submit_button.click()
-                        except:
-                            pass
+                        form_filled = False
+                        for user_field_name, pass_field_name in field_combinations:
+                            try:
+                                username_field = driver.find_element(By.NAME, user_field_name)
+                                password_field = driver.find_element(By.NAME, pass_field_name)
+                                username_field.clear()
+                                password_field.clear()
+                                username_field.send_keys(username)
+                                password_field.send_keys(password)
+                                
+                                # Try to find and click submit button
+                                submit_selectors = [
+                                    "//input[@type='submit']",
+                                    "//button[@type='submit']",
+                                    "//input[@value='Login']",
+                                    "//button[contains(text(), 'Login')]",
+                                    "//input[@value='Sign In']",
+                                    "//button[contains(text(), 'Sign In')]",
+                                    "//input[@value='Submit']",
+                                    "//button[contains(text(), 'Submit')]"
+                                ]
+                                
+                                for selector in submit_selectors:
+                                    try:
+                                        submit_button = driver.find_element(By.XPATH, selector)
+                                        submit_button.click()
+                                        form_filled = True
+                                        break
+                                    except:
+                                        continue
+                                
+                                if form_filled:
+                                    break
+                                    
+                            except:
+                                continue
+                        
+                        # Wait for page to load after login
+                        time.sleep(5)
+                        
+                        # Check if we're still on login page (login failed)
+                        current_url = driver.current_url.lower()
+                        page_source = driver.page_source.lower()
+                        
+                        # If we're still on login page or see login form, login failed
+                        if ('login' in current_url and 'password' in page_source) or 'login' in page_source:
+                            print(f"{Colors.YELLOW}[!] Login failed, taking screenshot of login page{Colors.END}")
+                        else:
+                            print(f"{Colors.GREEN}[+] Successfully logged in, taking screenshot of admin panel{Colors.END}")
+                        
+                    except Exception as e:
+                        print(f"{Colors.YELLOW}[!] Form filling failed: {e}{Colors.END}")
                 
-                # Wait for page to load
-                time.sleep(3)
-                
-                # Take screenshot
-                screenshot_filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+                # Take screenshot with IP in filename
+                ip_clean = ip_address.replace('.', '_').replace(':', '_')
+                screenshot_filename = f"screenshot_{ip_clean}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 driver.save_screenshot(screenshot_filename)
                 
                 return screenshot_filename
@@ -888,10 +934,14 @@ class RouterScannerPro:
                                             print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
                                     
                                     # Take screenshot for POC
-                                    print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
-                                    screenshot_file = self.take_screenshot(admin_url, username, password, auth_type)
-                                    if screenshot_file:
-                                        print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                    screenshot_file = None
+                                    if self.enable_screenshot:
+                                        print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
+                                        screenshot_file = self.take_screenshot(admin_url, username, password, auth_type, ip)
+                                        if screenshot_file:
+                                            print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                    else:
+                                        print(f"{Colors.YELLOW}[*] Screenshot disabled{Colors.END}")
                                     
                                     vulnerability = {
                                         'type': 'Default Credentials',
@@ -1442,6 +1492,7 @@ def main():
     parser.add_argument('-t', '--targets', required=True, help='Target IP(s): single IP, CIDR, range, or file')
     parser.add_argument('-T', '--threads', type=int, default=1, help='Number of threads (default: 1 for organized output)')
     parser.add_argument('--timeout', type=int, default=8, help='Request timeout in seconds (default: 8)')
+    parser.add_argument('--no-screenshot', action='store_true', help='Disable screenshot capture (default: enabled)')
     
     args = parser.parse_args()
     
@@ -1455,7 +1506,12 @@ def main():
     
     print(f"{Colors.GREEN}[+] Loaded {len(targets)} targets{Colors.END}")
     
-    scanner = RouterScannerPro(targets, args.threads, args.timeout)
+    enable_screenshot = not args.no_screenshot
+    if enable_screenshot and not SCREENSHOT_AVAILABLE:
+        print(f"{Colors.YELLOW}[!] Screenshot libraries not available. Install selenium and chromedriver for screenshot functionality.{Colors.END}")
+        enable_screenshot = False
+    
+    scanner = RouterScannerPro(targets, args.threads, args.timeout, enable_screenshot)
     stats['start_time'] = time.time()
     
     try:
