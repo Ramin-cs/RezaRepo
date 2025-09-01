@@ -1,0 +1,21 @@
+{
+  "scan_info": {
+    "start_time": "2025-09-01T18:30:59.004103",
+    "total_targets": 1,
+    "threads": 10,
+    "timeout": 5,
+    "end_time": "2025-09-01T18:30:59.005615",
+    "total_time": 0.0014917850494384766,
+    "login_pages_found": 0,
+    "vulnerable_routers": 0
+  },
+  "results": [
+    {
+      "ip": "127.0.0.1",
+      "ports": [],
+      "login_pages": [],
+      "vulnerabilities": [],
+      "scan_time": null
+    }
+  ]
+}
