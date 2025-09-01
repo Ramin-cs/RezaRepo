@@ -170,10 +170,10 @@ BRAND_PATTERNS = {
         'models': ['FRITZ!Box', 'FRITZ!Repeater', 'FRITZ!Powerline']
     },
     'draytek': {
-        'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch'],
-        'headers': ['draytek', 'DRAYTEK'],
-        'paths': ['/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc'],
-        'models': ['Vigor', 'VigorRouter', 'VigorSwitch']
+        'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'vigor', 'DrayTek', 'DRAYTEK', 'VigorOS', 'VigorOS'],
+        'headers': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR'],
+        'paths': ['/', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi'],
+        'models': ['Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS']
     },
     'mikrotik': {
         'content': ['mikrotik', 'MIKROTIK', 'RouterOS', 'routerboard', 'RB', 'CCR', 'CRS'],
@@ -370,8 +370,11 @@ class RouterScannerPro:
             headers = {'User-Agent': random.choice(USER_AGENTS)}
             response = self.session.get(url, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
             
+            # Get the final URL after redirects
+            final_url = response.url
+            
             if response.status_code == 401:
-                return 'http_basic', response
+                return 'http_basic', response, final_url
             
             content = response.text.lower()
             headers_str = str(response.headers).lower()
@@ -379,24 +382,24 @@ class RouterScannerPro:
             # Check for false positives first
             is_fp, fp_reason = self.is_false_positive(content, url)
             if is_fp:
-                return f'false_positive_{fp_reason}', response
+                return f'false_positive_{fp_reason}', response, final_url
             
             # Check for login forms
             if '<form' in content and ('password' in content or 'username' in content):
-                return 'form_based', response
+                return 'form_based', response, final_url
             
             # Check for API endpoints
             if any(keyword in content for keyword in ['api', 'json', 'rest', 'ajax']):
-                return 'api_based', response
+                return 'api_based', response, final_url
             
             # Check for redirect patterns
             if response.history or 'location' in headers_str:
-                return 'redirect_based', response
+                return 'redirect_based', response, final_url
             
-            return None, response
+            return None, response, final_url
             
         except:
-            return None, None
+            return None, None, None
     
     def test_http_basic_auth(self, ip, port, path, username, password):
         """Test HTTP Basic Authentication"""
@@ -543,27 +546,49 @@ class RouterScannerPro:
                 admin_session.headers.update({'Authorization': f'Basic {encoded_credentials}'})
                 response = admin_session.get(admin_url, verify=False, allow_redirects=True)
             else:
-                # Form-based or API-based login
-                login_data = {'username': username, 'password': password}
-                response = admin_session.post(admin_url, data=login_data, verify=False, allow_redirects=True)
+                # Form-based or API-based login - try multiple approaches
+                login_data_variations = [
+                    {'username': username, 'password': password},
+                    {'user': username, 'pass': password},
+                    {'login': username, 'passwd': password},
+                    {'admin': username, 'admin': password},
+                    {'name': username, 'pwd': password}
+                ]
+                
+                response = None
+                for login_data in login_data_variations:
+                    try:
+                        response = admin_session.post(admin_url, data=login_data, verify=False, allow_redirects=True)
+                        if response.status_code == 200:
+                            break
+                    except:
+                        continue
             
             # Check if login was successful
-            if response.status_code == 200 and len(response.text) > 1000:
+            if response and response.status_code == 200 and len(response.text) > 500:
                 content = response.text.lower()
                 
                 # Check for admin panel indicators
                 admin_score = sum(1 for indicator in ADMIN_INDICATORS if indicator in content)
                 
                 # Check for session cookies
-                session_cookies = any('session' in cookie.lower() or 'auth' in cookie.lower() 
+                session_cookies = any('session' in cookie.lower() or 'auth' in cookie.lower() or 'login' in cookie.lower()
                                     for cookie in admin_session.cookies.keys())
                 
                 # Check for logout button/link
                 logout_indicators = ['logout', 'log out', 'sign out', 'exit']
                 has_logout = any(indicator in content for indicator in logout_indicators)
                 
-                # If we have strong indicators of admin access
-                if admin_score >= 3 or (admin_score >= 2 and (session_cookies or has_logout)):
+                # Check for success indicators
+                success_indicators = ['welcome', 'dashboard', 'status', 'configuration', 'admin panel', 'control panel']
+                success_score = sum(1 for indicator in success_indicators if indicator in content)
+                
+                # Check for failure indicators
+                failure_indicators = ['invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong', 'login', 'authentication']
+                failure_score = sum(1 for indicator in failure_indicators if indicator in content)
+                
+                # More lenient verification - if we have any positive indicators and no strong failure indicators
+                if (admin_score >= 2 or success_score >= 1 or session_cookies or has_logout) and failure_score < 3:
                     return True, self.extract_router_info(content)
                 else:
                     return False, {}
@@ -697,13 +722,15 @@ class RouterScannerPro:
                         break
                     
                     url = f"http://{ip}:{port}{path}"
-                    auth_type, response = self.detect_authentication_type(url)
+                    auth_type, response, final_url = self.detect_authentication_type(url)
                     
                     if auth_type and not auth_type.startswith('false_positive'):
-                        print(f"{Colors.GREEN}[+] LOGIN PAGE FOUND: {url} ({auth_type}){Colors.END}")
+                        # Use final_url if available, otherwise use original url
+                        login_url = final_url if final_url else url
+                        print(f"{Colors.GREEN}[+] LOGIN PAGE FOUND: {login_url} ({auth_type}){Colors.END}")
                         
                         login_info = {
-                            'url': url,
+                            'url': login_url,
                             'port': port,
                             'path': path,
                             'auth_type': auth_type,
@@ -755,12 +782,13 @@ class RouterScannerPro:
                                         stats['vulnerable_routers'] += 1
                                     
                                     credential_found = True  # Stop testing other credentials
-                                    break
+                                    break  # Exit the credential loop
                                 else:
                                     print(f"{Colors.RED}[-] Admin access verification failed{Colors.END}")
                             else:
                                 print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                         
+                        # Only show "No valid credentials found" if no vulnerabilities were found
                         if not result['vulnerabilities']:
                             print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
                         
@@ -820,86 +848,234 @@ class RouterScannerPro:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Router Scanner Pro v7.0 - Scan Report</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Orbitron', monospace;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            background: #000;
+            color: #00ff00;
+            overflow-x: hidden;
+        }}
+        
+        /* Matrix rain effect */
+        .matrix-bg {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #000;
+        }}
+        
+        .matrix-rain {{
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(transparent, #00ff00, transparent);
+            animation: matrix-rain 3s linear infinite;
+        }}
+        
+        @keyframes matrix-rain {{
+            0% {{ top: -100%; }}
+            100% {{ top: 100%; }}
+        }}
+        
+        /* Glitch effect */
+        .glitch {{
+            position: relative;
+            color: #00ff00;
+            font-size: 2em;
+            font-weight: bold;
+            text-transform: uppercase;
+            animation: glitch 2s infinite;
+        }}
+        
+        @keyframes glitch {{
+            0%, 100% {{ transform: translate(0); }}
+            20% {{ transform: translate(-2px, 2px); }}
+            40% {{ transform: translate(-2px, -2px); }}
+            60% {{ transform: translate(2px, 2px); }}
+            80% {{ transform: translate(2px, -2px); }}
+        }}
+        
+        .glitch::before,
+        .glitch::after {{
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }}
+        
+        .glitch::before {{
+            animation: glitch-1 0.5s infinite;
+            color: #ff0000;
+            z-index: -1;
+        }}
+        
+        .glitch::after {{
+            animation: glitch-2 0.5s infinite;
+            color: #0000ff;
+            z-index: -2;
+        }}
+        
+        @keyframes glitch-1 {{
+            0%, 100% {{ transform: translate(0); }}
+            20% {{ transform: translate(2px, -2px); }}
+            40% {{ transform: translate(-2px, 2px); }}
+            60% {{ transform: translate(-2px, -2px); }}
+            80% {{ transform: translate(2px, 2px); }}
+        }}
+        
+        @keyframes glitch-2 {{
+            0%, 100% {{ transform: translate(0); }}
+            20% {{ transform: translate(-2px, 2px); }}
+            40% {{ transform: translate(2px, -2px); }}
+            60% {{ transform: translate(2px, 2px); }}
+            80% {{ transform: translate(-2px, -2px); }}
         }}
         .container {{
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
             border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            box-shadow: 0 0 30px #00ff00;
             overflow: hidden;
+            position: relative;
         }}
+        
+        .container::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(0, 255, 0, 0.1) 50%, transparent 70%);
+            animation: scan 3s linear infinite;
+        }}
+        
+        @keyframes scan {{
+            0% {{ transform: translateX(-100%); }}
+            100% {{ transform: translateX(100%); }}
+        }}
+        
         .header {{
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
+            background: linear-gradient(135deg, #001100 0%, #003300 100%);
+            color: #00ff00;
             padding: 30px;
             text-align: center;
+            border-bottom: 2px solid #00ff00;
+            position: relative;
         }}
+        
         .header h1 {{
             margin: 0;
             font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 0 0 10px #00ff00;
+            animation: pulse 2s infinite;
         }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ text-shadow: 0 0 10px #00ff00; }}
+            50% {{ text-shadow: 0 0 20px #00ff00, 0 0 30px #00ff00; }}
+        }}
+        
         .header p {{
             margin: 10px 0 0 0;
             opacity: 0.9;
+            color: #00cc00;
         }}
         .summary {{
             padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
+            background: rgba(0, 20, 0, 0.8);
+            border-bottom: 2px solid #00ff00;
         }}
+        
+        .summary h2 {{
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+        }}
+        
         .summary-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-top: 20px;
         }}
+        
         .summary-card {{
-            background: white;
+            background: rgba(0, 0, 0, 0.8);
             padding: 20px;
+            border: 1px solid #00ff00;
             border-radius: 8px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            transition: all 0.3s ease;
         }}
+        
+        .summary-card:hover {{
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.6);
+            transform: translateY(-2px);
+        }}
+        
         .summary-card h3 {{
             margin: 0 0 10px 0;
-            color: #2c3e50;
+            color: #00ff00;
         }}
+        
         .summary-card .number {{
             font-size: 2em;
             font-weight: bold;
-            color: #3498db;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
         }}
         .results {{
             padding: 30px;
+            background: rgba(0, 10, 0, 0.8);
         }}
+        
+        .results h2 {{
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
+        }}
+        
         .target {{
             margin-bottom: 30px;
-            border: 1px solid #dee2e6;
+            border: 1px solid #00ff00;
             border-radius: 8px;
             overflow: hidden;
+            background: rgba(0, 0, 0, 0.8);
         }}
+        
         .target-header {{
-            background: #e9ecef;
+            background: rgba(0, 20, 0, 0.8);
             padding: 15px 20px;
             font-weight: bold;
-            color: #495057;
+            color: #00ff00;
+            border-bottom: 1px solid #00ff00;
         }}
+        
         .target-content {{
             padding: 20px;
+            color: #00cc00;
         }}
+        
         .vulnerable {{
-            border-left: 5px solid #dc3545;
+            border-left: 5px solid #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
         }}
+        
         .safe {{
-            border-left: 5px solid #28a745;
+            border-left: 5px solid #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
         }}
         .info-grid {{
             display: grid;
@@ -907,43 +1083,79 @@ class RouterScannerPro:
             gap: 15px;
             margin-top: 15px;
         }}
+        
         .info-item {{
-            background: #f8f9fa;
+            background: rgba(0, 0, 0, 0.8);
             padding: 10px 15px;
             border-radius: 5px;
-            border-left: 3px solid #3498db;
+            border-left: 3px solid #00ff00;
+            color: #00cc00;
         }}
+        
         .info-item strong {{
-            color: #2c3e50;
+            color: #00ff00;
         }}
+        
         .vulnerability {{
-            background: #fff5f5;
-            border: 1px solid #fed7d7;
+            background: rgba(20, 0, 0, 0.8);
+            border: 1px solid #ff0000;
             border-radius: 5px;
             padding: 15px;
             margin-top: 15px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
         }}
+        
         .vulnerability h4 {{
-            color: #c53030;
+            color: #ff0000;
             margin: 0 0 10px 0;
+            text-shadow: 0 0 5px #ff0000;
         }}
+        
+        .vulnerability p {{
+            color: #ff6666;
+        }}
+        
         .footer {{
-            background: #2c3e50;
-            color: white;
+            background: rgba(0, 20, 0, 0.8);
+            color: #00ff00;
             padding: 20px;
             text-align: center;
+            border-top: 2px solid #00ff00;
         }}
+        
         .timestamp {{
-            color: #95a5a6;
+            color: #00cc00;
             font-size: 0.9em;
+        }}
+        
+        /* Matrix background */
+        .matrix-bg {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: #000;
+        }}
+        
+        /* Terminal cursor effect */
+        .cursor {{
+            animation: blink 1s infinite;
+        }}
+        
+        @keyframes blink {{
+            0%, 50% {{ opacity: 1; }}
+            51%, 100% {{ opacity: 0; }}
         }}
     </style>
 </head>
 <body>
+    <div class="matrix-bg"></div>
     <div class="container">
         <div class="header">
-            <h1>🔒 Router Scanner Pro v7.0</h1>
-            <p>Comprehensive Network Security Assessment Report</p>
+            <h1 class="glitch" data-text="🔒 ROUTER SCANNER PRO v7.0">🔒 ROUTER SCANNER PRO v7.0</h1>
+            <p>Comprehensive Network Security Assessment Report<span class="cursor">_</span></p>
         </div>
         
         <div class="summary">
