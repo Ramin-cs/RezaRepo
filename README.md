@@ -1,46 +1,62 @@
-# 🔒 Router Scanner Pro v5.0
+# 🔒 Router Scanner Pro v6.0
 
-**Organized Scanning & Smart Detection - Professional Network Security Tool**
+**Advanced Brand Detection & False Positive Filtering - Professional Network Security Tool**
 
-## 🚀 **What's New in Version 5.0?**
+## 🚀 **What's New in Version 6.0?**
 
-### **🎯 Organized Workflow**
-- **Sequential processing**: One target at a time for clean output
-- **4-phase scanning**: Ports → Brand → Login → Brute Force → Info
-- **No duplicate testing**: Each test runs only once
-- **Clean professional output**: Organized and easy to read
-
-### **🧠 Smart Brand Detection**
+### **🔍 Advanced Brand Detection**
+- **Multi-method detection**: Content, headers, server headers, and paths
+- **Brand-specific patterns**: Detailed patterns for each router brand
+- **Model identification**: Detects specific router models
 - **Priority-based testing**: Brand-specific paths tested first
-- **Intelligent path selection**: Based on detected router brand
-- **Fallback mechanisms**: Generic paths if brand not detected
-- **Efficient scanning**: Reduces unnecessary tests
 
-### **🎨 Enhanced Hacker Theme**
-- **Matrix-style interface** with professional colors
-- **Color-coded information**: Different colors for different types of data
-- **Clean sections**: Organized output with clear separators
-- **Professional aesthetics**: Beautiful terminal interface
+### **🚫 False Positive Filtering**
+- **VPN detection**: Filters out VPN login pages
+- **Email/Social filtering**: Removes email and social login pages
+- **Smart indicators**: Advanced pattern matching for false positives
+- **Clean results**: Only genuine router login pages
+
+### **🎯 Admin Verification**
+- **Real admin access**: Verifies actual entry to admin panel
+- **Admin indicators**: Checks for dashboard, status, configuration
+- **Information extraction**: Extracts MAC, firmware, model, SIP info
+- **Verified vulnerabilities**: Only reports confirmed access
+
+### **🔄 User-Agent Rotation**
+- **Anti-detection**: Multiple User-Agents to avoid blocking
+- **Random selection**: Different User-Agent for each request
+- **Browser simulation**: Realistic browser headers
+- **Stealth mode**: Harder to detect automated scanning
 
 ## 🎨 **Features**
 
-### **🔍 Organized Scanning Workflow**
-- **Phase 1**: Port scanning with live output
-- **Phase 2**: Brand detection and login page discovery
-- **Phase 3**: Brute force attack with credential testing
-- **Phase 4**: Information extraction from admin panel
+### **🔍 Advanced Detection System**
+- **Brand detection**: TP-Link, Huawei, ZTE, Netgear, Linksys, D-Link, ASUS, FritzBox
+- **Model identification**: Specific router models and series
+- **Priority paths**: Brand-specific login paths tested first
+- **False positive filtering**: VPN, email, social login detection
 
-### **🧠 Smart Detection System**
-- **Brand detection**: Identifies router manufacturer
-- **Priority paths**: Tests brand-specific paths first
-- **Authentication types**: HTTP Basic, Form-based, API-based
-- **Information extraction**: Router details from admin panel
+### **🎯 Admin Verification**
+- **Real access testing**: Actually enters admin panel
+- **Admin indicators**: Dashboard, status, configuration, control panel
+- **Information extraction**: MAC address, firmware, model, WAN IP, SSID, SIP
+- **Verified results**: Only confirmed vulnerabilities reported
 
-### **🎨 Professional Output**
-- **Color-coded results**: Different colors for different information types
-- **Organized sections**: Clear separation between targets
-- **Progress tracking**: Real-time progress updates
-- **Clean formatting**: Easy to read and understand
+### **🔄 Anti-Detection Features**
+- **User-Agent rotation**: 7 different browser User-Agents
+- **Random selection**: Different User-Agent per request
+- **Realistic headers**: Browser-like request headers
+- **Stealth scanning**: Harder to detect automated tools
+
+### **📊 Information Extraction**
+- **MAC address**: Physical address extraction
+- **Firmware version**: Software version detection
+- **Router model**: Device model identification
+- **WAN IP**: External IP address
+- **SSID**: Wireless network name
+- **SIP information**: VoIP configuration
+- **Uptime**: Device running time
+- **Connection type**: Internet connection type
 
 ## 🎯 **Target Credentials**
 
@@ -97,19 +113,19 @@ python3 router_scanner_pro.py -t targets.txt -T 1
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ROUTER SCANNER PRO - v5.0                                ║
-║                    Organized Scanning & Smart Detection                      ║
+║                    ROUTER SCANNER PRO - v6.0                                ║
+║              Advanced Brand Detection & False Positive Filtering             ║
 ║                                                                              ║
-║  🔍 Smart Brand Detection  |  🔓 Priority-based Testing                    ║
-║  🚀 Organized Workflow     |  📊 Clean Professional Output                 ║
+║  🔍 Smart Brand Detection  |  🚫 False Positive Filtering                  ║
+║  🎯 Admin Verification     |  📊 Advanced Information Extraction            ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 [+] Loaded 3 targets
 [+] Starting organized scan of 3 targets
 [*] Target credentials: admin:admin, admin:support180, support:support, user:user
 [*] Scanning ports: 80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090
-[*] Smart brand detection with priority-based testing
-[*] Organized workflow: Ports → Brand → Login → Brute Force → Info
+[*] Advanced brand detection with false positive filtering
+[*] Organized workflow: Ports → Brand → Login → Brute Force → Admin Verification
 --------------------------------------------------------------------------------
 
 ============================================================
@@ -124,11 +140,16 @@ python3 router_scanner_pro.py -t targets.txt -T 1
 [>] Testing: admin:admin
 🔒 VULNERABLE: admin:admin works!
 [+] Admin URL: http://192.168.1.1/admin
-[4/4] Information Extraction...
-[+] Model: TL-WR840N
+[4/4] Admin Verification & Information Extraction...
+[+] Admin access verified!
+[+] Mac Address: 00:1A:2B:3C:4D:5E
 [+] Firmware Version: v1.0.0
+[+] Model: TL-WR840N
 [+] Wan Ip: 192.168.1.1
 [+] Ssid: MyWiFi_Network
+[+] Sip Info: sip@provider.com
+[+] Uptime: 5 days 12 hours
+[+] Connection Type: PPPoE
 [+] Target 192.168.1.1 scan completed
 [*] Progress: 1/3 (33.3%) - Login pages: 1, Vulnerable: 1
 
@@ -150,47 +171,84 @@ python3 router_scanner_pro.py -t targets.txt -T 1
 [*] Progress: 2/3 (66.7%) - Login pages: 1, Vulnerable: 1
 
 ============================================================
+[*] SCANNING TARGET: 192.168.1.100
+============================================================
+[1/4] Port Scanning...
+[+] Found 1 open ports: [80]
+[2/4] Brand Detection & Login Discovery...
+[*] Detected brand: GENERIC
+[!] False positive detected: vpn
+[+] Target 192.168.1.100 scan completed
+[*] Progress: 3/3 (100.0%) - Login pages: 1, Vulnerable: 1
+
+============================================================
 [+] SCAN COMPLETE!
 ============================================================
 [*] Summary:
   - Total targets scanned: 3
-  - Login pages found: 2
+  - Login pages found: 1
   - Vulnerable routers: 1
   - Scan duration: 45.2 seconds
   - Average speed: 0.1 targets/second
-[*] Organized workflow completed successfully
+[*] Advanced detection and verification completed successfully
 ```
 
-## 🔧 **Smart Detection System**
+## 🔧 **Advanced Detection System**
 
-### **Brand Detection**
+### **Brand Detection Patterns**
 ```python
-# Detects router brand from main page
-brand_indicators = {
-    'tp-link': ['tp-link', 'tplink', 'TP-LINK', 'TPLINK', 'archer'],
-    'huawei': ['huawei', 'HUAWEI', 'HG', 'B593', 'E5186'],
-    'zte': ['zte', 'ZTE', 'ZXHN', 'MF28G', 'F660'],
-    'netgear': ['netgear', 'NETGEAR', 'WNDR', 'R7000'],
-    'linksys': ['linksys', 'LINKSYS', 'WRT', 'E1200'],
-    'd-link': ['d-link', 'D-LINK', 'DIR', 'DSL'],
-    'asus': ['asus', 'ASUS', 'RT-', 'GT-'],
-    'fritzbox': ['fritz', 'fritzbox', 'FRITZ', 'AVM']
+BRAND_PATTERNS = {
+    'tp-link': {
+        'content': ['tp-link', 'tplink', 'TP-LINK', 'TPLINK', 'archer', 'TL-'],
+        'headers': ['tp-link', 'tplink'],
+        'paths': ['/userRpm/LoginRpm.htm', '/cgi-bin/luci', '/admin'],
+        'models': ['TL-', 'Archer', 'Deco', 'Omada']
+    },
+    'huawei': {
+        'content': ['huawei', 'HUAWEI', 'HG', 'B593', 'E5186', 'HG8245'],
+        'headers': ['huawei', 'HUAWEI'],
+        'paths': ['/html/index.html', '/asp/login.asp', '/login.cgi'],
+        'models': ['HG', 'B593', 'E5186', 'HG8245']
+    }
+    # ... more brands
 }
 ```
 
-### **Priority-based Path Testing**
+### **False Positive Filtering**
 ```python
-# Brand-specific paths tested first
-BRAND_PATHS = {
-    'tp-link': ['/userRpm/LoginRpm.htm', '/cgi-bin/luci', '/admin'],
-    'huawei': ['/html/index.html', '/asp/login.asp', '/login.cgi'],
-    'zte': ['/login.gch', '/start.gch', '/getpage.gch'],
-    'netgear': ['/setup.cgi', '/genie.cgi', '/cgi-bin/'],
-    'generic': ['/', '/admin', '/login', '/login.htm']
-}
+FALSE_POSITIVE_INDICATORS = [
+    # VPN indicators
+    'vpn', 'openvpn', 'wireguard', 'ipsec', 'l2tp', 'pptp',
+    
+    # Email/Social indicators
+    'email', 'e-mail', 'gmail', 'yahoo', 'outlook', 'hotmail',
+    'microsoft', 'google', 'facebook', 'twitter', 'instagram',
+    
+    # Other non-router indicators
+    'github', 'gitlab', 'slack', 'discord', 'zoom', 'teams'
+]
+```
+
+### **Admin Verification**
+```python
+ADMIN_INDICATORS = [
+    'dashboard', 'status', 'configuration', 'admin panel', 'control panel',
+    'welcome', 'logout', 'system information', 'device status', 'main menu',
+    'router', 'gateway', 'modem', 'access point', 'network', 'wireless'
+]
 ```
 
 ## 🔧 **Configuration**
+
+### **User-Agent Rotation**
+```python
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36...',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36...',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101...',
+    # ... 7 different User-Agents
+]
+```
 
 ### **Thread Count**
 - **Default**: 1 thread (for organized output)
@@ -221,15 +279,22 @@ Automatically scans these ports:
 ## 🛡️ **Security Features**
 
 ### **Anti-Detection**
+- **User-Agent rotation**: 7 different browser User-Agents
+- **Random selection**: Different User-Agent per request
 - **Rate limiting**: Prevents router blocking
-- **Professional headers**: Browser-like requests
 - **Session management**: Efficient connections
-- **Error handling**: Graceful failures
+
+### **False Positive Prevention**
+- **VPN filtering**: Detects and filters VPN login pages
+- **Email filtering**: Removes email-based login pages
+- **Social filtering**: Filters social media login pages
+- **Smart detection**: Advanced pattern matching
 
 ### **Safe Operation**
 - **Ctrl+C handling**: Clean shutdown
 - **Resource cleanup**: Memory management
 - **Exception handling**: Robust recovery
+- **Duplicate removal**: Automatic IP deduplication
 
 ## 📈 **Performance Metrics**
 
@@ -241,7 +306,7 @@ Automatically scans these ports:
 ### **Resource Usage**
 - **Memory**: ~30-80MB for 1000 targets
 - **CPU**: Single-threaded for organized output
-- **Network**: Optimized connections
+- **Network**: Optimized connections with User-Agent rotation
 
 ## 🔍 **Detection Capabilities**
 
@@ -256,6 +321,16 @@ Automatically scans these ports:
 - **Form-based Auth**: Multiple form field combinations
 - **API-based Auth**: JSON and REST endpoints
 - **Redirect-based Auth**: Follows redirect patterns
+
+### **Information Extraction**
+- **MAC Address**: Physical device address
+- **Firmware Version**: Software version
+- **Router Model**: Device model and series
+- **WAN IP**: External IP address
+- **SSID**: Wireless network name
+- **SIP Information**: VoIP configuration
+- **Uptime**: Device running time
+- **Connection Type**: Internet connection type
 
 ## ⚠️ **Legal Notice**
 
@@ -290,22 +365,22 @@ python3 router_scanner_pro.py -t 192.168.1.0/24
 python3 router_scanner_pro.py -t targets.txt
 ```
 
-## 🎯 **Why Router Scanner Pro v5.0?**
+## 🎯 **Why Router Scanner Pro v6.0?**
 
-1. **Organized Workflow**: Clean, sequential processing
-2. **Smart Detection**: Brand-based priority testing
-3. **No Duplicates**: Each test runs only once
-4. **Professional Output**: Color-coded and organized
-5. **Hacker Theme**: Beautiful terminal interface
-6. **Information Extraction**: Router details from admin panel
-7. **Cross-Platform**: Works on Windows, Linux, macOS
-8. **Fast**: Optimized for speed and efficiency
-9. **Accurate**: Real router testing, not just analysis
-10. **Simple**: Single file, easy to use
+1. **Advanced Brand Detection**: Multi-method brand identification
+2. **False Positive Filtering**: VPN, email, social login detection
+3. **Admin Verification**: Real admin panel access verification
+4. **Information Extraction**: Comprehensive router information
+5. **User-Agent Rotation**: Anti-detection with multiple User-Agents
+6. **Organized Workflow**: Clean, sequential processing
+7. **Smart Detection**: Brand-specific path testing
+8. **Verified Results**: Only confirmed vulnerabilities reported
+9. **Cross-Platform**: Works on Windows, Linux, macOS
+10. **Professional**: Single file, easy to use
 
 ---
 
-**🔒 Router Scanner Pro v5.0 - The Ultimate Organized Network Security Assessment Tool**
+**🔒 Router Scanner Pro v6.0 - The Ultimate Advanced Network Security Assessment Tool**
 
 *"Follow the white rabbit..."* 🐰
 

