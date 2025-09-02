@@ -1119,9 +1119,11 @@ class RouterScannerPro:
                             success, admin_url = self.test_credentials(ip, port, path, username, password, auth_type)
                             
                             if success:
-                                print(f"{Colors.GREEN}[+] Candidate credentials: {username}:{password} (login response looked positive){Colors.END}")
+                                # Announce vulnerable immediately per desired flow
+                                print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                                print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
                                 
-                                # Phase 4: Admin verification and information extraction
+                                # Phase 4: Admin verification & information extraction
                                 print(f"{Colors.YELLOW}[4/4] Admin Verification & Information Extraction...{Colors.END}")
                                 
                                 verified, router_info = self.verify_admin_access(admin_url, username, password, auth_type)
