@@ -101,7 +101,48 @@ TARGET_CREDENTIALS = [
     ("admin", "admin"),
     ("admin", "support180"),
     ("support", "support"),
-    ("user", "user")
+    ("user", "user"),
+    ("admin", "password"),
+    ("admin", "1234"),
+    ("admin", "12345"),
+    ("admin", "root"),
+    ("root", "admin"),
+    ("root", "root"),
+    ("admin", ""),
+    ("", "admin"),
+    ("admin", "admin123"),
+    ("admin", "123456"),
+    ("admin", "password123"),
+    ("admin", "admin1234"),
+    ("admin", "12345678"),
+    ("admin", "qwerty"),
+    ("admin", "letmein"),
+    ("admin", "welcome"),
+    ("admin", "changeme"),
+    ("admin", "default"),
+    ("admin", "guest"),
+    ("guest", "guest"),
+    ("user", "admin"),
+    ("user", "password"),
+    ("administrator", "admin"),
+    ("administrator", "password"),
+    ("administrator", "administrator"),
+    ("admin", "tenda"),
+    ("admin", "router"),
+    ("admin", "gateway"),
+    ("admin", "modem"),
+    ("admin", "cisco"),
+    ("admin", "netgear"),
+    ("admin", "linksys"),
+    ("admin", "dlink"),
+    ("admin", "tp-link"),
+    ("admin", "asus"),
+    ("admin", "huawei"),
+    ("admin", "zte"),
+    ("admin", "fiberhome"),
+    ("admin", "draytek"),
+    ("admin", "yealink"),
+    ("admin", "netcomm")
 ]
 
 # Common ports
@@ -783,10 +824,9 @@ class RouterScannerPro:
             # 1. HTTP Basic Authentication
             if auth_type == 'http_basic':
                 resp = self.session.get(url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                if 200 <= resp.status_code < 400 and len(resp.text) > 30:
-                    content = resp.text.lower()
-                    if len(content) > 100 or not any(k in content for k in ['username', 'password', 'login', 'sign in']):
-                        return True, resp.url
+                # For HTTP Basic Auth, if we get 200 and content, it's likely successful
+                if 200 <= resp.status_code < 400 and len(resp.text) > 20:
+                    return True, resp.url
                 return False, None
             
             # 2. HTTP Digest Authentication
@@ -1000,36 +1040,34 @@ class RouterScannerPro:
             content = resp.text.lower()
             final_url = resp.url.lower()
             
-            # Real admin panel verification based on actual router management criteria
+            # Balanced admin panel verification - more lenient for better detection
             criteria_met = 0
-            total_criteria = 5  # 5 key criteria for real admin access
+            total_criteria = 4  # Simplified to 4 main criteria
             
-            # Criterion 1: Successful redirect from login page (status 200 + URL change)
-            if resp.status_code == 200 and not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
+            # Criterion 1: Successful response (status 200)
+            if resp.status_code == 200:
                 criteria_met += 1
             
-            # Criterion 2: Has session cookies (strong indicator of successful login)
-            session_cookies = [c for c in s.cookies.keys() if any(keyword in c.lower() for keyword in ['session', 'auth', 'token', 'login', 'admin'])]
-            if session_cookies:
+            # Criterion 2: Has admin/router indicators (at least 1 required)
+            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem', 'wan', 'lan', 'wireless']
+            admin_count = sum(1 for k in admin_indicators if k in content)
+            if admin_count >= 1:  # At least 1 admin indicator
                 criteria_met += 1
             
-            # Criterion 3: Has admin panel title or page title (specific to router management)
-            title_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem']
-            if any(indicator in content for indicator in title_indicators):
-                criteria_met += 1
-            
-            # Criterion 4: Has router-specific information (MAC, IP, SSID, firmware, etc.)
-            router_info_indicators = ['mac address', 'ip address', 'ssid', 'firmware', 'uptime', 'wan', 'lan', 'wireless', 'dhcp', 'dns']
+            # Criterion 3: Has router-specific information (MAC, IP, SSID, firmware, etc.)
+            router_info_indicators = ['mac address', 'ip address', 'ssid', 'firmware', 'uptime', 'wan', 'lan', 'wireless', 'dhcp', 'dns', 'gateway', 'router']
             router_info_count = sum(1 for indicator in router_info_indicators if indicator in content)
-            if router_info_count >= 2:  # At least 2 router-specific info items
+            if router_info_count >= 1:  # At least 1 router-specific info item
                 criteria_met += 1
             
-            # Criterion 5: Has logout functionality (confirms we're in admin panel)
-            if any(k in content for k in ['logout', 'sign out', 'log out', 'exit']):
+            # Criterion 4: Not clearly a login page (negative test)
+            login_page_indicators = ['username', 'password', 'enter credentials', 'user login', 'admin login', 'router login', 'sign in', 'log in']
+            login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
+            if login_page_score < 2:  # Less than 2 strong login indicators
                 criteria_met += 1
             
-            # Require at least 3 out of 5 criteria for real admin access verification
-            if criteria_met >= 3:
+            # Require at least 2 out of 4 criteria (50% success rate) for balanced accuracy
+            if criteria_met >= 2:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
