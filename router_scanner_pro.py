@@ -105,7 +105,7 @@ TARGET_CREDENTIALS = [
 ]
 
 # Common ports
-COMMON_PORTS = [80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090]
+COMMON_PORTS = [80, 8080, 443, 8443, 8000, 8081, 8888, 8090, 9000, 9090, 1080, 8043]
 
 # User-Agent rotation for anti-detection
 USER_AGENTS = [
