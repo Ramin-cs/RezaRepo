@@ -77,18 +77,19 @@ def clear_screen():
 
 def print_banner():
     banner = f"""
-{Colors.CYAN}{Colors.BOLD}
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                    ROUTER SCANNER PRO - v7.0                                ║
-║            Comprehensive Brand Detection & Session Management               ║
-║                                                                              ║
-║  🔍 Global Brand Detection  |  🎯 Session Management                       ║
-║  📊 HTML Reporting          |  📸 Screenshot Capture                       ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-{Colors.END}
-{Colors.YELLOW}                            [!] For Network Security Assessment Only [!]{Colors.END}
-{Colors.WHITE}                              Follow the white rabbit... 🐰{Colors.END}
-"""
++{Colors.GREEN}{Colors.BOLD}
++   ____            _            _              _____                                  
++  |  _ \ ___  _ __| |_ __ _ ___| |_ _   _     / ____|                                 
++  | |_) / _ \| '__| __/ _` / __| __| | | |   | (___   ___ _ __  _ __   ___  _ __ ___  
++  |  _ < (_) | |  | || (_| \__ \ |_| |_| |    \___ \ / _ \ '_ \| '_ \ / _ \| '__/ _ \ 
++  |_| \_\___/|_|   \__\__,_|___/\__|\__, |    ____) |  __/ |_) | |_) | (_) | | |  __/ 
++                                     |___/    |_____/ \___| .__/| .__/ \___/|_|  \___| 
++                                                         |_|   |_|                     
++
++{Colors.CYAN}:: Router Scanner Pro v7.0 ::{Colors.END}  {Colors.YELLOW}[ Nostalgic Hacker Edition ]{Colors.END}
++{Colors.YELLOW}[!] For Network Security Assessment Only{Colors.END}
++{Colors.WHITE}    "There is no spoon." — follow the white rabbit...{Colors.END}
++"""
     print(banner)
 
 # Target credentials
