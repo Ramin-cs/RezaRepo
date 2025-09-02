@@ -76,19 +76,23 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def print_banner():
+    # Simple matrix-like warmup lines
+    for _ in range(3):
+        print(f"{Colors.GREEN}" + "|" * 60 + f"{Colors.END}")
+        time.sleep(0.05)
+    
     banner = f"""
 +{Colors.GREEN}{Colors.BOLD}
-+   ____            _            _              _____                                  
-+  |  _ \ ___  _ __| |_ __ _ ___| |_ _   _     / ____|                                 
-+  | |_) / _ \| '__| __/ _` / __| __| | | |   | (___   ___ _ __  _ __   ___  _ __ ___  
-+  |  _ < (_) | |  | || (_| \__ \ |_| |_| |    \___ \ / _ \ '_ \| '_ \ / _ \| '__/ _ \ 
-+  |_| \_\___/|_|   \__\__,_|___/\__|\__, |    ____) |  __/ |_) | |_) | (_) | | |  __/ 
-+                                     |___/    |_____/ \___| .__/| .__/ \___/|_|  \___| 
-+                                                         |_|   |_|                     
++   ______       _                 _               _____                                             
++  |  ____|     | |               | |             / ____|                                            
++  | |__   _ __ | | ___   __ _  __| | ___  ___   | (___   ___ __ _ _ __  _ __   ___  _ __   ___ ___  
++  |  __| | '_ \| |/ _ \ / _` |/ _` |/ _ \/ __|   \___ \ / __/ _` | '_ \| '_ \ / _ \| '_ \ / __/ _ \ 
++  | |____| | | | | (_) | (_| | (_| |  __/\__ \   ____) | (_| (_| | | | | | | | (_) | | | | (_|  __/ 
++  |______|_| |_|_|\___/ \__,_|\__,_|\___||___/  |_____/ \___\__,_|_| |_|_| |_|\___/|_| |_|\___\___| 
 +
 +{Colors.CYAN}:: Router Scanner Pro v7.0 ::{Colors.END}  {Colors.YELLOW}[ Nostalgic Hacker Edition ]{Colors.END}
 +{Colors.YELLOW}[!] For Network Security Assessment Only{Colors.END}
-+{Colors.WHITE}    "There is no spoon." — follow the white rabbit...{Colors.END}
++{Colors.WHITE}    "Wake up, Neo..." — follow the white rabbit.{Colors.END}
 +"""
     print(banner)
 
@@ -1733,6 +1737,12 @@ def main():
             print(f"  - Total targets scanned: {len(results)}")
             print(f"  - Login pages found: {stats['login_pages_found']}")
             print(f"  - Vulnerable routers: {stats['vulnerable_routers']}")
+            if stats['vulnerable_routers']:
+                print("  - Vulnerable list:")
+                for res in results:
+                    if res.get('vulnerabilities'):
+                        v = res['vulnerabilities'][0]
+                        print(f"    • {res['ip']} -> {v['credentials']}")
             print(f"  - Scan duration: {total_time:.1f} seconds")
             print(f"  - Average speed: {len(results)/total_time:.1f} targets/second")
             print(f"{Colors.BLUE}[*] Advanced detection and verification completed successfully{Colors.END}")
