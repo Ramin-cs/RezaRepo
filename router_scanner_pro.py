@@ -936,63 +936,63 @@ class RouterScannerPro:
                 'Connection': 'keep-alive',
             })
 
-                                        # Handle different authentication types for verification
-                            if auth_type == 'http_basic':
-                                resp = s.get(admin_url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                            elif auth_type == 'http_digest':
-                                from requests.auth import HTTPDigestAuth
-                                resp = s.get(admin_url, auth=HTTPDigestAuth(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                            elif auth_type == 'api_based':
-                                # Try JSON first, then form data
-                                resp = None
-                                json_payloads = [
-                                    {"username": username, "password": password},
-                                    {"user": username, "pass": password},
-                                    {"auth": {"username": username, "password": password}}
-                                ]
-                                for payload in json_payloads:
-                                    try:
-                                        r = s.post(admin_url, json=payload, timeout=self.timeout, verify=False, allow_redirects=True)
-                                        if r is not None and r.status_code >= 200:
-                                            resp = r
-                                            break
-                                    except Exception:
-                                        continue
-                                
-                                if resp is None:
-                                    # Fallback to form data
-                                    payloads = [
-                                        {"username": username, "password": password},
-                                        {"user": username, "pass": password}
-                                    ]
-                                    for data in payloads:
-                                        try:
-                                            r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
-                                            if r is not None and r.status_code >= 200:
-                                                resp = r
-                                                break
-                                        except Exception:
-                                            continue
-                            else:
-                                # Form-based, redirect-based, javascript-based, cookie-based
-                                resp = None
-                                payloads = [
-                                    {"username": username, "password": password},
-                                    {"user": username, "pass": password},
-                                    {"login": username, "passwd": password},
-                                    {"name": username, "pwd": password},
-                                ]
-                                for data in payloads:
-                                    try:
-                                        r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
-                                        if r is not None and r.status_code >= 200:
-                                            resp = r
-                                            break
-                                    except Exception:
-                                        continue
-                                
-                                if resp is None:
-                                    return False, {}
+            # Handle different authentication types for verification
+            if auth_type == 'http_basic':
+                resp = s.get(admin_url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+            elif auth_type == 'http_digest':
+                from requests.auth import HTTPDigestAuth
+                resp = s.get(admin_url, auth=HTTPDigestAuth(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+            elif auth_type == 'api_based':
+                # Try JSON first, then form data
+                resp = None
+                json_payloads = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"auth": {"username": username, "password": password}}
+                ]
+                for payload in json_payloads:
+                    try:
+                        r = s.post(admin_url, json=payload, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if r is not None and r.status_code >= 200:
+                            resp = r
+                            break
+                    except Exception:
+                        continue
+                
+                if resp is None:
+                    # Fallback to form data
+                    payloads = [
+                        {"username": username, "password": password},
+                        {"user": username, "pass": password}
+                    ]
+                    for data in payloads:
+                        try:
+                            r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                            if r is not None and r.status_code >= 200:
+                                resp = r
+                                break
+                        except Exception:
+                            continue
+            else:
+                # Form-based, redirect-based, javascript-based, cookie-based
+                resp = None
+                payloads = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"login": username, "passwd": password},
+                    {"name": username, "pwd": password},
+                ]
+                for data in payloads:
+                    try:
+                        r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if r is not None and r.status_code >= 200:
+                            resp = r
+                            break
+                    except Exception:
+                        continue
+                
+                if resp is None:
+                    return False, {}
 
             if resp is None:
                 return False, {}
