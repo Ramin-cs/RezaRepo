@@ -758,14 +758,9 @@ class RouterScannerPro:
         try:
             if auth_type == 'http_basic':
                 resp = self.session.get(f"http://{ip}:{port}{path}", auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                # Check both status code and content for HTTP Basic Auth
-                if 200 <= resp.status_code < 400 and len(resp.text) > 100:
-                    # Additional check: make sure we're not still on a login page
-                    content = resp.text.lower()
-                    login_indicators = ['username', 'password', 'login', 'sign in', 'authentication']
-                    login_count = sum(1 for indicator in login_indicators if indicator in content)
-                    if login_count < 2:  # Less than 2 login indicators
-                        return True, resp.url
+                # For HTTP Basic Auth, if we get 200 and content, it's likely successful
+                if 200 <= resp.status_code < 400 and len(resp.text) > 50:
+                    return True, resp.url
                 return False, None
 
             # Form/API: attempt post but do not claim success based on body
@@ -861,7 +856,7 @@ class RouterScannerPro:
             if login_page_score >= 3:
                 score -= 3
 
-            # Strict multi-factor scoring: require strong evidence of admin access
+            # Balanced multi-factor scoring: logical criteria for admin access
             criteria_met = 0
             total_criteria = 5
             
@@ -869,10 +864,10 @@ class RouterScannerPro:
             if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 2: Has strong admin panel indicators (at least 3 required)
+            # Criterion 2: Has admin panel indicators (at least 2 required)
             admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware']
             admin_count = sum(1 for k in admin_indicators if k in content)
-            if admin_count >= 3:  # Require at least 3 admin indicators
+            if admin_count >= 2:  # Require at least 2 admin indicators
                 criteria_met += 1
             
             # Criterion 3: Has logout button/link (strong indicator)
@@ -889,11 +884,11 @@ class RouterScannerPro:
                 'enter credentials', 'user login', 'admin login', 'router login'
             ]
             login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 2:  # Less than 2 login indicators
+            if login_page_score < 3:  # Less than 3 login indicators
                 criteria_met += 1
             
-            # Require at least 4 out of 5 criteria (80% success rate) for high accuracy
-            if criteria_met >= 4:
+            # Require at least 3 out of 5 criteria (60% success rate) for balanced accuracy
+            if criteria_met >= 3:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
