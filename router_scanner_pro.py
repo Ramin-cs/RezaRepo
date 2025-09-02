@@ -1133,6 +1133,8 @@ class RouterScannerPro:
                                 verified, router_info = self.verify_admin_access(admin_url, username, password, auth_type)
                                 
                                 if verified:
+                                    print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                                    print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
                                     print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
                                     
                                     # Display extracted information
