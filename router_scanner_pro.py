@@ -216,6 +216,15 @@ BRAND_PATTERNS = {
             'draytek meta', 'vigor meta', 'draytek description', 'vigor description', 'draytek keywords', 'vigor keywords',
             # Copyright and footer
             'draytek copyright', 'vigor copyright', 'draytek footer', 'vigor footer', 'draytek inc', 'vigor inc',
+            'copyright © 2000-2025 draytek corp', 'copyright © 2000-2024 draytek corp', 'copyright © 2000-2023 draytek corp',
+            'copyright © 2000-2022 draytek corp', 'copyright © 2000-2021 draytek corp', 'copyright © 2000-2020 draytek corp',
+            'copyright © 2000-2019 draytek corp', 'copyright © 2000-2018 draytek corp', 'copyright © 2000-2017 draytek corp',
+            'copyright © 2000-2016 draytek corp', 'copyright © 2000-2015 draytek corp', 'copyright © 2000-2014 draytek corp',
+            'copyright © 2000-2013 draytek corp', 'copyright © 2000-2012 draytek corp', 'copyright © 2000-2011 draytek corp',
+            'copyright © 2000-2010 draytek corp', 'copyright © 2000-2009 draytek corp', 'copyright © 2000-2008 draytek corp',
+            'copyright © 2000-2007 draytek corp', 'copyright © 2000-2006 draytek corp', 'copyright © 2000-2005 draytek corp',
+            'copyright © 2000-2004 draytek corp', 'copyright © 2000-2003 draytek corp', 'copyright © 2000-2002 draytek corp',
+            'copyright © 2000-2001 draytek corp', 'copyright © 2000 draytek corp', 'all rights reserved draytek',
             # Network and system info
             'draytek system', 'vigor system', 'draytek network', 'vigor network', 'draytek configuration', 'vigor configuration',
             'draytek settings', 'vigor settings', 'draytek status', 'vigor status', 'draytek info', 'vigor info'
@@ -847,18 +856,37 @@ class RouterScannerPro:
             if login_page_score >= 3:
                 score -= 3
 
-            # More lenient scoring - adjust threshold based on content length and indicators
-            min_score = 3  # Lower threshold for basic admin access
+            # Logical multi-factor scoring: 3 out of 5 criteria must be met
+            criteria_met = 0
+            total_criteria = 5
             
-            # If we have strong positive indicators, be more lenient
-            if any(k in content for k in ['logout', 'sign out', 'log out']) or any('session' in c.lower() or 'auth' in c.lower() for c in s.cookies.keys()):
-                min_score = 2
+            # Criterion 1: Moved away from login page
+            if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
+                criteria_met += 1
             
-            # If we have admin indicators and moved away from login page, be even more lenient
-            if score >= 2 and not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
-                min_score = 2
+            # Criterion 2: Has admin panel indicators
+            if any(k in content for k in ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware']):
+                criteria_met += 1
             
-            if score >= min_score:
+            # Criterion 3: Has logout button/link
+            if any(k in content for k in ['logout', 'sign out', 'log out']):
+                criteria_met += 1
+            
+            # Criterion 4: Has session cookies
+            if any('session' in c.lower() or 'auth' in c.lower() or 'token' in c.lower() for c in s.cookies.keys()):
+                criteria_met += 1
+            
+            # Criterion 5: No strong login page indicators
+            login_page_indicators = [
+                'login', 'sign in', 'log in', 'authentication', 'username', 'password',
+                'enter credentials', 'user login', 'admin login', 'router login'
+            ]
+            login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
+            if login_page_score < 3:  # Less than 3 login indicators
+                criteria_met += 1
+            
+            # Require at least 3 out of 5 criteria (60% success rate)
+            if criteria_met >= 3:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
@@ -1109,6 +1137,7 @@ class RouterScannerPro:
             
             # Test all ports with priority paths - continue until vulnerability found
             vulnerability_found = False
+            brute_force_attempted = False  # Track if brute force was actually attempted
             
             for port in open_ports:
                 if not running or vulnerability_found:
@@ -1137,6 +1166,7 @@ class RouterScannerPro:
                         
                         # Phase 3: Brute force attack
                         print(f"{Colors.YELLOW}[3/4] Brute Force Attack...{Colors.END}")
+                        brute_force_attempted = True  # Mark that brute force was attempted
                         
                         for username, password in TARGET_CREDENTIALS:
                             if not running or vulnerability_found:
@@ -1199,8 +1229,8 @@ class RouterScannerPro:
                     elif auth_type and auth_type.startswith('false_positive'):
                         print(f"{Colors.YELLOW}[!] False positive detected: {auth_type.replace('false_positive_', '')}{Colors.END}")
             
-            # Only show "No valid credentials found" if no vulnerabilities were found across all ports
-            if not result['vulnerabilities']:
+            # Only show "No valid credentials found" if brute force was attempted but no vulnerabilities were found
+            if brute_force_attempted and not result['vulnerabilities']:
                 print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
             
             # Update stats
