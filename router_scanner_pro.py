@@ -555,12 +555,20 @@ class RouterScannerPro:
             return 'generic', BRAND_PATTERNS['generic']
     
     def is_false_positive(self, content, url):
-        """Check if this is a false positive (VPN, Email, Social login)"""
+        """Check if this is a false positive (VPN, Email, Social login) - more lenient"""
         content_lower = content.lower()
         url_lower = url.lower()
         
-        # Check for false positive indicators (more strict)
-        for indicator in FALSE_POSITIVE_INDICATORS:
+        # Check for strong false positive indicators only
+        strong_fp_indicators = [
+            'vpn', 'openvpn', 'wireguard', 'ipsec', 'l2tp', 'pptp', 'fortinet', 'cisco anyconnect',
+            'nordvpn', 'expressvpn', 'surfshark', 'protonvpn', 'tunnelbear', 'cyberghost',
+            'accounts.google.com', 'login.live.com', 'facebook.com', 'twitter.com',
+            'github', 'gitlab', 'bitbucket', 'slack', 'discord', 'telegram', 'whatsapp',
+            'zoom', 'teams', 'skype', 'dropbox', 'onedrive', 'icloud', 'aws', 'azure'
+        ]
+        
+        for indicator in strong_fp_indicators:
             if indicator in content_lower or indicator in url_lower:
                 # Additional check: if it's a router-related page, don't filter
                 router_indicators = ['router', 'gateway', 'modem', 'access point', 'wireless', 'network', 'admin', 'login']
@@ -568,19 +576,11 @@ class RouterScannerPro:
                     continue  # Don't filter if it contains router indicators
                 return True, indicator
         
-        # Check for email-based login forms (only if no router indicators)
-        if '<input' in content_lower and 'email' in content_lower:
-            router_indicators = ['router', 'gateway', 'modem', 'access point', 'wireless', 'network']
+        # Only check for email-based login if it's clearly not a router
+        if '<input' in content_lower and 'email' in content_lower and 'password' in content_lower:
+            router_indicators = ['router', 'gateway', 'modem', 'access point', 'wireless', 'network', 'admin']
             if not any(router_indicator in content_lower for router_indicator in router_indicators):
                 return True, 'email-based login'
-        
-        # Check for social login buttons (only if no router indicators)
-        social_indicators = ['facebook', 'google', 'twitter', 'microsoft', 'apple', 'github']
-        for social in social_indicators:
-            if social in content_lower:
-                router_indicators = ['router', 'gateway', 'modem', 'access point', 'wireless', 'network']
-                if not any(router_indicator in content_lower for router_indicator in router_indicators):
-                    return True, f'social login ({social})'
         
         return False, None
     
@@ -614,13 +614,13 @@ class RouterScannerPro:
             # Check for login forms with more comprehensive field detection
             if '<form' in content:
                 form_field_count = sum(1 for indicator in form_indicators if indicator in content)
-                if form_field_count >= 2:  # At least 2 form-related fields
+                if form_field_count >= 1:  # At least 1 form-related field (more lenient)
                     return 'form_based', response, final_url
             
             # Check for input fields that might be login forms
             if '<input' in content:
                 input_field_count = sum(1 for indicator in form_indicators if indicator in content)
-                if input_field_count >= 2:
+                if input_field_count >= 1:  # At least 1 input-related field (more lenient)
                     return 'form_based', response, final_url
             
             # Check for API endpoints
@@ -631,8 +631,12 @@ class RouterScannerPro:
             if response.history or 'location' in headers_str:
                 return 'redirect_based', response, final_url
             
-            # Check for basic authentication indicators
-            if any(keyword in content for keyword in ['login', 'sign in', 'authentication', 'admin', 'user']):
+            # Check for basic authentication indicators (more lenient)
+            if any(keyword in content for keyword in ['login', 'sign in', 'authentication', 'admin', 'user', 'password', 'username']):
+                return 'form_based', response, final_url
+            
+            # If we have any content and it's not a clear false positive, consider it a potential login page
+            if len(content) > 100:
                 return 'form_based', response, final_url
             
             return None, response, final_url
@@ -1134,15 +1138,18 @@ class RouterScannerPro:
             brand, brand_patterns = self.detect_router_brand_advanced(ip, open_ports[0])
             print(f"{Colors.BLUE}[*] Detected brand: {brand.upper()}{Colors.END}")
             
-            # Get priority paths based on brand - prioritize most common paths first
+            # Get priority paths based on brand - prioritize root path first, then brand-specific
             priority_paths = []
-            # Add most common paths first for speed
-            common_paths = ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html', '/cgi-bin/login']
-            priority_paths.extend(common_paths)
-            # Add brand-specific paths
-            priority_paths.extend(brand_patterns['paths'])
+            # Always check root path first - most important
+            priority_paths.append('/')
+            # Add brand-specific paths if brand detected
+            if brand != 'generic':
+                priority_paths.extend(brand_patterns['paths'])
+            # Add remaining common paths
+            common_paths = ['/admin', '/login', '/admin.htm', '/index.html', '/cgi-bin/login', '/login.htm']
+            priority_paths.extend([p for p in common_paths if p not in priority_paths])
             # Add remaining generic paths
-            remaining_paths = [p for p in BRAND_PATTERNS['generic']['paths'] if p not in common_paths]
+            remaining_paths = [p for p in BRAND_PATTERNS['generic']['paths'] if p not in priority_paths]
             priority_paths.extend(remaining_paths)
             
             # Test all ports with priority paths - find first valid login page and brute force once
