@@ -410,7 +410,7 @@ ADMIN_INDICATORS = [
 ]
 
 class RouterScannerPro:
-    def __init__(self, targets, threads=1, timeout=5, enable_screenshot=True):
+    def __init__(self, targets, threads=1, timeout=6, enable_screenshot=True):
         self.targets = list(set(targets))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
@@ -443,7 +443,7 @@ class RouterScannerPro:
                 break
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(0.5)  # Reduced from 1 to 0.5 seconds
+                sock.settimeout(0.8)  # Balanced timeout for reliability
                 result = sock.connect_ex((ip, port))
                 if result == 0:
                     open_ports.append(port)
@@ -856,37 +856,39 @@ class RouterScannerPro:
             if login_page_score >= 3:
                 score -= 3
 
-            # Logical multi-factor scoring: 3 out of 5 criteria must be met
+            # More strict multi-factor scoring: require strong evidence of admin access
             criteria_met = 0
             total_criteria = 5
             
-            # Criterion 1: Moved away from login page
+            # Criterion 1: Moved away from login page (strong indicator)
             if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 2: Has admin panel indicators
-            if any(k in content for k in ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware']):
+            # Criterion 2: Has strong admin panel indicators (multiple required)
+            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware']
+            admin_count = sum(1 for k in admin_indicators if k in content)
+            if admin_count >= 3:  # Require at least 3 admin indicators
                 criteria_met += 1
             
-            # Criterion 3: Has logout button/link
+            # Criterion 3: Has logout button/link (strong indicator)
             if any(k in content for k in ['logout', 'sign out', 'log out']):
                 criteria_met += 1
             
-            # Criterion 4: Has session cookies
+            # Criterion 4: Has session cookies (strong indicator)
             if any('session' in c.lower() or 'auth' in c.lower() or 'token' in c.lower() for c in s.cookies.keys()):
                 criteria_met += 1
             
-            # Criterion 5: No strong login page indicators
+            # Criterion 5: No strong login page indicators (negative test)
             login_page_indicators = [
                 'login', 'sign in', 'log in', 'authentication', 'username', 'password',
                 'enter credentials', 'user login', 'admin login', 'router login'
             ]
             login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 3:  # Less than 3 login indicators
+            if login_page_score < 2:  # Less than 2 login indicators
                 criteria_met += 1
             
-            # Require at least 3 out of 5 criteria (60% success rate)
-            if criteria_met >= 3:
+            # Require at least 4 out of 5 criteria (80% success rate) for more accuracy
+            if criteria_met >= 4:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
@@ -1765,7 +1767,7 @@ def main():
     parser = argparse.ArgumentParser(description="Router Scanner Pro v7.0 - Comprehensive Brand Detection & Session Management")
     parser.add_argument('-t', '--targets', required=True, help='Target IP(s): single IP, CIDR, range, or file')
     parser.add_argument('-T', '--threads', type=int, default=1, help='Number of threads (default: 1 for organized output)')
-    parser.add_argument('--timeout', type=int, default=5, help='Request timeout in seconds (default: 5)')
+    parser.add_argument('--timeout', type=int, default=6, help='Request timeout in seconds (default: 6)')
     parser.add_argument('--no-screenshot', action='store_true', help='Disable screenshot capture (default: enabled)')
     
     args = parser.parse_args()
