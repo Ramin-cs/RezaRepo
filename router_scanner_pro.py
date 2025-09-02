@@ -181,10 +181,75 @@ BRAND_PATTERNS = {
         'models': ['FRITZ!Box', 'FRITZ!Repeater', 'FRITZ!Powerline']
     },
     'draytek': {
-        'content': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'vigor', 'DrayTek', 'DRAYTEK', 'VigorOS', 'VigorOS', 'vigorrouter', 'vigor switch', 'vigor router', 'draytek vigor', 'vigor 2860', 'vigor 2920', 'vigor 2950', 'vigor 3900', 'vigor 2130', 'vigor 2130n', 'vigor 2130v', 'vigor 2130vn', 'vigor 2130v2', 'vigor 2130v2n', 'vigor 2130v2vn', 'vigor 2130v3', 'vigor 2130v3n', 'vigor 2130v3vn', 'vigor 2130v4', 'vigor 2130v4n', 'vigor 2130v4vn', 'vigor 2130v5', 'vigor 2130v5n', 'vigor 2130v5vn', 'vigor 2130v6', 'vigor 2130v6n', 'vigor 2130v6vn', 'vigor 2130v7', 'vigor 2130v7n', 'vigor 2130v7vn', 'vigor 2130v8', 'vigor 2130v8n', 'vigor 2130v8vn', 'vigor 2130v9', 'vigor 2130v9n', 'vigor 2130v9vn', 'vigor 2130v10', 'vigor 2130v10n', 'vigor 2130v10vn'],
-        'headers': ['draytek', 'DRAYTEK', 'Vigor', 'VIGOR', 'vigor', 'vigorrouter', 'vigor switch', 'vigor router', 'draytek vigor'],
-        'paths': ['/', '/weblogin.htm', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', '/cgi-bin/login.cgi', '/login.cgi', '/login.html', '/web/login', '/cgi-bin/weblogin', '/cgi-bin/webif', '/cgi-bin/webproc', '/cgi-bin/webif.cgi', '/cgi-bin/webproc.cgi', '/cgi-bin/webif.asp', '/cgi-bin/webproc.asp', '/cgi-bin/webif.php', '/cgi-bin/webproc.php', '/cgi-bin/webif.pl', '/cgi-bin/webproc.pl', '/cgi-bin/webif.py', '/cgi-bin/webproc.py', '/cgi-bin/webif.rb', '/cgi-bin/webproc.rb', '/cgi-bin/webif.jsp', '/cgi-bin/webproc.jsp', '/cgi-bin/webif.aspx', '/cgi-bin/webproc.aspx', '/cgi-bin/webif.cfm', '/cgi-bin/webproc.cfm', '/cgi-bin/webif.dhtml', '/cgi-bin/webproc.dhtml', '/cgi-bin/webif.shtml', '/cgi-bin/webproc.shtml', '/cgi-bin/webif.xhtml', '/cgi-bin/webproc.xhtml', '/cgi-bin/webif.xml', '/cgi-bin/webproc.xml', '/cgi-bin/webif.json', '/cgi-bin/webproc.json', '/cgi-bin/webif.yaml', '/cgi-bin/webproc.yaml', '/cgi-bin/webif.yml', '/cgi-bin/webproc.yml', '/cgi-bin/webif.txt', '/cgi-bin/webproc.txt', '/cgi-bin/webif.html', '/cgi-bin/webproc.html', '/cgi-bin/webif.htm', '/cgi-bin/webproc.htm'],
-        'models': ['Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS', 'Vigor 2860', 'Vigor 2920', 'Vigor 2950', 'Vigor 3900', 'Vigor 2130', 'Vigor 2130N', 'Vigor 2130V', 'Vigor 2130VN', 'Vigor 2130V2', 'Vigor 2130V2N', 'Vigor 2130V2VN', 'Vigor 2130V3', 'Vigor 2130V3N', 'Vigor 2130V3VN', 'Vigor 2130V4', 'Vigor 2130V4N', 'Vigor 2130V4VN', 'Vigor 2130V5', 'Vigor 2130V5N', 'Vigor 2130V5VN', 'Vigor 2130V6', 'Vigor 2130V6N', 'Vigor 2130V6VN', 'Vigor 2130V7', 'Vigor 2130V7N', 'Vigor 2130V7VN', 'Vigor 2130V8', 'Vigor 2130V8N', 'Vigor 2130V8VN', 'Vigor 2130V9', 'Vigor 2130V9N', 'Vigor 2130V9VN', 'Vigor 2130V10', 'Vigor 2130V10N', 'Vigor 2130V10VN']
+        'content': [
+            # Basic DrayTek terms
+            'draytek', 'DRAYTEK', 'DrayTek', 'DRAYTEK', 'draytek vigor', 'DrayTek Vigor',
+            # Vigor series
+            'vigor', 'Vigor', 'VIGOR', 'VigorRouter', 'VigorSwitch', 'VigorOS', 'vigorrouter', 
+            'vigor switch', 'vigor router', 'vigor os', 'vigor management', 'vigor admin',
+            # Model numbers
+            'vigor 2130', 'vigor 2130n', 'vigor 2130v', 'vigor 2130vn', 'vigor 2130v2', 'vigor 2130v2n', 
+            'vigor 2130v2vn', 'vigor 2130v3', 'vigor 2130v3n', 'vigor 2130v3vn', 'vigor 2130v4', 'vigor 2130v4n', 
+            'vigor 2130v4vn', 'vigor 2130v5', 'vigor 2130v5n', 'vigor 2130v5vn', 'vigor 2130v6', 'vigor 2130v6n', 
+            'vigor 2130v6vn', 'vigor 2130v7', 'vigor 2130v7n', 'vigor 2130v7vn', 'vigor 2130v8', 'vigor 2130v8n', 
+            'vigor 2130v8vn', 'vigor 2130v9', 'vigor 2130v9n', 'vigor 2130v9vn', 'vigor 2130v10', 'vigor 2130v10n', 
+            'vigor 2130v10vn', 'vigor 2860', 'vigor 2920', 'vigor 2950', 'vigor 3900', 'vigor 2960', 'vigor 3000',
+            # Title patterns
+            'draytek vigor router', 'vigor router management', 'vigor admin panel', 'vigor web interface',
+            'draytek management', 'vigor login', 'draytek login', 'vigor authentication', 'draytek authentication',
+            # Logo and image patterns
+            'draytek logo', 'vigor logo', 'draytek.gif', 'vigor.gif', 'draytek.png', 'vigor.png',
+            'draytek.jpg', 'vigor.jpg', 'draytek.svg', 'vigor.svg', 'draytek.ico', 'vigor.ico',
+            # CSS and style patterns
+            'draytek.css', 'vigor.css', 'draytek style', 'vigor style', 'draytek theme', 'vigor theme',
+            # JavaScript patterns
+            'draytek.js', 'vigor.js', 'draytek javascript', 'vigor javascript', 'draytek function', 'vigor function',
+            # Form patterns
+            'draytek form', 'vigor form', 'draytek login form', 'vigor login form', 'draytek authentication form',
+            'vigor authentication form', 'draytek submit', 'vigor submit', 'draytek button', 'vigor button',
+            # Meta tags and descriptions
+            'draytek meta', 'vigor meta', 'draytek description', 'vigor description', 'draytek keywords', 'vigor keywords',
+            # Copyright and footer
+            'draytek copyright', 'vigor copyright', 'draytek footer', 'vigor footer', 'draytek inc', 'vigor inc',
+            # Network and system info
+            'draytek system', 'vigor system', 'draytek network', 'vigor network', 'draytek configuration', 'vigor configuration',
+            'draytek settings', 'vigor settings', 'draytek status', 'vigor status', 'draytek info', 'vigor info'
+        ],
+        'headers': [
+            'draytek', 'DRAYTEK', 'DrayTek', 'vigor', 'Vigor', 'VIGOR', 'vigorrouter', 'vigor switch', 
+            'vigor router', 'draytek vigor', 'vigor management', 'draytek management', 'vigor admin', 'draytek admin'
+        ],
+        'paths': [
+            # Standard paths
+            '/', '/weblogin.htm', '/cgi-bin/login', '/login.asp', '/admin', '/login.htm', '/cgi-bin/webproc', 
+            '/cgi-bin/login.cgi', '/login.cgi', '/login.html', '/web/login', '/cgi-bin/weblogin',
+            # Extended paths
+            '/cgi-bin/webif', '/cgi-bin/webif.cgi', '/cgi-bin/webproc.cgi', '/cgi-bin/webif.asp', '/cgi-bin/webproc.asp', 
+            '/cgi-bin/webif.php', '/cgi-bin/webproc.php', '/cgi-bin/webif.pl', '/cgi-bin/webproc.pl', 
+            '/cgi-bin/webif.py', '/cgi-bin/webproc.py', '/cgi-bin/webif.rb', '/cgi-bin/webproc.rb', 
+            '/cgi-bin/webif.jsp', '/cgi-bin/webproc.jsp', '/cgi-bin/webif.aspx', '/cgi-bin/webproc.aspx', 
+            '/cgi-bin/webif.cfm', '/cgi-bin/webproc.cfm', '/cgi-bin/webif.dhtml', '/cgi-bin/webproc.dhtml', 
+            '/cgi-bin/webif.shtml', '/cgi-bin/webproc.shtml', '/cgi-bin/webif.xhtml', '/cgi-bin/webproc.xhtml', 
+            '/cgi-bin/webif.xml', '/cgi-bin/webproc.xml', '/cgi-bin/webif.json', '/cgi-bin/webproc.json', 
+            '/cgi-bin/webif.yaml', '/cgi-bin/webproc.yaml', '/cgi-bin/webif.yml', '/cgi-bin/webproc.yml', 
+            '/cgi-bin/webif.txt', '/cgi-bin/webproc.txt', '/cgi-bin/webif.html', '/cgi-bin/webproc.html', 
+            '/cgi-bin/webif.htm', '/cgi-bin/webproc.htm',
+            # DrayTek specific paths
+            '/cgi-bin/draytek', '/cgi-bin/vigor', '/draytek/', '/vigor/', '/draytek/login', '/vigor/login',
+            '/draytek/admin', '/vigor/admin', '/draytek/management', '/vigor/management', '/draytek/status', '/vigor/status',
+            '/draytek/config', '/vigor/config', '/draytek/settings', '/vigor/settings', '/draytek/info', '/vigor/info',
+            '/draytek/system', '/vigor/system', '/draytek/network', '/vigor/network', '/draytek/interface', '/vigor/interface',
+            '/draytek/control', '/vigor/control', '/draytek/panel', '/vigor/panel', '/draytek/dashboard', '/vigor/dashboard'
+        ],
+        'models': [
+            'Vigor', 'VigorRouter', 'VigorSwitch', 'VigorOS', 'Vigor 2130', 'Vigor 2130N', 'Vigor 2130V', 
+            'Vigor 2130VN', 'Vigor 2130V2', 'Vigor 2130V2N', 'Vigor 2130V2VN', 'Vigor 2130V3', 'Vigor 2130V3N', 
+            'Vigor 2130V3VN', 'Vigor 2130V4', 'Vigor 2130V4N', 'Vigor 2130V4VN', 'Vigor 2130V5', 'Vigor 2130V5N', 
+            'Vigor 2130V5VN', 'Vigor 2130V6', 'Vigor 2130V6N', 'Vigor 2130V6VN', 'Vigor 2130V7', 'Vigor 2130V7N', 
+            'Vigor 2130V7VN', 'Vigor 2130V8', 'Vigor 2130V8N', 'Vigor 2130V8VN', 'Vigor 2130V9', 'Vigor 2130V9N', 
+            'Vigor 2130V9VN', 'Vigor 2130V10', 'Vigor 2130V10N', 'Vigor 2130V10VN', 'Vigor 2860', 'Vigor 2920', 
+            'Vigor 2950', 'Vigor 3900', 'Vigor 2960', 'Vigor 3000', 'DrayTek Vigor', 'DrayTek Router', 'DrayTek Switch'
+        ]
     },
     'mikrotik': {
         'content': ['mikrotik', 'MIKROTIK', 'RouterOS', 'routerboard', 'RB', 'CCR', 'CRS'],
@@ -245,6 +310,73 @@ BRAND_PATTERNS = {
         'headers': ['yealink', 'YEALINK'],
         'paths': ['/cgi-bin/login', '/admin', '/login', '/cgi-bin/webif', '/login.htm', '/admin.htm'],
         'models': ['W70B', 'W80B', 'W90B', 'T4', 'T5', 'CP']
+    },
+    'netcomm': {
+        'content': [
+            # Basic NetComm terms
+            'netcomm', 'NETCOMM', 'NetComm', 'NETCOMM', 'netcomm wireless', 'NetComm Wireless', 'NETCOMM WIRELESS',
+            'netcomm router', 'NetComm Router', 'NETCOMM ROUTER', 'netcomm modem', 'NetComm Modem', 'NETCOMM MODEM',
+            'netcomm gateway', 'NetComm Gateway', 'NETCOMM GATEWAY', 'netcomm access point', 'NetComm Access Point', 'NETCOMM ACCESS POINT',
+            # Model numbers and series
+            'netcomm nf', 'NetComm NF', 'NETCOMM NF', 'netcomm nf3', 'NetComm NF3', 'NETCOMM NF3', 'netcomm nf4', 'NetComm NF4', 'NETCOMM NF4',
+            'netcomm nf5', 'NetComm NF5', 'NETCOMM NF5', 'netcomm nf6', 'NetComm NF6', 'NETCOMM NF6', 'netcomm nf7', 'NetComm NF7', 'NETCOMM NF7',
+            'netcomm nf8', 'NetComm NF8', 'NETCOMM NF8', 'netcomm nf9', 'NetComm NF9', 'NETCOMM NF9', 'netcomm nf10', 'NetComm NF10', 'NETCOMM NF10',
+            'netcomm nf11', 'NetComm NF11', 'NETCOMM NF11', 'netcomm nf12', 'NetComm NF12', 'NETCOMM NF12', 'netcomm nf13', 'NetComm NF13', 'NETCOMM NF13',
+            'netcomm nf14', 'NetComm NF14', 'NETCOMM NF14', 'netcomm nf15', 'NetComm NF15', 'NETCOMM NF15', 'netcomm nf16', 'NetComm NF16', 'NETCOMM NF16',
+            'netcomm nf17', 'NetComm NF17', 'NETCOMM NF17', 'netcomm nf18', 'NetComm NF18', 'NETCOMM NF18', 'netcomm nf19', 'NetComm NF19', 'NETCOMM NF19',
+            'netcomm nf20', 'NetComm NF20', 'NETCOMM NF20', 'netcomm nf21', 'NetComm NF21', 'NETCOMM NF21', 'netcomm nf22', 'NetComm NF22', 'NETCOMM NF22',
+            'netcomm nf23', 'NetComm NF23', 'NETCOMM NF23', 'netcomm nf24', 'NetComm NF24', 'NETCOMM NF24', 'netcomm nf25', 'NetComm NF25', 'NETCOMM NF25',
+            'netcomm nf26', 'NetComm NF26', 'NETCOMM NF26', 'netcomm nf27', 'NetComm NF27', 'NETCOMM NF27', 'netcomm nf28', 'NetComm NF28', 'NETCOMM NF28',
+            'netcomm nf29', 'NetComm NF29', 'NETCOMM NF29', 'netcomm nf30', 'NetComm NF30', 'NETCOMM NF30', 'netcomm nf31', 'NetComm NF31', 'NETCOMM NF31',
+            'netcomm nf32', 'NetComm NF32', 'NETCOMM NF32', 'netcomm nf33', 'NetComm NF33', 'NETCOMM NF33', 'netcomm nf34', 'NetComm NF34', 'NETCOMM NF34',
+            'netcomm nf35', 'NetComm NF35', 'NETCOMM NF35', 'netcomm nf36', 'NetComm NF36', 'NETCOMM NF36', 'netcomm nf37', 'NetComm NF37', 'NETCOMM NF37',
+            'netcomm nf38', 'NetComm NF38', 'NETCOMM NF38', 'netcomm nf39', 'NetComm NF39', 'NETCOMM NF39', 'netcomm nf40', 'NetComm NF40', 'NETCOMM NF40',
+            # Title patterns
+            'netcomm router management', 'netcomm admin panel', 'netcomm web interface', 'netcomm management', 'netcomm login', 'netcomm authentication',
+            'netcomm router login', 'netcomm admin login', 'netcomm management login', 'netcomm router admin', 'netcomm router management',
+            # Logo and image patterns
+            'netcomm logo', 'netcomm.gif', 'netcomm.png', 'netcomm.jpg', 'netcomm.svg', 'netcomm.ico',
+            # CSS and style patterns
+            'netcomm.css', 'netcomm style', 'netcomm theme',
+            # JavaScript patterns
+            'netcomm.js', 'netcomm javascript', 'netcomm function',
+            # Form patterns
+            'netcomm form', 'netcomm login form', 'netcomm authentication form', 'netcomm submit', 'netcomm button',
+            # Meta tags and descriptions
+            'netcomm meta', 'netcomm description', 'netcomm keywords',
+            # Copyright and footer
+            'netcomm copyright', 'netcomm footer', 'netcomm inc',
+            # Network and system info
+            'netcomm system', 'netcomm network', 'netcomm configuration', 'netcomm settings', 'netcomm status', 'netcomm info'
+        ],
+        'headers': [
+            'netcomm', 'NETCOMM', 'NetComm', 'netcomm wireless', 'netcomm router', 'netcomm modem', 'netcomm gateway',
+            'netcomm management', 'netcomm admin', 'netcomm access point'
+        ],
+        'paths': [
+            # Standard paths
+            '/', '/admin', '/login', '/cgi-bin/login', '/cgi-bin/admin', '/cgi-bin/status', '/cgi-bin/info', '/cgi-bin/config', 
+            '/cgi-bin/settings', '/cgi-bin/system', '/cgi-bin/network', '/cgi-bin/interface', '/cgi-bin/control', '/cgi-bin/panel', 
+            '/cgi-bin/dashboard', '/cgi-bin/management',
+            # Extended paths
+            '/cgi-bin/status.cgi', '/cgi-bin/info.cgi', '/cgi-bin/config.cgi', '/cgi-bin/settings.cgi', '/cgi-bin/system.cgi', 
+            '/cgi-bin/network.cgi', '/cgi-bin/interface.cgi', '/cgi-bin/control.cgi', '/cgi-bin/panel.cgi', '/cgi-bin/dashboard.cgi', 
+            '/cgi-bin/management.cgi', '/cgi-bin/status.asp', '/cgi-bin/info.asp', '/cgi-bin/config.asp', '/cgi-bin/settings.asp', 
+            '/cgi-bin/system.asp', '/cgi-bin/network.asp', '/cgi-bin/interface.asp', '/cgi-bin/control.asp', '/cgi-bin/panel.asp', 
+            '/cgi-bin/dashboard.asp', '/cgi-bin/management.asp', '/cgi-bin/status.php', '/cgi-bin/info.php', '/cgi-bin/config.php', 
+            '/cgi-bin/settings.php', '/cgi-bin/system.php', '/cgi-bin/network.php', '/cgi-bin/interface.php', '/cgi-bin/control.php', 
+            '/cgi-bin/panel.php', '/cgi-bin/dashboard.php', '/cgi-bin/management.php',
+            # NetComm specific paths
+            '/cgi-bin/netcomm', '/netcomm/', '/netcomm/login', '/netcomm/admin', '/netcomm/management', '/netcomm/status', 
+            '/netcomm/config', '/netcomm/settings', '/netcomm/info', '/netcomm/system', '/netcomm/network', '/netcomm/interface', 
+            '/netcomm/control', '/netcomm/panel', '/netcomm/dashboard'
+        ],
+        'models': [
+            'NF3', 'NF4', 'NF5', 'NF6', 'NF7', 'NF8', 'NF9', 'NF10', 'NF11', 'NF12', 'NF13', 'NF14', 'NF15', 'NF16', 'NF17', 
+            'NF18', 'NF19', 'NF20', 'NF21', 'NF22', 'NF23', 'NF24', 'NF25', 'NF26', 'NF27', 'NF28', 'NF29', 'NF30', 'NF31', 
+            'NF32', 'NF33', 'NF34', 'NF35', 'NF36', 'NF37', 'NF38', 'NF39', 'NF40', 'NetComm Router', 'NetComm Modem', 'NetComm Gateway', 
+            'NetComm Access Point', 'NetComm Wireless', 'NetComm NF Series'
+        ]
     },
     'generic': {
         'content': [],
@@ -326,18 +458,75 @@ class RouterScannerPro:
                             if brand == 'generic':
                                 continue
                                 
+                            score = 0
+                            
                             # Check content patterns
                             content_matches = sum(1 for pattern in patterns['content'] if pattern.lower() in content)
+                            score += content_matches * 2
                             
                             # Check header patterns
                             header_matches = sum(1 for pattern in patterns['headers'] if pattern.lower() in headers_str)
+                            score += header_matches * 3
                             
                             # Check server header
                             server_header = response.headers.get('Server', '').lower()
                             server_matches = sum(1 for pattern in patterns['headers'] if pattern.lower() in server_header)
+                            score += server_matches * 3
+                            
+                            # Title detection (extract from <title> tag)
+                            title_match = re.search(r'<title[^>]*>(.*?)</title>', response.text, re.IGNORECASE | re.DOTALL)
+                            if title_match:
+                                title = title_match.group(1).lower()
+                                title_matches = sum(1 for pattern in patterns['content'] if pattern.lower() in title)
+                                score += title_matches * 4  # Higher weight for title matches
+                            
+                            # Logo and image detection
+                            for pattern in patterns['content']:
+                                logo_patterns = [
+                                    r'<img[^>]*src[^>]*' + re.escape(pattern.lower()) + r'[^>]*>',
+                                    r'<img[^>]*alt[^>]*' + re.escape(pattern.lower()) + r'[^>]*>',
+                                    r'background[^>]*url[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'logo[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    pattern.lower() + r'\.(gif|png|jpg|jpeg|svg|ico)'
+                                ]
+                                
+                                for logo_pattern in logo_patterns:
+                                    if re.search(logo_pattern, content):
+                                        score += 3  # High weight for logo matches
+                                        break
+                            
+                            # Meta tag detection
+                            for pattern in patterns['content']:
+                                meta_patterns = [
+                                    r'<meta[^>]*name[^>]*content[^>]*' + re.escape(pattern.lower()) + r'[^>]*>',
+                                    r'<meta[^>]*content[^>]*' + re.escape(pattern.lower()) + r'[^>]*>',
+                                    r'<meta[^>]*description[^>]*' + re.escape(pattern.lower()) + r'[^>]*>',
+                                    r'<meta[^>]*keywords[^>]*' + re.escape(pattern.lower()) + r'[^>]*>'
+                                ]
+                                
+                                for meta_pattern in meta_patterns:
+                                    if re.search(meta_pattern, content):
+                                        score += 2
+                                        break
+                            
+                            # Copyright and footer detection
+                            for pattern in patterns['content']:
+                                copyright_patterns = [
+                                    r'copyright[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'footer[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'&copy;[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'inc[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'ltd[^>]*' + re.escape(pattern.lower()) + r'[^>]*',
+                                    r'corp[^>]*' + re.escape(pattern.lower()) + r'[^>]*'
+                                ]
+                                
+                                for copyright_pattern in copyright_patterns:
+                                    if re.search(copyright_pattern, content):
+                                        score += 2
+                                        break
                             
                             # If we have strong indicators, return this brand
-                            if content_matches >= 2 or header_matches >= 1 or server_matches >= 1:
+                            if score >= 4:  # Lowered threshold for better detection
                                 return brand, patterns
                         
                         # If no specific brand found, return generic
@@ -622,6 +811,18 @@ class RouterScannerPro:
                 # Check for failure indicators
                 failure_indicators = ['invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong', 'login', 'authentication']
                 failure_score = sum(1 for indicator in failure_indicators if indicator in content)
+                
+                # Check if we're still on login page (strong indicator of failure)
+                login_page_indicators = [
+                    'login', 'sign in', 'log in', 'authentication', 'username', 'password',
+                    'enter credentials', 'user login', 'admin login', 'router login'
+                ]
+                
+                login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
+                
+                # If we have many login page indicators, it's likely still the login page
+                if login_page_score >= 3 and failure_score >= 1:
+                    return False, {}
                 
                 # More lenient verification - if we have any positive indicators and no strong failure indicators
                 if (admin_score >= 2 or success_score >= 1 or session_cookies or has_logout) and failure_score < 3:
