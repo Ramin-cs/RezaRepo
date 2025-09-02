@@ -1238,15 +1238,24 @@ class RouterScannerPro:
                         # Wait for page to load after login
                         time.sleep(5)
                         
-                        # Check if we're still on login page (login failed)
+                        # Check if we're on admin panel (login successful)
                         current_url = driver.current_url.lower()
                         page_source = driver.page_source.lower()
                         
-                        # If we're still on login page or see login form, login failed
-                        if ('login' in current_url and 'password' in page_source) or 'login' in page_source:
-                            print(f"{Colors.YELLOW}[!] Login failed, taking screenshot of login page{Colors.END}")
-                        else:
+                        # Check for admin panel indicators
+                        admin_indicators = ['admin', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway']
+                        admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
+                        
+                        # Check for login page indicators
+                        login_indicators = ['username', 'password', 'login', 'sign in', 'authentication']
+                        login_count = sum(1 for indicator in login_indicators if indicator in page_source)
+                        
+                        # If we have admin indicators and few login indicators, we're in admin panel
+                        if admin_count >= 1 and login_count < 2:
                             print(f"{Colors.GREEN}[+] Successfully logged in, taking screenshot of admin panel{Colors.END}")
+                        else:
+                            print(f"{Colors.YELLOW}[!] Login failed, taking screenshot of login page{Colors.END}")
+                            return None  # Don't take screenshot if login failed
                         
                     except Exception as e:
                         print(f"{Colors.YELLOW}[!] Form filling failed: {e}{Colors.END}")
@@ -1390,13 +1399,15 @@ class RouterScannerPro:
                                     if value and value != "Unknown":
                                         print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
                             
-                            # Take screenshot for POC
+                            # Take screenshot ONLY after admin access is verified
                             screenshot_file = None
                             if self.enable_screenshot:
                                 print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
                                 screenshot_file = self.take_screenshot(admin_url, username, password, first_login_page['auth_type'], ip)
                                 if screenshot_file:
                                     print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                else:
+                                    print(f"{Colors.YELLOW}[!] Screenshot failed - admin access not confirmed{Colors.END}")
                             
                             vulnerability = {
                                 'type': 'Default Credentials',
