@@ -827,34 +827,36 @@ class RouterScannerPro:
             content = resp.text.lower()
             final_url = resp.url.lower()
             
-            # Logical and balanced scoring system for admin access verification
+            # Real admin panel verification based on actual router management criteria
             criteria_met = 0
-            total_criteria = 4  # Simplified to 4 main criteria
+            total_criteria = 5  # 5 key criteria for real admin access
             
-            # Criterion 1: URL changed from login page (strong indicator of success)
-            if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
+            # Criterion 1: Successful redirect from login page (status 200 + URL change)
+            if resp.status_code == 200 and not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 2: Has admin/router panel indicators (at least 1 required)
-            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware', 'router', 'gateway']
-            admin_count = sum(1 for k in admin_indicators if k in content)
-            if admin_count >= 1:  # At least 1 admin indicator (more lenient)
+            # Criterion 2: Has session cookies (strong indicator of successful login)
+            session_cookies = [c for c in s.cookies.keys() if any(keyword in c.lower() for keyword in ['session', 'auth', 'token', 'login', 'admin'])]
+            if session_cookies:
                 criteria_met += 1
             
-            # Criterion 3: Has logout functionality (strong indicator)
+            # Criterion 3: Has admin panel title or page title (specific to router management)
+            title_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem']
+            if any(indicator in content for indicator in title_indicators):
+                criteria_met += 1
+            
+            # Criterion 4: Has router-specific information (MAC, IP, SSID, firmware, etc.)
+            router_info_indicators = ['mac address', 'ip address', 'ssid', 'firmware', 'uptime', 'wan', 'lan', 'wireless', 'dhcp', 'dns']
+            router_info_count = sum(1 for indicator in router_info_indicators if indicator in content)
+            if router_info_count >= 2:  # At least 2 router-specific info items
+                criteria_met += 1
+            
+            # Criterion 5: Has logout functionality (confirms we're in admin panel)
             if any(k in content for k in ['logout', 'sign out', 'log out', 'exit']):
                 criteria_met += 1
             
-            # Criterion 4: Not clearly a login page (negative test - more lenient)
-            login_page_indicators = [
-                'username', 'password', 'enter credentials', 'user login', 'admin login', 'router login'
-            ]
-            login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 2:  # Less than 2 strong login indicators
-                criteria_met += 1
-            
-            # Require at least 2 out of 4 criteria (50% success rate) for balanced accuracy
-            if criteria_met >= 2:
+            # Require at least 3 out of 5 criteria for real admin access verification
+            if criteria_met >= 3:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
@@ -941,14 +943,42 @@ class RouterScannerPro:
         ]
         info['connection_type'] = self.extract_pattern(content, connection_patterns)
         
+        # Extract LAN IP
+        lan_ip_patterns = [
+            r'lan.*?(\d+\.\d+\.\d+\.\d+)',
+            r'local.*?(\d+\.\d+\.\d+\.\d+)',
+            r'gateway.*?(\d+\.\d+\.\d+\.\d+)',
+            r'router.*?(\d+\.\d+\.\d+\.\d+)'
+        ]
+        info['lan_ip'] = self.extract_pattern(content, lan_ip_patterns)
+        
+        # Extract DNS servers
+        dns_patterns = [
+            r'dns[^:]*:?\s*(\d+\.\d+\.\d+\.\d+)',
+            r'nameserver[^:]*:?\s*(\d+\.\d+\.\d+\.\d+)',
+            r'primary.*?dns[^:]*:?\s*(\d+\.\d+\.\d+\.\d+)'
+        ]
+        info['dns_server'] = self.extract_pattern(content, dns_patterns)
+        
         # Extract admin panel information
         admin_info_patterns = [
             r'welcome[^:]*:?\s*([^<\n]+)',
             r'dashboard[^:]*:?\s*([^<\n]+)',
             r'status[^:]*:?\s*([^<\n]+)',
-            r'system[^:]*:?\s*([^<\n]+)'
+            r'system[^:]*:?\s*([^<\n]+)',
+            r'router[^:]*:?\s*([^<\n]+)',
+            r'gateway[^:]*:?\s*([^<\n]+)'
         ]
         info['admin_info'] = self.extract_pattern(content, admin_info_patterns)
+        
+        # Extract device count/connected devices
+        device_patterns = [
+            r'connected.*?devices[^:]*:?\s*(\d+)',
+            r'active.*?devices[^:]*:?\s*(\d+)',
+            r'clients[^:]*:?\s*(\d+)',
+            r'devices[^:]*:?\s*(\d+)'
+        ]
+        info['connected_devices'] = self.extract_pattern(content, device_patterns)
         
         return info
     
