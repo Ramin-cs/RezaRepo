@@ -1170,6 +1170,9 @@ class RouterScannerPro:
                         # Only show "No valid credentials found" if no vulnerabilities were found
                         if not result['vulnerabilities']:
                             print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
+                        else:
+                            v = result['vulnerabilities'][0]
+                            print(f"{Colors.GREEN}[✓] Verified: {ip} with credentials {v['credentials']}{Colors.END}")
                         
                         break  # Stop testing other paths once login page is found
                     elif auth_type and auth_type.startswith('false_positive'):
