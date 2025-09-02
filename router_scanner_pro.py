@@ -745,100 +745,115 @@ class RouterScannerPro:
             return False, None
     
     def test_credentials(self, ip, port, path, username, password, auth_type):
-        """Test credentials based on authentication type"""
-        if auth_type == 'http_basic':
-            return self.test_http_basic_auth(ip, port, path, username, password)
-        elif auth_type == 'form_based':
-            return self.test_form_based_auth(ip, port, path, username, password)
-        elif auth_type == 'api_based':
-            return self.test_api_based_auth(ip, port, path, username, password)
-        else:
-            return self.test_form_based_auth(ip, port, path, username, password)
+        """Conservative credential test: only return candidate status, not final success"""
+        try:
+            if auth_type == 'http_basic':
+                resp = self.session.get(f"http://{ip}:{port}{path}", auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+                # Only pass candidate forward; real success decided later
+                if 200 <= resp.status_code < 400:
+                    return True, resp.url
+                return False, None
+
+            # Form/API: attempt post but do not claim success based on body
+            form_data_options = [
+                {"username": username, "password": password},
+                {"user": username, "pass": password},
+                {"login": username, "passwd": password},
+                {"name": username, "pwd": password},
+            ]
+            for data in form_data_options:
+                try:
+                    r = self.session.post(f"http://{ip}:{port}{path}", data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                    if 200 <= r.status_code < 400:
+                        return True, r.url
+                except Exception:
+                    continue
+            return False, None
+        except Exception:
+            return False, None
     
     def verify_admin_access(self, admin_url, username, password, auth_type):
-        """Verify admin access and extract router information"""
+        """Robust admin verification with multi-factor scoring"""
         try:
-            # Create a new session for admin verification
-            admin_session = requests.Session()
-            admin_session.headers.update({
+            s = requests.Session()
+            s.headers.update({
                 'User-Agent': random.choice(USER_AGENTS),
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1'
             })
-            
-            # Try to login based on authentication type
+
             if auth_type == 'http_basic':
-                credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(credentials.encode()).decode()
-                admin_session.headers.update({'Authorization': f'Basic {encoded_credentials}'})
-                response = admin_session.get(admin_url, verify=False, allow_redirects=True)
+                resp = s.get(admin_url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
             else:
-                # Form-based or API-based login - try multiple approaches
-                login_data_variations = [
-                    {'username': username, 'password': password},
-                    {'user': username, 'pass': password},
-                    {'login': username, 'passwd': password},
-                    {'admin': username, 'admin': password},
-                    {'name': username, 'pwd': password}
+                # try multiple payloads
+                resp = None
+                payloads = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"login": username, "passwd": password},
+                    {"name": username, "pwd": password},
                 ]
-                
-                response = None
-                for login_data in login_data_variations:
+                for data in payloads:
                     try:
-                        response = admin_session.post(admin_url, data=login_data, verify=False, allow_redirects=True)
-                        if response.status_code == 200:
+                        r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if r is not None and r.status_code >= 200:
+                            resp = r
                             break
-                    except:
+                    except Exception:
                         continue
-            
-            # Check if login was successful
-            if response and response.status_code == 200 and len(response.text) > 500:
-                content = response.text.lower()
-                
-                # Check for admin panel indicators
-                admin_score = sum(1 for indicator in ADMIN_INDICATORS if indicator in content)
-                
-                # Check for session cookies
-                session_cookies = any('session' in cookie.lower() or 'auth' in cookie.lower() or 'login' in cookie.lower()
-                                    for cookie in admin_session.cookies.keys())
-                
-                # Check for logout button/link
-                logout_indicators = ['logout', 'log out', 'sign out', 'exit']
-                has_logout = any(indicator in content for indicator in logout_indicators)
-                
-                # Check for success indicators
-                success_indicators = ['welcome', 'dashboard', 'status', 'configuration', 'admin panel', 'control panel']
-                success_score = sum(1 for indicator in success_indicators if indicator in content)
-                
-                # Check for failure indicators
-                failure_indicators = ['invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong', 'login', 'authentication']
-                failure_score = sum(1 for indicator in failure_indicators if indicator in content)
-                
-                # Check if we're still on login page (strong indicator of failure)
-                login_page_indicators = [
-                    'login', 'sign in', 'log in', 'authentication', 'username', 'password',
-                    'enter credentials', 'user login', 'admin login', 'router login'
-                ]
-                
-                login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-                
-                # If we have many login page indicators, it's likely still the login page
-                if login_page_score >= 3 and failure_score >= 1:
+                if resp is None:
                     return False, {}
-                
-                # More lenient verification - if we have any positive indicators and no strong failure indicators
-                if (admin_score >= 2 or success_score >= 1 or session_cookies or has_logout) and failure_score < 3:
-                    return True, self.extract_router_info(content)
-                else:
-                    return False, {}
+
+            if resp is None:
+                return False, {}
+
+            content = resp.text.lower()
+            final_url = resp.url.lower()
+            score = 0
+
+            # 1) moved away from login page
+            login_keywords = ["login", "sign-in", "signin", "auth", "authentication"]
+            if not any(k in final_url for k in login_keywords):
+                score += 2
+
+            # 2) presence of admin indicators
+            admin_indicators = [
+                'admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings',
+                'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware', 'logout'
+            ]
+            score += sum(1 for k in admin_indicators if k in content)
+
+            # 3) logout presence
+            if any(k in content for k in ['logout', 'sign out', 'log out']):
+                score += 2
+
+            # 4) session cookies
+            if any('session' in c.lower() or 'auth' in c.lower() or 'token' in c.lower() for c in s.cookies.keys()):
+                score += 2
+
+            # 5) negative signals
+            fail_hits = sum(1 for k in [
+                'invalid', 'incorrect', 'failed', 'denied', 'forbidden', 'unauthorized',
+                'login failed', 'authentication failed', 'wrong password'
+            ] if k in content)
+            score -= fail_hits * 2
+
+            # 6) login page indicators (strong negative)
+            login_page_indicators = [
+                'login', 'sign in', 'log in', 'authentication', 'username', 'password',
+                'enter credentials', 'user login', 'admin login', 'router login'
+            ]
+            login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
+            if login_page_score >= 3:
+                score -= 3
+
+            # Only return True if score is high enough (conservative approach)
+            if score >= 5:
+                return True, self.extract_router_info(content)
             else:
                 return False, {}
                 
         except Exception as e:
-            print(f"{Colors.RED}[!] Admin verification error: {e}{Colors.END}")
             return False, {}
     
     def extract_router_info(self, content):
@@ -1123,16 +1138,13 @@ class RouterScannerPro:
                             success, admin_url = self.test_credentials(ip, port, path, username, password, auth_type)
                             
                             if success:
-                                # Announce vulnerable immediately per desired flow
-                                print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
-                                print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
-                                
                                 # Phase 4: Admin verification & information extraction
                                 print(f"{Colors.YELLOW}[4/4] Admin Verification & Information Extraction...{Colors.END}")
                                 
                                 verified, router_info = self.verify_admin_access(admin_url, username, password, auth_type)
                                 
                                 if verified:
+                                    # Only print VULNERABLE messages after successful verification
                                     print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
                                     print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
                                     print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
@@ -1176,9 +1188,6 @@ class RouterScannerPro:
                         # Only show "No valid credentials found" if no vulnerabilities were found
                         if not result['vulnerabilities']:
                             print(f"{Colors.RED}[-] No valid credentials found{Colors.END}")
-                        else:
-                            v = result['vulnerabilities'][0]
-                            print(f"{Colors.GREEN}[✓] Verified: {ip} with credentials {v['credentials']}{Colors.END}")
                         
                         break  # Stop testing other paths once login page is found
                     elif auth_type and auth_type.startswith('false_positive'):
