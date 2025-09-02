@@ -1119,7 +1119,6 @@ class RouterScannerPro:
                             
                             if success:
                                 print(f"{Colors.GREEN}[+] Candidate credentials: {username}:{password} (login response looked positive){Colors.END}")
-                                print(f"{Colors.GREEN}[+] Candidate admin URL: {admin_url}{Colors.END}")
                                 
                                 # Phase 4: Admin verification and information extraction
                                 print(f"{Colors.YELLOW}[4/4] Admin Verification & Information Extraction...{Colors.END}")
