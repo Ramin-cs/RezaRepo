@@ -585,7 +585,7 @@ class RouterScannerPro:
         return False, None
     
     def detect_authentication_type(self, url):
-        """Detect authentication type for a specific URL"""
+        """Detect authentication type for a specific URL - Enhanced for 5 types"""
         try:
             # Use random User-Agent
             headers = {'User-Agent': random.choice(USER_AGENTS)}
@@ -593,10 +593,6 @@ class RouterScannerPro:
             
             # Get the final URL after redirects
             final_url = response.url
-            
-            if response.status_code == 401:
-                return 'http_basic', response, final_url
-            
             content = response.text.lower()
             headers_str = str(response.headers).lower()
             
@@ -605,37 +601,59 @@ class RouterScannerPro:
             if is_fp:
                 return f'false_positive_{fp_reason}', response, final_url
             
-            # Enhanced form detection - check for various form field patterns
+            # 1. HTTP Basic Authentication (401 status)
+            if response.status_code == 401:
+                auth_header = response.headers.get('WWW-Authenticate', '').lower()
+                if 'basic' in auth_header:
+                    return 'http_basic', response, final_url
+                elif 'digest' in auth_header:
+                    return 'http_digest', response, final_url
+                else:
+                    return 'http_basic', response, final_url  # Default to basic
+            
+            # 2. HTTP Digest Authentication (check headers)
+            if 'digest' in headers_str or 'realm' in headers_str:
+                return 'http_digest', response, final_url
+            
+            # 3. Form-Based Authentication (most common)
             form_indicators = [
                 'password', 'username', 'user', 'pass', 'passwd', 'pwd', 'login', 'admin',
                 'name', 'email', 'account', 'auth', 'authentication'
             ]
             
-            # Check for login forms with more comprehensive field detection
+            # Check for login forms
             if '<form' in content:
                 form_field_count = sum(1 for indicator in form_indicators if indicator in content)
-                if form_field_count >= 1:  # At least 1 form-related field (more lenient)
+                if form_field_count >= 1:
                     return 'form_based', response, final_url
             
             # Check for input fields that might be login forms
             if '<input' in content:
                 input_field_count = sum(1 for indicator in form_indicators if indicator in content)
-                if input_field_count >= 1:  # At least 1 input-related field (more lenient)
+                if input_field_count >= 1:
                     return 'form_based', response, final_url
             
-            # Check for API endpoints
-            if any(keyword in content for keyword in ['api', 'json', 'rest', 'ajax']):
+            # 4. API-Based Authentication
+            if any(keyword in content for keyword in ['api', 'json', 'rest', 'ajax', 'xmlhttprequest']):
                 return 'api_based', response, final_url
             
-            # Check for redirect patterns
+            # 5. Redirect-Based Authentication
             if response.history or 'location' in headers_str:
                 return 'redirect_based', response, final_url
             
-            # Check for basic authentication indicators (more lenient)
+            # 6. JavaScript-Based Authentication
+            if any(keyword in content for keyword in ['javascript', 'js', 'onclick', 'onload', 'document.forms']):
+                return 'javascript_based', response, final_url
+            
+            # 7. Cookie-Based Authentication
+            if any(keyword in content for keyword in ['cookie', 'session', 'token', 'csrf']):
+                return 'cookie_based', response, final_url
+            
+            # Default: if we have content and login indicators, assume form-based
             if any(keyword in content for keyword in ['login', 'sign in', 'authentication', 'admin', 'user', 'password', 'username']):
                 return 'form_based', response, final_url
             
-            # If we have any content and it's not a clear false positive, consider it a potential login page
+            # If we have substantial content, consider it a potential login page
             if len(content) > 100:
                 return 'form_based', response, final_url
             
@@ -758,34 +776,153 @@ class RouterScannerPro:
             return False, None
     
     def test_credentials(self, ip, port, path, username, password, auth_type):
-        """Conservative credential test: only return candidate status, not final success"""
+        """Enhanced credential test for 5+ authentication types"""
         try:
+            url = f"http://{ip}:{port}{path}"
+            
+            # 1. HTTP Basic Authentication
             if auth_type == 'http_basic':
-                resp = self.session.get(f"http://{ip}:{port}{path}", auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                # For HTTP Basic Auth, if we get 200 and reasonable content, it's likely successful
+                resp = self.session.get(url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
                 if 200 <= resp.status_code < 400 and len(resp.text) > 30:
-                    # Additional check: make sure we're not still on a login page
                     content = resp.text.lower()
-                    # If we have substantial content and it's not clearly a login page, consider it successful
                     if len(content) > 100 or not any(k in content for k in ['username', 'password', 'login', 'sign in']):
                         return True, resp.url
                 return False, None
-
-            # Form/API: attempt post but do not claim success based on body
-            form_data_options = [
-                {"username": username, "password": password},
-                {"user": username, "pass": password},
-                {"login": username, "passwd": password},
-                {"name": username, "pwd": password},
-            ]
-            for data in form_data_options:
+            
+            # 2. HTTP Digest Authentication
+            elif auth_type == 'http_digest':
+                from requests.auth import HTTPDigestAuth
+                resp = self.session.get(url, auth=HTTPDigestAuth(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+                if 200 <= resp.status_code < 400 and len(resp.text) > 30:
+                    content = resp.text.lower()
+                    if len(content) > 100 or not any(k in content for k in ['username', 'password', 'login', 'sign in']):
+                        return True, resp.url
+                return False, None
+            
+            # 3. Form-Based Authentication
+            elif auth_type == 'form_based':
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"login": username, "passwd": password},
+                    {"name": username, "pwd": password},
+                    {"admin": username, "admin": password},
+                    {"username": username, "password": password, "login": "Login"},
+                    {"user": username, "pass": password, "submit": "Login"},
+                    {"username": username, "password": password, "action": "login"}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+            
+            # 4. API-Based Authentication
+            elif auth_type == 'api_based':
+                # Try JSON payload
+                json_payloads = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"login": username, "passwd": password},
+                    {"auth": {"username": username, "password": password}}
+                ]
+                for payload in json_payloads:
+                    try:
+                        r = self.session.post(url, json=payload, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                
+                # Try form data as fallback
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+            
+            # 5. Redirect-Based Authentication
+            elif auth_type == 'redirect_based':
+                # Try GET with credentials in URL or headers
                 try:
-                    r = self.session.post(f"http://{ip}:{port}{path}", data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                    r = self.session.get(url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
                     if 200 <= r.status_code < 400:
                         return True, r.url
                 except Exception:
-                    continue
-            return False, None
+                    pass
+                
+                # Try POST as fallback
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+            
+            # 6. JavaScript-Based Authentication
+            elif auth_type == 'javascript_based':
+                # Try form data (JavaScript might handle it)
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password},
+                    {"login": username, "passwd": password}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+            
+            # 7. Cookie-Based Authentication
+            elif auth_type == 'cookie_based':
+                # Try form data first
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+            
+            # Default: try form-based
+            else:
+                form_data_options = [
+                    {"username": username, "password": password},
+                    {"user": username, "pass": password}
+                ]
+                for data in form_data_options:
+                    try:
+                        r = self.session.post(url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                        if 200 <= r.status_code < 400:
+                            return True, r.url
+                    except Exception:
+                        continue
+                return False, None
+                
         except Exception:
             return False, None
     
@@ -799,27 +936,63 @@ class RouterScannerPro:
                 'Connection': 'keep-alive',
             })
 
-            if auth_type == 'http_basic':
-                resp = s.get(admin_url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-            else:
-                # try multiple payloads
-                resp = None
-                payloads = [
-                    {"username": username, "password": password},
-                    {"user": username, "pass": password},
-                    {"login": username, "passwd": password},
-                    {"name": username, "pwd": password},
-                ]
-                for data in payloads:
-                    try:
-                        r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
-                        if r is not None and r.status_code >= 200:
-                            resp = r
-                            break
-                    except Exception:
-                        continue
-                if resp is None:
-                    return False, {}
+                                        # Handle different authentication types for verification
+                            if auth_type == 'http_basic':
+                                resp = s.get(admin_url, auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+                            elif auth_type == 'http_digest':
+                                from requests.auth import HTTPDigestAuth
+                                resp = s.get(admin_url, auth=HTTPDigestAuth(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
+                            elif auth_type == 'api_based':
+                                # Try JSON first, then form data
+                                resp = None
+                                json_payloads = [
+                                    {"username": username, "password": password},
+                                    {"user": username, "pass": password},
+                                    {"auth": {"username": username, "password": password}}
+                                ]
+                                for payload in json_payloads:
+                                    try:
+                                        r = s.post(admin_url, json=payload, timeout=self.timeout, verify=False, allow_redirects=True)
+                                        if r is not None and r.status_code >= 200:
+                                            resp = r
+                                            break
+                                    except Exception:
+                                        continue
+                                
+                                if resp is None:
+                                    # Fallback to form data
+                                    payloads = [
+                                        {"username": username, "password": password},
+                                        {"user": username, "pass": password}
+                                    ]
+                                    for data in payloads:
+                                        try:
+                                            r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                                            if r is not None and r.status_code >= 200:
+                                                resp = r
+                                                break
+                                        except Exception:
+                                            continue
+                            else:
+                                # Form-based, redirect-based, javascript-based, cookie-based
+                                resp = None
+                                payloads = [
+                                    {"username": username, "password": password},
+                                    {"user": username, "pass": password},
+                                    {"login": username, "passwd": password},
+                                    {"name": username, "pwd": password},
+                                ]
+                                for data in payloads:
+                                    try:
+                                        r = s.post(admin_url, data=data, timeout=self.timeout, verify=False, allow_redirects=True)
+                                        if r is not None and r.status_code >= 200:
+                                            resp = r
+                                            break
+                                    except Exception:
+                                        continue
+                                
+                                if resp is None:
+                                    return False, {}
 
             if resp is None:
                 return False, {}
