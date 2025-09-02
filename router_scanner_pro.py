@@ -762,9 +762,13 @@ class RouterScannerPro:
         try:
             if auth_type == 'http_basic':
                 resp = self.session.get(f"http://{ip}:{port}{path}", auth=(username, password), timeout=self.timeout, verify=False, allow_redirects=True)
-                # For HTTP Basic Auth, if we get 200 and content, it's likely successful
-                if 200 <= resp.status_code < 400 and len(resp.text) > 50:
-                    return True, resp.url
+                # For HTTP Basic Auth, if we get 200 and reasonable content, it's likely successful
+                if 200 <= resp.status_code < 400 and len(resp.text) > 30:
+                    # Additional check: make sure we're not still on a login page
+                    content = resp.text.lower()
+                    # If we have substantial content and it's not clearly a login page, consider it successful
+                    if len(content) > 100 or not any(k in content for k in ['username', 'password', 'login', 'sign in']):
+                        return True, resp.url
                 return False, None
 
             # Form/API: attempt post but do not claim success based on body
@@ -822,77 +826,35 @@ class RouterScannerPro:
 
             content = resp.text.lower()
             final_url = resp.url.lower()
-            score = 0
-
-            # 1) moved away from login page
-            login_keywords = ["login", "sign-in", "signin", "auth", "authentication"]
-            if not any(k in final_url for k in login_keywords):
-                score += 2
-
-            # 2) presence of admin indicators
-            admin_indicators = [
-                'admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings',
-                'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware', 'logout'
-            ]
-            score += sum(1 for k in admin_indicators if k in content)
-
-            # 3) logout presence
-            if any(k in content for k in ['logout', 'sign out', 'log out']):
-                score += 2
-
-            # 4) session cookies
-            if any('session' in c.lower() or 'auth' in c.lower() or 'token' in c.lower() for c in s.cookies.keys()):
-                score += 2
-
-            # 5) negative signals
-            fail_hits = sum(1 for k in [
-                'invalid', 'incorrect', 'failed', 'denied', 'forbidden', 'unauthorized',
-                'login failed', 'authentication failed', 'wrong password'
-            ] if k in content)
-            score -= fail_hits * 2
-
-            # 6) login page indicators (strong negative)
-            login_page_indicators = [
-                'login', 'sign in', 'log in', 'authentication', 'username', 'password',
-                'enter credentials', 'user login', 'admin login', 'router login'
-            ]
-            login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score >= 3:
-                score -= 3
-
-            # Balanced multi-factor scoring: logical criteria for admin access
-            criteria_met = 0
-            total_criteria = 5
             
-            # Criterion 1: Moved away from login page (strong indicator)
+            # Logical and balanced scoring system for admin access verification
+            criteria_met = 0
+            total_criteria = 4  # Simplified to 4 main criteria
+            
+            # Criterion 1: URL changed from login page (strong indicator of success)
             if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 2: Has admin panel indicators (at least 2 required)
-            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware']
+            # Criterion 2: Has admin/router panel indicators (at least 1 required)
+            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'wan', 'lan', 'wireless', 'ssid', 'firmware', 'router', 'gateway']
             admin_count = sum(1 for k in admin_indicators if k in content)
-            if admin_count >= 2:  # Require at least 2 admin indicators
+            if admin_count >= 1:  # At least 1 admin indicator (more lenient)
                 criteria_met += 1
             
-            # Criterion 3: Has logout button/link (strong indicator)
-            if any(k in content for k in ['logout', 'sign out', 'log out']):
+            # Criterion 3: Has logout functionality (strong indicator)
+            if any(k in content for k in ['logout', 'sign out', 'log out', 'exit']):
                 criteria_met += 1
             
-            # Criterion 4: Has session cookies (strong indicator)
-            if any('session' in c.lower() or 'auth' in c.lower() or 'token' in c.lower() for c in s.cookies.keys()):
-                criteria_met += 1
-            
-            # Criterion 5: No strong login page indicators (negative test)
+            # Criterion 4: Not clearly a login page (negative test - more lenient)
             login_page_indicators = [
-                'login', 'sign in', 'log in', 'authentication', 'username', 'password',
-                'enter credentials', 'user login', 'admin login', 'router login'
+                'username', 'password', 'enter credentials', 'user login', 'admin login', 'router login'
             ]
             login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 3:  # Less than 3 login indicators
+            if login_page_score < 2:  # Less than 2 strong login indicators
                 criteria_met += 1
             
-            # Require at least 3 out of 5 criteria (60% success rate) for balanced accuracy
-            if criteria_met >= 3:
+            # Require at least 2 out of 4 criteria (50% success rate) for balanced accuracy
+            if criteria_met >= 2:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
