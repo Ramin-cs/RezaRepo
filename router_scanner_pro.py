@@ -395,7 +395,7 @@ BRAND_PATTERNS = {
     'generic': {
         'content': [],
         'headers': [],
-        'paths': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html', '/cgi-bin/login', '/cgi-bin/webif', '/cgi-bin/webproc', '/login.asp', '/login.php', '/login.cgi', '/weblogin.htm', '/web/login', '/manager', '/control', '/config', '/settings', '/system', '/dashboard', '/panel', '/console', '/interface', '/cgi-bin/weblogin', '/cgi-bin/login.cgi', '/login.html', '/admin.html', '/user', '/users', '/account', '/accounts', '/auth', '/authentication', '/signin', '/sign-in', '/signin.html', '/sign-in.html'],
+        'paths': ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html', '/cgi-bin/login', '/cgi-bin/webif', '/cgi-bin/webproc', '/login.asp', '/login.php', '/login.cgi', '/weblogin.htm', '/web/login', '/manager', '/control', '/config', '/settings', '/system', '/dashboard', '/panel', '/console', '/interface'],
         'models': []
     }
 }
@@ -410,7 +410,7 @@ ADMIN_INDICATORS = [
 ]
 
 class RouterScannerPro:
-    def __init__(self, targets, threads=1, timeout=8, enable_screenshot=True):
+    def __init__(self, targets, threads=1, timeout=5, enable_screenshot=True):
         self.targets = list(set(targets))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
@@ -443,7 +443,7 @@ class RouterScannerPro:
                 break
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
+                sock.settimeout(0.5)  # Reduced from 1 to 0.5 seconds
                 result = sock.connect_ex((ip, port))
                 if result == 0:
                     open_ports.append(port)
@@ -1132,8 +1132,16 @@ class RouterScannerPro:
             brand, brand_patterns = self.detect_router_brand_advanced(ip, open_ports[0])
             print(f"{Colors.BLUE}[*] Detected brand: {brand.upper()}{Colors.END}")
             
-            # Get priority paths based on brand
-            priority_paths = brand_patterns['paths'] + BRAND_PATTERNS['generic']['paths']
+            # Get priority paths based on brand - prioritize most common paths first
+            priority_paths = []
+            # Add most common paths first for speed
+            common_paths = ['/', '/admin', '/login', '/login.htm', '/admin.htm', '/index.html', '/cgi-bin/login']
+            priority_paths.extend(common_paths)
+            # Add brand-specific paths
+            priority_paths.extend(brand_patterns['paths'])
+            # Add remaining generic paths
+            remaining_paths = [p for p in BRAND_PATTERNS['generic']['paths'] if p not in common_paths]
+            priority_paths.extend(remaining_paths)
             
             # Test all ports with priority paths - continue until vulnerability found
             vulnerability_found = False
@@ -1757,7 +1765,7 @@ def main():
     parser = argparse.ArgumentParser(description="Router Scanner Pro v7.0 - Comprehensive Brand Detection & Session Management")
     parser.add_argument('-t', '--targets', required=True, help='Target IP(s): single IP, CIDR, range, or file')
     parser.add_argument('-T', '--threads', type=int, default=1, help='Number of threads (default: 1 for organized output)')
-    parser.add_argument('--timeout', type=int, default=8, help='Request timeout in seconds (default: 8)')
+    parser.add_argument('--timeout', type=int, default=5, help='Request timeout in seconds (default: 5)')
     parser.add_argument('--no-screenshot', action='store_true', help='Disable screenshot capture (default: enabled)')
     
     args = parser.parse_args()
