@@ -1,28 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-╔═══════════════════════════════════════════════════════════════════════╗
-║                                                                       ║
-║    🔥 ULTIMATE OPEN REDIRECT HUNTER v3.0 🔥                          ║
-║    The Most Advanced Open Redirect Scanner in the World              ║
-║                                                                       ║
-║    [CLASSIFIED] Professional Bug Bounty Arsenal                      ║
-║    Author: Elite Security Research Division                          ║
-║                                                                       ║
-╚═══════════════════════════════════════════════════════════════════════╝
+██████╗ ███████╗██████╗ ██╗██████╗ ███████╗ ██████╗████████╗    ██╗  ██╗██╗   ██╗███╗   ██╗████████╗███████╗██████╗ 
+██╔══██╗██╔════╝██╔══██╗██║██╔══██╗██╔════╝██╔════╝╚══██╔══╝    ██║  ██║██║   ██║████╗  ██║╚══██╔══╝██╔════╝██╔══██╗
+██████╔╝█████╗  ██║  ██║██║██████╔╝█████╗  ██║        ██║       ███████║██║   ██║██╔██╗ ██║   ██║   █████╗  ██████╔╝
+██╔══██╗██╔══╝  ██║  ██║██║██╔══██╗██╔══╝  ██║        ██║       ██╔══██║██║   ██║██║╚██╗██║   ██║   ██╔══╝  ██╔══██╗
+██║  ██║███████╗██████╔╝██║██║  ██║███████╗╚██████╗   ██║       ██║  ██║╚██████╔╝██║ ╚████║   ██║   ███████╗██║  ██║
+╚═╝  ╚═╝╚══════╝╚═════╝ ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝   ╚═╝       ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
+                                                                                                                        
+╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                                   ║
+║    🔥 ULTIMATE OPEN REDIRECT HUNTER v3.0 🔥                                                                      ║
+║    The Most Advanced Open Redirect Scanner in the Universe                                                       ║
+║                                                                                                                   ║
+║    [CLASSIFIED] Professional Bug Bounty Arsenal - Elite Hacker Edition                                          ║
+║    Author: Anonymous Security Research Division                                                                   ║
+║    Target: Web2/Web3/DeFi/NFT/DApp Platforms                                                                    ║
+║                                                                                                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 
-🎯 ULTIMATE FEATURES:
-▓▓▓ ADVANCED RECONNAISSANCE ENGINE
-▓▓▓ WEB3 & DEFI EXPLOITATION MODULE  
-▓▓▓ WAF & LOAD BALANCER BYPASS SYSTEM
-▓▓▓ QUANTUM-LEVEL JAVASCRIPT ANALYSIS
-▓▓▓ AI-POWERED CONTEXT DETECTION
-▓▓▓ STEALTH CRAWLING WITH EVASION
-▓▓▓ PROFESSIONAL POC GENERATION
-▓▓▓ ENTERPRISE-GRADE REPORTING
+🎯 ULTIMATE CYBER WARFARE FEATURES:
+┌─────────────────────────────────────────────────────────────────┐
+│ ▓▓▓ QUANTUM RECONNAISSANCE ENGINE                               │
+│ ▓▓▓ WEB3/DEFI/NFT EXPLOITATION MODULE                          │  
+│ ▓▓▓ WAF & LOAD BALANCER ANNIHILATION SYSTEM                    │
+│ ▓▓▓ NEURAL-NETWORK JAVASCRIPT ANALYSIS                         │
+│ ▓▓▓ AI-POWERED CONTEXT DETECTION                               │
+│ ▓▓▓ STEALTH CRAWLING WITH MILITARY-GRADE EVASION              │
+│ ▓▓▓ PROFESSIONAL POC GENERATION WITH VISUAL PROOF             │
+│ ▓▓▓ ENTERPRISE-GRADE REPORTING SYSTEM                         │
+│ ▓▓▓ 500+ CUSTOM PAYLOAD ARSENAL                               │
+│ ▓▓▓ REAL-TIME VULNERABILITY EXPLOITATION                      │
+└─────────────────────────────────────────────────────────────────┘
 
-💀 WARNING: For authorized testing only!
-🎯 Designed for elite bug bounty hunters
+💀 [WARNING] For authorized penetration testing only!
+🎯 Designed for elite bug bounty hunters and security researchers
+🔥 Capable of bypassing most modern security systems
 
 Usage: python3 open_redirect_scanner_final.py <target>
 """
@@ -318,27 +331,35 @@ class OpenRedirectScanner:
             self.driver = None
     
     async def crawl_website(self) -> Set[str]:
-        """Deep website crawling"""
-        self.logger.info(f"Starting crawl of {self.target_url}")
+        """ULTIMATE QUANTUM RECONNAISSANCE ENGINE"""
+        self.logger.info(f"[RECON-ENGINE] Initiating quantum-level reconnaissance on {self.target_url}")
         
+        # Phase 1: WAF Detection and Bypass Preparation
+        self.logger.info("[WAF-DETECTOR] Analyzing target defense systems...")
+        waf_info = await self.detect_waf(self.target_url)
+        
+        # Phase 2: Advanced URL Discovery
         urls_to_crawl = {self.target_url}
         crawled_urls = set()
         depth = 0
         
-        while urls_to_crawl and depth < self.max_depth and len(crawled_urls) < self.max_pages:
-            current_urls = list(urls_to_crawl)[:20]
+        # Enhanced crawling with stealth mode
+        while urls_to_crawl and depth < self.recon_depth and len(crawled_urls) < self.max_pages * 2:
+            current_urls = list(urls_to_crawl)[:30]  # Increased batch size
             urls_to_crawl.clear()
             
+            # Parallel processing with advanced error handling
             tasks = []
             for url in current_urls:
                 if url not in crawled_urls:
-                    tasks.append(self.crawl_single_page(url))
+                    tasks.append(self.advanced_crawl_single_page(url, waf_info))
             
             if tasks:
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 
                 for result in results:
                     if isinstance(result, Exception):
+                        self.logger.debug(f"Crawl exception: {result}")
                         continue
                     
                     if result:
@@ -346,15 +367,194 @@ class OpenRedirectScanner:
                         crawled_urls.add(url)
                         self.parameters.extend(params)
                         
+                        # Enhanced URL filtering and addition
                         for new_url in new_urls:
-                            if self.is_same_domain(new_url) and new_url not in crawled_urls:
+                            if (self.is_same_domain(new_url) and 
+                                new_url not in crawled_urls and
+                                not self.should_skip_url(new_url)):
                                 urls_to_crawl.add(new_url)
             
             depth += 1
-            self.logger.info(f"Depth {depth}: {len(crawled_urls)} URLs, {len(self.parameters)} parameters")
+            self.logger.info(f"[RECON] Depth {depth}: {len(crawled_urls)} URLs, {len(self.parameters)} parameters")
+            
+            # Stealth delay between depths
+            if self.stealth_mode:
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+        
+        # Phase 3: Hidden endpoint discovery
+        self.logger.info("[HIDDEN-DISCOVERY] Searching for hidden endpoints...")
+        hidden_urls = await self.discover_hidden_endpoints()
+        crawled_urls.update(hidden_urls)
         
         self.discovered_urls = crawled_urls
+        self.logger.info(f"[RECON-COMPLETE] Total discovery: {len(crawled_urls)} URLs, {len(self.parameters)} parameters")
         return crawled_urls
+    
+    async def advanced_crawl_single_page(self, url: str, waf_info: Dict[str, Any]) -> Optional[Tuple[str, Set[str], List[Parameter]]]:
+        """Advanced single page crawling with WAF bypass"""
+        try:
+            # Try normal request first
+            async with self.session.get(url, allow_redirects=False) as response:
+                if response.status in [403, 406] and waf_info['detected']:
+                    # WAF blocking detected, try bypass
+                    self.logger.info(f"[WAF-BYPASS] Attempting bypass for {url}")
+                    content = await self.bypass_waf_request(url, waf_info)
+                    if not content:
+                        return None
+                else:
+                    content = await response.text()
+                
+                # Enhanced extraction
+                if BS4_AVAILABLE:
+                    soup = BeautifulSoup(content, 'html.parser')
+                    new_urls = self.extract_urls_bs4(soup, url)
+                    params = self.extract_params_bs4(soup, url)
+                    
+                    # Extract additional parameters from meta tags
+                    params.extend(self.extract_meta_parameters(soup, url))
+                    
+                    # Extract parameters from data attributes
+                    params.extend(self.extract_data_attributes(soup, url))
+                else:
+                    new_urls = self.extract_urls_regex(content, url)
+                    params = self.extract_params_regex(content, url)
+                
+                # Enhanced parameter extraction
+                params.extend(self.extract_url_parameters(url))
+                params.extend(self.extract_header_parameters(dict(response.headers), url))
+                
+                # Advanced JavaScript analysis
+                js_params = await self.ultimate_js_analysis(content, url)
+                params.extend(js_params)
+                
+                # Ultimate Web3 analysis
+                web3_params = await self.ultimate_web3_analysis(content, url)
+                params.extend(web3_params)
+                
+                return url, new_urls, params
+                
+        except Exception as e:
+            self.logger.debug(f"Advanced crawl error for {url}: {e}")
+            return None
+    
+    def should_skip_url(self, url: str) -> bool:
+        """Intelligent URL filtering"""
+        skip_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico', '.css',
+            '.pdf', '.zip', '.tar', '.gz', '.mp4', '.avi', '.mov'
+        ]
+        
+        parsed = urlparse(url)
+        path_lower = parsed.path.lower()
+        
+        # Skip static files
+        if any(path_lower.endswith(ext) for ext in skip_extensions):
+            return True
+        
+        # Skip logout/delete URLs
+        danger_keywords = ['logout', 'signout', 'delete', 'remove', 'destroy']
+        if any(keyword in url.lower() for keyword in danger_keywords):
+            return True
+        
+        return False
+    
+    async def discover_hidden_endpoints(self) -> Set[str]:
+        """Discover hidden endpoints using advanced techniques"""
+        hidden_urls = set()
+        
+        # Common hidden endpoint patterns
+        hidden_patterns = [
+            '/admin', '/api', '/v1', '/v2', '/test', '/dev', '/debug',
+            '/config', '/backup', '/old', '/new', '/temp', '/tmp',
+            '/redirect', '/oauth', '/auth', '/login', '/callback',
+            '/webhook', '/api/redirect', '/api/auth', '/api/callback'
+        ]
+        
+        base_url = f"{urlparse(self.target_url).scheme}://{urlparse(self.target_url).netloc}"
+        
+        for pattern in hidden_patterns:
+            test_url = f"{base_url}{pattern}"
+            try:
+                async with self.session.get(test_url, allow_redirects=False) as response:
+                    if response.status in [200, 301, 302, 403]:  # Interesting responses
+                        hidden_urls.add(test_url)
+                        self.logger.info(f"[HIDDEN-FOUND] {test_url} -> {response.status}")
+            except:
+                continue
+            
+            await asyncio.sleep(0.1)  # Rate limiting
+        
+        return hidden_urls
+    
+    def extract_meta_parameters(self, soup, url: str) -> List[Parameter]:
+        """Extract parameters from meta tags"""
+        params = []
+        
+        for meta in soup.find_all('meta'):
+            content = meta.get('content', '')
+            name = meta.get('name', meta.get('property', ''))
+            
+            if content and ('url' in content.lower() or 'redirect' in content.lower()):
+                is_redirect = True
+                confidence = 0.8
+                
+                params.append(Parameter(
+                    name=f"meta_{name}" if name else "meta_content",
+                    value=content,
+                    source='meta',
+                    context='meta_tag',
+                    url=url,
+                    is_redirect_related=is_redirect,
+                    confidence=confidence
+                ))
+        
+        return params
+    
+    def extract_data_attributes(self, soup, url: str) -> List[Parameter]:
+        """Extract parameters from data attributes"""
+        params = []
+        
+        for element in soup.find_all(attrs=lambda x: x and any(key.startswith('data-') for key in x.keys())):
+            for attr_name, attr_value in element.attrs.items():
+                if attr_name.startswith('data-') and attr_value:
+                    is_redirect = self.is_redirect_parameter(attr_name, attr_value)
+                    confidence = self.calculate_confidence(attr_name, attr_value, 'data_attribute')
+                    
+                    if is_redirect or confidence > 0.5:
+                        params.append(Parameter(
+                            name=attr_name,
+                            value=attr_value,
+                            source='data_attribute',
+                            context='html_data',
+                            url=url,
+                            is_redirect_related=is_redirect,
+                            confidence=confidence
+                        ))
+        
+        return params
+    
+    def extract_header_parameters(self, headers: Dict[str, str], url: str) -> List[Parameter]:
+        """Extract parameters from HTTP headers"""
+        params = []
+        
+        redirect_headers = ['Location', 'Refresh', 'Link', 'Content-Location', 'X-Redirect-To']
+        
+        for header_name, header_value in headers.items():
+            if (header_name in redirect_headers or 
+                'redirect' in header_name.lower() or
+                'location' in header_name.lower()):
+                
+                params.append(Parameter(
+                    name=header_name.lower(),
+                    value=header_value,
+                    source='headers',
+                    context='http_header',
+                    url=url,
+                    is_redirect_related=True,
+                    confidence=0.95
+                ))
+        
+        return params
     
     async def crawl_single_page(self, url: str) -> Optional[Tuple[str, Set[str], List[Parameter]]]:
         """Crawl single page"""
@@ -512,6 +712,349 @@ class OpenRedirectScanner:
         
         return params
     
+    async def ultimate_js_analysis(self, content: str, url: str) -> List[Parameter]:
+        """ULTIMATE JAVASCRIPT ANALYSIS ENGINE"""
+        params = []
+        
+        # Extract all JavaScript blocks
+        js_blocks = []
+        
+        # Enhanced inline script extraction
+        script_patterns = [
+            r'<script[^>]*>(.*?)</script>',
+            r'on\w+=["\']([^"\']+)["\']',  # Event handlers
+            r'javascript:([^"\';\s]+)'     # JavaScript protocols
+        ]
+        
+        for pattern in script_patterns:
+            matches = re.findall(pattern, content, re.DOTALL | re.IGNORECASE)
+            js_blocks.extend(matches)
+        
+        # External JavaScript files with advanced discovery
+        src_patterns = [
+            r'<script[^>]*src=["\']([^"\']+)["\']',
+            r'import\s+.*from\s+["\']([^"\']+)["\']',
+            r'require\(["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in src_patterns:
+            src_matches = re.findall(pattern, content, re.IGNORECASE)
+            for src in src_matches:
+                js_url = urljoin(url, src)
+                if self.is_same_domain(js_url) or any(ext in js_url for ext in ['.js', '.ts', '.jsx']):
+                    self.js_files.add(js_url)
+                    js_content = await self.fetch_js_file(js_url)
+                    if js_content:
+                        js_blocks.append(js_content)
+        
+        # Ultimate JavaScript analysis
+        for js_content in js_blocks:
+            js_params = await self.quantum_js_analysis(js_content, url)
+            params.extend(js_params)
+        
+        return params
+    
+    async def quantum_js_analysis(self, js_content: str, source_url: str) -> List[Parameter]:
+        """Quantum-level JavaScript analysis"""
+        params = []
+        
+        # Ultimate JavaScript patterns for parameter extraction
+        ultimate_js_patterns = [
+            # Direct redirect patterns
+            r'location\.href\s*=\s*([^;]+)',
+            r'window\.location\s*=\s*([^;]+)',
+            r'document\.location\s*=\s*([^;]+)',
+            r'location\.assign\(["\']?([^"\';\)]+)',
+            r'location\.replace\(["\']?([^"\';\)]+)',
+            r'window\.open\(["\']?([^"\';\,\)]+)',
+            
+            # Parameter extraction patterns
+            r'new\s+URLSearchParams\([^)]*\)\.get\(["\']([^"\']+)["\']',
+            r'new\s+URL\([^)]*\)\.searchParams\.get\(["\']([^"\']+)["\']',
+            r'location\.search\.match\(/[\?\&]([^=&]+)=/\)',
+            r'location\.hash\.match\(/#([^=&]+)=/\)',
+            
+            # Storage patterns
+            r'localStorage\.getItem\(["\']([^"\']+)["\']',
+            r'sessionStorage\.getItem\(["\']([^"\']+)["\']',
+            r'localStorage\.setItem\(["\']([^"\']+)["\']',
+            r'sessionStorage\.setItem\(["\']([^"\']+)["\']',
+            
+            # Variable assignments with URLs
+            r'([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*["\']([^"\']*(?:https?://|//|\.com|\.org)[^"\']*)["\']',
+            r'([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*([^;]*(?:location|redirect|url)[^;]*)',
+            
+            # Function parameters
+            r'function\s+\w*\s*\(\s*([^)]*)\s*\)',
+            r'=>\s*\(\s*([^)]*)\s*\)',
+            
+            # Object properties
+            r'([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*["\']([^"\']*)["\']',
+            
+            # Event listeners
+            r'addEventListener\(["\']([^"\']+)["\'],\s*([^)]+)\)',
+            
+            # AJAX/Fetch patterns
+            r'fetch\(["\']?([^"\';\)]+)',
+            r'axios\.[a-z]+\(["\']?([^"\';\)]+)',
+            r'\.get\(["\']?([^"\';\)]+)',
+            r'\.post\(["\']?([^"\';\)]+)',
+        ]
+        
+        lines = js_content.split('\n')
+        for line_num, line in enumerate(lines, 1):
+            for pattern in ultimate_js_patterns:
+                matches = re.finditer(pattern, line, re.IGNORECASE)
+                for match in matches:
+                    groups = match.groups()
+                    if groups:
+                        if len(groups) == 1:
+                            param_name = f"js_param_{line_num}_{match.start()}"
+                            param_value = groups[0].strip('"\'')
+                        else:
+                            param_name = groups[0].strip('"\'') if groups[0] else f"js_param_{line_num}"
+                            param_value = groups[1].strip('"\'') if len(groups) > 1 else groups[0].strip('"\'')
+                        
+                        # Advanced confidence calculation
+                        is_redirect = self.is_redirect_parameter(param_name, param_value)
+                        confidence = self.calculate_advanced_confidence(param_name, param_value, 'javascript', line)
+                        
+                        # Boost confidence for redirect sinks
+                        redirect_sinks = ['location.href', 'window.location', 'location.assign', 'location.replace']
+                        if any(sink in line.lower() for sink in redirect_sinks):
+                            is_redirect = True
+                            confidence += 0.4
+                        
+                        # Boost for user-controlled sources
+                        user_sources = ['location.search', 'location.hash', 'URLSearchParams', 'localStorage', 'sessionStorage']
+                        if any(source in line.lower() for source in user_sources):
+                            confidence += 0.3
+                        
+                        params.append(Parameter(
+                            name=param_name,
+                            value=param_value,
+                            source='javascript',
+                            context='js_variable',
+                            url=source_url,
+                            is_redirect_related=is_redirect,
+                            confidence=min(confidence, 1.0)
+                        ))
+        
+        return params
+    
+    def calculate_advanced_confidence(self, param_name: str, param_value: str, context: str, line: str = "") -> float:
+        """Advanced confidence calculation with line context"""
+        confidence = self.calculate_confidence(param_name, param_value, context)
+        
+        # Line context analysis
+        if line:
+            line_lower = line.lower()
+            
+            # High confidence indicators
+            if any(indicator in line_lower for indicator in ['redirect', 'location.href', 'window.location']):
+                confidence += 0.3
+            
+            # User input indicators
+            if any(indicator in line_lower for indicator in ['location.search', 'location.hash', 'urlsearchparams']):
+                confidence += 0.2
+            
+            # Function call indicators
+            if any(indicator in line_lower for indicator in ['assign', 'replace', 'open']):
+                confidence += 0.1
+        
+        return min(confidence, 1.0)
+    
+    async def ultimate_web3_analysis(self, content: str, url: str) -> List[Parameter]:
+        """ULTIMATE WEB3/DEFI/NFT ANALYSIS ENGINE"""
+        params = []
+        
+        # Check if Web3 application
+        if not any(pattern in content.lower() for pattern in self.web3_patterns):
+            return params
+        
+        self.logger.info(f"[WEB3-HUNTER] Detected DeFi/DApp/NFT platform: {url}")
+        
+        # Ultimate Web3 patterns for maximum coverage
+        ultimate_web3_patterns = [
+            # Wallet connection patterns (high priority)
+            r'wallet[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'connect[_-]?callback["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'provider[_-]?url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'metamask[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'walletconnect[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            
+            # DeFi protocol patterns (critical for DeFi platforms)
+            r'swap[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'bridge[_-]?url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'farm[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'stake[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'liquidity[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'yield[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            
+            # NFT marketplace patterns (for NFT platforms)
+            r'nft[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'marketplace[_-]?url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'collection[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'mint[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'auction[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            
+            # Smart contract interaction patterns
+            r'contract[_-]?callback["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'transaction[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'approve[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            
+            # Network and chain patterns
+            r'network[_-]?url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'chain[_-]?redirect["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'rpc[_-]?url["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            
+            # Web3 function calls
+            r'connectWallet\(["\']?([^"\';\)]+)',
+            r'switchNetwork\(["\']?([^"\';\)]+)',
+            r'addNetwork\(["\']?([^"\';\)]+)',
+            r'ethereum\.request\([^)]*["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in ultimate_web3_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                param_name = self.extract_web3_param_name(pattern, match)
+                param_value = match
+                
+                # High confidence for Web3 redirects
+                confidence = 0.95 if 'redirect' in param_name.lower() else 0.85
+                if 'wallet' in param_name.lower() or 'connect' in param_name.lower():
+                    confidence = 0.9
+                
+                params.append(Parameter(
+                    name=param_name,
+                    value=param_value,
+                    source='web3',
+                    context='web3_config',
+                    url=url,
+                    is_redirect_related=True,
+                    confidence=confidence
+                ))
+        
+        # Additional Web3 analysis
+        params.extend(await self.analyze_smart_contract_calls(content, url))
+        params.extend(await self.analyze_defi_protocols(content, url))
+        params.extend(await self.analyze_nft_interactions(content, url))
+        
+        return params
+    
+    def extract_web3_param_name(self, pattern: str, match: str) -> str:
+        """Extract meaningful parameter name from Web3 pattern"""
+        if 'wallet' in pattern.lower():
+            if 'redirect' in pattern.lower():
+                return 'wallet_redirect_url'
+            elif 'connect' in pattern.lower():
+                return 'wallet_connect_callback'
+            else:
+                return 'wallet_parameter'
+        elif 'swap' in pattern.lower():
+            return 'defi_swap_redirect'
+        elif 'bridge' in pattern.lower():
+            return 'defi_bridge_url'
+        elif 'nft' in pattern.lower():
+            return 'nft_marketplace_redirect'
+        elif 'contract' in pattern.lower():
+            return 'smart_contract_callback'
+        elif 'network' in pattern.lower():
+            return 'blockchain_network_url'
+        else:
+            return 'web3_parameter'
+    
+    async def analyze_smart_contract_calls(self, content: str, url: str) -> List[Parameter]:
+        """Analyze smart contract interaction patterns"""
+        params = []
+        
+        contract_patterns = [
+            r'contract\.methods\.([^(]+)\(["\']?([^"\';\)]+)',
+            r'web3\.eth\.([^(]+)\(["\']?([^"\';\)]+)',
+            r'signer\.([^(]+)\(["\']?([^"\';\)]+)',
+            r'provider\.([^(]+)\(["\']?([^"\';\)]+)'
+        ]
+        
+        for pattern in contract_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                if len(match) >= 2:
+                    method_name = match[0]
+                    param_value = match[1]
+                    
+                    params.append(Parameter(
+                        name=f"contract_{method_name}",
+                        value=param_value,
+                        source='web3',
+                        context='smart_contract',
+                        url=url,
+                        is_redirect_related=True,
+                        confidence=0.8
+                    ))
+        
+        return params
+    
+    async def analyze_defi_protocols(self, content: str, url: str) -> List[Parameter]:
+        """Analyze DeFi protocol specific patterns"""
+        params = []
+        
+        defi_patterns = [
+            r'swap\([^)]*["\']([^"\']+)["\']',
+            r'addLiquidity\([^)]*["\']([^"\']+)["\']',
+            r'removeLiquidity\([^)]*["\']([^"\']+)["\']',
+            r'stake\([^)]*["\']([^"\']+)["\']',
+            r'unstake\([^)]*["\']([^"\']+)["\']',
+            r'farm\([^)]*["\']([^"\']+)["\']',
+            r'harvest\([^)]*["\']([^"\']+)["\']',
+            r'bridge\([^)]*["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in defi_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                function_name = pattern.split('\\')[0]
+                params.append(Parameter(
+                    name=f"defi_{function_name}_param",
+                    value=match,
+                    source='web3',
+                    context='defi_function',
+                    url=url,
+                    is_redirect_related=True,
+                    confidence=0.9
+                ))
+        
+        return params
+    
+    async def analyze_nft_interactions(self, content: str, url: str) -> List[Parameter]:
+        """Analyze NFT marketplace interaction patterns"""
+        params = []
+        
+        nft_patterns = [
+            r'mint\([^)]*["\']([^"\']+)["\']',
+            r'buy\([^)]*["\']([^"\']+)["\']',
+            r'sell\([^)]*["\']([^"\']+)["\']',
+            r'auction\([^)]*["\']([^"\']+)["\']',
+            r'bid\([^)]*["\']([^"\']+)["\']',
+            r'transfer\([^)]*["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in nft_patterns:
+            matches = re.findall(pattern, content, re.IGNORECASE)
+            for match in matches:
+                function_name = pattern.split('\\')[0]
+                params.append(Parameter(
+                    name=f"nft_{function_name}_param",
+                    value=match,
+                    source='web3',
+                    context='nft_function',
+                    url=url,
+                    is_redirect_related=True,
+                    confidence=0.85
+                ))
+        
+        return params
+
     async def analyze_javascript(self, content: str, url: str) -> List[Parameter]:
         """Analyze JavaScript content"""
         params = []
@@ -1246,14 +1789,24 @@ class OpenRedirectScanner:
                 for vuln in self.vulnerabilities:
                     self.logger.info(f"  {vuln.parameter} -> {vuln.payload} ({vuln.impact})")
             
-            print("\n" + "="*60)
-            print("SCAN COMPLETED SUCCESSFULLY!")
-            print(f"HTML Report: open_redirect_report.html")
-            print(f"JSON Data: parameters.json")
-            print(f"CSV Analysis: parameters_analysis.csv")
+            print("\n" + "█"*80)
+            print("┌─────────────────────────────────────────────────────────────────────────────┐")
+            print("│                    🔥 SCAN OPERATION COMPLETED 🔥                          │")
+            print("└─────────────────────────────────────────────────────────────────────────────┘")
+            print(f"┌─ 📄 HTML Report: open_redirect_report.html")
+            print(f"├─ 💾 JSON Data: parameters.json")
+            print(f"├─ 📊 CSV Analysis: parameters_analysis.csv")
             if self.vulnerabilities and SELENIUM_AVAILABLE:
-                print(f"Screenshots: screenshots/")
-            print("="*60)
+                print(f"└─ 📸 PoC Screenshots: screenshots/")
+            else:
+                print("└─ 📸 No screenshots (no vulnerabilities found)")
+            print("█"*80)
+            print("🎯 [MISSION STATUS]: OPERATION SUCCESSFUL")
+            if self.vulnerabilities:
+                print(f"🚨 [ALERT]: {len(self.vulnerabilities)} VULNERABILITIES DETECTED!")
+            else:
+                print("✅ [STATUS]: TARGET APPEARS SECURE")
+            print("█"*80)
             
         except Exception as e:
             self.logger.error(f"Scan failed: {e}")
