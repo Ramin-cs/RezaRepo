@@ -98,6 +98,7 @@ def print_banner():
         print(f"{Colors.GREEN}" + ''.join(line_chars) + f"{Colors.END}")
         time.sleep(0.03)
     
+    # Nostalgic hacker banner (editable block text)
     banner = f"""
 {Colors.GREEN}{Colors.BOLD}
    ██████╗  ██████╗ ██╗   ██╗████████╗███████╗██████╗      ███████╗ ██████╗ ███╗   ██╗
@@ -106,9 +107,6 @@ def print_banner():
    ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██╗     ██╔══╝  ██║   ██║██║╚██╗██║
    ██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗██║  ██║     ██║     ╚██████╔╝██║ ╚████║
    ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚══════╝╚═╝  ╚═╝     ╚═╝      ╚═════╝ ╚═╝  ╚═══╝
-
-{Colors.CYAN}:: Router Scanner Pro v7.0 ::{Colors.END}  {Colors.YELLOW}[ Nostalgic Hacker Edition ]{Colors.END}
-{Colors.WHITE}“Wake up, Neo...” — follow the white rabbit.{Colors.END}
 """
     print(banner)
 
