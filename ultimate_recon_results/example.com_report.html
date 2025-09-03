@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Recon Report - example.com</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: rgba(255,255,255,0.95); border-radius: 15px; padding: 30px; margin-bottom: 20px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: linear-gradient(45deg, #ff6b6b, #ee5a24); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-number { font-size: 2.5em; font-weight: bold; display: block; }
+        .section { background: rgba(255,255,255,0.95); border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .section h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+        .item { background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #3498db; }
+        .vuln { border-left-color: #e74c3c; background: #fdf2f2; }
+        .success { color: #27ae60; }
+        .warning { color: #f39c12; }
+        .error { color: #e74c3c; }
+        .code { font-family: 'Courier New', monospace; background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #3498db; color: white; }
+        tr:nth-child(even) { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Ultimate Reconnaissance Report</h1>
+            <p><strong>Target:</strong> example.com | <strong>Scan Date:</strong> 2025-09-03T22:42:14.826133</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <span class="stat-number">14</span>
+                Subdomains
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #4ecdc4, #44a08d);">
+                <span class="stat-number">22</span>
+                Parameters
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #f093fb, #f5576c);">
+                <span class="stat-number">0</span>
+                Sensitive Files
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #4facfe, #00f2fe);">
+                <span class="stat-number">4</span>
+                IP Addresses
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🌐 Discovered Subdomains</h2>
+            <div class="item">*.example.com</div>
+            <div class="item">AS207960 Test Intermediate - example.com</div>
+            <div class="item">dev.example.com</div>
+            <div class="item">example.com</div>
+            <div class="item">example.com:80</div>
+            <div class="item">m.example.com</div>
+            <div class="item">m.testexample.com</div>
+            <div class="item">mailto:sally_schultz@example.com</div>
+            <div class="item">products.example.com</div>
+            <div class="item">subjectname@example.com</div>
+            <div class="item">support.example.com</div>
+            <div class="item">user@example.com</div>
+            <div class="item">www.example.com</div>
+            <div class="item">www.example.com:80</div>
+
+        </div>
+        
+        <div class="section">
+            <h2>⚙️ Extracted Parameters</h2>
+            <div class="item">api_key</div>
+            <div class="item">callback</div>
+            <div class="item">debug</div>
+            <div class="item">email</div>
+            <div class="item">filter</div>
+            <div class="item">format</div>
+            <div class="item">id</div>
+            <div class="item">jsonp</div>
+            <div class="item">limit</div>
+            <div class="item">offset</div>
+            <div class="item">page</div>
+            <div class="item">password</div>
+            <div class="item">q</div>
+            <div class="item">query</div>
+            <div class="item">redirect</div>
+            <div class="item">return</div>
+            <div class="item">search</div>
+            <div class="item">sort</div>
+            <div class="item">token</div>
+            <div class="item">url</div>
+            <div class="item">user</div>
+            <div class="item">username</div>
+
+        </div>
+        
+        <div class="section">
+            <h2>🔒 Sensitive Files</h2>
+            <table>
+                <tr><th>File</th><th>Status</th><th>URL</th></tr>
+
+            </table>
+        </div>
+        
+        <div class="section">
+            <h2>🌍 IP Addresses & Network Info</h2>
+            <div class="item">🌐 104.97.85.13</div>
+            <div class="item">🌐 104.97.85.34</div>
+            <div class="item">🌐 13.248.169.48</div>
+            <div class="item">🌐 23.220.75.245</div>
+
+        </div>
+        
+        <div class="section">
+            <h2>🛠️ Technologies Detected</h2>
+
+        </div>
+        
+        <div class="section">
+            <h2>🔐 Security Analysis</h2>
+            <h3>Security Headers</h3>
+            <table>
+                <tr><th>Header</th><th>Status</th></tr>
+                <tr>
+                    <td>Strict-Transport-Security</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>Content-Security-Policy</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>X-Frame-Options</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>X-XSS-Protection</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>X-Content-Type-Options</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>Referrer-Policy</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+                <tr>
+                    <td>Permissions-Policy</td>
+                    <td><span class="error">❌ Missing</span></td>
+                </tr>
+
+            </table>
+            
+            <h3>SSL Information</h3>
+            <div class="code">
+Version: TLSv1.3<br>
+Cipher: ('TLS_AES_256_GCM_SHA384', 'TLSv1.3', 256)<br>
+Favicon Hash: None
+            </div>
+        </div>
+
+        
+        <div class="section">
+            <h2>📊 Summary</h2>
+            <div class="code">
+Target Domain: example.com<br>
+Scan Completed: 2025-09-03T22:42:14.826133<br>
+Total Subdomains: 14<br>
+Total Parameters: 22<br>
+Sensitive Files Found: 0<br>
+IP Addresses: 4<br>
+Technologies: 0<br>
+Potential Vulnerabilities: 0
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>

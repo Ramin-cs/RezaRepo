@@ -1,11 +1,28 @@
 # Build artifacts
 __pycache__/
 *.pyc
+*.py[cod]
+*$py.class
 
 # Virtual env
 venv/
 .env/
 .venv/
+
+# Advanced Recon Tool outputs
+recon_output/
+test_output/
+test_output_temp/
+*_recon_report.*
+*_summary.txt
+*_detailed.csv
+*_nuclei_template.yaml
+*_report.md
+
+# API Keys and sensitive configuration
+config.env
+api_keys.json
+credentials.json
 
 # Reports & screenshots
 reports/
@@ -21,3 +38,8 @@ chromedriver*
 
 # Logs
 *.log
+
+# Temporary files
+*.tmp
+*.temp
+go.tar.gz
