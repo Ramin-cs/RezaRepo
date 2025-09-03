@@ -999,11 +999,10 @@ class RouterScannerPro:
             content = resp.text.lower()
             final_url = resp.url.lower()
 
-            # Hard-fail negatives: common failure signals or back to login
+            # Hard-fail negatives: only very specific failure signals
             failure_keywords = [
                 'login failed', 'incorrect username or password', 'wrong password',
-                'authentication failed', 'invalid credentials', 'access denied',
-                'unauthorized', 'forbidden', 'incorrect', 'failed', 'error'
+                'authentication failed', 'invalid credentials', 'access denied'
             ]
             # Allow 401 here because HTTP Basic/Digest may still return 401 on first challenge;
             # verification should not fail solely due to 401 unless we're clearly back at login with failure text.
@@ -1013,10 +1012,6 @@ class RouterScannerPro:
                 return False, {}
             if any(k in final_url for k in ["login", "signin", "sign-in", "authenticate", "auth"]):
                 # If final URL is clearly a login-related path, treat as failure
-                return False, {}
-            
-            # Additional check: if we're still on the same URL as login page, it's likely a failure
-            if final_url == admin_url and any(k in content for k in ['username', 'password', 'login', 'sign in']):
                 return False, {}
             
             # Strict admin panel verification - prevent false positives
@@ -1049,12 +1044,8 @@ class RouterScannerPro:
             if login_page_score < 1:  # No strong login indicators
                 criteria_met += 1
             
-            # Additional strict check: must have logout functionality or clear admin indicators
-            has_logout = any(k in content for k in ['logout', 'sign out', 'log out', 'exit'])
-            has_clear_admin = any(k in content for k in ['dashboard', 'control panel', 'configuration', 'settings', 'system status'])
-            
-            # Require at least 4 out of 5 criteria AND either logout or clear admin indicators
-            if criteria_met >= 4 and (has_logout or has_clear_admin):
+            # Require at least 3 out of 5 criteria for balanced accuracy
+            if criteria_met >= 3:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
