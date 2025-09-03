@@ -48,11 +48,13 @@ try:
     from Crypto.Hash import MD5, SHA1, SHA256, SHA512
     from Crypto.Protocol.KDF import PBKDF2
     ADVANCED_CRYPTO = True
+    BASIC_CRYPTO = False
 except ImportError:
     try:
         from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
         from cryptography.hazmat.primitives import hashes, padding
         from cryptography.hazmat.backends import default_backend
+        ADVANCED_CRYPTO = False
         BASIC_CRYPTO = True
     except ImportError:
         ADVANCED_CRYPTO = False
