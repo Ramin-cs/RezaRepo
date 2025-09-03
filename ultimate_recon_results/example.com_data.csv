@@ -1,0 +1,41 @@
+Category,Type,Value,Details,Status
+Discovery,Subdomain,*.example.com,Discovered subdomain,Active
+Discovery,Subdomain,AS207960 Test Intermediate - example.com,Discovered subdomain,Active
+Discovery,Subdomain,dev.example.com,Discovered subdomain,Active
+Discovery,Subdomain,example.com,Discovered subdomain,Active
+Discovery,Subdomain,example.com:80,Discovered subdomain,Active
+Discovery,Subdomain,m.example.com,Discovered subdomain,Active
+Discovery,Subdomain,m.testexample.com,Discovered subdomain,Active
+Discovery,Subdomain,mailto:sally_schultz@example.com,Discovered subdomain,Active
+Discovery,Subdomain,products.example.com,Discovered subdomain,Active
+Discovery,Subdomain,subjectname@example.com,Discovered subdomain,Active
+Discovery,Subdomain,support.example.com,Discovered subdomain,Active
+Discovery,Subdomain,user@example.com,Discovered subdomain,Active
+Discovery,Subdomain,www.example.com,Discovered subdomain,Active
+Discovery,Subdomain,www.example.com:80,Discovered subdomain,Active
+Extraction,Parameter,api_key,Extracted parameter,Found
+Extraction,Parameter,callback,Extracted parameter,Found
+Extraction,Parameter,debug,Extracted parameter,Found
+Extraction,Parameter,email,Extracted parameter,Found
+Extraction,Parameter,filter,Extracted parameter,Found
+Extraction,Parameter,format,Extracted parameter,Found
+Extraction,Parameter,id,Extracted parameter,Found
+Extraction,Parameter,jsonp,Extracted parameter,Found
+Extraction,Parameter,limit,Extracted parameter,Found
+Extraction,Parameter,offset,Extracted parameter,Found
+Extraction,Parameter,page,Extracted parameter,Found
+Extraction,Parameter,password,Extracted parameter,Found
+Extraction,Parameter,q,Extracted parameter,Found
+Extraction,Parameter,query,Extracted parameter,Found
+Extraction,Parameter,redirect,Extracted parameter,Found
+Extraction,Parameter,return,Extracted parameter,Found
+Extraction,Parameter,search,Extracted parameter,Found
+Extraction,Parameter,sort,Extracted parameter,Found
+Extraction,Parameter,token,Extracted parameter,Found
+Extraction,Parameter,url,Extracted parameter,Found
+Extraction,Parameter,user,Extracted parameter,Found
+Extraction,Parameter,username,Extracted parameter,Found
+Network,IP Address,104.97.85.13,Resolved IP,Active
+Network,IP Address,104.97.85.34,Resolved IP,Active
+Network,IP Address,13.248.169.48,Resolved IP,Active
+Network,IP Address,23.220.75.245,Resolved IP,Active
