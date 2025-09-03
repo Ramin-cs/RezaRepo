@@ -596,12 +596,7 @@ class RouterScannerPro:
             content = response.text.lower()
             headers_str = str(response.headers).lower()
             
-            # Check for false positives first
-            is_fp, fp_reason = self.is_false_positive(content, url)
-            if is_fp:
-                return f'false_positive_{fp_reason}', response, final_url
-            
-            # 1. HTTP Basic Authentication (401 status)
+            # 1. HTTP Basic/Digest Authentication (401 status) - detect BEFORE false-positive filtering
             if response.status_code == 401:
                 auth_header = response.headers.get('WWW-Authenticate', '').lower()
                 if 'basic' in auth_header:
@@ -610,6 +605,11 @@ class RouterScannerPro:
                     return 'http_digest', response, final_url
                 else:
                     return 'http_basic', response, final_url  # Default to basic
+            
+            # Check for false positives afterwards
+            is_fp, fp_reason = self.is_false_positive(content, url)
+            if is_fp:
+                return f'false_positive_{fp_reason}', response, final_url
             
             # 2. HTTP Digest Authentication (check headers)
             if 'digest' in headers_str or 'realm' in headers_str:
@@ -1005,7 +1005,9 @@ class RouterScannerPro:
                 'authentication failed', 'invalid credentials', 'access denied',
                 'unauthorized', 'forbidden'
             ]
-            if resp.status_code in (401, 403):
+            # Allow 401 here because HTTP Basic/Digest may still return 401 on first challenge;
+            # verification should not fail solely due to 401 unless we're clearly back at login with failure text.
+            if resp.status_code == 403:
                 return False, {}
             if any(k in content for k in failure_keywords):
                 return False, {}
