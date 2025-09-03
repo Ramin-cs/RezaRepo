@@ -928,6 +928,11 @@ class RouterScannerPro:
     def verify_admin_access(self, admin_url, username, password, auth_type):
         """Robust admin verification with multi-factor scoring"""
         try:
+            # For javascript_based, we can't verify with requests alone
+            if auth_type == 'javascript_based':
+                # Return True to allow Selenium verification later
+                return True, {}
+            
             s = requests.Session()
             s.headers.update({
                 'User-Agent': random.choice(USER_AGENTS),
@@ -1409,35 +1414,70 @@ class RouterScannerPro:
                             verified, router_info = self.verify_admin_access(admin_url, username, password, login_page['auth_type'])
                         
                             if verified:
-                                # Admin access verified - this is the key condition
-                                print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
-                                
-                                # Only print VULNERABLE messages after successful verification
-                                print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
-                                print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
-                                
-                                # Display extracted information
-                                if router_info:
-                                    print(f"{Colors.YELLOW}[4/4] Information Extraction...{Colors.END}")
-                                    for key, value in router_info.items():
-                                        if value and value != "Unknown":
-                                            print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
-                                
-                                # Take screenshot ONLY after admin access is verified
-                                screenshot_file = None
-                                screenshot_success = True  # Track screenshot success
-                                
-                                if self.enable_screenshot:
-                                    print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
-                                    screenshot_file = self.take_screenshot(admin_url, username, password, login_page['auth_type'], ip)
-                                    if screenshot_file:
-                                        print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                # For javascript_based, we need Selenium verification
+                                if login_page['auth_type'] == 'javascript_based':
+                                    if self.enable_screenshot:
+                                        print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
+                                        screenshot_file = self.take_screenshot(admin_url, username, password, login_page['auth_type'], ip)
+                                        if screenshot_file:
+                                            # Screenshot successful - real admin access confirmed
+                                            print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
+                                            print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                                            print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
+                                            
+                                            # Display extracted information
+                                            if router_info:
+                                                print(f"{Colors.YELLOW}[4/4] Information Extraction...{Colors.END}")
+                                                for key, value in router_info.items():
+                                                    if value and value != "Unknown":
+                                                        print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
+                                            
+                                            print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                            
+                                            vulnerability = {
+                                                'type': 'Default Credentials',
+                                                'credentials': f"{username}:{password}",
+                                                'admin_url': admin_url,
+                                                'auth_type': login_page['auth_type'],
+                                                'router_info': router_info,
+                                                'verified': True,
+                                                'screenshot': screenshot_file
+                                            }
+                                            result['vulnerabilities'].append(vulnerability)
+                                            
+                                            with self.lock:
+                                                stats['vulnerable_routers'] += 1
+                                            
+                                            vulnerability_found = True  # Stop testing other credentials
+                                            break  # Exit the credential loop
+                                        else:
+                                            print(f"{Colors.YELLOW}[-] {username}:{password} failed - admin access not confirmed{Colors.END}")
                                     else:
-                                        print(f"{Colors.YELLOW}[!] Screenshot failed - admin access not confirmed{Colors.END}")
-                                        screenshot_success = False
-                                
-                                # Only confirm vulnerability if screenshot was successful (or screenshots disabled)
-                                if screenshot_success or not self.enable_screenshot:
+                                        # No screenshot enabled, can't verify javascript_based properly
+                                        print(f"{Colors.YELLOW}[-] {username}:{password} failed - javascript_based requires screenshot verification{Colors.END}")
+                                else:
+                                    # For non-javascript auth types, use traditional verification
+                                    print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
+                                    print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                                    print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
+                                    
+                                    # Display extracted information
+                                    if router_info:
+                                        print(f"{Colors.YELLOW}[4/4] Information Extraction...{Colors.END}")
+                                        for key, value in router_info.items():
+                                            if value and value != "Unknown":
+                                                print(f"{Colors.MAGENTA}[+] {key.replace('_', ' ').title()}: {value}{Colors.END}")
+                                    
+                                    # Take screenshot for non-javascript types
+                                    screenshot_file = None
+                                    if self.enable_screenshot:
+                                        print(f"{Colors.CYAN}[*] Taking screenshot for POC...{Colors.END}")
+                                        screenshot_file = self.take_screenshot(admin_url, username, password, login_page['auth_type'], ip)
+                                        if screenshot_file:
+                                            print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
+                                        else:
+                                            print(f"{Colors.YELLOW}[!] Screenshot failed - admin access not confirmed{Colors.END}")
+                                    
                                     vulnerability = {
                                         'type': 'Default Credentials',
                                         'credentials': f"{username}:{password}",
@@ -1454,8 +1494,6 @@ class RouterScannerPro:
                                     
                                     vulnerability_found = True  # Stop testing other credentials
                                     break  # Exit the credential loop
-                                else:
-                                    print(f"{Colors.YELLOW}[-] {username}:{password} failed - admin access not confirmed{Colors.END}")
                             else:
                                 print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                         else:
