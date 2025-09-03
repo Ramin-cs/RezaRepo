@@ -1,0 +1,36 @@
+!
+version 15.1
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-encryption
+!
+hostname Router1
+!
+boot-start-marker
+boot-end-marker
+!
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+enable password 7 0822455D0A16
+!
+username admin privilege 15 password 7 094F471A1A0A
+username guest password 7 05080F1C2243
+!
+interface FastEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+!
+interface FastEthernet0/1
+ ip address 10.0.0.1 255.255.255.0
+ no shutdown
+!
+ip route 0.0.0.0 0.0.0.0 192.168.1.254
+!
+access-list 100 permit tcp any any eq www
+access-list 100 permit tcp any any eq 443
+!
+line con 0
+line vty 0 4
+ password 7 060506324F41
+ login
+!
+end
