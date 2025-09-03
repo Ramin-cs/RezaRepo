@@ -76,24 +76,40 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def print_banner():
-    # Simple matrix-like warmup lines
-    for _ in range(3):
-        print(f"{Colors.GREEN}" + "|" * 60 + f"{Colors.END}")
-        time.sleep(0.05)
+    # Matrix rain intro
+    try:
+        import shutil
+        width = shutil.get_terminal_size((80, 24)).columns
+    except Exception:
+        width = 80
+    charset = list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*")
+    end_time = time.time() + 2
+    columns = [0] * width
+    while time.time() < end_time:
+        line_chars = []
+        for i in range(width):
+            if columns[i] <= 0 and random.random() < 0.02:
+                columns[i] = random.randint(3, 10)
+            if columns[i] > 0:
+                line_chars.append(random.choice(charset))
+                columns[i] -= 1
+            else:
+                line_chars.append(' ')
+        print(f"{Colors.GREEN}" + ''.join(line_chars) + f"{Colors.END}")
+        time.sleep(0.03)
     
     banner = f"""
-+{Colors.GREEN}{Colors.BOLD}
-+   ______       _                 _               _____                                             
-+  |  ____|     | |               | |             / ____|                                            
-+  | |__   _ __ | | ___   __ _  __| | ___  ___   | (___   ___ __ _ _ __  _ __   ___  _ __   ___ ___  
-+  |  __| | '_ \| |/ _ \ / _` |/ _` |/ _ \/ __|   \___ \ / __/ _` | '_ \| '_ \ / _ \| '_ \ / __/ _ \ 
-+  | |____| | | | | (_) | (_| | (_| |  __/\__ \   ____) | (_| (_| | | | | | | | (_) | | | | (_|  __/ 
-+  |______|_| |_|_|\___/ \__,_|\__,_|\___||___/  |_____/ \___\__,_|_| |_|_| |_|\___/|_| |_|\___\___| 
-+
-+{Colors.CYAN}:: Router Scanner Pro v7.0 ::{Colors.END}  {Colors.YELLOW}[ Nostalgic Hacker Edition ]{Colors.END}
-+{Colors.YELLOW}[!] For Network Security Assessment Only{Colors.END}
-+{Colors.WHITE}    "Wake up, Neo..." — follow the white rabbit.{Colors.END}
-+"""
+{Colors.GREEN}{Colors.BOLD}
+   ██████╗  ██████╗ ██╗   ██╗████████╗███████╗██████╗      ███████╗ ██████╗ ███╗   ██╗
+   ██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝██╔══██╗     ██╔════╝██╔═══██╗████╗  ██║
+   ██████╔╝██║   ██║██║   ██║   ██║   █████╗  ██████╔╝     █████╗  ██║   ██║██╔██╗ ██║
+   ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝  ██╔══██╗     ██╔══╝  ██║   ██║██║╚██╗██║
+   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗██║  ██║     ██║     ╚██████╔╝██║ ╚████║
+   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚══════╝╚═╝  ╚═╝     ╚═╝      ╚═════╝ ╚═╝  ╚═══╝
+
+{Colors.CYAN}:: Router Scanner Pro v7.0 ::{Colors.END}  {Colors.YELLOW}[ Nostalgic Hacker Edition ]{Colors.END}
+{Colors.WHITE}“Wake up, Neo...” — follow the white rabbit.{Colors.END}
+"""
     print(banner)
 
 # Target credentials
@@ -2035,7 +2051,14 @@ def main():
         print(f"{Colors.RED}[!] No valid targets found{Colors.END}")
         return
     
+    # Startup info (minimal, per request)
     print(f"{Colors.GREEN}[+] Loaded {len(targets)} targets{Colors.END}")
+    print(f"{Colors.GREEN}[+] Starting organized scan of {len(targets)} targets{Colors.END}")
+    creds_str = ", ".join([f"{u}:{p}" for u,p in TARGET_CREDENTIALS])
+    print(f"{Colors.BLUE}[*] Target credentials: {creds_str}{Colors.END}")
+    print(f"{Colors.BLUE}[*] Scanning ports: {', '.join(map(str, COMMON_PORTS))}{Colors.END}")
+    print(f"{Colors.BLUE}[*] Comprehensive brand detection with session management{Colors.END}")
+    print(f"{Colors.BLUE}[*] Organized workflow: Ports → Brand → Login → Brute Force → Admin Verification → HTML Report{Colors.END}")
     
     enable_screenshot = not args.no_screenshot
     if enable_screenshot and not SCREENSHOT_AVAILABLE:
