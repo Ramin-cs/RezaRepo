@@ -305,8 +305,8 @@ class RouterDecryptorPro:
         
         return strings
     
-    def analyze_file(self, file_path: str) -> Dict[str, Any]:
-        """Comprehensive file analysis"""
+    def analyze_file(self, file_path: str, verbose: bool = False) -> Dict[str, Any]:
+        """Comprehensive file analysis with debugging"""
         if not os.path.exists(file_path):
             return {'success': False, 'error': 'File not found'}
         
@@ -323,12 +323,27 @@ class RouterDecryptorPro:
             'entropy': self.calculate_entropy(raw_data),
             'detected_brand': self.detect_router_brand(raw_data),
             'success': False,
-            'attempted_methods': []
+            'attempted_methods': [],
+            'debug_info': {}
         }
         
         print(f"📊 File: {os.path.basename(file_path)} ({len(raw_data)} bytes)")
         print(f"🔍 Entropy: {result['entropy']:.2f}")
         print(f"🏷️ Brand: {result['detected_brand'].upper()}")
+        
+        # Debug info
+        if verbose:
+            print(f"📋 File extension: {Path(file_path).suffix}")
+            print(f"📋 First 50 bytes (hex): {raw_data[:50].hex()}")
+            print(f"📋 First 50 bytes (ascii): {repr(raw_data[:50])}")
+        
+        result['debug_info'] = {
+            'first_50_hex': raw_data[:50].hex(),
+            'first_50_ascii': repr(raw_data[:50]),
+            'file_extension': Path(file_path).suffix,
+            'crypto_available': CRYPTO_AVAILABLE
+        }
+        
         print("")
         
         # Try different decryption methods
@@ -342,6 +357,43 @@ class RouterDecryptorPro:
             method_used = 'plaintext'
             result['attempted_methods'].append('plaintext')
             print("✅ File is readable plaintext")
+        
+        # Special handling for .conf backup files
+        elif Path(file_path).suffix.lower() == '.conf' and not content:
+            print("🔍 Detected .conf backup file - trying special methods...")
+            
+            # Try to detect if it's a compressed backup
+            if raw_data.startswith(b'\x1f\x8b'):  # GZIP header
+                print("   Detected GZIP compression...")
+                try:
+                    import gzip
+                    decompressed = gzip.decompress(raw_data)
+                    if self.is_text_config(decompressed):
+                        content = decompressed.decode('utf-8', errors='ignore')
+                        method_used = 'gzip_decompress'
+                        result['attempted_methods'].append('gzip')
+                        print("✅ Successfully decompressed GZIP backup")
+                except Exception as e:
+                    print(f"   GZIP decompression failed: {e}")
+            
+            # Try to detect if it's a ZIP archive
+            elif raw_data.startswith(b'PK'):  # ZIP header
+                print("   Detected ZIP archive...")
+                try:
+                    import zipfile
+                    import io
+                    with zipfile.ZipFile(io.BytesIO(raw_data)) as zf:
+                        for filename in zf.namelist():
+                            if any(ext in filename.lower() for ext in ['.cfg', '.conf', '.txt', '.xml']):
+                                extracted = zf.read(filename)
+                                if self.is_text_config(extracted):
+                                    content = extracted.decode('utf-8', errors='ignore')
+                                    method_used = f'zip_extract_{filename}'
+                                    result['attempted_methods'].append('zip_extract')
+                                    print(f"✅ Successfully extracted from ZIP: {filename}")
+                                    break
+                except Exception as e:
+                    print(f"   ZIP extraction failed: {e}")
         
         # Method 2: Try Base64 decoding
         if not content:
@@ -416,22 +468,80 @@ class RouterDecryptorPro:
                     print(f"✅ Successfully decrypted with DES (password: {password})")
                     break
         
-        # Method 7: Extract strings from binary (last resort)
+        # Method 7: Try advanced encryption methods for backup files
+        if not content and result['entropy'] > 6:
+            print("🔍 Trying advanced encryption methods for backup files...")
+            
+            # Try with empty password (some backups use no password)
+            decoded = self.try_aes_decrypt(raw_data, "")
+            if decoded:
+                content = decoded
+                method_used = 'aes_no_password'
+                result['attempted_methods'].append('aes_no_password')
+                print("✅ Successfully decrypted with AES (no password)")
+            
+            # Try DES with empty password
+            if not content:
+                decoded = self.try_des_decrypt(raw_data, "")
+                if decoded:
+                    content = decoded
+                    method_used = 'des_no_password'
+                    result['attempted_methods'].append('des_no_password')
+                    print("✅ Successfully decrypted with DES (no password)")
+            
+            # Try common backup file passwords
+            backup_passwords = [
+                'backup', 'config', 'settings', 'router', 'admin',
+                'backup123', 'config123', 'settings123'
+            ]
+            
+            for password in backup_passwords:
+                if content:
+                    break
+                    
+                # Try AES
+                decoded = self.try_aes_decrypt(raw_data, password)
+                if decoded:
+                    content = decoded
+                    method_used = f'aes_backup_{password}'
+                    result['attempted_methods'].append('aes_backup')
+                    print(f"✅ Successfully decrypted with AES backup password: {password}")
+                    break
+                
+                # Try DES
+                decoded = self.try_des_decrypt(raw_data, password)
+                if decoded:
+                    content = decoded
+                    method_used = f'des_backup_{password}'
+                    result['attempted_methods'].append('des_backup')
+                    print(f"✅ Successfully decrypted with DES backup password: {password}")
+                    break
+        
+        # Method 8: Extract strings from binary (last resort)
         if not content:
             print("🔍 Extracting readable strings from binary data...")
-            strings = self.extract_strings_from_binary(raw_data, min_length=6)
+            strings = self.extract_strings_from_binary(raw_data, min_length=4)
             
             # Filter for config-like strings
             config_strings = []
-            for string in strings:
-                if any(keyword in string.lower() for keyword in ['interface', 'ip', 'password', 'admin', 'wireless', 'router']):
-                    config_strings.append(string)
+            important_strings = []
             
-            if config_strings:
-                content = '\n'.join(config_strings)
+            for string in strings:
+                string_lower = string.lower()
+                if any(keyword in string_lower for keyword in ['interface', 'ip', 'password', 'admin', 'wireless', 'router', 'hostname', 'ssid']):
+                    config_strings.append(string)
+                elif any(keyword in string_lower for keyword in ['user', 'pass', 'key', 'net', 'wan', 'lan']):
+                    important_strings.append(string)
+            
+            if config_strings or important_strings:
+                all_strings = config_strings + important_strings
+                content = '\n'.join(all_strings[:100])  # Limit to first 100 strings
                 method_used = 'string_extraction'
                 result['attempted_methods'].append('string_extraction')
-                print(f"✅ Extracted {len(config_strings)} configuration strings")
+                print(f"✅ Extracted {len(config_strings)} config strings + {len(important_strings)} important strings")
+                
+                # Add note about partial extraction
+                content = f"# PARTIAL EXTRACTION FROM ENCRYPTED BACKUP FILE\n# Found {len(all_strings)} readable strings\n\n" + content
         
         # Process results
         if content:
@@ -440,11 +550,29 @@ class RouterDecryptorPro:
             result['decryption_method'] = method_used
             result['analysis'] = self.analyze_configuration_content(content, result['detected_brand'])
             print(f"🎉 SUCCESS! Decrypted using: {method_used}")
+            print(f"📝 Content preview: {content[:200].replace(chr(10), ' ')[:100]}...")
         else:
             result['success'] = False
             result['error'] = f'Could not decrypt file with {len(result["attempted_methods"])} methods'
             result['recommendations'] = self.get_failure_recommendations(result)
             print(f"❌ FAILED after trying {len(result['attempted_methods'])} methods")
+            print("💡 Recommendations:")
+            for i, rec in enumerate(result['recommendations'][:3], 1):
+                print(f"   {i}. {rec}")
+            
+            # Show what we found anyway
+            strings = self.extract_strings_from_binary(raw_data, min_length=4)
+            if strings:
+                print(f"🔍 Found {len(strings)} readable strings in file:")
+                for string in strings[:10]:
+                    if len(string) > 6:
+                        print(f"   • {string}")
+                if len(strings) > 10:
+                    print(f"   ... and {len(strings) - 10} more strings")
+                
+                # Create partial content from strings
+                result['partial_content'] = '\n'.join(strings)
+                result['partial_success'] = True
         
         return result
     
@@ -559,30 +687,58 @@ class RouterDecryptorPro:
                 return 'weak'
     
     def get_failure_recommendations(self, result: Dict[str, Any]) -> List[str]:
-        """Get recommendations when decryption fails"""
+        """Get specific recommendations when decryption fails"""
         recommendations = []
         
         entropy = result.get('entropy', 0)
         file_size = result.get('file_size', 0)
         brand = result.get('detected_brand', 'unknown')
+        file_ext = result.get('debug_info', {}).get('file_extension', '').lower()
         
-        if entropy > 7.5:
-            recommendations.append("HIGH ENTROPY: File appears strongly encrypted")
-            recommendations.append("Try to obtain the encryption key from device documentation")
+        # Specific recommendations for .conf backup files
+        if file_ext == '.conf':
+            recommendations.append("BACKUP FILE DETECTED (.conf extension)")
+            recommendations.append("This appears to be a router backup/settings file")
+            
+            if entropy > 7.5:
+                recommendations.append("STRONG ENCRYPTION: File is professionally encrypted")
+                recommendations.append("You need the specific backup password or device master key")
+            elif entropy > 6:
+                recommendations.append("MEDIUM ENCRYPTION: Try these approaches:")
+                recommendations.append("- Check if backup was created with a password")
+                recommendations.append("- Try the device's admin password as decryption key")
+                recommendations.append("- Look for backup creation logs on the device")
         
-        if file_size > 50000:
-            recommendations.append("LARGE FILE: May be firmware image, not configuration")
-            recommendations.append("Use firmware analysis tools like binwalk")
+        if file_size > 40000:
+            recommendations.append("LARGE BACKUP: Contains comprehensive device settings")
+            if file_size > 100000:
+                recommendations.append("May include firmware components - try firmware extraction tools")
         
         if brand != 'generic':
-            recommendations.append(f"BRAND DETECTED: {brand.upper()}")
-            recommendations.append(f"Check {brand} manufacturer tools for configuration export")
+            recommendations.append(f"ROUTER BRAND: {brand.upper()}")
+            
+            # Brand-specific advice
+            brand_advice = {
+                'cisco': "Use 'show running-config' or TFTP backup from device",
+                'mikrotik': "Export as .rsc file: /export file=config",
+                'tplink': "Use web interface: System Tools > Backup & Restore",
+                'dlink': "Use web interface: Tools > System > Save Configuration",
+                'netcomm': "Access device web interface for configuration export",
+                'juniper': "Use 'show configuration' command",
+                'huawei': "Use 'display current-configuration' command"
+            }
+            
+            if brand in brand_advice:
+                recommendations.append(f"SOLUTION: {brand_advice[brand]}")
         
-        recommendations.append("ALTERNATIVE METHODS:")
-        recommendations.append("1. Export config directly from device (if accessible)")
-        recommendations.append("2. Use manufacturer's backup/restore tools")
-        recommendations.append("3. Check device manual for configuration export procedures")
-        recommendations.append("4. Try different file formats (.rsc, .xml, .json)")
+        recommendations.append("ALTERNATIVE APPROACHES:")
+        recommendations.append("1. Access router directly and export config in plain text")
+        recommendations.append("2. Reset router and reconfigure (if acceptable)")
+        recommendations.append("3. Contact router manufacturer support")
+        recommendations.append("4. Use manufacturer-specific configuration tools")
+        
+        if not CRYPTO_AVAILABLE:
+            recommendations.append("INSTALL CRYPTO LIBRARIES: pip install cryptography pycryptodome")
         
         return recommendations
     
@@ -689,6 +845,34 @@ class RouterDecryptorPro:
         
         else:
             # Failed analysis
+            report.append("❌ DECRYPTION FAILED")
+            report.append("-" * 40)
+            report.append(f"Error: {result.get('error', 'Unknown error')}")
+            report.append("")
+            
+            # Show debug information
+            debug_info = result.get('debug_info', {})
+            if debug_info:
+                report.append("🔍 DEBUG INFORMATION:")
+                report.append(f"File Extension: {debug_info.get('file_extension', 'Unknown')}")
+                report.append(f"Crypto Libraries: {'Available' if debug_info.get('crypto_available') else 'Not Available'}")
+                report.append(f"First 50 bytes (hex): {debug_info.get('first_50_hex', 'N/A')}")
+                report.append("")
+            
+            # Show partial content if available
+            if result.get('partial_success') and result.get('partial_content'):
+                report.append("🔍 PARTIAL EXTRACTION RESULTS:")
+                report.append("-" * 40)
+                partial_content = result['partial_content']
+                lines = partial_content.split('\n')[:20]  # First 20 lines
+                for line in lines:
+                    if line.strip():
+                        report.append(f"  {line}")
+                if len(partial_content.split('\n')) > 20:
+                    report.append("  ... (more content available)")
+                report.append("")
+            
+            # Recommendations
             recommendations = result.get('recommendations', [])
             if recommendations:
                 report.append("💡 RECOMMENDATIONS:")
@@ -916,7 +1100,7 @@ Examples:
     print("🔥 Router Decryptor Pro v4.0 - Ultimate Analysis")
     print("=" * 60)
     
-    result = decryptor.analyze_file(args.file)
+    result = decryptor.analyze_file(args.file, verbose=args.verbose)
     
     # Output
     if args.json:
