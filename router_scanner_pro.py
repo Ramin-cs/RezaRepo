@@ -998,6 +998,20 @@ class RouterScannerPro:
 
             content = resp.text.lower()
             final_url = resp.url.lower()
+
+            # Hard-fail negatives: common failure signals or back to login
+            failure_keywords = [
+                'login failed', 'incorrect username or password', 'wrong password',
+                'authentication failed', 'invalid credentials', 'access denied',
+                'unauthorized', 'forbidden'
+            ]
+            if resp.status_code in (401, 403):
+                return False, {}
+            if any(k in content for k in failure_keywords):
+                return False, {}
+            if any(k in final_url for k in ["login", "signin", "sign-in", "authenticate", "auth"]):
+                # If final URL is clearly a login-related path, treat as failure
+                return False, {}
             
             # Strict admin panel verification - prevent false positives
             criteria_met = 0
