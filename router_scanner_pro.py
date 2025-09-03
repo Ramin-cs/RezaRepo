@@ -999,34 +999,38 @@ class RouterScannerPro:
             content = resp.text.lower()
             final_url = resp.url.lower()
             
-            # Balanced admin panel verification - more lenient for better detection
+            # Strict admin panel verification - prevent false positives
             criteria_met = 0
-            total_criteria = 4  # Simplified to 4 main criteria
+            total_criteria = 5  # 5 criteria for strict verification
             
             # Criterion 1: Successful response (status 200)
             if resp.status_code == 200:
                 criteria_met += 1
             
-            # Criterion 2: Has admin/router indicators (at least 1 required)
-            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem', 'wan', 'lan', 'wireless']
-            admin_count = sum(1 for k in admin_indicators if k in content)
-            if admin_count >= 1:  # At least 1 admin indicator
+            # Criterion 2: URL changed from login page (strong indicator)
+            if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 3: Has router-specific information (MAC, IP, SSID, firmware, etc.)
+            # Criterion 3: Has admin/router indicators (at least 2 required)
+            admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem', 'wan', 'lan', 'wireless']
+            admin_count = sum(1 for k in admin_indicators if k in content)
+            if admin_count >= 2:  # At least 2 admin indicators
+                criteria_met += 1
+            
+            # Criterion 4: Has router-specific information (MAC, IP, SSID, firmware, etc.)
             router_info_indicators = ['mac address', 'ip address', 'ssid', 'firmware', 'uptime', 'wan', 'lan', 'wireless', 'dhcp', 'dns', 'gateway', 'router']
             router_info_count = sum(1 for indicator in router_info_indicators if indicator in content)
             if router_info_count >= 1:  # At least 1 router-specific info item
                 criteria_met += 1
             
-            # Criterion 4: Not clearly a login page (negative test)
-            login_page_indicators = ['username', 'password', 'enter credentials', 'user login', 'admin login', 'router login', 'sign in', 'log in']
+            # Criterion 5: Not clearly a login page (negative test - strict)
+            login_page_indicators = ['username', 'password', 'enter credentials', 'user login', 'admin login', 'router login', 'sign in', 'log in', 'authentication']
             login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 2:  # Less than 2 strong login indicators
+            if login_page_score < 1:  # No strong login indicators
                 criteria_met += 1
             
-            # Require at least 2 out of 4 criteria (50% success rate) for balanced accuracy
-            if criteria_met >= 2:
+            # Require at least 4 out of 5 criteria (80% success rate) for strict accuracy
+            if criteria_met >= 4:
                 return True, self.extract_router_info(content)
             else:
                 return False, {}
@@ -1390,6 +1394,9 @@ class RouterScannerPro:
                             verified, router_info = self.verify_admin_access(admin_url, username, password, login_page['auth_type'])
                         
                             if verified:
+                                # Admin access verified - this is the key condition
+                                print(f"{Colors.GREEN}[+] Admin access verified!{Colors.END}")
+                                
                                 # Only print VULNERABLE messages after successful verification
                                 print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
                                 print(f"{Colors.GREEN}[+] Admin URL: {admin_url}{Colors.END}")
