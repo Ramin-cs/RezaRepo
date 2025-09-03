@@ -1026,10 +1026,10 @@ class RouterScannerPro:
             if not any(k in final_url for k in ["login", "sign-in", "signin", "auth", "authentication"]):
                 criteria_met += 1
             
-            # Criterion 3: Has admin/router indicators (at least 2 required)
+            # Criterion 3: Has admin/router indicators (at least 1 required)
             admin_indicators = ['admin', 'administrator', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem', 'wan', 'lan', 'wireless']
             admin_count = sum(1 for k in admin_indicators if k in content)
-            if admin_count >= 2:  # At least 2 admin indicators
+            if admin_count >= 1:  # At least 1 admin indicator
                 criteria_met += 1
             
             # Criterion 4: Has router-specific information (MAC, IP, SSID, firmware, etc.)
@@ -1038,10 +1038,10 @@ class RouterScannerPro:
             if router_info_count >= 1:  # At least 1 router-specific info item
                 criteria_met += 1
             
-            # Criterion 5: Not clearly a login page (negative test - strict)
+            # Criterion 5: Not clearly a login page (negative test - more lenient)
             login_page_indicators = ['username', 'password', 'enter credentials', 'user login', 'admin login', 'router login', 'sign in', 'log in', 'authentication']
             login_page_score = sum(1 for indicator in login_page_indicators if indicator in content)
-            if login_page_score < 1:  # No strong login indicators
+            if login_page_score < 2:  # Less than 2 strong login indicators
                 criteria_met += 1
             
             # Require at least 3 out of 5 criteria for balanced accuracy
