@@ -75,6 +75,62 @@ signal.signal(signal.SIGINT, signal_handler)
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def generate_ascii_banner(text):
+    """Generate ASCII art banner from text"""
+    # Simple ASCII art patterns for each character
+    ascii_patterns = {
+        'A': ['  ██  ', ' ████ ', '██  ██', '██████', '██  ██', '██  ██'],
+        'B': ['█████ ', '██  ██', '█████ ', '██  ██', '██  ██', '█████ '],
+        'C': [' █████', '██    ', '██    ', '██    ', '██    ', ' █████'],
+        'D': ['█████ ', '██  ██', '██  ██', '██  ██', '██  ██', '█████ '],
+        'E': ['██████', '██    ', '█████ ', '██    ', '██    ', '██████'],
+        'F': ['██████', '██    ', '█████ ', '██    ', '██    ', '██    '],
+        'G': [' █████', '██    ', '██    ', '██ ███', '██  ██', ' █████'],
+        'H': ['██  ██', '██  ██', '██████', '██  ██', '██  ██', '██  ██'],
+        'I': ['██████', '  ██  ', '  ██  ', '  ██  ', '  ██  ', '██████'],
+        'J': ['██████', '    ██', '    ██', '    ██', '██  ██', ' ████ '],
+        'K': ['██  ██', '██ ██ ', '████  ', '██ ██ ', '██  ██', '██  ██'],
+        'L': ['██    ', '██    ', '██    ', '██    ', '██    ', '██████'],
+        'M': ['██  ██', '██████', '██ ████', '██  ██', '██  ██', '██  ██'],
+        'N': ['██  ██', '███ ██', '██████', '██ ███', '██  ██', '██  ██'],
+        'O': [' ████ ', '██  ██', '██  ██', '██  ██', '██  ██', ' ████ '],
+        'P': ['█████ ', '██  ██', '██  ██', '█████ ', '██    ', '██    '],
+        'Q': [' ████ ', '██  ██', '██  ██', '██ ███', '██  ██', ' █████'],
+        'R': ['█████ ', '██  ██', '██  ██', '█████ ', '██ ██ ', '██  ██'],
+        'S': [' █████', '██    ', '██    ', ' █████', '    ██', '█████ '],
+        'T': ['██████', '  ██  ', '  ██  ', '  ██  ', '  ██  ', '  ██  '],
+        'U': ['██  ██', '██  ██', '██  ██', '██  ██', '██  ██', ' ████ '],
+        'V': ['██  ██', '██  ██', '██  ██', '██  ██', ' ████ ', '  ██  '],
+        'W': ['██  ██', '██  ██', '██  ██', '██ ████', '██████', '██  ██'],
+        'X': ['██  ██', '██  ██', ' ████ ', ' ████ ', '██  ██', '██  ██'],
+        'Y': ['██  ██', '██  ██', ' ████ ', '  ██  ', '  ██  ', '  ██  '],
+        'Z': ['██████', '    ██', '   ██ ', '  ██  ', ' ██   ', '██████'],
+        ' ': ['      ', '      ', '      ', '      ', '      ', '      ']
+    }
+    
+    # Convert text to uppercase and split into lines
+    text = text.upper()
+    lines = [''] * 6  # 6 lines for ASCII art
+    
+    for char in text:
+        if char in ascii_patterns:
+            pattern = ascii_patterns[char]
+            for i in range(6):
+                lines[i] += pattern[i] + ' '
+        else:
+            # For unknown characters, use space
+            for i in range(6):
+                lines[i] += '      '
+    
+    # Format the banner
+    banner = f"""
+{Colors.GREEN}{Colors.BOLD}"""
+    for line in lines:
+        banner += line.rstrip() + "\n"
+    banner += f"{Colors.END}"
+    
+    return banner
+
 def print_banner():
     # Matrix rain intro
     try:
@@ -98,16 +154,11 @@ def print_banner():
         print(f"{Colors.GREEN}" + ''.join(line_chars) + f"{Colors.END}")
         time.sleep(0.03)
     
-    # Nostalgic hacker banner (editable block text)
-    banner = f"""
-{Colors.GREEN}{Colors.BOLD}
-   ██████╗ ██████╗ ██╗   ██╗████████╗███████╗     ███████╗ ██████╗ ███╗   ██╗
-   ██╔══██╗██╔═══██╗██║   ██║╚══██╔══╝██╔════╝     ██╔════╝██╔═══██╗████╗  ██║
-   ██████╔╝██║   ██║██║   ██║   ██║   █████╗       █████╗  ██║   ██║██╔██╗ ██║
-   ██╔══██╗██║   ██║██║   ██║   ██║   ██╔══╝       ██╔══╝  ██║   ██║██║╚██╗██║
-   ██║  ██║╚██████╔╝╚██████╔╝   ██║   ███████╗     ██║     ╚██████╔╝██║ ╚████║
-   ╚═╝  ╚═╝ ╚═════╝  ╚═════╝    ╚═╝   ╚══════╝     ╚═╝      ╚═════╝ ╚═╝  ╚═══╝
-"""
+    # Editable banner text - change this to customize the banner
+    banner_text = "Router Scan"
+    
+    # Generate ASCII art from text
+    banner = generate_ascii_banner(banner_text)
     print(banner)
 
 # Target credentials
@@ -1458,10 +1509,6 @@ class RouterBruteForce:
             return result
     
     def run_brute_force(self):
-        print(f"{Colors.CYAN}[+] Starting brute force attack on {len(self.login_urls)} login URLs{Colors.END}")
-        print(f"{Colors.YELLOW}[*] Target credentials: {', '.join([f'{u}:{p}' for u, p in TARGET_CREDENTIALS])}{Colors.END}")
-        print(f"{Colors.BLUE}[*] Direct login page brute force with authentication detection{Colors.END}")
-        print(f"{Colors.MAGENTA}[*] Workflow: Auth Detection → Brute Force → Admin Verification → Screenshot{Colors.END}")
         print("-" * 80)
         
         all_results = []
