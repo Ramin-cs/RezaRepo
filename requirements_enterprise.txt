@@ -1,0 +1,35 @@
+# Enterprise Router Configuration Analyzer
+# Professional-grade dependencies
+
+# Core cryptography libraries
+cryptography>=41.0.0
+pycryptodome>=3.18.0
+
+# Network libraries
+paramiko>=3.3.0
+netmiko>=4.2.0
+scapy>=2.5.0
+
+# Data processing
+lxml>=4.9.0
+xmltodict>=0.13.0
+pyyaml>=6.0
+
+# Cross-platform packaging
+pyinstaller>=5.13.0
+cx-freeze>=6.15.0
+
+# Optional GUI dependencies (auto-installed with Python on most systems)
+# tkinter (built-in with Python)
+
+# Development and testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Performance optimization
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Additional security tools
+hashlib-compat>=1.0.0
+bcrypt>=4.0.0

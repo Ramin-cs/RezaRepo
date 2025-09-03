@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <system>
+        <hostname>DLINK-DIR825</hostname>
+        <model>DIR-825</model>
+        <version>2.10NA</version>
+        <admin>
+            <username>admin</username>
+            <password>DLinkSecure2024</password>
+            <timeout>600</timeout>
+        </admin>
+    </system>
+    
+    <network>
+        <lan>
+            <ip>192.168.0.1</ip>
+            <subnet>255.255.255.0</subnet>
+            <dhcp>
+                <enable>1</enable>
+                <start>192.168.0.100</start>
+                <end>192.168.0.199</end>
+                <lease>86400</lease>
+            </dhcp>
+        </lan>
+        
+        <wan>
+            <type>dhcp</type>
+            <dns1>8.8.8.8</dns1>
+            <dns2>8.8.4.4</dns2>
+        </wan>
+    </network>
+    
+    <wireless>
+        <radio2g>
+            <enable>1</enable>
+            <ssid>DLink_Corporate</ssid>
+            <password>SecureWiFi2024!</password>
+            <security>WPA2-PSK</security>
+            <channel>11</channel>
+        </radio2g>
+        
+        <radio5g>
+            <enable>1</enable>
+            <ssid>DLink_Corporate_5G</ssid>
+            <password>SecureWiFi2024!</password>
+            <security>WPA2-PSK</security>
+            <channel>44</channel>
+        </radio5g>
+    </wireless>
+    
+    <security>
+        <firewall>
+            <enable>1</enable>
+            <level>high</level>
+        </firewall>
+        
+        <access_control>
+            <rule id="1">
+                <name>Block Social Media</name>
+                <action>deny</action>
+                <protocol>tcp</protocol>
+                <port>443</port>
+                <destination>facebook.com</destination>
+            </rule>
+        </access_control>
+    </security>
+</config>
