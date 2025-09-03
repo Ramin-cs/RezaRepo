@@ -1,0 +1,44 @@
+{
+  "scan_info": {
+    "target_url": "https://httpbin.org/get?url=test&redirect=example",
+    "scan_date": "2025-09-03T23:40:34.515961",
+    "scanner_version": "Ultimate Hunter v3.0 - Complete Modular Edition",
+    "total_parameters": 2,
+    "redirect_parameters": 2,
+    "web3_parameters": 0,
+    "javascript_parameters": 0,
+    "vulnerabilities_found": 0,
+    "web3_detected": false,
+    "payload_arsenal_size": 241
+  },
+  "statistics": {
+    "urls_discovered": 1,
+    "js_files_analyzed": 0,
+    "high_confidence_params": 2,
+    "medium_confidence_params": 0,
+    "low_confidence_params": 0
+  },
+  "parameters": [
+    {
+      "name": "url",
+      "value": "test",
+      "source": "url",
+      "context": "query",
+      "url": "https://httpbin.org/get?url=test&redirect=example",
+      "method": "GET",
+      "is_redirect_related": true,
+      "confidence": 0.8999999999999999
+    },
+    {
+      "name": "redirect",
+      "value": "example",
+      "source": "url",
+      "context": "query",
+      "url": "https://httpbin.org/get?url=test&redirect=example",
+      "method": "GET",
+      "is_redirect_related": true,
+      "confidence": 0.8999999999999999
+    }
+  ],
+  "vulnerabilities": []
+}
