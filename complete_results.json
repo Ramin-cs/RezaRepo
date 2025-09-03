@@ -1,0 +1,23 @@
+{
+  "scan_info": {
+    "target_url": "https://httpbin.org/get?url=test&redirect=example&next=page",
+    "scan_date": "2025-09-03T23:24:09.485894",
+    "scanner_version": "Ultimate Hunter v3.0 - Complete Edition",
+    "total_parameters": 0,
+    "redirect_parameters": 0,
+    "web3_parameters": 0,
+    "javascript_parameters": 0,
+    "vulnerabilities_found": 0,
+    "web3_detected": false,
+    "payload_count": 241
+  },
+  "statistics": {
+    "urls_discovered": 0,
+    "js_files_analyzed": 0,
+    "high_confidence_params": 0,
+    "medium_confidence_params": 0,
+    "low_confidence_params": 0
+  },
+  "parameters": [],
+  "vulnerabilities": []
+}
