@@ -1,0 +1,3 @@
+name,value,source,context,url,method,is_redirect_related,confidence,line_number,vulnerability_found
+url,test,url,query,https://httpbin.org/get?url=test&redirect=example,GET,True,0.900,0,False
+redirect,example,url,query,https://httpbin.org/get?url=test&redirect=example,GET,True,0.900,0,False
