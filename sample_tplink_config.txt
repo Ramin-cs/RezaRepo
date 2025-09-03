@@ -1,0 +1,27 @@
+#TP-LINK Configuration File
+#Model: Archer C7
+#Version: 3.15.3
+
+wireless.2g.ssid=MyNetwork_2G
+wireless.2g.password=MyWiFiPassword123
+wireless.2g.security=WPA2-PSK
+
+wireless.5g.ssid=MyNetwork_5G
+wireless.5g.password=MyWiFiPassword123
+wireless.5g.security=WPA2-PSK
+
+lan.ip=192.168.0.1
+lan.subnet=255.255.255.0
+lan.dhcp.enable=1
+lan.dhcp.start=192.168.0.100
+lan.dhcp.end=192.168.0.199
+
+wan.type=dhcp
+wan.dns1=8.8.8.8
+wan.dns2=8.8.4.4
+
+admin.username=admin
+admin.password=admin123
+
+firewall.enable=1
+firewall.level=medium
