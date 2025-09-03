@@ -1,0 +1,44 @@
+{
+  "scan_info": {
+    "target_url": "https://httpbin.org/get?url=test&redirect=example&next=page",
+    "scan_date": "2025-09-03T23:03:26.916809",
+    "scanner_version": "Ultimate Hunter v3.0",
+    "total_parameters": 3,
+    "redirect_parameters": 3,
+    "vulnerabilities_found": 0,
+    "web3_detected": false
+  },
+  "parameters": [
+    {
+      "name": "url",
+      "value": "test",
+      "source": "url",
+      "context": "query",
+      "url": "https://httpbin.org/get?url=test&redirect=example&next=page",
+      "method": "GET",
+      "is_redirect_related": true,
+      "confidence": 0.8999999999999999
+    },
+    {
+      "name": "redirect",
+      "value": "example",
+      "source": "url",
+      "context": "query",
+      "url": "https://httpbin.org/get?url=test&redirect=example&next=page",
+      "method": "GET",
+      "is_redirect_related": true,
+      "confidence": 0.8999999999999999
+    },
+    {
+      "name": "next",
+      "value": "page",
+      "source": "url",
+      "context": "query",
+      "url": "https://httpbin.org/get?url=test&redirect=example&next=page",
+      "method": "GET",
+      "is_redirect_related": true,
+      "confidence": 0.8999999999999999
+    }
+  ],
+  "vulnerabilities": []
+}
