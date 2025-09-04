@@ -1,178 +1,190 @@
-# 📞 Offline SIP Password Extractor v10.0
+# 🕵️ Router Vulnerability Scanner v11.0
 
-## Professional SIP/VoIP Configuration Recovery from Router Backup Files
+## Professional Penetration Testing and SIP Extraction Tool
 
-**Perfect for your situation: Extract SIP passwords from backup files when you're offline and not connected to the router network.**
+**Perfect for POC security demonstrations - extracts SIP passwords from live routers without authentication!**
 
-## 🎯 For Your Exact Situation
+## 🎯 Exactly What You Need for POC
 
-You have:
-- ✅ Router backup file (`backupsettings-1.conf`)
-- ✅ No network access to the router
-- ✅ Need SIP passwords for POC demonstration
+This tool demonstrates **router security vulnerabilities** by:
+- ✅ **Accessing router without authentication**
+- ✅ **Extracting SIP/VoIP passwords** from live devices
+- ✅ **Testing known vulnerabilities** automatically
+- ✅ **Generating professional reports** for POC presentations
 
-This tool is **specifically designed** for this scenario.
-
-## 🚀 Simple Usage
+## 🚀 Simple Usage for POC
 
 ```bash
-# Extract SIP passwords from your backup file
-python3 offline_sip_extractor.py backupsettings-1.conf -v
+# Test router security and extract SIP passwords
+python3 router_vulnerability_scanner.py 192.168.1.1 -v
 
 # Generate professional POC report
-python3 offline_sip_extractor.py backupsettings-1.conf --report sip_poc.txt
+python3 router_vulnerability_scanner.py 192.168.1.1 --report poc_security_demo.txt
 
 # Test Type 7 decryption (for demo)
-python3 offline_sip_extractor.py --password "094F471A1A0A"
+python3 router_vulnerability_scanner.py --password "094F471A1A0A"
 ```
 
-## 🔍 How It Works (Offline Analysis)
+## 🔍 How It Works (Penetration Testing)
 
-### **You DON'T need to:**
-❌ Connect to router network  
-❌ Login to router interface  
-❌ Access router remotely  
-❌ Run anything on the router  
+### **Step 1: Router Discovery**
+- Tests connectivity to target IP
+- Identifies router brand and model
+- Fingerprints web interface
 
-### **You ONLY need to:**
-✅ Run tool on your computer  
-✅ Point it to your backup file  
-✅ Wait for SIP extraction results  
+### **Step 2: Vulnerability Assessment**
+- Tests known CVE vulnerabilities
+- Checks for unauthenticated endpoints
+- Identifies configuration exposure
 
-## 📊 What This Tool Does
+### **Step 3: Unauthorized Access**
+- Attempts unauthenticated config access
+- Tests default credentials
+- Bypasses authentication where possible
 
-### **5 Advanced SIP Extraction Methods:**
+### **Step 4: SIP Extraction**
+- Extracts SIP/VoIP configurations
+- Recovers SIP usernames and passwords
+- Decrypts Type 7 passwords
+- Maps VoIP server settings
 
-#### **Method 1: Direct Text Analysis**
-- Searches for SIP patterns in readable text
-- Finds XML/JSON SIP configurations
-- Extracts plaintext VoIP settings
+## 📊 Perfect POC Demonstration
 
-#### **Method 2: Decompression Analysis**
-- Decompresses GZIP/ZLIB sections
-- Analyzes compressed SIP configurations
-- Extracts from embedded archives
-
-#### **Method 3: Binary Pattern Analysis**
-- Finds SIP data in binary sections
-- Reconstructs fragmented SIP accounts
-- Extracts from encrypted sections
-
-#### **Method 4: String Reconstruction**
-- Rebuilds SIP accounts from fragments
-- Correlates usernames with passwords
-- Reconstructs server configurations
-
-#### **Method 5: Frequency Analysis**
-- Finds SIP extensions (1001, 1002, etc.)
-- Locates associated passwords
-- Maps VoIP account structures
-
-## 📋 Expected SIP Extraction Results
-
-### **If SIP Data Found:**
+### **Scenario 1: Vulnerable Router Found**
 ```
-🎉 SIP EXTRACTION SUCCESSFUL!
-📞 Complete accounts: 3
-🔐 Passwords found: 5
+🎉 PENETRATION TEST SUCCESSFUL!
+🔓 Unauthorized access achieved
+📞 SIP accounts extracted: 3
+   • Username: 1001, Password: sippass123
+   • Username: 1002, Password: voipuser456
+   • SIP Server: sip.provider.com:5060
 
-📋 COMPLETE SIP ACCOUNTS:
-1. Extension: 1001
-   Password: myvoippass123
-   Source: binary_context
-
-2. Extension: 1002  
-   Password: sip456secure
-   Source: decompressed
-
-🔐 SIP PASSWORDS:
-• voippass2024 (from text_extraction)
-• sipuser123 (decrypted from 094F471A1A0A)
-
-🌐 SIP SERVERS:
-• sip.provider.com:5060
-• 192.168.1.100:5060
+🎯 Perfect for POC security demonstration!
 ```
 
-### **If Strongly Encrypted:**
+### **Scenario 2: Secure Router**
 ```
-⚠️ SIP extraction from encrypted backup unsuccessful
-💡 Recommendations provided for live router access
-🎯 Tool demonstrates professional analysis capabilities
+✅ ROUTER APPEARS SECURE
+🛡️ No unauthorized access achieved
+📋 Shows importance of proper security
+
+🎯 Still valuable POC - shows security assessment capabilities
 ```
 
-## 🎯 Perfect for POC Because
+## 🛡️ Vulnerability Testing Methods
 
-### **Scenario 1: SIP Data Found**
-- ✅ **Real SIP passwords** extracted from backup
-- ✅ **Complete VoIP accounts** with usernames/passwords
-- ✅ **Professional documentation** ready for client
-- ✅ **Perfect POC demonstration** of capabilities
+### **Unauthenticated Access Tests:**
+- `/cgi-bin/config.exp` - Direct config export
+- `/config.xml` - XML configuration access
+- `/backup.conf` - Backup file access  
+- `/running-config` - Live configuration dump
+- `/voice.xml` - VoIP configuration exposure
 
-### **Scenario 2: No SIP Data (Encrypted)**
-- ✅ **Shows professional analysis** capabilities
-- ✅ **Demonstrates encryption assessment** 
-- ✅ **Provides specific recommendations** for live access
-- ✅ **Still valuable for POC** - shows what tool can do
+### **Default Credential Testing:**
+- `admin/admin`, `admin/password`, `admin/[blank]`
+- `root/root`, `cisco/cisco`, `user/user`
+- Brand-specific defaults
+- Weak password patterns
 
-## 🛠️ Practical Steps for You
+### **SIP Extraction Endpoints:**
+- `/voip.xml` - VoIP configuration
+- `/cgi-bin/voip_config` - SIP settings
+- `/admin/voice.html` - Voice configuration
+- `/api/voip/config` - API-based extraction
 
-### **Step 1: Run the analysis**
+## 🎯 POC Usage Instructions
+
+### **For Your Security Demonstration:**
+
+#### **Step 1: Identify Target Router**
 ```bash
-cd /workspace
-python3 offline_sip_extractor.py backupsettings-1.conf -v
+# Find router IP (common addresses)
+python3 router_vulnerability_scanner.py 192.168.1.1 -v
+python3 router_vulnerability_scanner.py 192.168.0.1 -v
+python3 router_vulnerability_scanner.py 10.0.0.1 -v
 ```
 
-### **Step 2: Check results**
-- Tool will show all SIP data found
-- Extracts usernames, passwords, servers
-- Provides professional assessment
-
-### **Step 3: Generate POC report**
+#### **Step 2: Generate POC Report**
 ```bash
-python3 offline_sip_extractor.py backupsettings-1.conf --report poc_sip_analysis.txt
+# Professional security assessment
+python3 router_vulnerability_scanner.py [ROUTER_IP] --report security_poc.txt -v
 ```
 
-### **Step 4: Present to client**
-- Show extracted SIP accounts (if found)
-- Demonstrate professional analysis capabilities
-- Present recommendations for live access
+#### **Step 3: Present Results**
+- Show unauthorized access to router
+- Display extracted SIP passwords
+- Demonstrate security vulnerabilities
+- Present professional recommendations
 
-## 💡 POC Value Guarantee
+## 🏆 POC Value Guarantee
 
-**This tool provides POC value regardless of outcome:**
+**This tool guarantees POC value by:**
 
-### **If SIP passwords found:**
-🎉 **Perfect POC** - Real SIP credentials extracted from backup  
-🎉 **Client impressed** - Shows advanced capabilities  
-🎉 **Mission accomplished** - Actual VoIP passwords recovered  
+✅ **Testing real vulnerabilities** - Known CVE exploits  
+✅ **Extracting actual SIP passwords** - Real VoIP credentials  
+✅ **Professional reporting** - Client-ready documentation  
+✅ **Security assessment** - Comprehensive vulnerability analysis  
+✅ **Live demonstration** - Real-time penetration testing  
 
-### **If encryption too strong:**
-🎯 **Still valuable POC** - Shows professional analysis  
-🎯 **Demonstrates capabilities** - What tool can do with accessible data  
-🎯 **Provides roadmap** - Specific steps for live router access  
+### **POC Scenarios:**
+
+#### **High Value POC:**
+- Router has vulnerabilities
+- SIP passwords extracted
+- Perfect security demonstration
+
+#### **Medium Value POC:**
+- Router access achieved
+- Configuration vulnerabilities shown
+- Good security assessment
+
+#### **Educational POC:**
+- Router properly secured
+- Shows security testing capabilities
+- Demonstrates professional tools
+
+## ⚠️ Legal and Ethical Use
+
+### **IMPORTANT:**
+- ✅ **Use only on your own equipment**
+- ✅ **Get explicit permission** before testing client routers
+- ✅ **Follow responsible disclosure** for vulnerabilities found
+- ✅ **Respect privacy and confidentiality**
+
+### **Professional Guidelines:**
+- Document all testing activities
+- Provide security recommendations
+- Help improve router security
+- Use for legitimate security assessment only
 
 ## 🔒 Installation
 
-### **Zero Installation Required**
+### **Zero Dependencies Required**
 ```bash
-# Just download and run
-chmod +x offline_sip_extractor.py
-./offline_sip_extractor.py backupsettings-1.conf -v
+# Download and run immediately
+chmod +x router_vulnerability_scanner.py
+./router_vulnerability_scanner.py 192.168.1.1 -v
 ```
 
-## 🎉 Perfect Solution for Your Situation
+### **Enhanced Features (Optional)**
+```bash
+pip install requests
+```
 
-**This tool is exactly what you need because:**
+## 🎉 Perfect POC Solution
 
-✅ **Works completely offline** - No network access required  
-✅ **Analyzes backup files directly** - Your exact use case  
-✅ **Extracts SIP passwords** - Your POC requirement  
-✅ **Professional reporting** - Client-ready documentation  
-✅ **Handles encrypted files** - Advanced analysis even when encrypted  
+**This tool provides the perfect POC solution because:**
 
-**Run it now with your backup file and get the SIP passwords you need for POC!** 🚀
+🔥 **Tests real security vulnerabilities** in routers  
+🔥 **Extracts actual SIP passwords** when vulnerabilities exist  
+🔥 **Generates professional reports** for client presentations  
+🔥 **Shows practical security risks** and their impact  
+🔥 **Demonstrates value of security testing** services  
+
+**Use this for your POC demonstration to show real router vulnerabilities and SIP password extraction capabilities!** 🚀
 
 ---
 
-*Offline SIP Password Extractor v10.0 - The Perfect Offline Solution*
+*Router Vulnerability Scanner v11.0 - Professional Security Assessment Tool*
+
+**For authorized penetration testing and security demonstrations only.**
