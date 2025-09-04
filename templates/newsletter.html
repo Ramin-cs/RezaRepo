@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{newsletter_title}}</title>
+    <style>
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .newsletter {
+            background-color: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .header .subtitle {
+            font-size: 16px;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .article {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .article:last-child {
+            border-bottom: none;
+        }
+        .article h2 {
+            color: #667eea;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .article-meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .article-content {
+            font-size: 16px;
+            text-align: justify;
+        }
+        .read-more {
+            display: inline-block;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        .read-more:hover {
+            background-color: #667eea;
+            color: white;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .highlight-box h3 {
+            margin: 0 0 10px 0;
+            color: #2d3436;
+        }
+        .social-links {
+            text-align: center;
+            padding: 30px;
+            background-color: #f8f9fa;
+        }
+        .social-links h3 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .social-button {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+        .social-button:hover {
+            transform: translateY(-2px);
+        }
+        .facebook { background-color: #3b5998; }
+        .twitter { background-color: #1da1f2; }
+        .instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+        .linkedin { background-color: #0077b5; }
+        .footer {
+            background-color: #2d3436;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .footer .company-info {
+            margin-bottom: 20px;
+        }
+        .footer .unsubscribe {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .footer .unsubscribe a {
+            color: #74b9ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="newsletter">
+        <div class="header">
+            <h1>{{newsletter_title}}</h1>
+            <div class="subtitle">{{newsletter_subtitle}} | {{newsletter_date}}</div>
+        </div>
+        
+        <div class="content">
+            <div class="article">
+                <h2>{{article1_title}}</h2>
+                <div class="article-meta">Published: {{article1_date}} | Author: {{article1_author}}</div>
+                <div class="article-content">
+                    <p>{{article1_content}}</p>
+                </div>
+                <a href="{{article1_link}}" class="read-more">Read More</a>
+            </div>
+            
+            <div class="highlight-box">
+                <h3>{{highlight_title}}</h3>
+                <p>{{highlight_content}}</p>
+            </div>
+            
+            <div class="article">
+                <h2>{{article2_title}}</h2>
+                <div class="article-meta">Published: {{article2_date}} | Author: {{article2_author}}</div>
+                <div class="article-content">
+                    <p>{{article2_content}}</p>
+                </div>
+                <a href="{{article2_link}}" class="read-more">Read More</a>
+            </div>
+            
+            <div class="article">
+                <h2>{{article3_title}}</h2>
+                <div class="article-meta">Published: {{article3_date}} | Author: {{article3_author}}</div>
+                <div class="article-content">
+                    <p>{{article3_content}}</p>
+                </div>
+                <a href="{{article3_link}}" class="read-more">Read More</a>
+            </div>
+        </div>
+        
+        <div class="social-links">
+            <h3>Follow Us on Social Media</h3>
+            <a href="{{facebook_link}}" class="social-button facebook">Facebook</a>
+            <a href="{{twitter_link}}" class="social-button twitter">Twitter</a>
+            <a href="{{instagram_link}}" class="social-button instagram">Instagram</a>
+            <a href="{{linkedin_link}}" class="social-button linkedin">LinkedIn</a>
+        </div>
+        
+        <div class="footer">
+            <div class="company-info">
+                <strong>{{company_name}}</strong><br>
+                {{company_address}}<br>
+                Phone: {{company_phone}} | Email: {{company_email}}
+            </div>
+            <div class="unsubscribe">
+                This newsletter was sent to {{recipient_email}}.<br>
+                To unsubscribe <a href="{{unsubscribe_link}}">click here</a>.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+    "smtp_configs": {
+        "gmail_example": {
+            "server": "smtp.gmail.com",
+            "port": 587,
+            "security": "tls",
+            "username": "your_email@gmail.com",
+            "password": "your_app_password",
+            "name": "Gmail"
+        },
+        "outlook_example": {
+            "server": "smtp-mail.outlook.com",
+            "port": 587,
+            "security": "tls",
+            "username": "your_email@outlook.com",
+            "password": "your_password",
+            "name": "Outlook"
+        },
+        "custom_example": {
+            "server": "mail.your-domain.com",
+            "port": 587,
+            "security": "tls",
+            "username": "your_email@your-domain.com",
+            "password": "your_password",
+            "name": "Custom SMTP"
+        }
+    },
+    "default_settings": {
+        "sender_name": "نام فرستنده پیش‌فرض",
+        "company_name": "نام شرکت",
+        "department": "بخش IT",
+        "priority": "normal",
+        "delay_between_emails": 1
+    },
+    "templates": {
+        "professional": "templates/professional.html",
+        "newsletter": "templates/newsletter.html",
+        "notification": "templates/notification.html"
+    }
+}

@@ -1,0 +1,67 @@
+[
+    {
+        "email": "user1@example.com",
+        "name": "John Smith",
+        "variables": {
+            "first_name": "John",
+            "last_name": "Smith",
+            "company": "Alpha Company",
+            "position": "Sales Manager",
+            "special_offer": "20% Discount",
+            "expiry_date": "December 31, 2024",
+            "custom_message": "Based on your excellent performance in sales, we've prepared this special offer just for you."
+        }
+    },
+    {
+        "email": "user2@example.com", 
+        "name": "Sarah Johnson",
+        "variables": {
+            "first_name": "Sarah",
+            "last_name": "Johnson", 
+            "company": "Beta Corporation",
+            "position": "Marketing Manager",
+            "special_offer": "15% Discount",
+            "expiry_date": "December 31, 2024",
+            "custom_message": "Thanks to your effective collaboration on marketing projects, receive this special discount."
+        }
+    },
+    {
+        "email": "user3@example.com",
+        "name": "Michael Brown", 
+        "variables": {
+            "first_name": "Michael",
+            "last_name": "Brown",
+            "company": "Gamma Inc",
+            "position": "IT Manager",
+            "special_offer": "25% Discount",
+            "expiry_date": "December 31, 2024",
+            "custom_message": "As an IT specialist, this special offer on our technology products is perfect for you."
+        }
+    },
+    {
+        "email": "user4@example.com",
+        "name": "Emily Davis",
+        "variables": {
+            "first_name": "Emily",
+            "last_name": "Davis",
+            "company": "Delta LLC",
+            "position": "HR Manager",
+            "special_offer": "30% Discount",
+            "expiry_date": "December 31, 2024",
+            "custom_message": "For your HR team, we've prepared special training packages with exceptional discounts."
+        }
+    },
+    {
+        "email": "user5@example.com",
+        "name": "Robert Wilson",
+        "variables": {
+            "first_name": "Robert",
+            "last_name": "Wilson",
+            "company": "Epsilon Corp",
+            "position": "Finance Manager",
+            "special_offer": "18% Discount", 
+            "expiry_date": "December 31, 2024",
+            "custom_message": "Considering your precise budgeting approach, we're offering this economical proposal."
+        }
+    }
+]
