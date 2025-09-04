@@ -1,60 +1,59 @@
-# 🚀 سیستم ارسال ایمیل حرفه‌ای
-# Professional Email Sender System
+# 🚀 Professional Email Sender System
 
-یک سیستم کامل و حرفه‌ای برای ارسال ایمیل‌های تک یا انبوه با قابلیت‌های پیشرفته برای جلوگیری از رفتن ایمیل‌ها به پوشه اسپم.
+A complete and professional system for sending single or bulk emails with advanced features to prevent emails from going to spam folders.
 
-## ✨ ویژگی‌ها
+## ✨ Key Features
 
-### 🎯 ویژگی‌های اصلی
-- **ارسال ایمیل تکی و انبوه** با قابلیت تنظیم تاخیر
-- **پشتیبانی از قالب‌های HTML زیبا** با امکان جایگذاری متغیرها
-- **هدرهای پیشرفته و حرفه‌ای** برای جلوگیری از اسپم
-- **پشتیبانی از انواع سرورهای SMTP** (Gmail, Outlook, Yahoo, Office365, Zoho و سفارشی)
-- **اعتبارسنجی آدرس‌های ایمیل** قبل از ارسال
-- **گزارش‌گیری کامل** از وضعیت ارسال‌ها
+### 🎯 Core Features
+- **Single and bulk email sending** with configurable delays
+- **Beautiful HTML templates** with variable substitution
+- **Advanced professional headers** to prevent spam
+- **Multiple SMTP server support** (Gmail, Outlook, Yahoo, Office365, Zoho, Custom)
+- **Email address validation** before sending
+- **Complete reporting** of sending statistics
 
-### 🔒 امنیت و قابلیت اعتماد
-- **اتصالات امن SSL/TLS**
-- **احراز هویت پیشرفته**
-- **هدرهای ضد اسپم**
-- **Message-ID منحصر به فرد**
-- **SPF و DKIM ready**
+### 🔒 Security & Reliability
+- **Secure SSL/TLS connections**
+- **Advanced authentication**
+- **Anti-phishing headers**
+- **Unique Message-ID generation**
+- **SPF and DKIM ready**
 
-### 🎨 قالب‌سازی
-- **قالب‌های HTML واکنش‌گرا**
-- **سیستم متغیرهای قابل جایگذاری**
-- **قالب‌های از پیش طراحی شده**
-- **پشتیبانی از CSS پیشرفته**
+### 🎨 Template System
+- **Responsive HTML templates**
+- **Variable substitution system**
+- **Pre-designed professional templates**
+- **Advanced CSS support**
 
-## 📦 نصب و راه‌اندازی
+## 📦 Installation & Setup
 
-### پیش‌نیازها
-- Python 3.6 یا بالاتر
-- دسترسی به سرور SMTP
+### Prerequisites
+- Python 3.6 or higher
+- SMTP server access
 
-### نصب
+### Installation
 ```bash
 git clone <repository-url>
 cd professional-email-sender
 pip install -r requirements.txt
 ```
 
-### راه‌اندازی سریع
+### Quick Start
 ```bash
-python email_sender.py
+python quick_start.py
 ```
 
-## 🚀 نحوه استفاده
+## 🚀 Usage Examples
 
-### 1. ارسال ایمیل تکی
+### 1. Send Single Email
 
 ```python
 from email_sender import ProfessionalEmailSender
 
-# ایجاد نمونه
+# Create instance
 email_sender = ProfessionalEmailSender()
 
-# تنظیمات SMTP
+# SMTP configuration
 smtp_config = {
     'server': 'smtp.gmail.com',
     'port': 587,
@@ -63,106 +62,109 @@ smtp_config = {
     'password': 'your_app_password'
 }
 
-# ارسال ایمیل
+# Send email
 success = email_sender.send_email(
     smtp_config=smtp_config,
     sender_email='your_email@gmail.com',
-    sender_name='نام شما',
+    sender_name='Your Name',
     recipient_email='recipient@example.com',
-    recipient_name='نام گیرنده',
-    subject='موضوع ایمیل',
-    html_content='<h1>سلام!</h1><p>این یک ایمیل تست است.</p>',
-    company_name='نام شرکت',
-    department='بخش IT'
+    recipient_name='Recipient Name',
+    subject='Email Subject',
+    html_content='<h1>Hello!</h1><p>This is a test email.</p>',
+    company_name='Your Company',
+    department='IT Department'
 )
 ```
 
-### 2. استفاده از قالب‌ها
+### 2. Use Templates
 
 ```python
-# بارگیری قالب
+# Load template with variables
 html_content = email_sender.load_template(
     'templates/professional.html',
     variables={
-        'recipient_name': 'احمد محمدی',
-        'company_name': 'شرکت تست',
-        'main_message': 'پیام اصلی شما',
-        'sender_name': 'تیم پشتیبانی'
+        'recipient_name': 'John Smith',
+        'company_name': 'Your Company',
+        'main_message': 'Welcome to our service!',
+        'sender_name': 'Support Team'
     }
 )
 
-# ارسال با قالب
+# Send with template
 email_sender.send_email(
     smtp_config=smtp_config,
     sender_email='sender@example.com',
-    sender_name='فرستنده',
+    sender_name='Sender Name',
     recipient_email='recipient@example.com',
-    recipient_name='گیرنده',
-    subject='موضوع',
+    recipient_name='Recipient Name',
+    subject='Subject',
     html_content=html_content
 )
 ```
 
-### 3. ارسال انبوه
+### 3. Bulk Email Sending
 
 ```python
-# لیست گیرندگان
+# Recipients list
 recipients = [
     {
         'email': 'user1@example.com',
-        'name': 'کاربر اول',
+        'name': 'User One',
         'variables': {
-            'first_name': 'احمد',
-            'special_offer': '20% تخفیف'
+            'first_name': 'John',
+            'special_offer': '20% discount'
         }
     },
     {
         'email': 'user2@example.com',
-        'name': 'کاربر دوم',
+        'name': 'User Two',
         'variables': {
-            'first_name': 'فاطمه',
-            'special_offer': '15% تخفیف'
+            'first_name': 'Sarah',
+            'special_offer': '15% discount'
         }
     }
 ]
 
-# قالب با متغیرها
+# Template with variables
 html_template = '''
-<h1>سلام {{first_name}} عزیز!</h1>
-<p>پیشنهاد ویژه: {{special_offer}}</p>
+<h1>Hello {{first_name}}!</h1>
+<p>Special offer: {{special_offer}}</p>
 '''
 
-# ارسال انبوه
+# Send bulk emails
 stats = email_sender.bulk_send(
     smtp_config=smtp_config,
     sender_email='sender@example.com',
-    sender_name='تیم بازاریابی',
+    sender_name='Marketing Team',
     recipients=recipients,
-    subject='پیشنهاد ویژه برای {{first_name}}',
+    subject='Special Offer for {{first_name}}',
     html_template=html_template,
-    delay=2  # تاخیر 2 ثانیه بین ارسال‌ها
+    delay=2  # 2 seconds delay between sends
 )
 
-print(f"ارسال شده: {stats['sent']}, ناموفق: {stats['failed']}")
+print(f"Sent: {stats['sent']}, Failed: {stats['failed']}")
 ```
 
-## 📁 ساختار پروژه
+## 📁 Project Structure
 
 ```
 professional-email-sender/
-├── email_sender.py          # فایل اصلی سیستم
-├── email_config.json        # فایل تنظیمات
-├── requirements.txt         # وابستگی‌ها
-├── README.md               # راهنمای استفاده
-├── templates/              # پوشه قالب‌ها
-│   ├── professional.html   # قالب حرفه‌ای
-│   └── newsletter.html     # قالب خبرنامه
-└── examples/               # مثال‌های کاربردی
+├── email_sender.py          # Main system file
+├── quick_start.py           # Interactive quick start script
+├── email_config.json        # Configuration file
+├── requirements.txt         # Dependencies
+├── README.md               # This file
+├── USAGE_GUIDE.md          # Complete usage guide
+├── templates/              # Email templates
+│   ├── professional.html   # Professional template
+│   └── newsletter.html     # Newsletter template
+└── examples/               # Usage examples
     ├── single_email_example.py
-    └── bulk_email_example.py
+    ├── bulk_email_example.py
+    └── recipients.json
 ```
 
-## ⚙️ تنظیمات SMTP
+## ⚙️ SMTP Configuration
 
 ### Gmail
 ```json
@@ -175,7 +177,7 @@ professional-email-sender/
 }
 ```
 
-**نکته:** برای Gmail باید از App Password استفاده کنید.
+**Note:** For Gmail, you must use App Password, not your regular password.
 
 ### Outlook/Hotmail
 ```json
@@ -210,101 +212,148 @@ professional-email-sender/
 }
 ```
 
-## 🎨 قالب‌سازی
+## 🎨 Template System
 
-### متغیرهای قابل استفاده در قالب‌ها
+### Available Template Variables
 
-| متغیر | توضیح | مثال |
-|--------|--------|--------|
-| `{{recipient_name}}` | نام گیرنده | احمد محمدی |
-| `{{sender_name}}` | نام فرستنده | تیم پشتیبانی |
-| `{{company_name}}` | نام شرکت | شرکت نمونه |
-| `{{subject}}` | موضوع ایمیل | اطلاعیه مهم |
-| `{{main_message}}` | پیام اصلی | محتوای اصلی ایمیل |
-| `{{button_text}}` | متن دکمه | کلیک کنید |
-| `{{button_link}}` | لینک دکمه | https://example.com |
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{{recipient_name}}` | Recipient's name | John Smith |
+| `{{sender_name}}` | Sender's name | Support Team |
+| `{{company_name}}` | Company name | Your Company |
+| `{{subject}}` | Email subject | Important Notice |
+| `{{main_message}}` | Main message content | Your main email content |
+| `{{button_text}}` | Button text | Click Here |
+| `{{button_link}}` | Button URL | https://example.com |
 
-### ایجاد قالب سفارشی
+### Creating Custom Templates
 
-1. فایل HTML جدید در پوشه `templates` ایجاد کنید
-2. از متغیرهای `{{variable_name}}` استفاده کنید
-3. CSS inline یا در تگ `<style>` اضافه کنید
-4. قالب را با `load_template()` بارگیری کنید
+1. Create new HTML file in `templates/` directory
+2. Use `{{variable_name}}` syntax for substitutable content
+3. Include inline CSS or `<style>` tags
+4. Load template with `load_template()` method
 
-## 🛡️ جلوگیری از اسپم
+## 🛡️ Anti-Spam Features
 
-### هدرهای خودکار
-- `Message-ID` منحصر به فرد
-- `Date` و `MIME-Version` استاندارد
-- `X-Mailer` و `X-Priority`
-- `List-Unsubscribe` برای لغو اشتراک
-- `Return-Path` و `Reply-To`
+### Automatic Headers
+- Unique `Message-ID` for each email
+- Standard `Date` and `MIME-Version` headers
+- `X-Mailer` and `X-Priority` headers
+- `List-Unsubscribe` for easy unsubscribing
+- `Return-Path` and `Reply-To` headers
 
-### توصیه‌ها
-1. **محتوای با کیفیت:** از کلمات اسپم خودداری کنید
-2. **تعادل متن/تصویر:** متن کافی در ایمیل داشته باشید
-3. **لینک‌های معتبر:** از لینک‌های کوتاه‌شده زیاد استفاده نکنید
-4. **تنظیمات DNS:** SPF, DKIM و DMARC را تنظیم کنید
-5. **فرکانس ارسال:** تاخیر مناسب بین ارسال‌ها رعایت کنید
+### Best Practices
+1. **Quality Content:** Avoid spam trigger words
+2. **Text/Image Balance:** Include sufficient text content
+3. **Legitimate Links:** Avoid shortened URLs
+4. **DNS Setup:** Configure SPF, DKIM, and DMARC records
+5. **Sending Frequency:** Use appropriate delays between emails
 
-## 📊 گزارش‌گیری
+## 📊 Reporting
 
-سیستم گزارش کاملی از وضعیت ارسال‌ها ارائه می‌دهد:
+The system provides comprehensive sending statistics:
 
 ```python
 stats = {
-    'total': 100,      # کل ایمیل‌ها
-    'sent': 95,        # ارسال موفق
-    'failed': 5,       # ارسال ناموفق
-    'errors': [...]    # لیست خطاها
+    'total': 100,      # Total emails
+    'sent': 95,        # Successfully sent
+    'failed': 5,       # Failed to send
+    'errors': [...]    # List of errors
 }
 ```
 
-## 🔧 عیب‌یابی
+## 🔧 Troubleshooting
 
-### خطاهای رایج
+### Common Issues
 
-#### خطای احراز هویت
+#### Authentication Error
 ```
 SMTPAuthenticationError: (535, 'Authentication failed')
 ```
-**راه‌حل:** 
-- برای Gmail از App Password استفاده کنید
-- 2FA را فعال کرده و App Password تولید کنید
+**Solution:** 
+- For Gmail: Use App Password instead of regular password
+- Enable 2FA and generate App Password
 
-#### خطای اتصال
+#### Connection Error
 ```
 SMTPServerDisconnected: Connection unexpectedly closed
 ```
-**راه‌حل:**
-- تنظیمات فایروال را بررسی کنید
-- پورت و سرور را دوباره چک کنید
+**Solution:**
+- Check firewall settings
+- Verify server address and port
+- Try different security settings
 
-#### ایمیل به اسپم می‌رود
-**راه‌حل:**
-- محتوای ایمیل را بهبود دهید
-- SPF/DKIM تنظیم کنید
-- از سرور معتبر استفاده کنید
+#### Emails Going to Spam
+**Solution:**
+- Improve email content
+- Set up SPF/DKIM records
+- Use authenticated servers
+- Include unsubscribe links
 
-## 🤝 مشارکت
+## 🚀 Getting Started
 
-برای مشارکت در بهبود این پروژه:
+### Method 1: Quick Start (Recommended)
+```bash
+python quick_start.py
+```
+This interactive script guides you through setup and testing.
 
-1. Repository را Fork کنید
-2. Branch جدید ایجاد کنید
-3. تغییرات را Commit کنید
-4. Pull Request ارسال کنید
+### Method 2: Direct Usage
+```python
+from email_sender import ProfessionalEmailSender
 
-## 📄 مجوز
+email_sender = ProfessionalEmailSender()
+# Configure and send emails...
+```
 
-این پروژه تحت مجوز MIT منتشر شده است.
+### Method 3: Use Examples
+```bash
+python examples/single_email_example.py
+python examples/bulk_email_example.py
+```
 
-## 📞 پشتیبانی
+## 📖 Documentation
 
-برای سوالات و پشتیبانی:
-- Issue در GitHub ایجاد کنید
-- ایمیل به: support@example.com
+- **[USAGE_GUIDE.md](USAGE_GUIDE.md)** - Complete usage guide with examples
+- **[examples/](examples/)** - Practical usage examples
+- **Source code comments** - Detailed inline documentation
+
+## 🤝 Contributing
+
+To contribute to this project:
+
+1. Fork the repository
+2. Create a new branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+This project is released under the MIT License.
+
+## 📞 Support
+
+For questions and support:
+- Create an issue on GitHub
+- Check the troubleshooting section
+- Review the usage guide
 
 ---
 
-**توجه:** این سیستم برای اهداف قانونی و مشروع طراحی شده است. از آن برای ارسال اسپم یا فیشینگ استفاده نکنید.
+**Important:** This system is designed for legitimate and legal purposes. Do not use it for sending spam or phishing emails.
+
+## 🎯 Quick Commands
+
+```bash
+# Quick start
+python quick_start.py
+
+# Run examples
+python examples/single_email_example.py
+python examples/bulk_email_example.py
+
+# Test connection
+python -c "from email_sender import ProfessionalEmailSender; print('System ready!')"
+```
+
+Start with `python quick_start.py` for the best experience! 🚀

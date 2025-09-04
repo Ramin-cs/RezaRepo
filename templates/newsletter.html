@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{newsletter_title}}</title>
     <style>
         body {
-            font-family: 'Tahoma', 'Arial', sans-serif;
+            font-family: 'Arial', 'Helvetica', sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 650px;
@@ -141,11 +141,11 @@
         <div class="content">
             <div class="article">
                 <h2>{{article1_title}}</h2>
-                <div class="article-meta">تاریخ انتشار: {{article1_date}} | نویسنده: {{article1_author}}</div>
+                <div class="article-meta">Published: {{article1_date}} | Author: {{article1_author}}</div>
                 <div class="article-content">
                     <p>{{article1_content}}</p>
                 </div>
-                <a href="{{article1_link}}" class="read-more">ادامه مطلب</a>
+                <a href="{{article1_link}}" class="read-more">Read More</a>
             </div>
             
             <div class="highlight-box">
@@ -155,40 +155,40 @@
             
             <div class="article">
                 <h2>{{article2_title}}</h2>
-                <div class="article-meta">تاریخ انتشار: {{article2_date}} | نویسنده: {{article2_author}}</div>
+                <div class="article-meta">Published: {{article2_date}} | Author: {{article2_author}}</div>
                 <div class="article-content">
                     <p>{{article2_content}}</p>
                 </div>
-                <a href="{{article2_link}}" class="read-more">ادامه مطلب</a>
+                <a href="{{article2_link}}" class="read-more">Read More</a>
             </div>
             
             <div class="article">
                 <h2>{{article3_title}}</h2>
-                <div class="article-meta">تاریخ انتشار: {{article3_date}} | نویسنده: {{article3_author}}</div>
+                <div class="article-meta">Published: {{article3_date}} | Author: {{article3_author}}</div>
                 <div class="article-content">
                     <p>{{article3_content}}</p>
                 </div>
-                <a href="{{article3_link}}" class="read-more">ادامه مطلب</a>
+                <a href="{{article3_link}}" class="read-more">Read More</a>
             </div>
         </div>
         
         <div class="social-links">
-            <h3>ما را در شبکه‌های اجتماعی دنبال کنید</h3>
-            <a href="{{facebook_link}}" class="social-button facebook">فیسبوک</a>
-            <a href="{{twitter_link}}" class="social-button twitter">توییتر</a>
-            <a href="{{instagram_link}}" class="social-button instagram">اینستاگرام</a>
-            <a href="{{linkedin_link}}" class="social-button linkedin">لینکدین</a>
+            <h3>Follow Us on Social Media</h3>
+            <a href="{{facebook_link}}" class="social-button facebook">Facebook</a>
+            <a href="{{twitter_link}}" class="social-button twitter">Twitter</a>
+            <a href="{{instagram_link}}" class="social-button instagram">Instagram</a>
+            <a href="{{linkedin_link}}" class="social-button linkedin">LinkedIn</a>
         </div>
         
         <div class="footer">
             <div class="company-info">
                 <strong>{{company_name}}</strong><br>
                 {{company_address}}<br>
-                تلفن: {{company_phone}} | ایمیل: {{company_email}}
+                Phone: {{company_phone}} | Email: {{company_email}}
             </div>
             <div class="unsubscribe">
-                این خبرنامه برای {{recipient_email}} ارسال شده است.<br>
-                برای لغو اشتراک <a href="{{unsubscribe_link}}">اینجا کلیک کنید</a>.
+                This newsletter was sent to {{recipient_email}}.<br>
+                To unsubscribe <a href="{{unsubscribe_link}}">click here</a>.
             </div>
         </div>
     </div>

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-مثال ارسال ایمیل تکی
 Single Email Sending Example
 
-این مثال نحوه استفاده از سیستم ارسال ایمیل برای ارسال یک ایمیل تکی را نشان می‌دهد.
+This example demonstrates how to use the email sending system to send a single email.
 """
 
 import sys
@@ -17,31 +16,31 @@ def main():
     # ایجاد نمونه از سیستم ارسال ایمیل
     email_sender = ProfessionalEmailSender()
     
-    # تنظیمات SMTP (Gmail)
+    # SMTP Configuration (Gmail)
     smtp_config = {
         'server': 'smtp.gmail.com',
         'port': 587,
         'security': 'tls',
-        'username': 'your_email@gmail.com',  # آدرس ایمیل خود را وارد کنید
-        'password': 'your_app_password'      # App Password خود را وارد کنید
+        'username': 'your_email@gmail.com',  # Enter your email address
+        'password': 'your_app_password'      # Enter your App Password
     }
     
-    # اطلاعات ایمیل
+    # Email Information
     sender_email = 'your_email@gmail.com'
-    sender_name = 'نام شما'
+    sender_name = 'Your Name'
     recipient_email = 'recipient@example.com'
-    recipient_name = 'نام گیرنده'
-    subject = 'تست ارسال ایمیل حرفه‌ای'
+    recipient_name = 'Recipient Name'
+    subject = 'Professional Email System Test'
     
-    # محتوای HTML ایمیل
+    # HTML Email Content
     html_content = """
     <!DOCTYPE html>
-    <html lang="fa" dir="rtl">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <style>
             body {
-                font-family: Tahoma, Arial, sans-serif;
+                font-family: Arial, Helvetica, sans-serif;
                 line-height: 1.6;
                 color: #333;
                 max-width: 600px;
@@ -75,35 +74,35 @@ def main():
     <body>
         <div class="container">
             <div class="header">
-                <h1>تست سیستم ارسال ایمیل</h1>
+                <h1>Email System Test</h1>
             </div>
-            <h2>سلام!</h2>
-            <p>این یک ایمیل تستی است که با استفاده از سیستم ارسال ایمیل حرفه‌ای ارسال شده است.</p>
-            <p>ویژگی‌های این سیستم:</p>
+            <h2>Hello!</h2>
+            <p>This is a test email sent using the Professional Email Sending System.</p>
+            <p>System Features:</p>
             <ul>
-                <li>پشتیبانی از قالب‌های HTML زیبا</li>
-                <li>هدرهای پیشرفته برای جلوگیری از اسپم</li>
-                <li>پشتیبانی از سرورهای SMTP مختلف</li>
-                <li>امکان ارسال انبوه</li>
-                <li>قابلیت اضافه کردن فایل ضمیمه</li>
+                <li>Support for beautiful HTML templates</li>
+                <li>Advanced anti-spam headers</li>
+                <li>Support for multiple SMTP servers</li>
+                <li>Bulk email sending capability</li>
+                <li>File attachment support</li>
             </ul>
             <div style="text-align: center;">
-                <a href="https://github.com" class="button">مشاهده پروژه</a>
+                <a href="https://github.com" class="button">View Project</a>
             </div>
-            <p>با تشکر،<br>تیم توسعه</p>
+            <p>Best regards,<br>Development Team</p>
         </div>
     </body>
     </html>
     """
     
-    # هدرهای سفارشی
+    # Custom Headers
     custom_headers = {
         'X-Campaign-ID': 'test-campaign-001',
         'X-Email-Type': 'transactional'
     }
     
-    # ارسال ایمیل
-    print("🚀 شروع ارسال ایمیل...")
+    # Send Email
+    print("🚀 Starting email send...")
     
     success = email_sender.send_email(
         smtp_config=smtp_config,
@@ -114,15 +113,15 @@ def main():
         subject=subject,
         html_content=html_content,
         custom_headers=custom_headers,
-        company_name="شرکت تست",
-        department="بخش IT",
+        company_name="Test Company",
+        department="IT Department",
         priority="normal"
     )
     
     if success:
-        print("✅ ایمیل با موفقیت ارسال شد!")
+        print("✅ Email sent successfully!")
     else:
-        print("❌ خطا در ارسال ایمیل!")
+        print("❌ Error sending email!")
 
 if __name__ == "__main__":
     main()

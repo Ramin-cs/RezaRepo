@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-راه‌اندازی سریع سیستم ارسال ایمیل
-Quick Start Email Sender
+Quick Start Email Sender System
+Professional email sending system with easy setup
 
-برای شروع سریع، فقط این فایل را اجرا کنید و مراحل را دنبال کنید.
+Just run this file and follow the steps to get started quickly.
 """
 
 from email_sender import ProfessionalEmailSender
@@ -12,24 +12,24 @@ import os
 import json
 
 def quick_setup():
-    """راه‌اندازی سریع سیستم"""
-    print("🚀 خوش آمدید به سیستم ارسال ایمیل حرفه‌ای!")
+    """Quick system setup"""
+    print("🚀 Welcome to Professional Email Sender System!")
     print("=" * 60)
     
-    # ایجاد نمونه
+    # Create instance
     email_sender = ProfessionalEmailSender()
     
-    print("\n📧 لطفاً اطلاعات زیر را وارد کنید:")
+    print("\n📧 Please enter the following information:")
     
-    # انتخاب سرور
-    print("\n🌐 انتخاب سرور ایمیل:")
+    # Server selection
+    print("\n🌐 Select email server:")
     print("1. Gmail")
     print("2. Outlook/Hotmail") 
     print("3. Yahoo")
     print("4. Office 365")
-    print("5. سرور سفارشی")
+    print("5. Custom server")
     
-    choice = input("\nانتخاب کنید (1-5): ").strip()
+    choice = input("\nSelect (1-5): ").strip()
     
     smtp_configs = {
         '1': {'server': 'smtp.gmail.com', 'port': 587, 'security': 'tls', 'name': 'Gmail'},
@@ -40,22 +40,22 @@ def quick_setup():
     
     if choice in smtp_configs:
         smtp_config = smtp_configs[choice]
-        print(f"✅ {smtp_config['name']} انتخاب شد")
+        print(f"✅ {smtp_config['name']} selected")
     else:
         smtp_config = {
-            'server': input("آدرس سرور SMTP: "),
-            'port': int(input("پورت (معمولاً 587): ") or "587"),
+            'server': input("SMTP server address: "),
+            'port': int(input("Port (usually 587): ") or "587"),
             'security': 'tls',
             'name': 'Custom'
         }
     
-    # اطلاعات احراز هویت
-    print(f"\n🔐 اطلاعات احراز هویت برای {smtp_config['name']}:")
-    smtp_config['username'] = input("آدرس ایمیل: ")
-    smtp_config['password'] = input("رمز عبور (یا App Password): ")
+    # Authentication information
+    print(f"\n🔐 Authentication information for {smtp_config['name']}:")
+    smtp_config['username'] = input("Email address: ")
+    smtp_config['password'] = input("Password (or App Password): ")
     
-    # تست اتصال
-    print("\n🔍 تست اتصال...")
+    # Test connection
+    print("\n🔍 Testing connection...")
     try:
         import smtplib
         import ssl
@@ -71,14 +71,14 @@ def quick_setup():
         
         server.login(smtp_config['username'], smtp_config['password'])
         server.quit()
-        print("✅ اتصال موفقیت‌آمیز!")
+        print("✅ Connection successful!")
         
     except Exception as e:
-        print(f"❌ خطا در اتصال: {e}")
-        print("لطفاً اطلاعات را بررسی کنید.")
+        print(f"❌ Connection error: {e}")
+        print("Please check your credentials.")
         return None
     
-    # ذخیره تنظیمات
+    # Save settings
     config = {
         'smtp_config': smtp_config,
         'setup_completed': True
@@ -87,32 +87,32 @@ def quick_setup():
     with open('quick_config.json', 'w', encoding='utf-8') as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
     
-    print("💾 تنظیمات ذخیره شد!")
+    print("💾 Configuration saved!")
     return smtp_config
 
 def send_test_email(smtp_config):
-    """ارسال ایمیل تستی"""
+    """Send test email"""
     email_sender = ProfessionalEmailSender()
     
-    print("\n📧 ارسال ایمیل تستی:")
+    print("\n📧 Send test email:")
     
     sender_email = smtp_config['username']
-    sender_name = input("نام فرستنده: ") or "تست"
-    recipient_email = input("آدرس گیرنده (برای تست): ")
+    sender_name = input("Sender name: ") or "Test"
+    recipient_email = input("Recipient address (for testing): ")
     
     if not recipient_email:
-        print("❌ آدرس گیرنده الزامی است!")
+        print("❌ Recipient address is required!")
         return
     
-    # ایمیل تستی ساده
+    # Simple test email
     html_content = f"""
     <!DOCTYPE html>
-    <html lang="fa" dir="rtl">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <style>
             body {{
-                font-family: Tahoma, Arial, sans-serif;
+                font-family: Arial, Helvetica, sans-serif;
                 max-width: 600px;
                 margin: 0 auto;
                 padding: 20px;
@@ -137,68 +137,68 @@ def send_test_email(smtp_config):
     </head>
     <body>
         <div class="container">
-            <h1>🎉 تبریک!</h1>
+            <h1>🎉 Congratulations!</h1>
             <div class="success">
-                <strong>سیستم ارسال ایمیل با موفقیت راه‌اندازی شد!</strong>
+                <strong>Email system successfully configured!</strong>
             </div>
-            <p>این ایمیل تستی است که نشان می‌دهد سیستم شما درست کار می‌کند.</p>
-            <h3>ویژگی‌های سیستم:</h3>
+            <p>This is a test email showing that your system is working correctly.</p>
+            <h3>System Features:</h3>
             <ul>
-                <li>✅ ارسال ایمیل تکی و انبوه</li>
-                <li>✅ قالب‌های HTML زیبا</li>
-                <li>✅ هدرهای ضد اسپم</li>
-                <li>✅ پشتیبانی از سرورهای مختلف</li>
-                <li>✅ گزارش‌گیری کامل</li>
+                <li>✅ Single and bulk email sending</li>
+                <li>✅ Beautiful HTML templates</li>
+                <li>✅ Anti-spam headers</li>
+                <li>✅ Multiple server support</li>
+                <li>✅ Complete reporting</li>
             </ul>
-            <p><strong>حالا می‌توانید از سیستم استفاده کنید!</strong></p>
+            <p><strong>You can now use the system!</strong></p>
             <hr>
             <p style="font-size: 12px; color: #666;">
-                ارسال شده توسط سیستم ارسال ایمیل حرفه‌ای<br>
-                تاریخ: {email_sender._get_current_date()}
+                Sent by Professional Email Sender System<br>
+                Date: {email_sender._get_current_date()}
             </p>
         </div>
     </body>
     </html>
     """
     
-    print("\n🚀 در حال ارسال ایمیل تستی...")
+    print("\n🚀 Sending test email...")
     
     success = email_sender.send_email(
         smtp_config=smtp_config,
         sender_email=sender_email,
         sender_name=sender_name,
         recipient_email=recipient_email,
-        recipient_name="کاربر تست",
-        subject="🎉 تست موفق سیستم ارسال ایمیل",
+        recipient_name="Test User",
+        subject="🎉 Email System Test Successful",
         html_content=html_content,
-        company_name="سیستم ارسال ایمیل",
-        department="تست",
+        company_name="Email System",
+        department="Test",
         priority="normal"
     )
     
     if success:
-        print("✅ ایمیل تستی با موفقیت ارسال شد!")
-        print(f"📬 ایمیل را در صندوق ورودی {recipient_email} بررسی کنید.")
+        print("✅ Test email sent successfully!")
+        print(f"📬 Check your inbox at {recipient_email}.")
     else:
-        print("❌ خطا در ارسال ایمیل تستی!")
+        print("❌ Error sending test email!")
 
 def main_menu(smtp_config):
-    """منوی اصلی"""
+    """Main menu"""
     email_sender = ProfessionalEmailSender()
     
     while True:
         print("\n" + "="*50)
-        print("📧 سیستم ارسال ایمیل حرفه‌ای")
+        print("📧 Professional Email Sender System")
         print("="*50)
-        print("1. ارسال ایمیل تکی")
-        print("2. ارسال ایمیل انبوه") 
-        print("3. ایجاد قالب جدید")
-        print("4. مشاهده قالب‌های موجود")
-        print("5. تست اتصال مجدد")
-        print("6. تغییر تنظیمات")
-        print("0. خروج")
+        print("1. Send single email")
+        print("2. Send bulk emails") 
+        print("3. Create new template")
+        print("4. View available templates")
+        print("5. Test connection again")
+        print("6. Change settings")
+        print("0. Exit")
         
-        choice = input("\nانتخاب کنید (0-6): ").strip()
+        choice = input("\nSelect option (0-6): ").strip()
         
         if choice == '1':
             send_single_email_simple(email_sender, smtp_config)
@@ -215,61 +215,61 @@ def main_menu(smtp_config):
             if not smtp_config:
                 break
         elif choice == '0':
-            print("👋 خداحافظ!")
+            print("👋 Goodbye!")
             break
         else:
-            print("❌ انتخاب نامعتبر!")
+            print("❌ Invalid selection!")
 
 def send_single_email_simple(email_sender, smtp_config):
-    """ارسال ایمیل تکی ساده"""
-    print("\n📧 ارسال ایمیل تکی")
+    """Send simple single email"""
+    print("\n📧 Send Single Email")
     print("-" * 30)
     
     sender_email = smtp_config['username']
-    sender_name = input("نام فرستنده: ") or "فرستنده"
-    recipient_email = input("آدرس گیرنده: ")
-    recipient_name = input("نام گیرنده (اختیاری): ") or "گیرنده"
-    subject = input("موضوع ایمیل: ")
+    sender_name = input("Sender name: ") or "Sender"
+    recipient_email = input("Recipient address: ")
+    recipient_name = input("Recipient name (optional): ") or "Recipient"
+    subject = input("Email subject: ")
     
-    print("\nنوع پیام:")
-    print("1. متن ساده")
-    print("2. استفاده از قالب")
+    print("\nMessage type:")
+    print("1. Plain text")
+    print("2. Use template")
     
-    msg_type = input("انتخاب (1-2): ").strip()
+    msg_type = input("Select (1-2): ").strip()
     
     if msg_type == '1':
-        message = input("متن پیام: ")
+        message = input("Message text: ")
         html_content = f"""
-        <html><body style="font-family: Tahoma, Arial; direction: rtl;">
-        <h2>سلام {recipient_name}!</h2>
+        <html><body style="font-family: Arial, Helvetica; max-width: 600px; margin: 0 auto;">
+        <h2>Hello {recipient_name}!</h2>
         <p>{message}</p>
         <hr>
-        <p style="font-size: 12px; color: #666;">ارسال شده توسط {sender_name}</p>
+        <p style="font-size: 12px; color: #666;">Sent by {sender_name}</p>
         </body></html>
         """
     else:
         templates = ['templates/professional.html', 'templates/newsletter.html']
-        print("\nقالب‌های موجود:")
+        print("\nAvailable templates:")
         for i, template in enumerate(templates, 1):
             if os.path.exists(template):
                 print(f"{i}. {os.path.basename(template)}")
         
-        template_choice = input("انتخاب قالب (شماره): ").strip()
+        template_choice = input("Select template (number): ").strip()
         if template_choice == '1' and os.path.exists('templates/professional.html'):
             variables = {
                 'recipient_name': recipient_name,
                 'sender_name': sender_name,
-                'company_name': input("نام شرکت: ") or "شرکت",
-                'main_message': input("پیام اصلی: ") or "پیام تست",
-                'button_text': input("متن دکمه (اختیاری): ") or "کلیک کنید",
-                'button_link': input("لینک دکمه (اختیاری): ") or "#"
+                'company_name': input("Company name: ") or "Company",
+                'main_message': input("Main message: ") or "Test message",
+                'button_text': input("Button text (optional): ") or "Click Here",
+                'button_link': input("Button link (optional): ") or "#"
             }
             html_content = email_sender.load_template('templates/professional.html', variables)
         else:
-            print("❌ قالب یافت نشد! از متن ساده استفاده می‌شود.")
-            html_content = f"<html><body><h2>سلام!</h2><p>پیام تست</p></body></html>"
+            print("❌ Template not found! Using plain text.")
+            html_content = f"<html><body><h2>Hello!</h2><p>Test message</p></body></html>"
     
-    print("\n🚀 در حال ارسال...")
+    print("\n🚀 Sending...")
     success = email_sender.send_email(
         smtp_config=smtp_config,
         sender_email=sender_email,
@@ -281,50 +281,50 @@ def send_single_email_simple(email_sender, smtp_config):
     )
     
     if success:
-        print("✅ ایمیل با موفقیت ارسال شد!")
+        print("✅ Email sent successfully!")
     else:
-        print("❌ خطا در ارسال ایمیل!")
+        print("❌ Error sending email!")
 
 def send_bulk_email_simple(email_sender, smtp_config):
-    """ارسال انبوه ساده"""
-    print("\n📧 ارسال ایمیل انبوه")
+    """Send simple bulk emails"""
+    print("\n📧 Send Bulk Emails")
     print("-" * 30)
     
     if not os.path.exists('examples/recipients.json'):
-        print("❌ فایل گیرندگان یافت نشد!")
-        print("لطفاً فایل examples/recipients.json را بررسی کنید.")
+        print("❌ Recipients file not found!")
+        print("Please check examples/recipients.json file.")
         return
     
     try:
         with open('examples/recipients.json', 'r', encoding='utf-8') as f:
             recipients = json.load(f)
         
-        print(f"📊 {len(recipients)} گیرنده یافت شد.")
+        print(f"📊 Found {len(recipients)} recipients.")
         
         sender_email = smtp_config['username']
-        sender_name = input("نام فرستنده: ") or "فرستنده"
-        subject = input("موضوع ایمیل: ")
+        sender_name = input("Sender name: ") or "Sender"
+        subject = input("Email subject: ")
         
-        # قالب ساده
+        # Simple template
         html_template = """
         <html>
-        <body style="font-family: Tahoma, Arial; direction: rtl; max-width: 600px; margin: 0 auto;">
+        <body style="font-family: Arial, Helvetica; max-width: 600px; margin: 0 auto;">
             <div style="background: white; padding: 30px; border-radius: 10px;">
-                <h2>سلام {{first_name}} عزیز!</h2>
+                <h2>Hello {{first_name}}!</h2>
                 <p>{{custom_message}}</p>
                 <div style="background: #f0f8ff; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-                    <strong>پیشنهاد ویژه: {{special_offer}}</strong>
+                    <strong>Special Offer: {{special_offer}}</strong>
                 </div>
-                <p>این پیشنهاد تا {{expiry_date}} معتبر است.</p>
-                <p>با تشکر،<br>{{sender_name}}</p>
+                <p>This offer is valid until {{expiry_date}}.</p>
+                <p>Best regards,<br>{{sender_name}}</p>
             </div>
         </body>
         </html>
         """
         
-        delay = int(input("تاخیر بین ارسال‌ها (ثانیه) [2]: ") or "2")
+        delay = int(input("Delay between sends (seconds) [2]: ") or "2")
         
-        print(f"\n🚀 شروع ارسال انبوه به {len(recipients)} گیرنده...")
+        print(f"\n🚀 Starting bulk send to {len(recipients)} recipients...")
         
         stats = email_sender.bulk_send(
             smtp_config=smtp_config,
@@ -336,16 +336,16 @@ def send_bulk_email_simple(email_sender, smtp_config):
             delay=delay
         )
         
-        print(f"\n📊 نتایج:")
-        print(f"✅ موفق: {stats['sent']}")
-        print(f"❌ ناموفق: {stats['failed']}")
+        print(f"\n📊 Results:")
+        print(f"✅ Successful: {stats['sent']}")
+        print(f"❌ Failed: {stats['failed']}")
         
     except Exception as e:
-        print(f"❌ خطا: {e}")
+        print(f"❌ Error: {e}")
 
 def show_templates():
-    """نمایش قالب‌های موجود"""
-    print("\n🎨 قالب‌های موجود:")
+    """Show available templates"""
+    print("\n🎨 Available Templates:")
     print("-" * 30)
     
     template_dir = 'templates'
@@ -355,29 +355,29 @@ def show_templates():
             for i, template in enumerate(templates, 1):
                 print(f"{i}. {template}")
         else:
-            print("هیچ قالبی یافت نشد.")
+            print("No templates found.")
     else:
-        print("پوشه قالب‌ها یافت نشد.")
+        print("Templates folder not found.")
 
 def create_template_simple():
-    """ایجاد قالب ساده"""
-    print("\n🎨 ایجاد قالب جدید")
+    """Create simple template"""
+    print("\n🎨 Create New Template")
     print("-" * 30)
     
-    name = input("نام قالب: ")
+    name = input("Template name: ")
     if not name:
-        print("❌ نام قالب الزامی است!")
+        print("❌ Template name is required!")
         return
     
-    # قالب پایه
+    # Base template
     template_content = f"""<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{{{{subject}}}}</title>
     <style>
         body {{
-            font-family: Tahoma, Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
@@ -402,9 +402,9 @@ def create_template_simple():
         <div class="header">
             <h1>{{{{company_name}}}}</h1>
         </div>
-        <h2>سلام {{{{recipient_name}}}} عزیز!</h2>
+        <h2>Hello {{{{recipient_name}}}}!</h2>
         <p>{{{{main_message}}}}</p>
-        <p>با تشکر،<br>{{{{sender_name}}}}</p>
+        <p>Best regards,<br>{{{{sender_name}}}}</p>
     </div>
 </body>
 </html>"""
@@ -415,14 +415,14 @@ def create_template_simple():
     try:
         with open(template_path, 'w', encoding='utf-8') as f:
             f.write(template_content)
-        print(f"✅ قالب {name} ایجاد شد!")
-        print(f"📁 مسیر: {template_path}")
+        print(f"✅ Template {name} created!")
+        print(f"📁 Path: {template_path}")
     except Exception as e:
-        print(f"❌ خطا در ایجاد قالب: {e}")
+        print(f"❌ Error creating template: {e}")
 
 def test_connection(smtp_config):
-    """تست اتصال"""
-    print("\n🔍 تست اتصال...")
+    """Test connection"""
+    print("\n🔍 Testing connection...")
     try:
         import smtplib
         import ssl
@@ -438,33 +438,33 @@ def test_connection(smtp_config):
         
         server.login(smtp_config['username'], smtp_config['password'])
         server.quit()
-        print("✅ اتصال موفقیت‌آمیز!")
+        print("✅ Connection successful!")
         
     except Exception as e:
-        print(f"❌ خطا در اتصال: {e}")
+        print(f"❌ Connection error: {e}")
 
 def main():
-    """تابع اصلی"""
-    print("🚀 سیستم ارسال ایمیل حرفه‌ای")
-    print("راه‌اندازی سریع")
+    """Main function"""
+    print("🚀 Professional Email Sender System")
+    print("Quick Start")
     print("=" * 50)
     
-    # بررسی تنظیمات موجود
+    # Check existing configuration
     if os.path.exists('quick_config.json'):
         try:
             with open('quick_config.json', 'r', encoding='utf-8') as f:
                 config = json.load(f)
             
             if config.get('setup_completed'):
-                print("✅ تنظیمات قبلی یافت شد!")
-                use_existing = input("از تنظیمات موجود استفاده شود? (y/n) [y]: ").lower()
+                print("✅ Found existing configuration!")
+                use_existing = input("Use existing settings? (y/n) [y]: ").lower()
                 
                 if use_existing != 'n':
                     smtp_config = config['smtp_config']
-                    print(f"📧 استفاده از: {smtp_config.get('name', 'Custom')}")
+                    print(f"📧 Using: {smtp_config.get('name', 'Custom')}")
                     
-                    # تست ایمیل
-                    test_email = input("ایمیل تستی ارسال شود? (y/n) [n]: ").lower()
+                    # Test email
+                    test_email = input("Send test email? (y/n) [n]: ").lower()
                     if test_email == 'y':
                         send_test_email(smtp_config)
                     
@@ -473,18 +473,18 @@ def main():
         except:
             pass
     
-    # راه‌اندازی جدید
+    # New setup
     smtp_config = quick_setup()
     if not smtp_config:
-        print("❌ راه‌اندازی ناموفق!")
+        print("❌ Setup failed!")
         return
     
-    # تست ایمیل
-    test_email = input("\nایمیل تستی ارسال شود? (y/n) [y]: ").lower()
+    # Test email
+    test_email = input("\nSend test email? (y/n) [y]: ").lower()
     if test_email != 'n':
         send_test_email(smtp_config)
     
-    # ورود به منوی اصلی
+    # Enter main menu
     main_menu(smtp_config)
 
 if __name__ == "__main__":

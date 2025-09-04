@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-مثال ارسال ایمیل انبوه
 Bulk Email Sending Example
 
-این مثال نحوه استفاده از سیستم برای ارسال ایمیل انبوه با قالب‌های سفارشی را نشان می‌دهد.
+This example demonstrates how to use the system to send bulk emails with custom templates.
 """
 
 import sys
@@ -15,42 +14,42 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from email_sender import ProfessionalEmailSender
 
 def create_sample_recipients():
-    """ایجاد فایل نمونه گیرندگان"""
+    """Create sample recipients file"""
     recipients = [
         {
             "email": "user1@example.com",
-            "name": "احمد محمدی",
+            "name": "John Smith",
             "variables": {
-                "first_name": "احمد",
-                "last_name": "محمدی",
-                "company": "شرکت الف",
-                "position": "مدیر فروش",
-                "special_offer": "20% تخفیف",
-                "expiry_date": "۳۱ دی ۱۴۰۳"
+                "first_name": "John",
+                "last_name": "Smith",
+                "company": "Alpha Company",
+                "position": "Sales Manager",
+                "special_offer": "20% Discount",
+                "expiry_date": "December 31, 2024"
             }
         },
         {
             "email": "user2@example.com",
-            "name": "فاطمه کریمی",
+            "name": "Sarah Johnson",
             "variables": {
-                "first_name": "فاطمه",
-                "last_name": "کریمی",
-                "company": "شرکت ب",
-                "position": "مدیر بازاریابی",
-                "special_offer": "15% تخفیف",
-                "expiry_date": "۳۱ دی ۱۴۰۳"
+                "first_name": "Sarah",
+                "last_name": "Johnson", 
+                "company": "Beta Corporation",
+                "position": "Marketing Manager",
+                "special_offer": "15% Discount",
+                "expiry_date": "December 31, 2024"
             }
         },
         {
             "email": "user3@example.com",
-            "name": "علی رضایی",
+            "name": "Michael Brown",
             "variables": {
-                "first_name": "علی",
-                "last_name": "رضایی",
-                "company": "شرکت ج",
-                "position": "مدیر IT",
-                "special_offer": "25% تخفیف",
-                "expiry_date": "۳۱ دی ۱۴۰۳"
+                "first_name": "Michael",
+                "last_name": "Brown",
+                "company": "Gamma Inc",
+                "position": "IT Manager",
+                "special_offer": "25% Discount",
+                "expiry_date": "December 31, 2024"
             }
         }
     ]
@@ -58,36 +57,36 @@ def create_sample_recipients():
     with open('recipients.json', 'w', encoding='utf-8') as f:
         json.dump(recipients, f, ensure_ascii=False, indent=4)
     
-    print("✅ فایل recipients.json ایجاد شد!")
+    print("✅ recipients.json file created!")
     return recipients
 
 def main():
-    # ایجاد نمونه از سیستم ارسال ایمیل
+    # Create email sender instance
     email_sender = ProfessionalEmailSender()
     
-    # تنظیمات SMTP
+    # SMTP Configuration
     smtp_config = {
         'server': 'smtp.gmail.com',
         'port': 587,
         'security': 'tls',
-        'username': 'your_email@gmail.com',  # آدرس ایمیل خود را وارد کنید
-        'password': 'your_app_password'      # App Password خود را وارد کنید
+        'username': 'your_email@gmail.com',  # Enter your email address
+        'password': 'your_app_password'      # Enter your App Password
     }
     
-    # اطلاعات فرستنده
+    # Sender information
     sender_email = 'your_email@gmail.com'
-    sender_name = 'تیم بازاریابی'
-    subject = 'پیشنهاد ویژه برای {{first_name}} عزیز'
+    sender_name = 'Marketing Team'
+    subject = 'Special Offer for {{first_name}}'
     
-    # قالب HTML با متغیرهای قابل جایگذاری
+    # HTML template with substitutable variables
     html_template = """
     <!DOCTYPE html>
-    <html lang="fa" dir="rtl">
+    <html lang="en">
     <head>
         <meta charset="UTF-8">
         <style>
             body {
-                font-family: Tahoma, Arial, sans-serif;
+                font-family: Arial, Helvetica, sans-serif;
                 line-height: 1.6;
                 color: #333;
                 max-width: 600px;
@@ -148,49 +147,49 @@ def main():
     <body>
         <div class="container">
             <div class="header">
-                <h1>پیشنهاد ویژه</h1>
-                <p>مخصوص مشتریان عزیز</p>
+                <h1>Special Offer</h1>
+                <p>Exclusively for Our Valued Customers</p>
             </div>
             
-            <h2>سلام {{first_name}} عزیز،</h2>
+            <h2>Hello {{first_name}},</h2>
             
-            <p>امیدواریم که حال شما در {{company}} عالی باشد.</p>
+            <p>We hope you're doing well at {{company}}.</p>
             
-            <p>به عنوان {{position}} محترم، پیشنهاد ویژه‌ای برای شما داریم:</p>
+            <p>As our respected {{position}}, we have a special offer for you:</p>
             
             <div class="offer-box">
                 <h2>{{special_offer}}</h2>
-                <p>روی تمام محصولات ما</p>
-                <p><strong>تا تاریخ: {{expiry_date}}</strong></p>
+                <p>On All Our Products</p>
+                <p><strong>Valid Until: {{expiry_date}}</strong></p>
             </div>
             
-            <p>این پیشنهاد محدود به مدت است و فقط برای مشتریان ویژه مانند شما در نظر گرفته شده است.</p>
+            <p>This limited-time offer is exclusively designed for valued customers like you.</p>
             
             <div style="text-align: center;">
-                <a href="https://example.com/offer" class="button">استفاده از پیشنهاد</a>
+                <a href="https://example.com/offer" class="button">Claim Your Offer</a>
             </div>
             
-            <p>در صورت داشتن هرگونه سوال، با ما تماس بگیرید.</p>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
             
-            <p>با احترام،<br>
-            تیم فروش<br>
-            شرکت نمونه</p>
+            <p>Best regards,<br>
+            Sales Team<br>
+            Example Company</p>
             
             <div class="footer">
-                <p>این ایمیل برای {{email}} ارسال شده است.</p>
-                <p>برای لغو اشتراک <a href="#">اینجا کلیک کنید</a>.</p>
+                <p>This email was sent to {{email}}.</p>
+                <p>To unsubscribe, <a href="#">click here</a>.</p>
             </div>
         </div>
     </body>
     </html>
     """
     
-    # ایجاد فایل نمونه گیرندگان
+    # Create sample recipients file
     recipients = create_sample_recipients()
     
-    print("🚀 شروع ارسال ایمیل انبوه...")
+    print("🚀 Starting bulk email send...")
     
-    # ارسال انبوه
+    # Send bulk emails
     stats = email_sender.bulk_send(
         smtp_config=smtp_config,
         sender_email=sender_email,
@@ -198,19 +197,19 @@ def main():
         recipients=recipients,
         subject=subject,
         html_template=html_template,
-        delay=2,  # تاخیر 2 ثانیه بین هر ارسال
-        company_name="شرکت نمونه",
-        department="بخش بازاریابی",
+        delay=2,  # 2 second delay between each send
+        company_name="Example Company",
+        department="Marketing Department",
         priority="normal"
     )
     
-    print("\n📊 گزارش نهایی:")
-    print(f"کل ایمیل‌ها: {stats['total']}")
-    print(f"ارسال موفق: {stats['sent']}")
-    print(f"ارسال ناموفق: {stats['failed']}")
+    print("\n📊 Final Report:")
+    print(f"Total emails: {stats['total']}")
+    print(f"Successful sends: {stats['sent']}")
+    print(f"Failed sends: {stats['failed']}")
     
     if stats['errors']:
-        print("\n❌ خطاها:")
+        print("\n❌ Errors:")
         for error in stats['errors']:
             print(f"  - {error}")
 

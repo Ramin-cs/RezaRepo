@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-سیستم ارسال ایمیل حرفه‌ای
 Professional Email Sender System
+Advanced email sending system with anti-spam headers and professional templates
 
-این سیستم امکان ارسال ایمیل‌های حرفه‌ای با قالب‌های سفارشی و هدرهای پیشرفته را فراهم می‌کند
-تا از رفتن ایمیل‌ها به پوشه spam جلوگیری کند.
+This system provides the ability to send professional single or bulk emails 
+with advanced features to prevent emails from going to spam folders.
 
-نویسنده: Assistant
-تاریخ: 2024
+Author: Assistant
+Date: 2024
 """
 
 import smtplib
@@ -29,43 +29,43 @@ from pathlib import Path
 
 class ProfessionalEmailSender:
     """
-    کلاس اصلی برای ارسال ایمیل‌های حرفه‌ای
+    Main class for sending professional emails
     """
     
     def __init__(self, config_file: str = "email_config.json"):
         """
-        راه‌اندازی سیستم ارسال ایمیل
+        Initialize the email sending system
         
         Args:
-            config_file: مسیر فایل تنظیمات
+            config_file: Path to configuration file
         """
         self.config_file = config_file
         self.config = self.load_config()
         self.smtp_servers = self.get_smtp_servers()
         
     def load_config(self) -> Dict:
-        """بارگیری تنظیمات از فایل JSON"""
+        """Load configuration from JSON file"""
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"خطا در بارگیری تنظیمات: {e}")
+                print(f"Error loading configuration: {e}")
                 return {}
         return {}
     
     def save_config(self, config: Dict) -> bool:
-        """ذخیره تنظیمات در فایل JSON"""
+        """Save configuration to JSON file"""
         try:
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=4)
             return True
         except Exception as e:
-            print(f"خطا در ذخیره تنظیمات: {e}")
+            print(f"Error saving configuration: {e}")
             return False
     
     def get_smtp_servers(self) -> Dict:
-        """لیست سرورهای SMTP معروف"""
+        """List of popular SMTP servers"""
         return {
             'gmail': {
                 'server': 'smtp.gmail.com',
@@ -113,27 +113,27 @@ class ProfessionalEmailSender:
                                     department: str = None,
                                     priority: str = "normal") -> Dict:
         """
-        تولید هدرهای حرفه‌ای برای جلوگیری از اسپم
+        Generate professional headers to prevent spam
         
         Args:
-            sender_email: آدرس فرستنده
-            recipient_email: آدرس گیرنده
-            subject: موضوع ایمیل
-            company_name: نام شرکت
-            department: نام بخش
-            priority: اولویت ایمیل (low, normal, high)
+            sender_email: Sender's email address
+            recipient_email: Recipient's email address
+            subject: Email subject
+            company_name: Company name
+            department: Department name
+            priority: Email priority (low, normal, high)
         
         Returns:
-            دیکشنری حاوی هدرهای ایمیل
+            Dictionary containing email headers
         """
         
-        # تولید Message-ID منحصر به فرد
+        # Generate unique Message-ID
         timestamp = str(int(time.time()))
         random_num = str(random.randint(100000, 999999))
         domain = sender_email.split('@')[1] if '@' in sender_email else 'localhost'
         message_id = f"<{timestamp}.{random_num}@{domain}>"
         
-        # هدرهای اساسی
+        # Basic headers
         headers = {
             'Message-ID': message_id,
             'Date': datetime.now().strftime('%a, %d %b %Y %H:%M:%S %z'),
@@ -144,7 +144,7 @@ class ProfessionalEmailSender:
             'Importance': priority.title(),
         }
         
-        # هدرهای شرکتی
+        # Company headers
         if company_name:
             headers['X-Organization'] = company_name
             headers['Organization'] = company_name
@@ -152,25 +152,25 @@ class ProfessionalEmailSender:
         if department:
             headers['X-Department'] = department
             
-        # هدرهای امنیتی و اعتبارسنجی
+        # Security and authentication headers
         headers.update({
             'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN',
             'X-MSMail-Priority': priority.title(),
-            'X-Originating-IP': '[127.0.0.1]',  # IP داخلی
+            'X-Originating-IP': '[127.0.0.1]',  # Internal IP
             'X-Spam-Status': 'No',
             'X-Spam-Score': '0.0',
             'List-Unsubscribe': f'<mailto:{sender_email}?subject=Unsubscribe>',
             'Precedence': 'bulk' if priority == 'low' else 'normal',
         })
         
-        # هدرهای بازگشتی
+        # Return path headers
         headers['Return-Path'] = f'<{sender_email}>'
         headers['Reply-To'] = sender_email
         
         return headers
     
     def _get_priority_value(self, priority: str) -> str:
-        """تبدیل اولویت به مقدار عددی"""
+        """Convert priority to numeric value"""
         priority_map = {
             'high': '1',
             'normal': '3',
@@ -180,14 +180,14 @@ class ProfessionalEmailSender:
     
     def load_template(self, template_path: str, variables: Dict = None) -> str:
         """
-        بارگیری قالب HTML و جایگذاری متغیرها
+        Load HTML template and substitute variables
         
         Args:
-            template_path: مسیر فایل قالب
-            variables: متغیرهای قابل جایگذاری
+            template_path: Path to template file
+            variables: Variables for substitution
         
         Returns:
-            محتوای HTML نهایی
+            Final HTML content
         """
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
@@ -200,11 +200,11 @@ class ProfessionalEmailSender:
             
             return template_content
         except Exception as e:
-            print(f"خطا در بارگیری قالب: {e}")
+            print(f"Error loading template: {e}")
             return ""
     
     def validate_email(self, email: str) -> bool:
-        """اعتبارسنجی آدرس ایمیل"""
+        """Validate email address"""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
     
@@ -221,74 +221,74 @@ class ProfessionalEmailSender:
                                   department: str = None,
                                   priority: str = "normal") -> MIMEMultipart:
         """
-        ایجاد پیام ایمیل حرفه‌ای
+        Create professional email message
         
         Args:
-            sender_email: آدرس ایمیل فرستنده
-            sender_name: نام فرستنده
-            recipient_email: آدرس ایمیل گیرنده
-            recipient_name: نام گیرنده
-            subject: موضوع ایمیل
-            html_content: محتوای HTML
-            text_content: محتوای متنی (اختیاری)
-            custom_headers: هدرهای سفارشی
-            company_name: نام شرکت
-            department: نام بخش
-            priority: اولویت ایمیل
+            sender_email: Sender's email address
+            sender_name: Sender's name
+            recipient_email: Recipient's email address
+            recipient_name: Recipient's name
+            subject: Email subject
+            html_content: HTML content
+            text_content: Text content (optional)
+            custom_headers: Custom headers
+            company_name: Company name
+            department: Department name
+            priority: Email priority
         
         Returns:
-            شیء MIMEMultipart آماده ارسال
+            MIMEMultipart object ready to send
         """
         
-        # ایجاد پیام اصلی
+        # Create main message
         msg = MIMEMultipart('alternative')
         
-        # تنظیم هدرهای اصلی
+        # Set main headers
         msg['From'] = f"{sender_name} <{sender_email}>" if sender_name else sender_email
         msg['To'] = f"{recipient_name} <{recipient_email}>" if recipient_name else recipient_email
         msg['Subject'] = subject
         
-        # اضافه کردن هدرهای حرفه‌ای
+        # Add professional headers
         professional_headers = self.generate_professional_headers(
             sender_email, recipient_email, subject, company_name, department, priority
         )
         
         for key, value in professional_headers.items():
-            if key not in ['From', 'To', 'Subject']:  # جلوگیری از تکرار
+            if key not in ['From', 'To', 'Subject']:  # Prevent duplication
                 msg[key] = value
         
-        # اضافه کردن هدرهای سفارشی
+        # Add custom headers
         if custom_headers:
             for key, value in custom_headers.items():
                 msg[key] = value
         
-        # اضافه کردن محتوای متنی (fallback)
+        # Add text content (fallback)
         if text_content:
             text_part = MIMEText(text_content, 'plain', 'utf-8')
             msg.attach(text_part)
         else:
-            # تولید محتوای متنی از HTML
+            # Generate text content from HTML
             text_content = self._html_to_text(html_content)
             text_part = MIMEText(text_content, 'plain', 'utf-8')
             msg.attach(text_part)
         
-        # اضافه کردن محتوای HTML
+        # Add HTML content
         html_part = MIMEText(html_content, 'html', 'utf-8')
         msg.attach(html_part)
         
         return msg
     
     def _html_to_text(self, html_content: str) -> str:
-        """تبدیل ساده HTML به متن"""
-        # حذف تگ‌های HTML
+        """Simple HTML to text conversion"""
+        # Remove HTML tags
         import re
         text = re.sub(r'<[^>]+>', '', html_content)
-        # تمیز کردن فاصله‌های اضافی
+        # Clean extra whitespace
         text = re.sub(r'\s+', ' ', text).strip()
         return text
     
     def _get_current_date(self) -> str:
-        """دریافت تاریخ فعلی"""
+        """Get current date"""
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     def send_email(self,
@@ -306,54 +306,54 @@ class ProfessionalEmailSender:
                    priority: str = "normal",
                    attachments: List[str] = None) -> bool:
         """
-        ارسال ایمیل با تنظیمات کامل
+        Send email with complete configuration
         
         Args:
-            smtp_config: تنظیمات سرور SMTP
-            sender_email: آدرس فرستنده
-            sender_name: نام فرستنده
-            recipient_email: آدرس گیرنده
-            recipient_name: نام گیرنده
-            subject: موضوع ایمیل
-            html_content: محتوای HTML
-            text_content: محتوای متنی
-            custom_headers: هدرهای سفارشی
-            company_name: نام شرکت
-            department: نام بخش
-            priority: اولویت
-            attachments: لیست فایل‌های ضمیمه
+            smtp_config: SMTP server configuration
+            sender_email: Sender's address
+            sender_name: Sender's name
+            recipient_email: Recipient's address
+            recipient_name: Recipient's name
+            subject: Email subject
+            html_content: HTML content
+            text_content: Text content
+            custom_headers: Custom headers
+            company_name: Company name
+            department: Department name
+            priority: Priority level
+            attachments: List of attachment files
         
         Returns:
-            True در صورت موفقیت، False در صورت خطا
+            True if successful, False if error
         """
         
         try:
-            # اعتبارسنجی آدرس‌های ایمیل
+            # Validate email addresses
             if not self.validate_email(sender_email):
-                print(f"آدرس فرستنده نامعتبر: {sender_email}")
+                print(f"Invalid sender email: {sender_email}")
                 return False
                 
             if not self.validate_email(recipient_email):
-                print(f"آدرس گیرنده نامعتبر: {recipient_email}")
+                print(f"Invalid recipient email: {recipient_email}")
                 return False
             
-            # ایجاد پیام
+            # Create message
             msg = self.create_professional_message(
                 sender_email, sender_name, recipient_email, recipient_name,
                 subject, html_content, text_content, custom_headers,
                 company_name, department, priority
             )
             
-            # اضافه کردن فایل‌های ضمیمه
+            # Add attachments
             if attachments:
                 for file_path in attachments:
                     if os.path.exists(file_path):
                         self._add_attachment(msg, file_path)
                     else:
-                        print(f"فایل ضمیمه یافت نشد: {file_path}")
+                        print(f"Attachment file not found: {file_path}")
             
-            # اتصال به سرور SMTP
-            print(f"اتصال به سرور SMTP: {smtp_config['server']}:{smtp_config['port']}")
+            # Connect to SMTP server
+            print(f"Connecting to SMTP server: {smtp_config['server']}:{smtp_config['port']}")
             
             if smtp_config.get('security') == 'ssl':
                 context = ssl.create_default_context()
@@ -364,34 +364,34 @@ class ProfessionalEmailSender:
                     context = ssl.create_default_context()
                     server.starttls(context=context)
             
-            # احراز هویت
+            # Authentication
             if smtp_config.get('username') and smtp_config.get('password'):
-                print("احراز هویت...")
+                print("Authenticating...")
                 server.login(smtp_config['username'], smtp_config['password'])
             
-            # ارسال ایمیل
-            print(f"ارسال ایمیل به {recipient_email}...")
+            # Send email
+            print(f"Sending email to {recipient_email}...")
             server.sendmail(sender_email, recipient_email, msg.as_string())
             server.quit()
             
-            print("✅ ایمیل با موفقیت ارسال شد!")
+            print("✅ Email sent successfully!")
             return True
             
         except smtplib.SMTPAuthenticationError as e:
-            print(f"❌ خطای احراز هویت: {e}")
+            print(f"❌ Authentication error: {e}")
             return False
         except smtplib.SMTPRecipientsRefused as e:
-            print(f"❌ آدرس گیرنده رد شد: {e}")
+            print(f"❌ Recipient refused: {e}")
             return False
         except smtplib.SMTPServerDisconnected as e:
-            print(f"❌ اتصال به سرور قطع شد: {e}")
+            print(f"❌ Server disconnected: {e}")
             return False
         except Exception as e:
-            print(f"❌ خطای غیرمنتظره: {e}")
+            print(f"❌ Unexpected error: {e}")
             return False
     
     def _add_attachment(self, msg: MIMEMultipart, file_path: str):
-        """اضافه کردن فایل ضمیمه"""
+        """Add file attachment"""
         try:
             with open(file_path, "rb") as attachment:
                 part = MIMEBase('application', 'octet-stream')
@@ -403,9 +403,9 @@ class ProfessionalEmailSender:
                 f'attachment; filename= {os.path.basename(file_path)}'
             )
             msg.attach(part)
-            print(f"فایل ضمیمه اضافه شد: {file_path}")
+            print(f"Attachment added: {file_path}")
         except Exception as e:
-            print(f"خطا در اضافه کردن فایل ضمیمه {file_path}: {e}")
+            print(f"Error adding attachment {file_path}: {e}")
     
     def bulk_send(self,
                   smtp_config: Dict,
@@ -417,20 +417,20 @@ class ProfessionalEmailSender:
                   delay: int = 1,
                   **kwargs) -> Dict:
         """
-        ارسال انبوه ایمیل
+        Send bulk emails
         
         Args:
-            smtp_config: تنظیمات SMTP
-            sender_email: آدرس فرستنده
-            sender_name: نام فرستنده
-            recipients: لیست گیرندگان
-            subject: موضوع ایمیل
-            html_template: قالب HTML
-            delay: تاخیر بین ارسال‌ها (ثانیه)
-            **kwargs: سایر پارامترها
+            smtp_config: SMTP configuration
+            sender_email: Sender's address
+            sender_name: Sender's name
+            recipients: List of recipients
+            subject: Email subject
+            html_template: HTML template
+            delay: Delay between sends (seconds)
+            **kwargs: Other parameters
         
         Returns:
-            آمار ارسال
+            Sending statistics
         """
         
         stats = {
@@ -442,14 +442,14 @@ class ProfessionalEmailSender:
         
         for i, recipient in enumerate(recipients):
             try:
-                print(f"\nارسال ایمیل {i+1} از {len(recipients)}...")
+                print(f"\nSending email {i+1} of {len(recipients)}...")
                 
-                # جایگذاری متغیرها در قالب
+                # Substitute variables in template
                 html_content = html_template
                 for key, value in recipient.get('variables', {}).items():
                     html_content = html_content.replace(f"{{{{{key}}}}}", str(value))
                 
-                # ارسال ایمیل
+                # Send email
                 success = self.send_email(
                     smtp_config=smtp_config,
                     sender_email=sender_email,
@@ -465,44 +465,44 @@ class ProfessionalEmailSender:
                     stats['sent'] += 1
                 else:
                     stats['failed'] += 1
-                    stats['errors'].append(f"خطا در ارسال به {recipient['email']}")
+                    stats['errors'].append(f"Failed to send to {recipient['email']}")
                 
-                # تاخیر بین ارسال‌ها
+                # Delay between sends
                 if i < len(recipients) - 1 and delay > 0:
-                    print(f"انتظار {delay} ثانیه...")
+                    print(f"Waiting {delay} seconds...")
                     time.sleep(delay)
                     
             except Exception as e:
                 stats['failed'] += 1
-                stats['errors'].append(f"خطا در ارسال به {recipient.get('email', 'نامشخص')}: {e}")
+                stats['errors'].append(f"Error sending to {recipient.get('email', 'unknown')}: {e}")
         
-        print(f"\n📊 آمار نهایی:")
-        print(f"کل: {stats['total']}")
-        print(f"ارسال شده: {stats['sent']}")
-        print(f"ناموفق: {stats['failed']}")
+        print(f"\n📊 Final Statistics:")
+        print(f"Total: {stats['total']}")
+        print(f"Sent: {stats['sent']}")
+        print(f"Failed: {stats['failed']}")
         
         return stats
 
 
 def main():
-    """تابع اصلی برنامه"""
-    print("🚀 سیستم ارسال ایمیل حرفه‌ای")
+    """Main program function"""
+    print("🚀 Professional Email Sender System")
     print("=" * 50)
     
-    # ایجاد نمونه از کلاس
+    # Create instance of the class
     email_sender = ProfessionalEmailSender()
     
-    # منوی اصلی
+    # Main menu
     while True:
-        print("\n📧 منوی اصلی:")
-        print("1. ارسال ایمیل تکی")
-        print("2. ارسال ایمیل انبوه")
-        print("3. تنظیم سرور SMTP")
-        print("4. ایجاد قالب ایمیل")
-        print("5. تست اتصال SMTP")
-        print("0. خروج")
+        print("\n📧 Main Menu:")
+        print("1. Send single email")
+        print("2. Send bulk emails")
+        print("3. Configure SMTP server")
+        print("4. Create email template")
+        print("5. Test SMTP connection")
+        print("0. Exit")
         
-        choice = input("\nانتخاب کنید (0-5): ").strip()
+        choice = input("\nSelect option (0-5): ").strip()
         
         if choice == '1':
             send_single_email(email_sender)
@@ -515,56 +515,56 @@ def main():
         elif choice == '5':
             test_smtp_connection(email_sender)
         elif choice == '0':
-            print("خداحافظ! 👋")
+            print("Goodbye! 👋")
             break
         else:
-            print("❌ انتخاب نامعتبر!")
+            print("❌ Invalid selection!")
 
 
 def send_single_email(email_sender: ProfessionalEmailSender):
-    """ارسال ایمیل تکی"""
-    print("\n📧 ارسال ایمیل تکی")
+    """Send single email"""
+    print("\n📧 Send Single Email")
     print("-" * 30)
     
-    # دریافت اطلاعات SMTP
+    # Get SMTP information
     smtp_config = get_smtp_config(email_sender)
     if not smtp_config:
         return
     
-    # دریافت اطلاعات ایمیل
-    sender_email = input("آدرس ایمیل فرستنده: ").strip()
-    sender_name = input("نام فرستنده (اختیاری): ").strip()
-    recipient_email = input("آدرس ایمیل گیرنده: ").strip()
-    recipient_name = input("نام گیرنده (اختیاری): ").strip()
-    subject = input("موضوع ایمیل: ").strip()
+    # Get email information
+    sender_email = input("Sender email address: ").strip()
+    sender_name = input("Sender name (optional): ").strip()
+    recipient_email = input("Recipient email address: ").strip()
+    recipient_name = input("Recipient name (optional): ").strip()
+    subject = input("Email subject: ").strip()
     
-    # انتخاب نوع محتوا
-    print("\nنوع محتوا:")
-    print("1. متن ساده")
+    # Select content type
+    print("\nContent type:")
+    print("1. Plain text")
     print("2. HTML")
-    print("3. بارگیری از فایل")
+    print("3. Load from file")
     
-    content_type = input("انتخاب کنید (1-3): ").strip()
+    content_type = input("Select (1-3): ").strip()
     
     html_content = ""
     if content_type == '1':
-        text = input("متن ایمیل: ")
+        text = input("Email text: ")
         html_content = f"<html><body><p>{text}</p></body></html>"
     elif content_type == '2':
-        html_content = input("کد HTML: ")
+        html_content = input("HTML code: ")
     elif content_type == '3':
-        file_path = input("مسیر فایل HTML: ").strip()
+        file_path = input("HTML file path: ").strip()
         if os.path.exists(file_path):
             html_content = email_sender.load_template(file_path)
         else:
-            print("❌ فایل یافت نشد!")
+            print("❌ File not found!")
             return
     
-    # اطلاعات اضافی
-    company_name = input("نام شرکت (اختیاری): ").strip()
-    department = input("نام بخش (اختیاری): ").strip()
+    # Additional information
+    company_name = input("Company name (optional): ").strip()
+    department = input("Department name (optional): ").strip()
     
-    # ارسال ایمیل
+    # Send email
     success = email_sender.send_email(
         smtp_config=smtp_config,
         sender_email=sender_email,
@@ -578,51 +578,51 @@ def send_single_email(email_sender: ProfessionalEmailSender):
     )
     
     if success:
-        print("✅ ایمیل با موفقیت ارسال شد!")
+        print("✅ Email sent successfully!")
     else:
-        print("❌ خطا در ارسال ایمیل!")
+        print("❌ Error sending email!")
 
 
 def send_bulk_email(email_sender: ProfessionalEmailSender):
-    """ارسال ایمیل انبوه"""
-    print("\n📧 ارسال ایمیل انبوه")
+    """Send bulk emails"""
+    print("\n📧 Send Bulk Emails")
     print("-" * 30)
     
-    # دریافت اطلاعات SMTP
+    # Get SMTP information
     smtp_config = get_smtp_config(email_sender)
     if not smtp_config:
         return
     
-    # دریافت اطلاعات فرستنده
-    sender_email = input("آدرس ایمیل فرستنده: ").strip()
-    sender_name = input("نام فرستنده: ").strip()
-    subject = input("موضوع ایمیل: ").strip()
+    # Get sender information
+    sender_email = input("Sender email address: ").strip()
+    sender_name = input("Sender name: ").strip()
+    subject = input("Email subject: ").strip()
     
-    # بارگیری قالب
-    template_path = input("مسیر فایل قالب HTML: ").strip()
+    # Load template
+    template_path = input("HTML template file path: ").strip()
     if not os.path.exists(template_path):
-        print("❌ فایل قالب یافت نشد!")
+        print("❌ Template file not found!")
         return
     
     html_template = email_sender.load_template(template_path)
     
-    # بارگیری لیست گیرندگان
-    recipients_file = input("مسیر فایل لیست گیرندگان (JSON): ").strip()
+    # Load recipients list
+    recipients_file = input("Recipients list file path (JSON): ").strip()
     if not os.path.exists(recipients_file):
-        print("❌ فایل گیرندگان یافت نشد!")
+        print("❌ Recipients file not found!")
         return
     
     try:
         with open(recipients_file, 'r', encoding='utf-8') as f:
             recipients = json.load(f)
     except Exception as e:
-        print(f"❌ خطا در بارگیری فایل گیرندگان: {e}")
+        print(f"❌ Error loading recipients file: {e}")
         return
     
-    # تاخیر بین ارسال‌ها
-    delay = int(input("تاخیر بین ارسال‌ها (ثانیه) [1]: ").strip() or "1")
+    # Delay between sends
+    delay = int(input("Delay between sends (seconds) [1]: ").strip() or "1")
     
-    # ارسال انبوه
+    # Send bulk
     stats = email_sender.bulk_send(
         smtp_config=smtp_config,
         sender_email=sender_email,
@@ -635,41 +635,41 @@ def send_bulk_email(email_sender: ProfessionalEmailSender):
 
 
 def get_smtp_config(email_sender: ProfessionalEmailSender) -> Dict:
-    """دریافت تنظیمات SMTP از کاربر"""
-    print("\n⚙️ تنظیمات SMTP:")
+    """Get SMTP configuration from user"""
+    print("\n⚙️ SMTP Configuration:")
     
-    # نمایش سرورهای از پیش تعریف شده
+    # Show predefined servers
     servers = email_sender.get_smtp_servers()
-    print("\nسرورهای موجود:")
+    print("\nAvailable servers:")
     for key, server in servers.items():
         print(f"{key}: {server['name']}")
     
-    server_choice = input("\nانتخاب سرور (یا 'custom' برای سفارشی): ").strip().lower()
+    server_choice = input("\nSelect server (or 'custom' for custom): ").strip().lower()
     
     if server_choice in servers and server_choice != 'custom':
         smtp_config = servers[server_choice].copy()
     else:
         smtp_config = {
-            'server': input("آدرس سرور SMTP: ").strip(),
-            'port': int(input("پورت [587]: ").strip() or "587"),
-            'security': input("نوع امنیت (tls/ssl/none) [tls]: ").strip().lower() or "tls"
+            'server': input("SMTP server address: ").strip(),
+            'port': int(input("Port [587]: ").strip() or "587"),
+            'security': input("Security type (tls/ssl/none) [tls]: ").strip().lower() or "tls"
         }
     
-    smtp_config['username'] = input("نام کاربری: ").strip()
-    smtp_config['password'] = input("رمز عبور: ").strip()
+    smtp_config['username'] = input("Username: ").strip()
+    smtp_config['password'] = input("Password: ").strip()
     
     return smtp_config
 
 
 def setup_smtp(email_sender: ProfessionalEmailSender):
-    """تنظیم و ذخیره پیکربندی SMTP"""
-    print("\n⚙️ تنظیم سرور SMTP")
+    """Setup and save SMTP configuration"""
+    print("\n⚙️ Configure SMTP Server")
     print("-" * 30)
     
     smtp_config = get_smtp_config(email_sender)
-    config_name = input("نام این پیکربندی: ").strip()
+    config_name = input("Configuration name: ").strip()
     
-    # ذخیره در فایل تنظیمات
+    # Save to configuration file
     current_config = email_sender.load_config()
     if 'smtp_configs' not in current_config:
         current_config['smtp_configs'] = {}
@@ -677,28 +677,28 @@ def setup_smtp(email_sender: ProfessionalEmailSender):
     current_config['smtp_configs'][config_name] = smtp_config
     
     if email_sender.save_config(current_config):
-        print(f"✅ پیکربندی '{config_name}' ذخیره شد!")
+        print(f"✅ Configuration '{config_name}' saved!")
     else:
-        print("❌ خطا در ذخیره پیکربندی!")
+        print("❌ Error saving configuration!")
 
 
 def create_template():
-    """ایجاد قالب ایمیل"""
-    print("\n🎨 ایجاد قالب ایمیل")
+    """Create email template"""
+    print("\n🎨 Create Email Template")
     print("-" * 30)
     
-    template_name = input("نام قالب: ").strip()
+    template_name = input("Template name: ").strip()
     
-    # قالب پایه حرفه‌ای
+    # Professional base template
     template_content = """<!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{subject}}</title>
     <style>
         body {
-            font-family: 'Tahoma', 'Arial', sans-serif;
+            font-family: 'Arial', 'Helvetica', sans-serif;
             line-height: 1.6;
             color: #333;
             max-width: 600px;
@@ -723,7 +723,7 @@ def create_template():
             margin: 0;
         }
         .content {
-            text-align: right;
+            text-align: left;
         }
         .footer {
             text-align: center;
@@ -754,66 +754,63 @@ def create_template():
         </div>
         
         <div class="content">
-            <h2>{{greeting}} {{recipient_name}}،</h2>
+            <h2>Hello {{recipient_name}},</h2>
             
             <p>{{main_message}}</p>
             
-            {{#if_button}}
             <a href="{{button_link}}" class="button">{{button_text}}</a>
-            {{/if_button}}
             
             <p>{{closing_message}}</p>
             
-            <p>با احترام،<br>
+            <p>Best regards,<br>
             {{sender_name}}<br>
             {{sender_title}}</p>
         </div>
         
         <div class="footer">
-            <p>این ایمیل از طرف {{company_name}} ارسال شده است.</p>
+            <p>This email was sent by {{company_name}}.</p>
             <p>{{company_address}}</p>
         </div>
     </div>
 </body>
 </html>"""
     
-    # ذخیره قالب
+    # Save template
     template_path = f"templates/{template_name}.html"
     os.makedirs("templates", exist_ok=True)
     
     try:
         with open(template_path, 'w', encoding='utf-8') as f:
             f.write(template_content)
-        print(f"✅ قالب در مسیر {template_path} ذخیره شد!")
+        print(f"✅ Template saved at {template_path}!")
         
-        # ایجاد فایل متغیرها
+        # Create variables example file
         variables_example = {
-            "subject": "موضوع ایمیل",
-            "company_name": "نام شرکت شما",
-            "recipient_name": "نام گیرنده",
-            "greeting": "سلام",
-            "main_message": "متن اصلی پیام شما",
-            "button_text": "کلیک کنید",
+            "subject": "Email Subject",
+            "company_name": "Your Company Name",
+            "recipient_name": "Recipient Name",
+            "main_message": "Your main message content",
+            "button_text": "Click Here",
             "button_link": "https://example.com",
-            "closing_message": "پیام پایانی",
-            "sender_name": "نام فرستنده",
-            "sender_title": "سمت فرستنده",
-            "company_address": "آدرس شرکت"
+            "closing_message": "Thank you for your attention",
+            "sender_name": "Sender Name",
+            "sender_title": "Sender Title",
+            "company_address": "Company Address"
         }
         
         variables_path = f"templates/{template_name}_variables.json"
         with open(variables_path, 'w', encoding='utf-8') as f:
             json.dump(variables_example, f, ensure_ascii=False, indent=4)
         
-        print(f"✅ فایل متغیرها در مسیر {variables_path} ذخیره شد!")
+        print(f"✅ Variables file saved at {variables_path}!")
         
     except Exception as e:
-        print(f"❌ خطا در ذخیره قالب: {e}")
+        print(f"❌ Error saving template: {e}")
 
 
 def test_smtp_connection(email_sender: ProfessionalEmailSender):
-    """تست اتصال SMTP"""
-    print("\n🔍 تست اتصال SMTP")
+    """Test SMTP connection"""
+    print("\n🔍 Test SMTP Connection")
     print("-" * 30)
     
     smtp_config = get_smtp_config(email_sender)
@@ -832,10 +829,10 @@ def test_smtp_connection(email_sender: ProfessionalEmailSender):
             server.login(smtp_config['username'], smtp_config['password'])
         
         server.quit()
-        print("✅ اتصال به سرور SMTP موفقیت‌آمیز بود!")
+        print("✅ SMTP connection successful!")
         
     except Exception as e:
-        print(f"❌ خطا در اتصال: {e}")
+        print(f"❌ Connection error: {e}")
 
 
 if __name__ == "__main__":
