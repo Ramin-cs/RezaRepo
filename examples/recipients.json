@@ -1,0 +1,67 @@
+[
+    {
+        "email": "user1@example.com",
+        "name": "احمد محمدی",
+        "variables": {
+            "first_name": "احمد",
+            "last_name": "محمدی",
+            "company": "شرکت الف",
+            "position": "مدیر فروش",
+            "special_offer": "20% تخفیف",
+            "expiry_date": "۳۱ دی ۱۴۰۳",
+            "custom_message": "بر اساس عملکرد عالی شما در فروش، این پیشنهاد ویژه را برای شما در نظر گرفته‌ایم."
+        }
+    },
+    {
+        "email": "user2@example.com", 
+        "name": "فاطمه کریمی",
+        "variables": {
+            "first_name": "فاطمه",
+            "last_name": "کریمی", 
+            "company": "شرکت ب",
+            "position": "مدیر بازاریابی",
+            "special_offer": "15% تخفیف",
+            "expiry_date": "۳۱ دی ۱۴۰۳",
+            "custom_message": "با توجه به همکاری موثر شما در پروژه‌های بازاریابی، این تخفیف ویژه را دریافت کنید."
+        }
+    },
+    {
+        "email": "user3@example.com",
+        "name": "علی رضایی", 
+        "variables": {
+            "first_name": "علی",
+            "last_name": "رضایی",
+            "company": "شرکت ج",
+            "position": "مدیر IT",
+            "special_offer": "25% تخفیف",
+            "expiry_date": "۳۱ دی ۱۴۰۳",
+            "custom_message": "به عنوان متخصص IT، این پیشنهاد ویژه برای محصولات تکنولوژی ما مناسب شماست."
+        }
+    },
+    {
+        "email": "user4@example.com",
+        "name": "مریم احمدی",
+        "variables": {
+            "first_name": "مریم",
+            "last_name": "احمدی",
+            "company": "شرکت د",
+            "position": "مدیر منابع انسانی",
+            "special_offer": "30% تخفیف",
+            "expiry_date": "۳۱ دی ۱۴۰۳",
+            "custom_message": "برای تیم منابع انسانی شما، بسته‌های آموزشی ویژه با تخفیف استثنایی آماده کرده‌ایم."
+        }
+    },
+    {
+        "email": "user5@example.com",
+        "name": "حسین موسوی",
+        "variables": {
+            "first_name": "حسین",
+            "last_name": "موسوی",
+            "company": "شرکت ه",
+            "position": "مدیر مالی",
+            "special_offer": "18% تخفیف", 
+            "expiry_date": "۳۱ دی ۱۴۰۳",
+            "custom_message": "با در نظر گیری بودجه‌بندی دقیق شما، این پیشنهاد اقتصادی را ارائه می‌دهیم."
+        }
+    }
+]
