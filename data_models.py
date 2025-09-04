@@ -42,6 +42,8 @@ class Vulnerability:
     exploitation_complexity: str = "LOW"  # LOW, MEDIUM, HIGH
     business_impact: str = ""
     poc_steps: list = None
+    exploitation_technique: Optional[str] = None
+    chained_vulnerabilities: Optional[list] = None
 
 
 @dataclass
