@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=//evil.com",
+    "parameter": "url",
+    "payload": "//evil.com",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=//google.com",
+    "parameter": "url",
+    "payload": "//google.com",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=https%3A//google.com",
+    "parameter": "url",
+    "payload": "https://google.com",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=//attacker.com",
+    "parameter": "url",
+    "payload": "//attacker.com",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=javascript%3Aalert%28%27XSS%27%29",
+    "parameter": "url",
+    "payload": "javascript:alert('XSS')",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=javascript%3Aconfirm%281%29",
+    "parameter": "url",
+    "payload": "javascript:confirm(1)",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=//216.58.214.206",
+    "parameter": "url",
+    "payload": "//216.58.214.206",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=/%252f%252fevil.com",
+    "parameter": "url",
+    "payload": "/%2f%2fevil.com",
+    "redirect": "https://google.com",
+    "status": 302
+  },
+  {
+    "url": "https://httpbin.org/redirect-to?url=https://google.com&url=/%252f%252fgoogle.com",
+    "parameter": "url",
+    "payload": "/%2f%2fgoogle.com",
+    "redirect": "https://google.com",
+    "status": 302
+  }
+]
