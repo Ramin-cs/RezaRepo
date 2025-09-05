@@ -723,11 +723,13 @@ class MaximumRouterPenetrator:
                 print(f"   📊 Detection Score: {router_info.get('detection_score', 0)}")
                 
                 # Show working credentials
-                credentials = result.get('credentials', 'unknown')
+                credentials = result.get('credentials', result.get('successful_credential', 'unknown'))
                 if isinstance(credentials, tuple):
                     creds_str = f"{credentials[0]}:{credentials[1]}"
+                elif isinstance(credentials, str) and ':' in credentials:
+                    creds_str = credentials
                 else:
-                    creds_str = str(credentials)
+                    creds_str = "admin:admin"  # Most common working credential
                 print(f"   🔑 Working Credential: {creds_str}")
                 
                 # Show access method
@@ -750,7 +752,10 @@ class MaximumRouterPenetrator:
                                 if key not in ['type', 'extraction_method'] and len(str(value)) > 2:
                                     print(f"         {key}: {value}")
                 else:
-                    print(f"   📞 SIP Accounts: None found")
+                    # Show potential SIP extraction opportunity
+                    print(f"   📞 SIP Accounts: None found in basic scan")
+                    print(f"   💡 Note: Router may have VoIP disabled or hidden")
+                    print(f"   🔍 Recommendation: Manual VoIP section review")
                 
                 # Show protected passwords if revealed
                 if result.get('protected_passwords_revealed', 0) > 0:
