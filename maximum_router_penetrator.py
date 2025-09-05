@@ -64,6 +64,32 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
+# Screenshot capability for PoC evidence
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+
+# Alternative screenshot methods
+try:
+    import pyautogui
+    PYAUTOGUI_AVAILABLE = True
+except ImportError:
+    PYAUTOGUI_AVAILABLE = False
+
+try:
+    from PIL import Image
+    import io
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+
 try:
     import concurrent.futures
     THREADING_AVAILABLE = True
@@ -79,6 +105,8 @@ class MaximumRouterPenetrator:
         # Mode settings
         self.force_router_mode = False
         self.aggressive_mode = False
+        self.screenshot_mode = False
+        self.fast_mode = False
         
         # Your priority credentials (VERIFIED testing)
         self.priority_credentials = [
@@ -120,6 +148,12 @@ class MaximumRouterPenetrator:
         
         # Multi-port detection system
         self.port_detection_system = self._build_port_detection_system()
+        
+        # Screenshot evidence system for PoC
+        self.screenshot_system = self._build_screenshot_system()
+        
+        # Performance optimization
+        self.performance_config = self._build_performance_config()
         
         # Cisco decryption
         self.cisco_type7_xlat = [
@@ -761,7 +795,22 @@ class MaximumRouterPenetrator:
                 if result.get('protected_passwords_revealed', 0) > 0:
                     print(f"   🔐 Protected Passwords Revealed: {result['protected_passwords_revealed']}")
                 
-                print(f"   ⚠️ Security Risk: CRITICAL")
+                # Show screenshot evidence if captured
+                if result.get('screenshot_evidence', {}).get('success'):
+                    screenshots = result['screenshot_evidence']['screenshots_captured']
+                    print(f"   📸 PoC Evidence Captured: {len(screenshots)} screenshots")
+                    for screenshot in screenshots[:3]:  # Show first 3
+                        print(f"      📸 {screenshot['page']}: {screenshot['filepath']}")
+                
+                # Enhanced risk scoring
+                risk_score = self._calculate_risk_score(result)
+                risk_level = self._get_risk_level(risk_score)
+                print(f"   ⚠️ Security Risk: {risk_level} (Score: {risk_score}/100)")
+                
+                # Timeline information
+                if result.get('discovery_time'):
+                    print(f"   ⏰ Discovery Time: {result['discovery_time']} seconds")
+                
                 print("")
             
             print(f"🎯 ACTIONABLE INTELLIGENCE:")
@@ -779,7 +828,9 @@ class MaximumRouterPenetrator:
         return penetration_results
     
     def _comprehensive_penetration_test(self, target_ip: str, verbose: bool) -> Dict[str, Any]:
-        """Comprehensive penetration test with all techniques"""
+        """Comprehensive penetration test with timeline tracking and enhanced features"""
+        start_time = time.time()
+        
         result = {
             'ip': target_ip,
             'reachable': False,
@@ -787,7 +838,9 @@ class MaximumRouterPenetrator:
             'verified_access': False,
             'verified_sip': False,
             'techniques_attempted': [],
-            'status': 'unknown'
+            'status': 'unknown',
+            'timeline': [],
+            'start_time': start_time
         }
         
         # Step 1: Verify reachability
@@ -1023,6 +1076,16 @@ class MaximumRouterPenetrator:
         
         # All methods failed
         result['status'] = 'access_denied'
+        
+        # Calculate total time
+        end_time = time.time()
+        result['discovery_time'] = round(end_time - result['start_time'], 2)
+        result['timeline'].append({
+            'timestamp': datetime.now().strftime("%H:%M:%S"),
+            'event': 'Assessment Complete',
+            'details': f"Total time: {result['discovery_time']} seconds"
+        })
+        
         return result
     
     def _verify_target_reachable(self, ip: str) -> bool:
@@ -1275,11 +1338,11 @@ class MaximumRouterPenetrator:
                         print(f"                  📡 Endpoint: {endpoint}")
                     
                     if REQUESTS_AVAILABLE:
-                        response = requests.get(url, timeout=3)
+                        response = requests.get(url, timeout=self.performance_config['timeouts']['connection'])
                         content = response.text
                         status = response.status_code
                     else:
-                        response = urllib.request.urlopen(url, timeout=3)
+                        response = urllib.request.urlopen(url, timeout=self.performance_config['timeouts']['connection'])
                         content = response.read().decode('utf-8', errors='ignore')
                         status = response.status
                     
@@ -1404,6 +1467,16 @@ class MaximumRouterPenetrator:
                         print(f"            ✅ LIVE DEBUG: ADMIN ACCESS VERIFIED!")
                         print(f"            🎯 LIVE DEBUG: Working credential: {username}:{password}")
                         print(f"            📊 LIVE DEBUG: Verification score: {verification['score']}")
+                    
+                    # CAPTURE SCREENSHOT EVIDENCE FOR POC (if enabled)
+                    if self.screenshot_mode:
+                        screenshot_evidence = self._capture_screenshot_evidence(ip, (username, password), auth_result.get('session'), verbose)
+                        if screenshot_evidence['success']:
+                            auth_result['screenshot_evidence'] = screenshot_evidence
+                            if verbose:
+                                print(f"            📸 LIVE DEBUG: PoC evidence captured: {len(screenshot_evidence['screenshots_captured'])} screenshots")
+                    elif verbose:
+                        print(f"            📸 LIVE DEBUG: Screenshot mode disabled (use --screenshot to enable)")
                     
                     return auth_result
                 else:
@@ -2719,6 +2792,256 @@ class MaximumRouterPenetrator:
         
         return port_results
     
+    def _build_screenshot_system(self) -> Dict[str, Any]:
+        """Build screenshot evidence system for PoC"""
+        return {
+            'screenshot_config': {
+                'enabled': SELENIUM_AVAILABLE or PYAUTOGUI_AVAILABLE,
+                'output_dir': 'router_screenshots',
+                'filename_format': 'router_{ip}_{timestamp}_{page}.png',
+                'max_screenshots_per_router': 5,
+                'screenshot_delay': 2  # seconds
+            },
+            
+            'target_pages': [
+                {'path': '/admin/', 'name': 'admin_panel'},
+                {'path': '/admin/index.html', 'name': 'admin_home'},
+                {'path': '/admin/voip.asp', 'name': 'voip_config'},
+                {'path': '/admin/sip.asp', 'name': 'sip_config'},
+                {'path': '/status.html', 'name': 'status_page'}
+            ],
+            
+            'chrome_options': [
+                '--headless',
+                '--no-sandbox', 
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--window-size=1920,1080',
+                '--disable-extensions',
+                '--disable-plugins',
+                '--disable-images',  # Faster loading
+                '--disable-javascript'  # Security
+            ]
+        }
+    
+    def _build_performance_config(self) -> Dict[str, Any]:
+        """Build performance optimization configuration"""
+        return {
+            'timeouts': {
+                'connection': 2,  # Reduced from 3
+                'read': 2,        # Reduced from 3  
+                'port_scan': 1.5, # Fast port scanning
+                'screenshot': 5   # Screenshot timeout
+            },
+            
+            'limits': {
+                'max_endpoints_per_cve': 4,  # Reduced from 6
+                'max_bypass_attempts': 5,    # Reduced from 8
+                'max_direct_endpoints': 15,  # Reduced from 20
+                'max_sip_endpoints': 10      # Reduced from 15
+            },
+            
+            'parallel_config': {
+                'enabled': THREADING_AVAILABLE,
+                'max_workers': 3,
+                'port_scan_workers': 5
+            }
+        }
+    
+    def _capture_screenshot_evidence(self, ip: str, credentials: Tuple[str, str], session, verbose: bool) -> Dict[str, Any]:
+        """Capture screenshot evidence for PoC presentation"""
+        screenshot_result = {
+            'success': False,
+            'screenshots_captured': [],
+            'evidence_files': []
+        }
+        
+        if not (SELENIUM_AVAILABLE or PYAUTOGUI_AVAILABLE):
+            if verbose:
+                print(f"            📸 LIVE DEBUG: Screenshot capability not available")
+            return screenshot_result
+        
+        username, password = credentials
+        
+        try:
+            if verbose:
+                print(f"            📸 LIVE DEBUG: Capturing screenshot evidence...")
+            
+            # Create screenshots directory
+            screenshot_dir = self.screenshot_system['screenshot_config']['output_dir']
+            os.makedirs(screenshot_dir, exist_ok=True)
+            
+            if SELENIUM_AVAILABLE:
+                # Use Selenium for high-quality screenshots
+                options = Options()
+                for option in self.screenshot_system['chrome_options']:
+                    options.add_argument(option)
+                
+                try:
+                    driver = webdriver.Chrome(options=options)
+                    
+                    # Capture admin panel screenshots
+                    for page_info in self.screenshot_system['target_pages']:
+                        try:
+                            url = f"http://{ip}{page_info['path']}"
+                            
+                            if verbose:
+                                print(f"               📸 LIVE DEBUG: Capturing {page_info['name']}...")
+                            
+                            # Login and navigate
+                            driver.get(url)
+                            
+                            # Try to login if login form is present
+                            try:
+                                # Look for login form
+                                username_field = driver.find_element(By.NAME, "username") or \
+                                               driver.find_element(By.NAME, "user") or \
+                                               driver.find_element(By.NAME, "login")
+                                password_field = driver.find_element(By.NAME, "password") or \
+                                               driver.find_element(By.NAME, "passwd") or \
+                                               driver.find_element(By.NAME, "pass")
+                                
+                                username_field.clear()
+                                username_field.send_keys(username)
+                                password_field.clear()
+                                password_field.send_keys(password)
+                                
+                                # Submit form
+                                submit_button = driver.find_element(By.TYPE, "submit") or \
+                                              driver.find_element(By.NAME, "submit") or \
+                                              driver.find_element(By.NAME, "login")
+                                submit_button.click()
+                                
+                                # Wait for page load
+                                time.sleep(self.screenshot_system['screenshot_config']['screenshot_delay'])
+                            
+                            except:
+                                pass  # Page might already be accessible
+                            
+                            # Capture screenshot
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            filename = self.screenshot_system['screenshot_config']['filename_format'].format(
+                                ip=ip.replace('.', '_'),
+                                timestamp=timestamp,
+                                page=page_info['name']
+                            )
+                            filepath = os.path.join(screenshot_dir, filename)
+                            
+                            driver.save_screenshot(filepath)
+                            
+                            screenshot_result['screenshots_captured'].append({
+                                'page': page_info['name'],
+                                'url': url,
+                                'filepath': filepath,
+                                'timestamp': timestamp
+                            })
+                            
+                            if verbose:
+                                print(f"                  ✅ LIVE DEBUG: Screenshot saved: {filename}")
+                        
+                        except Exception as e:
+                            if verbose:
+                                print(f"                  ❌ LIVE DEBUG: Screenshot error for {page_info['name']}: {str(e)}")
+                            continue
+                    
+                    driver.quit()
+                    
+                    if screenshot_result['screenshots_captured']:
+                        screenshot_result['success'] = True
+                        
+                        if verbose:
+                            print(f"            ✅ LIVE DEBUG: Screenshot evidence captured!")
+                            print(f"            📸 LIVE DEBUG: Files: {len(screenshot_result['screenshots_captured'])}")
+                
+                except Exception as e:
+                    if verbose:
+                        print(f"            ❌ LIVE DEBUG: Selenium screenshot error: {str(e)}")
+            
+            elif PYAUTOGUI_AVAILABLE:
+                # Fallback to pyautogui (basic screenshot)
+                if verbose:
+                    print(f"            📸 LIVE DEBUG: Using basic screenshot method...")
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"router_{ip.replace('.', '_')}_{timestamp}_evidence.png"
+                filepath = os.path.join(screenshot_dir, filename)
+                
+                screenshot = pyautogui.screenshot()
+                screenshot.save(filepath)
+                
+                screenshot_result.update({
+                    'success': True,
+                    'screenshots_captured': [{'filepath': filepath, 'method': 'pyautogui'}]
+                })
+                
+                if verbose:
+                    print(f"            ✅ LIVE DEBUG: Basic screenshot saved: {filename}")
+        
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ LIVE DEBUG: Screenshot system error: {str(e)}")
+        
+        return screenshot_result
+    
+    def _calculate_risk_score(self, result: Dict[str, Any]) -> int:
+        """Calculate comprehensive risk score (0-100)"""
+        score = 0
+        
+        # Base score for access
+        if result.get('verified_access'):
+            score += 30
+        
+        # Credential weakness
+        credentials = result.get('credentials', '')
+        if isinstance(credentials, tuple):
+            cred_str = f"{credentials[0]}:{credentials[1]}"
+        else:
+            cred_str = str(credentials)
+        
+        if 'admin:admin' in cred_str:
+            score += 25  # Very weak
+        elif 'admin:' in cred_str or ':' == cred_str:
+            score += 20  # Empty password
+        elif 'admin:password' in cred_str:
+            score += 15  # Common password
+        else:
+            score += 10  # Other credentials
+        
+        # Access method risk
+        access_method = result.get('access_method', '')
+        if access_method == 'cve_exploit':
+            score += 20  # CVE vulnerability
+        elif access_method == 'advanced_bypass':
+            score += 15  # Bypass vulnerability
+        elif access_method == 'verified_credentials':
+            score += 10  # Credential issue
+        
+        # SIP exposure
+        if result.get('verified_sip') or result.get('sip_accounts'):
+            score += 15  # SIP data exposed
+        
+        # Additional factors
+        if result.get('config_extracted'):
+            score += 5   # Config exposure
+        
+        if result.get('screenshot_evidence', {}).get('success'):
+            score += 5   # Visual evidence available
+        
+        return min(score, 100)  # Cap at 100
+    
+    def _get_risk_level(self, score: int) -> str:
+        """Get risk level based on score"""
+        if score >= 80:
+            return "🔴 CRITICAL"
+        elif score >= 60:
+            return "🟠 HIGH"
+        elif score >= 40:
+            return "🟡 MEDIUM"
+        elif score >= 20:
+            return "🟢 LOW"
+        else:
+            return "⚪ MINIMAL"
+    
     def _test_credentials_on_port(self, ip: str, port_info: Dict, verbose: bool) -> Dict[str, Any]:
         """Test credentials on specific port"""
         auth_result = {'verified_access': False}
@@ -3185,15 +3508,26 @@ MODES:
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose maximum penetration output')
     parser.add_argument('--force-router', action='store_true', help='Force treat all IPs as routers (skip detection)')
     parser.add_argument('--aggressive', action='store_true', help='Aggressive mode - test all IPs regardless of detection')
+    parser.add_argument('--screenshot', action='store_true', help='Capture screenshot evidence for PoC (requires selenium)')
+    parser.add_argument('--fast', action='store_true', help='Fast mode - reduced timeouts and endpoints')
     parser.add_argument('--json', action='store_true', help='JSON output format')
     
     args = parser.parse_args()
     
     penetrator = MaximumRouterPenetrator()
     
-    # Set modes
+    # Set modes and options
     penetrator.force_router_mode = getattr(args, 'force_router', False)
     penetrator.aggressive_mode = getattr(args, 'aggressive', False)
+    penetrator.screenshot_mode = getattr(args, 'screenshot', False)
+    penetrator.fast_mode = getattr(args, 'fast', False)
+    
+    # Apply fast mode optimizations
+    if penetrator.fast_mode:
+        penetrator.performance_config['timeouts']['connection'] = 1
+        penetrator.performance_config['timeouts']['read'] = 1
+        penetrator.performance_config['limits']['max_endpoints_per_cve'] = 2
+        penetrator.performance_config['limits']['max_direct_endpoints'] = 8
     
     # Password decryption
     if args.password:
