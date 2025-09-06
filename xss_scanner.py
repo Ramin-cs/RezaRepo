@@ -1122,30 +1122,430 @@ class XSSScanner:
         return scan_results
 
     def save_report(self, results: Dict, output_file: str = None):
-        """Save scan results to file"""
+        """Save scan results to HTML file"""
         if not output_file:
-            output_file = f"xss_scan_report_{int(time.time())}.json"
+            output_file = f"xss_scan_report_{int(time.time())}.html"
         
         try:
-            # Convert sets to lists for JSON serialization
-            def convert_sets(obj):
-                if isinstance(obj, set):
-                    return list(obj)
-                elif isinstance(obj, dict):
-                    return {key: convert_sets(value) for key, value in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_sets(item) for item in obj]
-                return obj
-            
-            results_serializable = convert_sets(results)
+            # Generate HTML report
+            html_content = self.generate_html_report(results)
             
             with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(results_serializable, f, indent=2, ensure_ascii=False)
+                f.write(html_content)
             
-            logger.info(f"Report saved to: {output_file}")
+            logger.info(f"HTML Report saved to: {output_file}")
             
         except Exception as e:
             logger.error(f"Error saving report: {e}")
+    
+    def generate_html_report(self, results: Dict) -> str:
+        """Generate comprehensive HTML report"""
+        timestamp = results.get('timestamp', datetime.now().isoformat())
+        target = results.get('target', 'Unknown')
+        vulnerabilities = results.get('vulnerabilities', [])
+        summary = results.get('summary', {})
+        recon = results.get('reconnaissance', {})
+        
+        # Count vulnerabilities by type
+        vuln_counts = {
+            'Reflected XSS': len([v for v in vulnerabilities if 'Reflected' in v.get('type', '')]),
+            'Stored XSS': len([v for v in vulnerabilities if 'Stored' in v.get('type', '')]),
+            'DOM XSS': len([v for v in vulnerabilities if 'DOM' in v.get('type', '')]),
+            'Blind XSS': len([v for v in vulnerabilities if 'Blind' in v.get('type', '')])
+        }
+        
+        # Generate vulnerability cards
+        vuln_cards = ""
+        for i, vuln in enumerate(vulnerabilities, 1):
+            vuln_type = vuln.get('type', 'Unknown')
+            parameter = vuln.get('parameter', vuln.get('form_action', 'Unknown'))
+            payload = vuln.get('payload', 'Unknown')
+            url = vuln.get('url', 'Unknown')
+            method = vuln.get('method', 'Unknown')
+            response_code = vuln.get('response_code', 'Unknown')
+            screenshot_path = vuln.get('screenshot_path', '')
+            verified = vuln.get('verified', False)
+            category = vuln.get('category', 'basic')
+            
+            # Severity based on type
+            severity = "High" if "XSS" in vuln_type else "Medium"
+            severity_color = "#dc3545" if severity == "High" else "#ffc107"
+            
+            vuln_cards += f"""
+            <div class="vulnerability-card">
+                <div class="vuln-header">
+                    <h3>#{i} {vuln_type}</h3>
+                    <span class="severity" style="background-color: {severity_color}">{severity}</span>
+                </div>
+                <div class="vuln-details">
+                    <div class="detail-row">
+                        <strong>Parameter:</strong> <code>{parameter}</code>
+                    </div>
+                    <div class="detail-row">
+                        <strong>Payload:</strong> <code class="payload">{payload}</code>
+                    </div>
+                    <div class="detail-row">
+                        <strong>URL:</strong> <a href="{url}" target="_blank">{url}</a>
+                    </div>
+                    <div class="detail-row">
+                        <strong>Method:</strong> {method}
+                    </div>
+                    <div class="detail-row">
+                        <strong>Response Code:</strong> {response_code}
+                    </div>
+                    <div class="detail-row">
+                        <strong>Category:</strong> {category}
+                    </div>
+                    <div class="detail-row">
+                        <strong>Verified:</strong> {'✅ Yes' if verified else '❌ No'}
+                    </div>
+                    {f'<div class="detail-row"><strong>PoC File:</strong> <a href="{screenshot_path}" target="_blank">{screenshot_path}</a></div>' if screenshot_path else ''}
+                </div>
+            </div>
+            """
+        
+        # Generate reconnaissance info
+        discovered_params = recon.get('discovered_params', set())
+        discovered_forms = recon.get('discovered_forms', [])
+        waf_detected = recon.get('waf_detected', {})
+        
+        params_list = ""
+        for param in list(discovered_params)[:20]:  # Show first 20
+            params_list += f"<li><code>{param}</code></li>"
+        if len(discovered_params) > 20:
+            params_list += f"<li><em>... and {len(discovered_params) - 20} more</em></li>"
+        
+        forms_list = ""
+        for i, form in enumerate(discovered_forms, 1):
+            forms_list += f"""
+            <div class="form-info">
+                <strong>Form {i}:</strong> {form.get('action', 'Unknown')} ({form.get('method', 'Unknown')})
+                <ul>
+            """
+            for field in form.get('inputs', []):
+                if field.get('name'):
+                    forms_list += f"<li><code>{field['name']}</code> ({field.get('type', 'text')})</li>"
+            forms_list += "</ul></div>"
+        
+        waf_info = ""
+        if any(waf_detected.values()):
+            detected_wafs = [waf for waf, detected in waf_detected.items() if detected]
+            waf_info = f"<p><strong>Detected WAFs:</strong> {', '.join(detected_wafs)}</p>"
+        else:
+            waf_info = "<p><strong>WAF Status:</strong> No WAF detected</p>"
+        
+        html_template = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Scanner Report - {target}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }}
+        
+        .header h1 {{
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .header p {{
+            color: #7f8c8d;
+            font-size: 1.2em;
+        }}
+        
+        .summary {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .summary h2 {{
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }}
+        
+        .stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        
+        .stat-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .stat-card h3 {{
+            font-size: 2em;
+            margin-bottom: 5px;
+        }}
+        
+        .stat-card p {{
+            font-size: 1.1em;
+            opacity: 0.9;
+        }}
+        
+        .vulnerabilities {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .vulnerabilities h2 {{
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }}
+        
+        .vulnerability-card {{
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }}
+        
+        .vulnerability-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }}
+        
+        .vuln-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        
+        .vuln-header h3 {{
+            color: #2c3e50;
+            font-size: 1.3em;
+        }}
+        
+        .severity {{
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }}
+        
+        .vuln-details {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px;
+        }}
+        
+        .detail-row {{
+            margin-bottom: 8px;
+        }}
+        
+        .detail-row strong {{
+            color: #2c3e50;
+            display: inline-block;
+            width: 120px;
+        }}
+        
+        code {{
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }}
+        
+        .payload {{
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            word-break: break-all;
+        }}
+        
+        .reconnaissance {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .reconnaissance h2 {{
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }}
+        
+        .recon-section {{
+            margin-bottom: 25px;
+        }}
+        
+        .recon-section h3 {{
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }}
+        
+        .recon-section ul {{
+            margin-left: 20px;
+        }}
+        
+        .recon-section li {{
+            margin-bottom: 5px;
+        }}
+        
+        .form-info {{
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }}
+        
+        .footer {{
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .footer p {{
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }}
+        
+        @media (max-width: 768px) {{
+            .container {{
+                padding: 10px;
+            }}
+            
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .stats {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .vuln-details {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 XSS Scanner Report</h1>
+            <p>Advanced XSS Vulnerability Detection & Exploitation Tool</p>
+            <p><strong>Target:</strong> {target}</p>
+            <p><strong>Scan Date:</strong> {timestamp}</p>
+        </div>
+        
+        <div class="summary">
+            <h2>📊 Scan Summary</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>{summary.get('total_vulnerabilities', 0)}</h3>
+                    <p>Total Vulnerabilities</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{vuln_counts['Reflected XSS']}</h3>
+                    <p>Reflected XSS</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{vuln_counts['Stored XSS']}</h3>
+                    <p>Stored XSS</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{vuln_counts['DOM XSS']}</h3>
+                    <p>DOM XSS</p>
+                </div>
+                <div class="stat-card">
+                    <h3>{vuln_counts['Blind XSS']}</h3>
+                    <p>Blind XSS</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="vulnerabilities">
+            <h2>🚨 Vulnerabilities Found</h2>
+            {vuln_cards if vulnerabilities else '<p style="text-align: center; color: #7f8c8d; font-size: 1.2em; padding: 40px;">No vulnerabilities found</p>'}
+        </div>
+        
+        <div class="reconnaissance">
+            <h2>🔍 Reconnaissance Details</h2>
+            
+            <div class="recon-section">
+                <h3>📝 Discovered Parameters ({len(discovered_params)})</h3>
+                <ul>
+                    {params_list}
+                </ul>
+            </div>
+            
+            <div class="recon-section">
+                <h3>📋 Discovered Forms ({len(discovered_forms)})</h3>
+                {forms_list if discovered_forms else '<p>No forms discovered</p>'}
+            </div>
+            
+            <div class="recon-section">
+                <h3>🛡️ WAF Detection</h3>
+                {waf_info}
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Generated by Advanced XSS Scanner v1.0.0</p>
+            <p>Report generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        
+        return html_template
 
 def print_banner():
     """Print application banner"""

