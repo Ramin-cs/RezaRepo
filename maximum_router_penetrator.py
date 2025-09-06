@@ -1396,16 +1396,25 @@ class MaximumRouterPenetrator:
                                 print(f"                  📊 Verification score: {found}/{len(indicators)}")
                             
                             if found >= 2:
+                                # Extract information from successful CVE
+                                extracted_info = self._extract_cve_information(cve_id, content, verbose)
+                                
                                 cve_result = {
                                     'success': True,
                                     'cve_used': cve_id,
                                     'endpoint': endpoint,
                                     'protocol': protocol,
-                                    'content': content
+                                    'content': content,
+                                    'extracted_info': extracted_info,
+                                    'verification_score': found,
+                                    'total_indicators': len(indicators)
                                 }
                                 
                                 if verbose:
                                     print(f"               ✅ CVE SUCCESS: {cve_id} via {protocol}")
+                                    print(f"               📊 Verification score: {found}/{len(indicators)}")
+                                    if extracted_info:
+                                        print(f"               📋 Extracted info: {len(extracted_info)} items")
                                 return cve_result
                             else:
                                 if verbose:
