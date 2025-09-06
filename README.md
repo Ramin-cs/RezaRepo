@@ -1,4 +1,4 @@
-# Advanced XSS Scanner - ابزار کامل شناسایی و اکسپلویت باگ XSS
+# Advanced XSS Scanner - Complete XSS Vulnerability Detection & Exploitation Tool
 
 ## ویژگی‌های کلیدی
 
