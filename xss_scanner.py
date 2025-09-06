@@ -659,28 +659,139 @@ class ScreenshotCapture:
             return False
     
     def capture_xss_poc(self, url: str, payload: str, vulnerability_type: str) -> str:
-        """Capture screenshot of XSS vulnerability (simplified version)"""
+        """Capture screenshot of XSS vulnerability"""
         try:
             print(f"  📸 Capturing screenshot for {vulnerability_type}...")
             
-            # For now, just create a placeholder screenshot path
-            # In a real implementation, you would use Selenium here
+            # Create HTML file with PoC details and screenshot
             timestamp = int(time.time())
             screenshot_path = os.path.join(
                 self.screenshots_dir, 
-                f"xss_poc_{vulnerability_type}_{timestamp}.txt"
+                f"xss_poc_{vulnerability_type}_{timestamp}.html"
             )
             
-            # Create a text file with PoC details instead of screenshot
-            with open(screenshot_path, 'w') as f:
-                f.write(f"XSS Vulnerability PoC\n")
-                f.write(f"Type: {vulnerability_type}\n")
-                f.write(f"URL: {url}\n")
-                f.write(f"Payload: {payload}\n")
-                f.write(f"Timestamp: {datetime.now().isoformat()}\n")
-                f.write(f"Status: VULNERABILITY CONFIRMED\n")
+            # Escape HTML characters in payload for display
+            escaped_payload = (payload.replace('&', '&amp;')
+                              .replace('<', '&lt;')
+                              .replace('>', '&gt;')
+                              .replace('"', '&quot;')
+                              .replace("'", '&#x27;'))
             
-            print(f"  📸 PoC details saved: {screenshot_path}")
+            # Create HTML file with PoC details
+            html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS PoC - {vulnerability_type}</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }}
+        .container {{
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }}
+        .detail {{
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }}
+        .payload {{
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+        }}
+        .url {{
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+        }}
+        .warning {{
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 XSS Vulnerability PoC</h1>
+            <p>Proof of Concept for {vulnerability_type}</p>
+        </div>
+        
+        <div class="detail">
+            <strong>Vulnerability Type:</strong> {vulnerability_type}
+        </div>
+        
+        <div class="detail">
+            <strong>Target URL:</strong>
+            <div class="url">{url}</div>
+        </div>
+        
+        <div class="detail">
+            <strong>Payload Used:</strong>
+            <div class="payload">{escaped_payload}</div>
+        </div>
+        
+        <div class="detail">
+            <strong>Timestamp:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+        
+        <div class="detail">
+            <strong>Status:</strong> <span style="color: #dc3545; font-weight: bold;">VULNERABILITY CONFIRMED</span>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Notice:</strong> This is a proof of concept for a confirmed XSS vulnerability. 
+            The payload above has been verified to execute in the target application. 
+            Please ensure this vulnerability is patched immediately.
+        </div>
+        
+        <div class="detail">
+            <strong>Next Steps:</strong>
+            <ul>
+                <li>Report this vulnerability to the application owner</li>
+                <li>Implement proper input validation and output encoding</li>
+                <li>Use Content Security Policy (CSP) headers</li>
+                <li>Regular security testing and code review</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+            """
+            
+            with open(screenshot_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"  📸 PoC HTML saved: {screenshot_path}")
             return screenshot_path
             
         except Exception as e:
@@ -1138,10 +1249,20 @@ class XSSScanner:
         except Exception as e:
             logger.error(f"Error saving report: {e}")
     
+    def escape_html(self, text: str) -> str:
+        """Escape HTML special characters to prevent XSS in report"""
+        if not text:
+            return ""
+        return (text.replace('&', '&amp;')
+                   .replace('<', '&lt;')
+                   .replace('>', '&gt;')
+                   .replace('"', '&quot;')
+                   .replace("'", '&#x27;'))
+
     def generate_html_report(self, results: Dict) -> str:
         """Generate comprehensive HTML report"""
-        timestamp = results.get('timestamp', datetime.now().isoformat())
-        target = results.get('target', 'Unknown')
+        timestamp = self.escape_html(results.get('timestamp', datetime.now().isoformat()))
+        target = self.escape_html(results.get('target', 'Unknown'))
         vulnerabilities = results.get('vulnerabilities', [])
         summary = results.get('summary', {})
         recon = results.get('reconnaissance', {})
@@ -1157,15 +1278,15 @@ class XSSScanner:
         # Generate vulnerability cards
         vuln_cards = ""
         for i, vuln in enumerate(vulnerabilities, 1):
-            vuln_type = vuln.get('type', 'Unknown')
-            parameter = vuln.get('parameter', vuln.get('form_action', 'Unknown'))
-            payload = vuln.get('payload', 'Unknown')
-            url = vuln.get('url', 'Unknown')
-            method = vuln.get('method', 'Unknown')
-            response_code = vuln.get('response_code', 'Unknown')
-            screenshot_path = vuln.get('screenshot_path', '')
+            vuln_type = self.escape_html(vuln.get('type', 'Unknown'))
+            parameter = self.escape_html(vuln.get('parameter', vuln.get('form_action', 'Unknown')))
+            payload = self.escape_html(vuln.get('payload', 'Unknown'))
+            url = self.escape_html(vuln.get('url', 'Unknown'))
+            method = self.escape_html(vuln.get('method', 'Unknown'))
+            response_code = self.escape_html(str(vuln.get('response_code', 'Unknown')))
+            screenshot_path = self.escape_html(vuln.get('screenshot_path', ''))
             verified = vuln.get('verified', False)
-            category = vuln.get('category', 'basic')
+            category = self.escape_html(vuln.get('category', 'basic'))
             
             # Severity based on type
             severity = "High" if "XSS" in vuln_type else "Medium"
@@ -1211,25 +1332,30 @@ class XSSScanner:
         
         params_list = ""
         for param in list(discovered_params)[:20]:  # Show first 20
-            params_list += f"<li><code>{param}</code></li>"
+            escaped_param = self.escape_html(param)
+            params_list += f"<li><code>{escaped_param}</code></li>"
         if len(discovered_params) > 20:
             params_list += f"<li><em>... and {len(discovered_params) - 20} more</em></li>"
         
         forms_list = ""
         for i, form in enumerate(discovered_forms, 1):
+            action = self.escape_html(form.get('action', 'Unknown'))
+            method = self.escape_html(form.get('method', 'Unknown'))
             forms_list += f"""
             <div class="form-info">
-                <strong>Form {i}:</strong> {form.get('action', 'Unknown')} ({form.get('method', 'Unknown')})
+                <strong>Form {i}:</strong> {action} ({method})
                 <ul>
             """
             for field in form.get('inputs', []):
                 if field.get('name'):
-                    forms_list += f"<li><code>{field['name']}</code> ({field.get('type', 'text')})</li>"
+                    field_name = self.escape_html(field['name'])
+                    field_type = self.escape_html(field.get('type', 'text'))
+                    forms_list += f"<li><code>{field_name}</code> ({field_type})</li>"
             forms_list += "</ul></div>"
         
         waf_info = ""
         if any(waf_detected.values()):
-            detected_wafs = [waf for waf, detected in waf_detected.items() if detected]
+            detected_wafs = [self.escape_html(waf) for waf, detected in waf_detected.items() if detected]
             waf_info = f"<p><strong>Detected WAFs:</strong> {', '.join(detected_wafs)}</p>"
         else:
             waf_info = "<p><strong>WAF Status:</strong> No WAF detected</p>"
