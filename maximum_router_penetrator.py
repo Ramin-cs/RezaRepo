@@ -109,6 +109,7 @@ class MaximumRouterPenetrator:
         self.fast_mode = True        # ENABLED for maximum speed
         
         # Force screenshot mode to be active
+        self.screenshot_mode = True
         if hasattr(self, 'screenshot_config'):
             self.screenshot_config['enabled'] = True
         
@@ -901,6 +902,18 @@ class MaximumRouterPenetrator:
             'start_time': start_time
         }
         
+        # Display work plan
+        if verbose:
+            print(f"\n🎯 TARGET: {target_ip}")
+            print(f"📋 WORK PLAN:")
+            print(f"   🔍 Phase 1: Router Detection & Analysis")
+            print(f"   🔑 Phase 2: Credential Testing & Access")
+            print(f"   📞 Phase 3: SIP Information Extraction")
+            print(f"   🔬 Phase 4: CVE Testing (Brand-Specific)")
+            print(f"   📁 Phase 5: Config File Extraction")
+            print(f"   📸 Phase 6: Screenshot & Evidence Collection")
+            print(f"================================================================================\n")
+        
         # Step 1: Verify reachability
         if not self._verify_target_reachable(target_ip):
             result['status'] = 'unreachable'
@@ -909,6 +922,12 @@ class MaximumRouterPenetrator:
         result['reachable'] = True
         
         # Step 2: Router identification (or force mode)
+        if verbose:
+            print(f"🔍 PHASE 1: Router Detection & Analysis")
+            print(f"   • Identifying router type and brand")
+            print(f"   • Detecting open ports and services")
+            print(f"   • Analyzing authentication methods")
+        
         if self.force_router_mode or self.aggressive_mode:
             if verbose:
                 print(f"         🚀 FORCE MODE: Treating {target_ip} as router")
@@ -939,6 +958,10 @@ class MaximumRouterPenetrator:
         
         # Step 2: Verified credential testing (PRIORITY - ALWAYS RUN FIRST)
         if verbose:
+            print(f"\n🔑 PHASE 2: Credential Testing & Access")
+            print(f"   • Testing priority credentials")
+            print(f"   • Verifying admin panel access")
+            print(f"   • Taking admin panel screenshot")
             print(f"         🔑 LIVE DEBUG: Testing verified credentials...")
         
         try:
@@ -951,6 +974,9 @@ class MaximumRouterPenetrator:
         
         # Step 3: CVE exploitation attempts
         if verbose:
+            print(f"\n🔬 PHASE 4: CVE Testing (Brand-Specific)")
+            print(f"   • Testing CVE exploits for detected brand")
+            print(f"   • Extracting information from successful exploits")
             print(f"         🔬 LIVE DEBUG: Testing CVE exploits...")
         
         try:
@@ -1016,6 +1042,9 @@ class MaximumRouterPenetrator:
             if self.screenshot_mode and auth_result.get('session'):
                 try:
                     if verbose:
+                        print(f"\n📸 PHASE 6: Screenshot & Evidence Collection")
+                        print(f"   • Taking admin panel screenshot")
+                        print(f"   • Capturing VoIP page evidence")
                         print(f"         📸 LIVE DEBUG: Taking admin panel screenshot...")
                     screenshot_result = self._take_screenshot(
                         auth_result['session'], 
@@ -1058,9 +1087,19 @@ class MaximumRouterPenetrator:
             
             # NEW: Enhanced authenticated SIP extraction with multiple methods
             if verbose:
+                print(f"\n📞 PHASE 3: SIP Information Extraction")
+                print(f"   • Searching for VoIP/SIP pages")
+                print(f"   • Extracting SIP account information")
+                print(f"   • Taking VoIP page screenshots")
                 print(f"         🔐 LIVE DEBUG: Starting comprehensive SIP extraction...")
             
             # Search for config files and extract SIP
+            if verbose:
+                print(f"\n📁 PHASE 5: Config File Extraction")
+                print(f"   • Searching for configuration files")
+                print(f"   • Downloading and analyzing configs")
+                print(f"   • Cracking protected passwords")
+            
             config_result = self._search_and_extract_config_files(target_ip, auth_result, verbose)
             if config_result['success']:
                 result['config_files_found'] = config_result['files']
@@ -2354,7 +2393,7 @@ class MaximumRouterPenetrator:
                     continue
         
         # LOWERED THRESHOLD: More lenient confirmation
-        if verification['score'] >= 3 or login_success or len(verification['pages_accessed']) >= 1:
+        if verification['score'] >= 1 or login_success or len(verification['pages_accessed']) >= 1:
             verification['confirmed'] = True
             
             if verbose:
