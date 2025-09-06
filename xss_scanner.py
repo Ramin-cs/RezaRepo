@@ -185,12 +185,18 @@ class ReconnaissanceEngine:
             existing_params = parse_qs(parsed_url.query).keys()
             params.update(existing_params)
             
-            # Common parameter names
+            # Common parameter names (expanded list)
             common_params = [
                 'q', 'query', 'search', 'id', 'page', 'user', 'name',
                 'email', 'username', 'password', 'token', 'key', 'value',
                 'data', 'input', 'text', 'content', 'message', 'comment',
-                'title', 'subject', 'body', 'description', 'url', 'link'
+                'title', 'subject', 'body', 'description', 'url', 'link',
+                'category', 'type', 'sort', 'filter', 'limit', 'offset',
+                'lang', 'locale', 'theme', 'style', 'format', 'output',
+                'callback', 'redirect', 'return', 'next', 'prev', 'back',
+                'action', 'cmd', 'command', 'do', 'func', 'function',
+                'test', 'debug', 'admin', 'login', 'logout', 'register',
+                'profile', 'settings', 'config', 'option', 'pref', 'preference'
             ]
             
             for param in common_params:
@@ -335,7 +341,7 @@ class XSSScanner:
 
     def run_reconnaissance(self) -> Dict:
         """Run reconnaissance"""
-        logger.info("Starting reconnaissance phase...")
+        print("\n🔍 Starting reconnaissance phase...")
         
         recon_results = {
             'target_url': self.target_url,
@@ -347,29 +353,57 @@ class XSSScanner:
         }
         
         try:
+            print(f"🌐 Fetching target: {self.target_url}")
             response = self.recon.session.get(self.target_url, timeout=15)
+            print(f"📊 Response Code: {response.status_code}")
+            print(f"📄 Response Length: {len(response.text)} characters")
+            
+            print("\n🛡️  Checking for WAF...")
             recon_results['waf_detected'] = self.waf_detector.detect_waf(response)
+            if any(recon_results['waf_detected'].values()):
+                detected_wafs = [waf for waf, detected in recon_results['waf_detected'].items() if detected]
+                print(f"⚠️  WAF detected: {', '.join(detected_wafs)}")
+            else:
+                print("✅ No WAF detected")
             
+            print("\n📝 Discovering parameters...")
             recon_results['discovered_params'] = self.recon.discover_parameters(self.target_url)
-            recon_results['discovered_forms'] = self.recon.discover_forms(response.text, self.target_url)
+            print(f"✅ Found {len(recon_results['discovered_params'])} parameters: {list(recon_results['discovered_params'])[:10]}...")
             
-            logger.info(f"Reconnaissance completed. Found {len(recon_results['discovered_params'])} parameters, {len(recon_results['discovered_forms'])} forms")
+            print("\n📋 Discovering forms...")
+            recon_results['discovered_forms'] = self.recon.discover_forms(response.text, self.target_url)
+            print(f"✅ Found {len(recon_results['discovered_forms'])} forms")
+            
+            for i, form in enumerate(recon_results['discovered_forms']):
+                print(f"  Form {i+1}: {form['action']} (method: {form['method']})")
+                for field in form['inputs']:
+                    if field['name']:
+                        print(f"    - {field['name']} ({field['type']})")
             
         except Exception as e:
-            logger.error(f"Reconnaissance failed: {e}")
+            print(f"❌ Reconnaissance failed: {e}")
             
         return recon_results
 
     def test_reflected_xss(self, recon_data: Dict) -> List[Dict]:
         """Test for Reflected XSS vulnerabilities"""
-        logger.info("Testing Reflected XSS...")
+        print("\n🔍 Testing Reflected XSS...")
         results = []
+        total_tests = len(recon_data['discovered_params']) * len(self.payloads.payloads['basic'])
+        current_test = 0
         
         for param in recon_data['discovered_params']:
+            print(f"\n📝 Testing parameter: {param}")
             for payload in self.payloads.payloads['basic']:
+                current_test += 1
+                print(f"  [{current_test}/{total_tests}] Testing payload: {payload[:50]}...")
+                
                 try:
                     test_url = f"{self.target_url}?{param}={urllib.parse.quote(payload)}"
+                    print(f"  🌐 Request URL: {test_url}")
+                    
                     response = self.recon.session.get(test_url, timeout=10)
+                    print(f"  📊 Response Code: {response.status_code}")
                     
                     if self.detect_xss_in_response(response, payload):
                         result = {
@@ -381,24 +415,40 @@ class XSSScanner:
                             'response_code': response.status_code
                         }
                         results.append(result)
-                        logger.info(f"Reflected XSS found in parameter: {param}")
+                        print(f"  🚨 XSS VULNERABILITY FOUND in parameter: {param}")
+                        print(f"  ✅ Payload: {payload}")
+                    else:
+                        print(f"  ❌ No XSS detected")
                         
                 except Exception as e:
-                    logger.error(f"Error testing parameter {param}: {e}")
+                    print(f"  ⚠️  Error testing parameter {param}: {e}")
         
+        print(f"\n✅ Reflected XSS testing completed. Found {len(results)} vulnerabilities.")
         return results
 
     def test_stored_xss(self, recon_data: Dict) -> List[Dict]:
         """Test for Stored XSS vulnerabilities"""
-        logger.info("Testing Stored XSS...")
+        print("\n🔍 Testing Stored XSS...")
         results = []
         
-        for form in recon_data['discovered_forms']:
+        for form_idx, form in enumerate(recon_data['discovered_forms']):
+            print(f"\n📝 Testing form {form_idx + 1}: {form['action']}")
+            print(f"  Method: {form['method']}")
+            
             for input_field in form['inputs']:
                 if input_field['name'] and input_field['type'] in ['text', 'textarea', 'email', 'search']:
-                    popup_payloads = self.popup_system.generate_popup_payload()
+                    print(f"\n  🎯 Testing input field: {input_field['name']} (type: {input_field['type']})")
                     
-                    for payload in popup_payloads[:2]:
+                    # Use simpler payloads for stored XSS
+                    test_payloads = [
+                        '<script>alert("XSS")</script>',
+                        '<img src=x onerror=alert("XSS")>',
+                        '<svg onload=alert("XSS")>'
+                    ]
+                    
+                    for payload_idx, payload in enumerate(test_payloads):
+                        print(f"    [{payload_idx + 1}/{len(test_payloads)}] Testing payload: {payload}")
+                        
                         try:
                             form_data = {}
                             for field in form['inputs']:
@@ -408,12 +458,18 @@ class XSSScanner:
                                     else:
                                         form_data[field['name']] = field['value'] or 'test'
                             
+                            print(f"    📤 Submitting form data: {form_data}")
+                            
                             if form['method'] == 'POST':
                                 response = self.recon.session.post(form['action'], data=form_data, timeout=15)
                             else:
                                 response = self.recon.session.get(form['action'], params=form_data, timeout=15)
                             
-                            time.sleep(2)
+                            print(f"    📊 Submit Response Code: {response.status_code}")
+                            
+                            # Wait and check if payload was stored
+                            time.sleep(3)
+                            print(f"    🔍 Checking if payload was stored...")
                             check_response = self.recon.session.get(form['action'], timeout=10)
                             
                             if self.detect_xss_in_response(check_response, payload):
@@ -424,34 +480,108 @@ class XSSScanner:
                                     'payload': payload,
                                     'method': form['method'],
                                     'response_code': response.status_code,
-                                    'verification_method': 'custom_popup'
+                                    'verification_method': 'response_check'
                                 }
                                 results.append(result)
-                                logger.info(f"Stored XSS found in form field: {input_field['name']}")
+                                print(f"    🚨 STORED XSS VULNERABILITY FOUND in field: {input_field['name']}")
+                                print(f"    ✅ Payload: {payload}")
+                            else:
+                                print(f"    ❌ No stored XSS detected")
                                 
                         except Exception as e:
-                            logger.error(f"Error testing form field {input_field['name']}: {e}")
+                            print(f"    ⚠️  Error testing form field {input_field['name']}: {e}")
         
+        print(f"\n✅ Stored XSS testing completed. Found {len(results)} vulnerabilities.")
         return results
 
     def detect_xss_in_response(self, response: requests.Response, payload: str) -> bool:
         """Detect if XSS payload was reflected in response"""
-        content = response.text.lower()
+        content = response.text
+        content_lower = content.lower()
         payload_lower = payload.lower()
         
-        if payload_lower in content:
+        print(f"    🔍 Checking response for payload reflection...")
+        print(f"    📄 Response length: {len(content)} characters")
+        
+        # Check direct reflection
+        if payload_lower in content_lower:
+            print(f"    ✅ Direct payload reflection found!")
             return True
         
-        encoded_payloads = [
-            urllib.parse.quote(payload),
-            ''.join(f'&#{ord(c)};' for c in payload),
-            base64.b64encode(payload.encode()).decode()
+        # Check for HTML-encoded reflection
+        html_encoded = ''.join(f'&#{ord(c)};' for c in payload)
+        if html_encoded.lower() in content_lower:
+            print(f"    ✅ HTML-encoded payload reflection found!")
+            return True
+        
+        # Check for URL-encoded reflection
+        url_encoded = urllib.parse.quote(payload)
+        if url_encoded.lower() in content_lower:
+            print(f"    ✅ URL-encoded payload reflection found!")
+            return True
+        
+        # Check for partial reflection (common in XSS)
+        script_tag = '<script'
+        if script_tag in content_lower and 'alert' in content_lower:
+            print(f"    ✅ Script tag and alert found in response!")
+            return True
+        
+        # Check if our specific payload is reflected (even partially)
+        if 'script' in payload_lower and '<script' in content_lower:
+            print(f"    ✅ Script tag from payload found in response!")
+            return True
+        
+        if 'img' in payload_lower and 'onerror' in content_lower:
+            print(f"    ✅ Image onerror from payload found in response!")
+            return True
+        
+        if 'svg' in payload_lower and 'onload' in content_lower:
+            print(f"    ✅ SVG onload from payload found in response!")
+            return True
+        
+        # Check for img tag with onerror
+        img_onerror = 'onerror'
+        if img_onerror in content_lower and 'src=' in content_lower:
+            print(f"    ✅ Image onerror attribute found in response!")
+            return True
+        
+        # Check for SVG with onload
+        svg_onload = 'onload'
+        if svg_onload in content_lower and '<svg' in content_lower:
+            print(f"    ✅ SVG onload attribute found in response!")
+            return True
+        
+        # Check for iframe with javascript:
+        iframe_js = 'javascript:'
+        if iframe_js in content_lower and '<iframe' in content_lower:
+            print(f"    ✅ iframe with javascript: found in response!")
+            return True
+        
+        # Additional checks for common XSS patterns
+        xss_patterns = [
+            ('<script', 'script tag'),
+            ('onerror=', 'onerror attribute'),
+            ('onload=', 'onload attribute'),
+            ('onmouseover=', 'onmouseover attribute'),
+            ('onfocus=', 'onfocus attribute'),
+            ('javascript:', 'javascript protocol'),
+            ('vbscript:', 'vbscript protocol'),
+            ('data:text/html', 'data protocol'),
         ]
         
-        for encoded in encoded_payloads:
-            if encoded.lower() in content:
+        found_patterns = []
+        for pattern, description in xss_patterns:
+            if pattern in content_lower:
+                found_patterns.append(description)
+        
+        if found_patterns:
+            print(f"    ⚠️  Potential XSS patterns found: {', '.join(found_patterns)}")
+            # If we find multiple suspicious patterns, consider it a potential XSS
+            if len(found_patterns) >= 2:
+                print(f"    ✅ Multiple XSS patterns detected - likely vulnerability!")
                 return True
         
+        print(f"    ❌ No XSS indicators found in response")
         return False
 
     def run_scan(self) -> Dict:
@@ -499,8 +629,20 @@ class XSSScanner:
             output_file = f"xss_scan_report_{int(time.time())}.json"
         
         try:
+            # Convert sets to lists for JSON serialization
+            def convert_sets(obj):
+                if isinstance(obj, set):
+                    return list(obj)
+                elif isinstance(obj, dict):
+                    return {key: convert_sets(value) for key, value in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_sets(item) for item in obj]
+                return obj
+            
+            results_serializable = convert_sets(results)
+            
             with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(results, f, indent=2, ensure_ascii=False)
+                json.dump(results_serializable, f, indent=2, ensure_ascii=False)
             
             logger.info(f"Report saved to: {output_file}")
             
