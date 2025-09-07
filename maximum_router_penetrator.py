@@ -119,9 +119,13 @@ class MaximumRouterPenetrator:
         # Selenium configuration for advanced screenshots
         self.selenium_config = {
             'enabled': True,
-            'headless': True,
+            'headless': False,  # Set to False to see browser
             'timeout': 30,
-            'wait_time': 5
+            'wait_time': 10,
+            'window_size': '1920,1080',
+            'disable_gpu': True,
+            'no_sandbox': True,
+            'disable_dev_shm_usage': True
         }
         
         # Advanced 2025 security bypass techniques
@@ -1065,8 +1069,36 @@ class MaximumRouterPenetrator:
                 if verbose:
                     print(f"            ✅ CVE SUCCESS: {cve_result['cve_used']}")
                     print(f"            📊 Extracted data: {len(cve_result.get('extracted_data', []))} items")
-                    for item in cve_result.get('extracted_data', [])[:5]:  # Show first 5 items
-                        print(f"               • {item}")
+                    
+                    # Display extracted data details
+                    extracted_data = cve_result.get('extracted_data', {})
+                    if isinstance(extracted_data, dict):
+                        print(f"            🔍 Data types: {extracted_data.get('data_types', [])}")
+                        print(f"            📄 Content length: {extracted_data.get('content_length', 0)} bytes")
+                        
+                        # Show configuration data
+                        config_data = extracted_data.get('configuration_data', [])
+                        if config_data:
+                            print(f"            ⚙️ Configuration data: {len(config_data)} items")
+                            for item in config_data[:3]:  # Show first 3 items
+                                print(f"               • {item}")
+                        
+                        # Show sensitive data
+                        sensitive_data = extracted_data.get('sensitive_data', [])
+                        if sensitive_data:
+                            print(f"            🔐 Sensitive data: {len(sensitive_data)} items")
+                            for item in sensitive_data[:3]:  # Show first 3 items
+                                print(f"               • {item}")
+                        
+                        # Show SIP accounts
+                        sip_accounts = extracted_data.get('sip_accounts', [])
+                        if sip_accounts:
+                            print(f"            📞 SIP accounts: {len(sip_accounts)} items")
+                            for item in sip_accounts[:3]:  # Show first 3 items
+                                print(f"               • {item}")
+                    else:
+                        for item in extracted_data[:5]:  # Show first 5 items
+                            print(f"               • {item}")
             else:
                 if verbose:
                     print(f"            ❌ CVE tests unsuccessful")
@@ -1412,6 +1444,28 @@ class MaximumRouterPenetrator:
             if config_result['success']:
                 result['config_files_found'] = config_result['files']
                 result['sip_from_config'] = config_result['sip_data']
+                
+                # Extract and display config file contents
+                if verbose:
+                    print(f"         📄 LIVE DEBUG: Config file contents extraction...")
+                
+                for config_file in config_result['files']:
+                    filename = config_file.get('filename', 'unknown')
+                    content = config_file.get('content', '')
+                    size = config_file.get('size', 0)
+                    
+                    if verbose:
+                        print(f"         📁 {filename}: {size} bytes")
+                        if content and len(content) > 50:
+                            # Show first 200 characters
+                            preview = content[:200].replace('\n', ' ').replace('\r', ' ')
+                            print(f"         📄 Preview: {preview}...")
+                        
+                        # Look for SIP-related content
+                        sip_indicators = ['sip', 'voip', 'phone', 'account', 'password', 'username', 'server', 'proxy']
+                        found_indicators = [indicator for indicator in sip_indicators if indicator.lower() in content.lower()]
+                        if found_indicators:
+                            print(f"         🔍 SIP indicators found: {', '.join(found_indicators)}")
                 
                 # RouterPassView style extraction from downloaded configs
                 if verbose:
@@ -2629,8 +2683,9 @@ class MaximumRouterPenetrator:
                                     if verbose:
                                         print(f"            ✅ VoIP screenshot from {path}: {voip_test['filename']}")
                                     break
-                    elif verbose:
-                        print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
+                    else:
+                        if verbose:
+                            print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
                     
                     # PERFORM ADVANCED SIP EXTRACTION AFTER SUCCESSFUL LOGIN
                     if verbose:
