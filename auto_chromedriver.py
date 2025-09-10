@@ -19,37 +19,71 @@ def get_chrome_version():
     """Get installed Chrome version"""
     try:
         if platform.system() == "Windows":
-            # Windows Chrome version detection
+            # Windows Chrome version detection - multiple methods
             chrome_paths = [
                 r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getenv('USERNAME', '')),
+                r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getenv('USERPROFILE', '').split('\\')[-1])
             ]
             
+            print("Searching for Chrome in Windows...")
             for chrome_path in chrome_paths:
+                print(f"Checking: {chrome_path}")
                 if os.path.exists(chrome_path):
                     try:
+                        print(f"Found Chrome at: {chrome_path}")
                         result = subprocess.run([chrome_path, "--version"], 
                                               capture_output=True, text=True, timeout=10)
                         version = result.stdout.strip().split()[-1]
+                        print(f"Chrome version: {version}")
                         return version
-                    except:
+                    except Exception as e:
+                        print(f"Error getting version from {chrome_path}: {e}")
                         continue
-        else:
-            # Linux/macOS Chrome version detection
+            
+            # Try registry method for Windows
             try:
-                result = subprocess.run(["google-chrome", "--version"], 
-                                      capture_output=True, text=True, timeout=10)
-                version = result.stdout.strip().split()[-1]
+                import winreg
+                print("Trying Windows Registry method...")
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon")
+                version, _ = winreg.QueryValueEx(key, "version")
+                winreg.CloseKey(key)
+                print(f"Chrome version from registry: {version}")
                 return version
             except:
+                pass
+                
+            # Try alternative registry path
+            try:
+                import winreg
+                print("Trying alternative registry method...")
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Google\Chrome\BLBeacon")
+                version, _ = winreg.QueryValueEx(key, "version")
+                winreg.CloseKey(key)
+                print(f"Chrome version from registry: {version}")
+                return version
+            except:
+                pass
+                
+        else:
+            # Linux/macOS Chrome version detection
+            print("Searching for Chrome in Linux/macOS...")
+            chrome_commands = ["google-chrome", "chromium-browser", "chromium", "chrome"]
+            
+            for cmd in chrome_commands:
                 try:
-                    result = subprocess.run(["chromium-browser", "--version"], 
+                    print(f"Trying command: {cmd}")
+                    result = subprocess.run([cmd, "--version"], 
                                           capture_output=True, text=True, timeout=10)
                     version = result.stdout.strip().split()[-1]
+                    print(f"Chrome version: {version}")
                     return version
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Command {cmd} failed: {e}")
+                    continue
         
+        print("Chrome not found in standard locations")
         return None
     except Exception as e:
         print(f"Error detecting Chrome version: {e}")
