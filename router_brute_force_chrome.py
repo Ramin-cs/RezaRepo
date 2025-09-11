@@ -759,8 +759,9 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.YELLOW}[-] Error clicking submit: {e}{Colors.END}")
                 return False, None
             
-            # Wait for page to load after login
-            self.wait_strategies.wait_for_page_load(driver, 10)
+            # Wait for page to load or URL to change after login
+            if not self.wait_strategies.wait_for_url_change(driver, driver.current_url, 8):
+                self.wait_strategies.wait_for_page_load(driver, 10)
             
             # Handle alerts (login failed messages)
             try:
