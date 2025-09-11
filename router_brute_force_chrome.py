@@ -424,7 +424,7 @@ class ChromeRouterBruteForce:
                 except Exception as e:
                     print(f"{Colors.YELLOW}[!] JavaScript form detection failed: {e}{Colors.END}")
 
-            # If still not found, check iframes
+            # If still not found, check iframes (stay in the found frame)
             if (not username_field or not password_field):
                 try:
                     iframes = driver.find_elements(By.TAG_NAME, 'iframe')
@@ -435,12 +435,17 @@ class ChromeRouterBruteForce:
                             if uf and pf:
                                 username_field, password_field = uf, pf
                                 print(f"{Colors.BLUE}[*] Login form found inside an iframe{Colors.END}")
-                                break
+                                # IMPORTANT: remain inside this iframe context
+                                return username_field, password_field
+                            else:
+                                # Not in this iframe; go back and continue
+                                driver.switch_to.parent_frame()
                         except Exception:
-                            driver.switch_to.default_content()
+                            try:
+                                driver.switch_to.parent_frame()
+                            except Exception:
+                                pass
                             continue
-                        finally:
-                            driver.switch_to.default_content()
                 except Exception:
                     pass
             
