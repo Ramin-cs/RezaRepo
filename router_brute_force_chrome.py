@@ -420,13 +420,13 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Failed to take screenshot: {e}{Colors.END}")
             return None
     
-    def test_credentials(self, username, password):
+    def test_credentials(self, username, password, login_url):
         """Test a single set of credentials"""
         try:
             print(f"{Colors.CYAN}[>] Testing credentials: {username}:{password}{Colors.END}")
             
             # Navigate to login page
-            self.driver.get(self.login_url)
+            self.driver.get(login_url)
             time.sleep(2)
             
             # Take initial screenshot
@@ -494,7 +494,7 @@ class ChromeRouterBruteForce:
                 
                 print(f"\n{Colors.YELLOW}[{i}/{len(TARGET_CREDENTIALS)}] Testing credential set {i}{Colors.END}")
                 
-                success, result = self.test_credentials(username, password)
+                success, result = self.test_credentials(username, password, login_url)
                 
                 if success:
                     print(f"{Colors.RED}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
