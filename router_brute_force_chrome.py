@@ -526,7 +526,7 @@ class ChromeRouterBruteForce:
             except:
                 pass
     
-    def add_vulnerable_finding(self, url, username, password, auth_type, screenshot_path):
+    def add_vulnerable_finding(self, url, username, password, auth_type, screenshot_path, device_info=None):
         """Add a vulnerable finding to the list"""
         finding = {
             'url': url,
@@ -534,6 +534,7 @@ class ChromeRouterBruteForce:
             'password': password,
             'auth_type': auth_type,
             'screenshot_path': screenshot_path,
+            'device_info': device_info,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         self.vulnerable_findings.append(finding)
@@ -558,9 +559,9 @@ class ChromeRouterBruteForce:
                 for i, finding in enumerate(self.vulnerable_findings, 1):
                     f.write(f"[{i}] VULNERABLE ROUTER FOUND:\n")
                     f.write(f"    URL: {finding['url']}\n")
-                    f.write(f"    Username: {finding['username']}\n")
-                    f.write(f"    Password: {finding['password']}\n")
+                    f.write(f"    Credentials: {finding['username']}:{finding['password']}\n")
                     f.write(f"    Authentication Type: {finding['auth_type']}\n")
+                    f.write(f"    Device Info: {finding.get('device_info', 'N/A')}\n")
                     f.write(f"    Screenshot: {finding['screenshot_path']}\n")
                     f.write(f"    Timestamp: {finding['timestamp']}\n")
                     f.write("-" * 60 + "\n\n")
@@ -1115,6 +1116,7 @@ class ChromeRouterBruteForce:
                 alert.accept()
                 print(f"{Colors.YELLOW}[!] Alert detected during page load: {alert_text}{Colors.END}")
                 # Don't treat alerts as errors - continue with auth detection
+                time.sleep(2)  # Wait a bit after handling alert
             except:
                 pass  # No alert present
             
@@ -1171,7 +1173,8 @@ class ChromeRouterBruteForce:
                 'net::err_name_not_resolved', 'net::err_connection_refused', 'net::err_connection_timed_out'
             ]
             
-            if any(error in page_source for error in error_indicators):
+            # Be more lenient with error detection
+            if any(error in page_source for error in ['this site can\'t be reached', 'connection refused', 'dns_probe_finished_nxdomain']):
                 return "error", "Error page detected in content"
             
             # 🔍 **1. Check for Form-Based Authentication FIRST (most common)**
@@ -1349,7 +1352,20 @@ class ChromeRouterBruteForce:
                     # Add to vulnerable findings
                     screenshot_path = result if isinstance(result, str) and result.endswith('.png') else None
                     auth_type = "unknown"  # We'll improve this later
-                    self.add_vulnerable_finding(login_url, username, password, auth_type, screenshot_path)
+                    
+                    # Try to detect auth type from the successful login
+                    try:
+                        auth_type, _ = self.detect_authentication_type(login_url)
+                    except:
+                        pass
+                    # Extract device info if available
+                    device_info = None
+                    try:
+                        device_info = self.extract_device_info()
+                    except:
+                        pass
+                    
+                    self.add_vulnerable_finding(login_url, username, password, auth_type, screenshot_path, device_info)
                     
                     successful_credentials.append({
                         'url': login_url,
@@ -1543,7 +1559,7 @@ def main():
         if success:
             print(f"{Colors.RED}[!] VULNERABLE ROUTERS FOUND - Change default credentials immediately!{Colors.END}")
             # Generate report
-            report_path = chrome_brute_force.generate_report()
+            report_path = brute_force.generate_report()
             if report_path:
                 print(f"{Colors.GREEN}[+] Detailed report saved: {report_path}{Colors.END}")
         else:
