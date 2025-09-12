@@ -507,6 +507,18 @@ class ChromeRouterBruteForce:
             # Special case for phone systems - they might stay on same URL but change content
             if 'servlet' in current_url or 'phone' in page_title:
                 url_changed = True  # Treat as URL changed for phone systems
+                
+                # For phone systems, be more strict about success detection
+                if 'servlet' in current_url:
+                    # Check for specific phone system success indicators
+                    phone_success_indicators = [
+                        'main menu', 'status', 'configuration', 'settings', 'network',
+                        'system info', 'device info', 'admin', 'logout'
+                    ]
+                    phone_success_count = sum(1 for indicator in phone_success_indicators if indicator in page_source)
+                    
+                    if phone_success_count < 2:  # Need at least 2 success indicators
+                        return False, f"Phone system - insufficient success indicators: {phone_success_count}"
             
             # Check for specific success indicators
             success_indicators = [
@@ -526,6 +538,17 @@ class ChromeRouterBruteForce:
             # Additional check: if we have substantial admin content
             if admin_count >= 3 and login_count <= 1:
                 return True, f"Strong admin content detected: {admin_count} indicators"
+            
+            # Check for error pages first (403, 401, etc.)
+            error_indicators = [
+                'not authorized', 'access denied', 'forbidden', 'unauthorized', 
+                'you are not authorized', 'please contact your support', 'try again',
+                'http 403', 'http 401', 'http 404', 'http 500'
+            ]
+            error_count = sum(1 for indicator in error_indicators if indicator in page_source)
+            
+            if error_count >= 1:
+                return False, f"Error page detected: {error_count} error indicators"
             
             # More lenient criteria for form-based auth
             if admin_count >= 3 and login_count <= 2:
@@ -1200,6 +1223,20 @@ class ChromeRouterBruteForce:
             if alert_text:
                 return False, f"Alert: {alert_text}"
             
+            # Check for error pages before checking success
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
+            
+            # Check for 403, 401, and other error indicators
+            error_indicators = [
+                'not authorized', 'access denied', 'forbidden', 'unauthorized', 
+                'you are not authorized', 'please contact your support', 'try again',
+                'http 403', 'http 401', 'http 404', 'http 500'
+            ]
+            
+            if any(error in page_source for error in error_indicators):
+                return False, f"Error page detected after login attempt"
+            
             # Check if login was successful
             success, reason = self.is_admin_panel_loaded()
             if success:
@@ -1222,6 +1259,17 @@ class ChromeRouterBruteForce:
             # Additional check: if we have admin content but still on login page, it might be successful
             try:
                 page_source = self.driver.page_source.lower()
+                
+                # Check for error pages first
+                error_indicators = [
+                    'not authorized', 'access denied', 'forbidden', 'unauthorized', 
+                    'you are not authorized', 'please contact your support', 'try again',
+                    'http 403', 'http 401', 'http 404', 'http 500'
+                ]
+                
+                if any(error in page_source for error in error_indicators):
+                    return False, f"Error page detected in additional check"
+                
                 admin_count = sum(1 for indicator in ['admin', 'dashboard', 'system', 'status', 'network', 'settings', 'configuration'] if indicator in page_source)
                 login_count = sum(1 for indicator in ['username', 'password', 'login', 'sign in'] if indicator in page_source)
                 
