@@ -1103,6 +1103,15 @@ class ChromeRouterBruteForce:
             self.driver.get(login_url)
             time.sleep(5)  # Wait for page to load
             
+            # Check for alerts first
+            try:
+                alert = self.driver.switch_to.alert
+                alert_text = alert.text
+                alert.accept()
+                print(f"{Colors.YELLOW}[!] Alert detected during page load: {alert_text}{Colors.END}")
+            except:
+                pass  # No alert present
+            
             current_url = self.driver.current_url
             page_source = self.driver.page_source.lower()
             page_title = self.driver.title
@@ -1137,62 +1146,19 @@ class ChromeRouterBruteForce:
                 return "error", f"Error page detected in title: {page_title}"
             
             # Check for empty or generic titles that might indicate errors
-            # But be more lenient - only flag as error if we're sure it's an error page
+            # Be VERY lenient - only flag as error if we're absolutely sure it's an error page
             if not page_title or page_title.strip() == "":
-                # For empty titles, try to get more info about the page
-                try:
-                    # Check if page has any meaningful content
-                    body_text = self.driver.find_element("tag name", "body").text.lower()
-                    if any(error in body_text for error in error_indicators):
-                        return "error", "Error page detected in body content"
-                    elif len(body_text.strip()) < 3:  # Very little content - be more lenient
-                        return "error", "Page appears to be empty or error page"
-                    # If we have some content, don't treat as error - might be a valid page
-                    print(f"{Colors.BLUE}[*] Empty title but has content ({len(body_text)} chars), continuing...{Colors.END}")
-                except:
-                    # If we can't get body text, don't assume it's an error
-                    print(f"{Colors.BLUE}[*] Empty title but can't check content, continuing...{Colors.END}")
-            elif page_title in ['211.27.181.3', 'NetComm', 'NetComm Wireless Limited']:
-                # These might be valid router pages, don't treat as error immediately
-                # Let the authentication type detection handle it
-                print(f"{Colors.BLUE}[*] Generic title '{page_title}', checking for valid content...{Colors.END}")
-                try:
-                    body_text = self.driver.find_element("tag name", "body").text.lower()
-                    if any(error in body_text for error in error_indicators):
-                        return "error", "Error page detected in body content"
-                    print(f"{Colors.BLUE}[*] Generic title but valid content found, continuing...{Colors.END}")
-                except:
-                    print(f"{Colors.BLUE}[*] Generic title but can't check content, continuing...{Colors.END}")
+                # For empty titles, be VERY lenient - try authentication detection first
+                print(f"{Colors.BLUE}[*] Empty title, trying authentication detection...{Colors.END}")
+                # Don't return error immediately - let authentication detection handle it
+            elif page_title in ['211.27.181.3', 'NetComm', 'NetComm Wireless Limited', 'Netcomm']:
+                # These are valid router pages, don't treat as error
+                print(f"{Colors.BLUE}[*] Valid router title '{page_title}', continuing with authentication detection...{Colors.END}")
+            else:
+                # For any other title, be lenient and continue
+                print(f"{Colors.BLUE}[*] Title '{page_title}', continuing with authentication detection...{Colors.END}")
             
-            # 🔍 **1. Check for API-Based Authentication**
-            api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
-            api_count = sum(1 for indicator in api_indicators if indicator in page_source)
-            if api_count >= 2:
-                print(f"{Colors.GREEN}[+] API-based authentication detected{Colors.END}")
-                return "api", "API-based authentication detected"
-            
-            # 🔍 **2. Check for JavaScript-Based Authentication**
-            js_indicators = ['javascript', 'js', 'onclick', 'onload', 'onchange', 'onsubmit', 'addEventListener', 'jquery', 'angular', 'react', 'vue']
-            js_count = sum(1 for indicator in js_indicators if indicator in page_source)
-            if js_count >= 3:
-                print(f"{Colors.GREEN}[+] JavaScript-based authentication detected{Colors.END}")
-                return "javascript", "JavaScript-based authentication detected"
-            
-            # 🔍 **3. Check for Cookie-Based Authentication**
-            cookie_indicators = ['cookie', 'session', 'token', 'csrf', 'csrf_token', 'authenticity_token', 'sessionid', 'jsessionid']
-            cookie_count = sum(1 for indicator in cookie_indicators if indicator in page_source)
-            if cookie_count >= 2:
-                print(f"{Colors.GREEN}[+] Cookie-based authentication detected{Colors.END}")
-                return "cookie", "Cookie-based authentication detected"
-            
-            # 🔍 **4. Check for Redirect-Based Authentication**
-            redirect_indicators = ['redirect', 'location', 'window.location', 'href', 'url', 'goto', 'forward']
-            redirect_count = sum(1 for indicator in redirect_indicators if indicator in page_source)
-            if redirect_count >= 2:
-                print(f"{Colors.GREEN}[+] Redirect-based authentication detected{Colors.END}")
-                return "redirect", "Redirect-based authentication detected"
-            
-            # 🔍 **5. Check for Form-Based Authentication**
+            # 🔍 **1. Check for Form-Based Authentication FIRST (most common)**
             form_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login']
             form_count = sum(1 for indicator in form_indicators if indicator in page_source)
             
@@ -1204,15 +1170,44 @@ class ChromeRouterBruteForce:
                 if len(username_inputs) > 0 and len(password_inputs) > 0:
                     print(f"{Colors.GREEN}[+] Form-based authentication detected{Colors.END}")
                     return "form", "Form-based authentication with login fields"
-                elif form_count >= 2:
-                    print(f"{Colors.GREEN}[+] Form-based authentication detected (by content){Colors.END}")
-                    return "form", "Form-based authentication detected by content"
                 elif len(password_inputs) > 0:  # If we have password field, it's likely a form
                     print(f"{Colors.GREEN}[+] Form-based authentication detected (password field found){Colors.END}")
                     return "form", "Form-based authentication detected (password field)"
+                elif form_count >= 2:
+                    print(f"{Colors.GREEN}[+] Form-based authentication detected (by content){Colors.END}")
+                    return "form", "Form-based authentication detected by content"
                     
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Error detecting form fields: {e}{Colors.END}")
+            
+            # 🔍 **2. Check for API-Based Authentication**
+            api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
+            api_count = sum(1 for indicator in api_indicators if indicator in page_source)
+            if api_count >= 2:
+                print(f"{Colors.GREEN}[+] API-based authentication detected{Colors.END}")
+                return "api", "API-based authentication detected"
+            
+            # 🔍 **3. Check for JavaScript-Based Authentication**
+            js_indicators = ['javascript', 'js', 'onclick', 'onload', 'onchange', 'onsubmit', 'addEventListener', 'jquery', 'angular', 'react', 'vue']
+            js_count = sum(1 for indicator in js_indicators if indicator in page_source)
+            if js_count >= 3:
+                print(f"{Colors.GREEN}[+] JavaScript-based authentication detected{Colors.END}")
+                return "javascript", "JavaScript-based authentication detected"
+            
+            # 🔍 **4. Check for Cookie-Based Authentication**
+            cookie_indicators = ['cookie', 'session', 'token', 'csrf', 'csrf_token', 'authenticity_token', 'sessionid', 'jsessionid']
+            cookie_count = sum(1 for indicator in cookie_indicators if indicator in page_source)
+            if cookie_count >= 2:
+                print(f"{Colors.GREEN}[+] Cookie-based authentication detected{Colors.END}")
+                return "cookie", "Cookie-based authentication detected"
+            
+            # 🔍 **5. Check for Redirect-Based Authentication**
+            redirect_indicators = ['redirect', 'location', 'window.location', 'href', 'url', 'goto', 'forward']
+            redirect_count = sum(1 for indicator in redirect_indicators if indicator in page_source)
+            if redirect_count >= 2:
+                print(f"{Colors.GREEN}[+] Redirect-based authentication detected{Colors.END}")
+                return "redirect", "Redirect-based authentication detected"
+            
             
             # 🔍 **6. Check for HTTP Basic/Digest Authentication**
             # Try to access the page and check response headers
@@ -1231,9 +1226,12 @@ class ChromeRouterBruteForce:
                         return "digest", "HTTP Digest authentication detected"
                 elif response.status_code == 200:
                     # Even if not 401, some routers might support basic auth
-                    # Check if we can access with basic auth
-                    print(f"{Colors.BLUE}[*] Status 200, checking if basic auth is supported{Colors.END}")
+                    print(f"{Colors.GREEN}[+] HTTP Basic Auth possible (status 200){Colors.END}")
                     return "basic", "Trying HTTP Basic Auth (status 200)"
+                else:
+                    # Try basic auth anyway for any status code
+                    print(f"{Colors.GREEN}[+] Trying HTTP Basic Auth (status {response.status_code}){Colors.END}")
+                    return "basic", f"Trying HTTP Basic Auth (status {response.status_code})"
                         
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Error checking HTTP auth headers: {e}{Colors.END}")
@@ -1241,9 +1239,21 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.BLUE}[*] Cannot check headers, trying HTTP Basic Auth as fallback{Colors.END}")
                 return "basic", "HTTP Basic Auth fallback"
             
-            # 🔍 **7. Default fallback**
-            print(f"{Colors.BLUE}[*] No specific auth type detected, trying HTTP Basic Auth{Colors.END}")
-            return "basic", "No specific auth type detected, trying HTTP Basic Auth"
+            # 🔍 **7. Default fallback - try multiple methods**
+            print(f"{Colors.BLUE}[*] No specific auth type detected, trying multiple methods...{Colors.END}")
+            
+            # Try form-based first if we have any input fields
+            try:
+                all_inputs = self.driver.find_elements("css selector", "input")
+                if len(all_inputs) > 0:
+                    print(f"{Colors.GREEN}[+] Found {len(all_inputs)} input fields, trying form-based auth{Colors.END}")
+                    return "form", "Form-based authentication (fallback detection)"
+            except:
+                pass
+            
+            # Try basic auth as final fallback
+            print(f"{Colors.GREEN}[+] Trying HTTP Basic Auth as final fallback{Colors.END}")
+            return "basic", "HTTP Basic Auth (final fallback)"
                 
         except Exception as e:
             return "error", f"Error detecting auth type: {e}"
