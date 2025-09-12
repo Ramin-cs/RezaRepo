@@ -539,13 +539,19 @@ class ChromeRouterBruteForce:
             if admin_count >= 3 and login_count <= 1:
                 return True, f"Strong admin content detected: {admin_count} indicators"
             
-            # Check for error pages first (403, 401, etc.)
+            # Check for error pages first (but exclude 401 for HTTP Basic/Digest auth)
             error_indicators = [
                 'not authorized', 'access denied', 'forbidden', 'unauthorized', 
                 'you are not authorized', 'please contact your support', 'try again',
-                'http 403', 'http 401', 'http 404', 'http 500'
+                'http 403', 'http 404', 'http 500'
             ]
             error_count = sum(1 for indicator in error_indicators if indicator in page_source)
+            
+            # Special handling for 401 - only flag as error if it's not part of HTTP Basic/Digest auth flow
+            if 'http 401' in page_source:
+                # Check if this is part of HTTP Basic/Digest auth flow
+                if not ('www-authenticate' in page_source or 'basic' in page_source or 'digest' in page_source):
+                    error_count += 1
             
             if error_count >= 1:
                 return False, f"Error page detected: {error_count} error indicators"
@@ -840,6 +846,22 @@ class ChromeRouterBruteForce:
             
             print(f"{Colors.BLUE}[*] After Basic Auth - URL: {current_url}{Colors.END}")
             print(f"{Colors.BLUE}[*] Page title: {self.driver.title}{Colors.END}")
+            
+            # For HTTP Basic Auth, don't treat 401 as error if it's part of auth flow
+            # Check for actual error pages (not auth challenges)
+            error_indicators = [
+                'not authorized', 'access denied', 'forbidden', 'unauthorized', 
+                'you are not authorized', 'please contact your support', 'try again',
+                'http 403', 'http 404', 'http 500'
+            ]
+            
+            # Only treat 401 as error if it's not part of HTTP Basic auth flow
+            if 'http 401' in page_source:
+                if not ('www-authenticate' in page_source or 'basic' in page_source):
+                    error_indicators.append('http 401')
+            
+            if any(error in page_source for error in error_indicators):
+                return False, f"Error page detected after HTTP Basic Auth attempt"
             
             # Check if we successfully bypassed auth (not on error page)
             if "data:," not in current_url and current_url != "about:blank":
@@ -1227,12 +1249,17 @@ class ChromeRouterBruteForce:
             current_url = self.driver.current_url
             page_source = self.driver.page_source.lower()
             
-            # Check for 403, 401, and other error indicators
+            # Check for error indicators (but be careful with 401 for HTTP auth)
             error_indicators = [
                 'not authorized', 'access denied', 'forbidden', 'unauthorized', 
                 'you are not authorized', 'please contact your support', 'try again',
-                'http 403', 'http 401', 'http 404', 'http 500'
+                'http 403', 'http 404', 'http 500'
             ]
+            
+            # Special handling for 401 in form-based auth
+            if 'http 401' in page_source:
+                # For form-based auth, 401 usually means login failed
+                error_indicators.append('http 401')
             
             if any(error in page_source for error in error_indicators):
                 return False, f"Error page detected after login attempt"
@@ -1260,12 +1287,17 @@ class ChromeRouterBruteForce:
             try:
                 page_source = self.driver.page_source.lower()
                 
-                # Check for error pages first
+                # Check for error pages first (but be careful with 401 for HTTP auth)
                 error_indicators = [
                     'not authorized', 'access denied', 'forbidden', 'unauthorized', 
                     'you are not authorized', 'please contact your support', 'try again',
-                    'http 403', 'http 401', 'http 404', 'http 500'
+                    'http 403', 'http 404', 'http 500'
                 ]
+                
+                # Special handling for 401 in additional check
+                if 'http 401' in page_source:
+                    # For form-based auth, 401 usually means login failed
+                    error_indicators.append('http 401')
                 
                 if any(error in page_source for error in error_indicators):
                     return False, f"Error page detected in additional check"
