@@ -700,6 +700,11 @@ class ChromeRouterBruteForce:
                 device_info = self.extract_device_info()
                 return True, f"Admin panel detected - Admin: {admin_count}, Login: {login_count}, Success: {success_count}, Device: {device_info}"
             
+            # More lenient criteria for form-based auth
+            if admin_count >= 3 and login_count <= 2:
+                device_info = self.extract_device_info()
+                return True, f"Admin panel detected - Admin: {admin_count}, Login: {login_count}, Success: {success_count}, Device: {device_info}"
+            
             # Original strict criteria
             if admin_count > login_count and admin_count >= 3 and success_count >= 1 and url_changed:
                 device_info = self.extract_device_info()
@@ -1103,12 +1108,13 @@ class ChromeRouterBruteForce:
             self.driver.get(login_url)
             time.sleep(5)  # Wait for page to load
             
-            # Check for alerts first
+            # Check for alerts first and handle them
             try:
                 alert = self.driver.switch_to.alert
                 alert_text = alert.text
                 alert.accept()
                 print(f"{Colors.YELLOW}[!] Alert detected during page load: {alert_text}{Colors.END}")
+                # Don't treat alerts as errors - continue with auth detection
             except:
                 pass  # No alert present
             
@@ -1137,12 +1143,10 @@ class ChromeRouterBruteForce:
                 'net::err_name_not_resolved', 'net::err_connection_refused', 'net::err_connection_timed_out'
             ]
             
-            # Check page source for error indicators
-            if any(error in page_source for error in error_indicators):
-                return "error", "Error page detected"
+            # Error detection moved below to be more lenient
             
-            # Check for specific error patterns in title (but be more lenient)
-            if page_title and any(error in page_title.lower() for error in ['error', 'not found', 'unavailable', 'timeout', 'this site can\'t be reached', 'connection refused']):
+            # Check for specific error patterns in title (be VERY lenient)
+            if page_title and any(error in page_title.lower() for error in ['this site can\'t be reached', 'connection refused', 'dns_probe_finished_nxdomain']):
                 return "error", f"Error page detected in title: {page_title}"
             
             # Check for empty or generic titles that might indicate errors
@@ -1157,6 +1161,18 @@ class ChromeRouterBruteForce:
             else:
                 # For any other title, be lenient and continue
                 print(f"{Colors.BLUE}[*] Title '{page_title}', continuing with authentication detection...{Colors.END}")
+                
+            # Check page source for error indicators only if we're sure it's an error
+            error_indicators = [
+                'this site can\'t be reached', 'site can\'t be reached', 'connection refused', 
+                'timeout', 'dns_probe_finished_nxdomain', 'err_name_not_resolved', 'err_connection_refused',
+                'err_connection_timed_out', 'err_connection_reset', 'err_network_changed',
+                'err_internet_disconnected', 'err_connection_failed', 'err_timed_out',
+                'net::err_name_not_resolved', 'net::err_connection_refused', 'net::err_connection_timed_out'
+            ]
+            
+            if any(error in page_source for error in error_indicators):
+                return "error", "Error page detected in content"
             
             # 🔍 **1. Check for Form-Based Authentication FIRST (most common)**
             form_indicators = ['username', 'password', 'login', 'sign in', 'authentication', 'enter credentials', 'user login', 'admin login', 'router login']
@@ -1527,7 +1543,7 @@ def main():
         if success:
             print(f"{Colors.RED}[!] VULNERABLE ROUTERS FOUND - Change default credentials immediately!{Colors.END}")
             # Generate report
-            report_path = brute_force_tool.generate_report()
+            report_path = chrome_brute_force.generate_report()
             if report_path:
                 print(f"{Colors.GREEN}[+] Detailed report saved: {report_path}{Colors.END}")
         else:
