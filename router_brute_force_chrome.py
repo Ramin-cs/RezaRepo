@@ -490,6 +490,10 @@ class ChromeRouterBruteForce:
             # Check if URL changed from login page
             url_changed = not any(login_term in current_url for login_term in ['login', 'signin', 'sign-in', 'auth', 'authentication'])
             
+            # Special case for phone systems - they might stay on same URL but change content
+            if 'servlet' in current_url or 'phone' in page_title:
+                url_changed = True  # Treat as URL changed for phone systems
+            
             # Check for specific success indicators
             success_indicators = [
                 'logout', 'log out', 'welcome', 'dashboard', 'main menu', 'system status',
@@ -508,6 +512,17 @@ class ChromeRouterBruteForce:
             # Additional check: if we have substantial admin content
             if admin_count >= 3 and login_count <= 1:
                 return True, f"Strong admin content detected: {admin_count} indicators"
+            
+            # More lenient criteria for form-based auth
+            if admin_count >= 3 and login_count <= 2:
+                return True, f"Form-based auth success: Admin: {admin_count}, Login: {login_count}"
+            
+            # Check for empty page title (might indicate successful login)
+            page_title = self.driver.title.lower() if self.driver.title else ""
+            if not page_title or page_title.strip() == "":
+                # If page title is empty but we have admin content, it might be successful
+                if admin_count >= 2 and login_count <= 2:
+                    return True, f"Empty title but admin content: Admin: {admin_count}, Login: {login_count}"
             
             return False, f"Admin indicators: {admin_count}, Login indicators: {login_count}, Success indicators: {success_count}"
             
@@ -821,6 +836,12 @@ class ChromeRouterBruteForce:
             self.driver.get(login_url)
             time.sleep(5)
             
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass
+            
             # Try to find API endpoints
             page_source = self.driver.page_source.lower()
             
@@ -891,6 +912,12 @@ class ChromeRouterBruteForce:
             # Navigate to login page
             self.driver.get(login_url)
             time.sleep(5)
+            
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass
             
             # Find and fill form fields
             username_field, password_field = self.detect_login_form()
@@ -994,6 +1021,12 @@ class ChromeRouterBruteForce:
             self.driver.get(login_url)
             time.sleep(5)
             
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass
+            
             # Find and fill form fields
             username_field, password_field = self.detect_login_form()
             
@@ -1040,6 +1073,12 @@ class ChromeRouterBruteForce:
             # Navigate to login page
             self.driver.get(login_url)
             time.sleep(5)
+            
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass
             
             # Find and fill form fields
             username_field, password_field = self.detect_login_form()
@@ -1088,6 +1127,12 @@ class ChromeRouterBruteForce:
             self.driver.get(login_url)
             time.sleep(5)
             
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass
+            
             # Find and fill form fields
             username_field, password_field = self.detect_login_form()
             
@@ -1133,6 +1178,19 @@ class ChromeRouterBruteForce:
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     return True, screenshot_path
             
+            # Additional check: if we have admin content but still on login page, it might be successful
+            try:
+                page_source = self.driver.page_source.lower()
+                admin_count = sum(1 for indicator in ['admin', 'dashboard', 'system', 'status', 'network', 'settings', 'configuration'] if indicator in page_source)
+                login_count = sum(1 for indicator in ['username', 'password', 'login', 'sign in'] if indicator in page_source)
+                
+                if admin_count >= 3 and login_count <= 2:
+                    print(f"{Colors.GREEN}[+] Form-based Auth successful (admin content detected)! {username}:{password}{Colors.END}")
+                    screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                    return True, screenshot_path
+            except:
+                pass
+            
             return False, "Form-based Auth failed"
             
         except Exception as e:
@@ -1143,7 +1201,13 @@ class ChromeRouterBruteForce:
         try:
             # Navigate to login page
             self.driver.get(login_url)
-            time.sleep(5)  # Wait for page to load
+            time.sleep(5)
+            
+            # Clear any existing session data
+            try:
+                self.driver.delete_all_cookies()
+            except:
+                pass  # Wait for page to load
             
             # Check for alerts first and handle them
             try:
