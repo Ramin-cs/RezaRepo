@@ -207,6 +207,11 @@ class ChromeRouterBruteForce:
             chrome_options.add_argument('--disable-background-timer-throttling')
             chrome_options.add_argument('--disable-renderer-backgrounding')
             chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+            chrome_options.add_argument('--disable-ssl-error-handling')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--allow-running-insecure-content')
+            chrome_options.add_argument('--disable-features=TranslateUI')
+            chrome_options.add_argument('--disable-ipc-flooding-protection')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             chrome_options.add_experimental_option('useAutomationExtension', False)
@@ -217,6 +222,15 @@ class ChromeRouterBruteForce:
                 "profile.default_content_settings.popups": 0,
                 "profile.managed_default_content_settings.images": 2
             })
+            
+            # Timeout and performance settings
+            chrome_options.add_argument('--page-load-strategy=eager')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--memory-pressure-off')
+            chrome_options.add_argument('--disable-hang-monitor')
+            chrome_options.add_argument('--disable-prompt-on-repost')
+            chrome_options.add_argument('--disable-domain-reliability')
+            chrome_options.add_argument('--disable-component-extensions-with-background-pages')
             
             # Window size
             chrome_options.add_argument('--window-size=1920,1080')
@@ -616,13 +630,36 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error generating report: {e}{Colors.END}")
             return None
     
+    def wait_for_page_load(self, timeout=10):
+        """Intelligently wait for page to load completely"""
+        try:
+            # Wait for page title to be present
+            WebDriverWait(self.driver, timeout).until(
+                lambda driver: driver.title is not None and driver.title.strip() != ""
+            )
+            
+            # Wait for page to be interactive
+            WebDriverWait(self.driver, timeout).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
+            
+            # Additional wait for dynamic content
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"{Colors.YELLOW}[!] Page load timeout, continuing...{Colors.END}")
+            time.sleep(3)  # Fallback wait
+    
     def handle_alert(self):
         """Handle browser alerts (login failure messages)"""
         try:
+            # Wait for alert to appear
+            WebDriverWait(self.driver, 3).until(EC.alert_is_present())
             alert = self.driver.switch_to.alert
             alert_text = alert.text
             print(f"{Colors.YELLOW}[!] Alert detected: {alert_text}{Colors.END}")
             alert.accept()  # Click OK to dismiss alert
+            time.sleep(1)  # Wait a bit after handling alert
             return alert_text
         except Exception as e:
             # Try to handle unexpected alerts
@@ -631,6 +668,7 @@ class ChromeRouterBruteForce:
                 alert_text = alert.text
                 print(f"{Colors.YELLOW}[!] Unexpected alert: {alert_text}{Colors.END}")
                 alert.accept()
+                time.sleep(1)  # Wait a bit after handling alert
                 return alert_text
             except:
                 return None
@@ -1123,9 +1161,11 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.BLUE}[*] Testing Form-based Auth: {username}:{password}{Colors.END}")
             
-            # Navigate to login page
+            # Navigate to login page with intelligent loading
             self.driver.get(login_url)
-            time.sleep(5)
+            
+            # Wait for page to load intelligently
+            self.wait_for_page_load()
             
             # Clear any existing session data
             try:
@@ -1152,7 +1192,8 @@ class ChromeRouterBruteForce:
             else:
                 password_field.send_keys("\n")
             
-            time.sleep(5)
+            # Wait for form submission and page response
+            self.wait_for_page_load(timeout=8)
             
             # Check for alerts
             alert_text = self.handle_alert()
