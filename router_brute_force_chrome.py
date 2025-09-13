@@ -978,22 +978,113 @@ class ChromeRouterBruteForce:
                 if indicator in title or indicator in page_source:
                     detected_models.append(indicator)
             
+            # Extract additional info from footer and device info
+            footer_info = self.extract_footer_info()
+            device_info = self.extract_device_info()
+            
             print(f"{Colors.BLUE}[*] Page title: {self.driver.title}{Colors.END}")
             print(f"{Colors.BLUE}[*] Detected brands: {detected_brands}{Colors.END}")
             print(f"{Colors.BLUE}[*] Model indicators: {detected_models}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Footer info: {footer_info}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Device info: {device_info}{Colors.END}")
             
-            return detected_brands, detected_models
+            return detected_brands, detected_models, footer_info, device_info
             
         except Exception as e:
             print(f"{Colors.RED}[!] Error identifying router brand: {e}{Colors.END}")
-            return [], []
+            return [], [], {}, {}
+    
+    def extract_footer_info(self):
+        """Extract brand/model info from footer and copyright"""
+        try:
+            footer_info = {}
+            
+            # Look for copyright and footer elements
+            footer_selectors = [
+                'footer', '.footer', '#footer', '.copyright', '.copy',
+                '.brand', '.model', '.version', '.firmware'
+            ]
+            
+            for selector in footer_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        text = element.text.lower()
+                        if text:
+                            footer_info[selector] = text
+                            print(f"{Colors.GREEN}[+] Found footer info in {selector}: {text[:100]}...{Colors.END}")
+                except:
+                    continue
+            
+            # Look for meta tags
+            try:
+                meta_tags = self.driver.find_elements(By.TAG_NAME, 'meta')
+                for meta in meta_tags:
+                    name = meta.get_attribute('name') or meta.get_attribute('property')
+                    content = meta.get_attribute('content')
+                    if name and content and any(keyword in name.lower() for keyword in ['brand', 'model', 'manufacturer', 'device']):
+                        footer_info[f"meta_{name}"] = content
+                        print(f"{Colors.GREEN}[+] Found meta info: {name} = {content}{Colors.END}")
+            except:
+                pass
+            
+            return footer_info
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error extracting footer info: {e}{Colors.END}")
+            return {}
+    
+    def extract_device_info(self):
+        """Extract device information from page content"""
+        try:
+            device_info = {}
+            
+            # Look for device info elements
+            device_selectors = [
+                '.device-info', '.device', '.router-info', '.system-info',
+                '.hardware', '.firmware', '.version', '.model',
+                '.manufacturer', '.brand', '.product'
+            ]
+            
+            for selector in device_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        text = element.text.lower()
+                        if text:
+                            device_info[selector] = text
+                            print(f"{Colors.GREEN}[+] Found device info in {selector}: {text[:100]}...{Colors.END}")
+                except:
+                    continue
+            
+            # Look for table cells with device info
+            try:
+                tables = self.driver.find_elements(By.TAG_NAME, 'table')
+                for table in tables:
+                    rows = table.find_elements(By.TAG_NAME, 'tr')
+                    for row in rows:
+                        cells = row.find_elements(By.TAG_NAME, 'td')
+                        if len(cells) >= 2:
+                            key = cells[0].text.lower().strip()
+                            value = cells[1].text.lower().strip()
+                            if any(keyword in key for keyword in ['model', 'brand', 'manufacturer', 'version', 'firmware']):
+                                device_info[key] = value
+                                print(f"{Colors.GREEN}[+] Found device info: {key} = {value}{Colors.END}")
+            except:
+                pass
+            
+            return device_info
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error extracting device info: {e}{Colors.END}")
+            return {}
     
     def get_brand_specific_voip_paths(self, brands):
         """Get VoIP/SIP paths specific to detected router brands"""
         try:
             print(f"{Colors.CYAN}[*] Getting brand-specific VoIP/SIP paths...{Colors.END}")
             
-            # Brand-specific VoIP/SIP paths
+            # Brand-specific VoIP/SIP paths (expanded based on web research)
             brand_paths = {
                 'tp-link': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1002,7 +1093,32 @@ class ChromeRouterBruteForce:
                     '/admin/voip.html', '/admin/sip.html',
                     '/voip_config.html', '/sip_config.html',
                     '/voip_status.html', '/sip_status.html',
-                    '/voice_config.html', '/telephony_config.html'
+                    '/voice_config.html', '/telephony_config.html',
+                    '/qos_voip.html', '/qos_sip.html', '/qos_voice.html',
+                    '/wan_voip.html', '/wan_sip.html', '/wan_voice.html',
+                    '/firewall_voip.html', '/firewall_sip.html',
+                    '/port_forwarding_voip.html', '/port_forwarding_sip.html',
+                    '/upnp_voip.html', '/upnp_sip.html',
+                    '/ddns_voip.html', '/ddns_sip.html',
+                    '/vpn_voip.html', '/vpn_sip.html',
+                    '/wireless_voip.html', '/wireless_sip.html',
+                    '/lan_voip.html', '/lan_sip.html',
+                    '/dhcp_voip.html', '/dhcp_sip.html',
+                    '/static_route_voip.html', '/static_route_sip.html',
+                    '/bandwidth_control_voip.html', '/bandwidth_control_sip.html',
+                    '/ip_mac_binding_voip.html', '/ip_mac_binding_sip.html',
+                    '/arp_binding_voip.html', '/arp_binding_sip.html',
+                    '/dynamic_dns_voip.html', '/dynamic_dns_sip.html',
+                    '/system_tools_voip.html', '/system_tools_sip.html',
+                    '/backup_restore_voip.html', '/backup_restore_sip.html',
+                    '/reboot_voip.html', '/reboot_sip.html',
+                    '/password_voip.html', '/password_sip.html',
+                    '/time_voip.html', '/time_sip.html',
+                    '/log_voip.html', '/log_sip.html',
+                    '/statistics_voip.html', '/statistics_sip.html',
+                    '/diagnostic_voip.html', '/diagnostic_sip.html',
+                    '/ping_voip.html', '/ping_sip.html',
+                    '/traceroute_voip.html', '/traceroute_sip.html'
                 ],
                 'cisco': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1011,7 +1127,33 @@ class ChromeRouterBruteForce:
                     '/admin/voip.html', '/admin/sip.html',
                     '/voip_config.html', '/sip_config.html',
                     '/voice_config.html', '/telephony_config.html',
-                    '/call_manager.html', '/unified_communications.html'
+                    '/call_manager.html', '/unified_communications.html',
+                    '/cme.html', '/cme_config.html', '/cme_status.html',
+                    '/srst.html', '/srst_config.html', '/srst_status.html',
+                    '/sccp.html', '/sccp_config.html', '/sccp_status.html',
+                    '/h323.html', '/h323_config.html', '/h323_status.html',
+                    '/mgcp.html', '/mgcp_config.html', '/mgcp_status.html',
+                    '/sip_trunk.html', '/sip_trunk_config.html', '/sip_trunk_status.html',
+                    '/voice_gateway.html', '/voice_gateway_config.html', '/voice_gateway_status.html',
+                    '/dial_peer.html', '/dial_peer_config.html', '/dial_peer_status.html',
+                    '/voice_port.html', '/voice_port_config.html', '/voice_port_status.html',
+                    '/voice_interface.html', '/voice_interface_config.html', '/voice_interface_status.html',
+                    '/voice_translation.html', '/voice_translation_config.html', '/voice_translation_status.html',
+                    '/voice_translation_rule.html', '/voice_translation_rule_config.html', '/voice_translation_rule_status.html',
+                    '/voice_translation_profile.html', '/voice_translation_profile_config.html', '/voice_translation_profile_status.html',
+                    '/voice_dial_peer.html', '/voice_dial_peer_config.html', '/voice_dial_peer_status.html',
+                    '/voice_route.html', '/voice_route_config.html', '/voice_route_status.html',
+                    '/voice_route_pattern.html', '/voice_route_pattern_config.html', '/voice_route_pattern_status.html',
+                    '/voice_route_group.html', '/voice_route_group_config.html', '/voice_route_group_status.html',
+                    '/voice_route_list.html', '/voice_route_list_config.html', '/voice_route_list_status.html',
+                    '/voice_route_rule.html', '/voice_route_rule_config.html', '/voice_route_rule_status.html',
+                    '/voice_route_profile.html', '/voice_route_profile_config.html', '/voice_route_profile_status.html',
+                    '/voice_route_plan.html', '/voice_route_plan_config.html', '/voice_route_plan_status.html',
+                    '/voice_route_plan_rule.html', '/voice_route_plan_rule_config.html', '/voice_route_plan_rule_status.html',
+                    '/voice_route_plan_profile.html', '/voice_route_plan_profile_config.html', '/voice_route_plan_profile_status.html',
+                    '/voice_route_plan_plan.html', '/voice_route_plan_plan_config.html', '/voice_route_plan_plan_status.html',
+                    '/voice_route_plan_plan_rule.html', '/voice_route_plan_plan_rule_config.html', '/voice_route_plan_plan_rule_status.html',
+                    '/voice_route_plan_plan_profile.html', '/voice_route_plan_plan_profile_config.html', '/voice_route_plan_plan_profile_status.html'
                 ],
                 'netgear': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1019,7 +1161,32 @@ class ChromeRouterBruteForce:
                     '/network/voip.html', '/network/sip.html',
                     '/admin/voip.html', '/admin/sip.html',
                     '/voip_config.html', '/sip_config.html',
-                    '/voice_config.html', '/telephony_config.html'
+                    '/voice_config.html', '/telephony_config.html',
+                    '/qos_voip.html', '/qos_sip.html', '/qos_voice.html',
+                    '/wan_voip.html', '/wan_sip.html', '/wan_voice.html',
+                    '/firewall_voip.html', '/firewall_sip.html',
+                    '/port_forwarding_voip.html', '/port_forwarding_sip.html',
+                    '/upnp_voip.html', '/upnp_sip.html',
+                    '/ddns_voip.html', '/ddns_sip.html',
+                    '/vpn_voip.html', '/vpn_sip.html',
+                    '/wireless_voip.html', '/wireless_sip.html',
+                    '/lan_voip.html', '/lan_sip.html',
+                    '/dhcp_voip.html', '/dhcp_sip.html',
+                    '/static_route_voip.html', '/static_route_sip.html',
+                    '/bandwidth_control_voip.html', '/bandwidth_control_sip.html',
+                    '/ip_mac_binding_voip.html', '/ip_mac_binding_sip.html',
+                    '/arp_binding_voip.html', '/arp_binding_sip.html',
+                    '/dynamic_dns_voip.html', '/dynamic_dns_sip.html',
+                    '/system_tools_voip.html', '/system_tools_sip.html',
+                    '/backup_restore_voip.html', '/backup_restore_sip.html',
+                    '/reboot_voip.html', '/reboot_sip.html',
+                    '/password_voip.html', '/password_sip.html',
+                    '/time_voip.html', '/time_sip.html',
+                    '/log_voip.html', '/log_sip.html',
+                    '/statistics_voip.html', '/statistics_sip.html',
+                    '/diagnostic_voip.html', '/diagnostic_sip.html',
+                    '/ping_voip.html', '/ping_sip.html',
+                    '/traceroute_voip.html', '/traceroute_sip.html'
                 ],
                 'd-link': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1027,7 +1194,32 @@ class ChromeRouterBruteForce:
                     '/network/voip.html', '/network/sip.html',
                     '/admin/voip.html', '/admin/sip.html',
                     '/voip_config.html', '/sip_config.html',
-                    '/voice_config.html', '/telephony_config.html'
+                    '/voice_config.html', '/telephony_config.html',
+                    '/qos_voip.html', '/qos_sip.html', '/qos_voice.html',
+                    '/wan_voip.html', '/wan_sip.html', '/wan_voice.html',
+                    '/firewall_voip.html', '/firewall_sip.html',
+                    '/port_forwarding_voip.html', '/port_forwarding_sip.html',
+                    '/upnp_voip.html', '/upnp_sip.html',
+                    '/ddns_voip.html', '/ddns_sip.html',
+                    '/vpn_voip.html', '/vpn_sip.html',
+                    '/wireless_voip.html', '/wireless_sip.html',
+                    '/lan_voip.html', '/lan_sip.html',
+                    '/dhcp_voip.html', '/dhcp_sip.html',
+                    '/static_route_voip.html', '/static_route_sip.html',
+                    '/bandwidth_control_voip.html', '/bandwidth_control_sip.html',
+                    '/ip_mac_binding_voip.html', '/ip_mac_binding_sip.html',
+                    '/arp_binding_voip.html', '/arp_binding_sip.html',
+                    '/dynamic_dns_voip.html', '/dynamic_dns_sip.html',
+                    '/system_tools_voip.html', '/system_tools_sip.html',
+                    '/backup_restore_voip.html', '/backup_restore_sip.html',
+                    '/reboot_voip.html', '/reboot_sip.html',
+                    '/password_voip.html', '/password_sip.html',
+                    '/time_voip.html', '/time_sip.html',
+                    '/log_voip.html', '/log_sip.html',
+                    '/statistics_voip.html', '/statistics_sip.html',
+                    '/diagnostic_voip.html', '/diagnostic_sip.html',
+                    '/ping_voip.html', '/ping_sip.html',
+                    '/traceroute_voip.html', '/traceroute_sip.html'
                 ],
                 'asus': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1035,7 +1227,32 @@ class ChromeRouterBruteForce:
                     '/network/voip.html', '/network/sip.html',
                     '/admin/voip.html', '/admin/sip.html',
                     '/voip_config.html', '/sip_config.html',
-                    '/voice_config.html', '/telephony_config.html'
+                    '/voice_config.html', '/telephony_config.html',
+                    '/qos_voip.html', '/qos_sip.html', '/qos_voice.html',
+                    '/wan_voip.html', '/wan_sip.html', '/wan_voice.html',
+                    '/firewall_voip.html', '/firewall_sip.html',
+                    '/port_forwarding_voip.html', '/port_forwarding_sip.html',
+                    '/upnp_voip.html', '/upnp_sip.html',
+                    '/ddns_voip.html', '/ddns_sip.html',
+                    '/vpn_voip.html', '/vpn_sip.html',
+                    '/wireless_voip.html', '/wireless_sip.html',
+                    '/lan_voip.html', '/lan_sip.html',
+                    '/dhcp_voip.html', '/dhcp_sip.html',
+                    '/static_route_voip.html', '/static_route_sip.html',
+                    '/bandwidth_control_voip.html', '/bandwidth_control_sip.html',
+                    '/ip_mac_binding_voip.html', '/ip_mac_binding_sip.html',
+                    '/arp_binding_voip.html', '/arp_binding_sip.html',
+                    '/dynamic_dns_voip.html', '/dynamic_dns_sip.html',
+                    '/system_tools_voip.html', '/system_tools_sip.html',
+                    '/backup_restore_voip.html', '/backup_restore_sip.html',
+                    '/reboot_voip.html', '/reboot_sip.html',
+                    '/password_voip.html', '/password_sip.html',
+                    '/time_voip.html', '/time_sip.html',
+                    '/log_voip.html', '/log_sip.html',
+                    '/statistics_voip.html', '/statistics_sip.html',
+                    '/diagnostic_voip.html', '/diagnostic_sip.html',
+                    '/ping_voip.html', '/ping_sip.html',
+                    '/traceroute_voip.html', '/traceroute_sip.html'
                 ],
                 'generic': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone', '/fax',
@@ -1052,7 +1269,32 @@ class ChromeRouterBruteForce:
                     '/call_routing.html', '/extension.html', '/gateway.html', '/proxy.html',
                     '/call_forwarding.html', '/voicemail.html', '/conference.html', '/hold.html',
                     '/dial_plan.html', '/codec.html', '/dtmf.html', '/ringtone.html',
-                    '/call_transfer.html', '/call_waiting.html', '/caller_id.html'
+                    '/call_transfer.html', '/call_waiting.html', '/caller_id.html',
+                    '/qos_voip.html', '/qos_sip.html', '/qos_voice.html',
+                    '/wan_voip.html', '/wan_sip.html', '/wan_voice.html',
+                    '/firewall_voip.html', '/firewall_sip.html',
+                    '/port_forwarding_voip.html', '/port_forwarding_sip.html',
+                    '/upnp_voip.html', '/upnp_sip.html',
+                    '/ddns_voip.html', '/ddns_sip.html',
+                    '/vpn_voip.html', '/vpn_sip.html',
+                    '/wireless_voip.html', '/wireless_sip.html',
+                    '/lan_voip.html', '/lan_sip.html',
+                    '/dhcp_voip.html', '/dhcp_sip.html',
+                    '/static_route_voip.html', '/static_route_sip.html',
+                    '/bandwidth_control_voip.html', '/bandwidth_control_sip.html',
+                    '/ip_mac_binding_voip.html', '/ip_mac_binding_sip.html',
+                    '/arp_binding_voip.html', '/arp_binding_sip.html',
+                    '/dynamic_dns_voip.html', '/dynamic_dns_sip.html',
+                    '/system_tools_voip.html', '/system_tools_sip.html',
+                    '/backup_restore_voip.html', '/backup_restore_sip.html',
+                    '/reboot_voip.html', '/reboot_sip.html',
+                    '/password_voip.html', '/password_sip.html',
+                    '/time_voip.html', '/time_sip.html',
+                    '/log_voip.html', '/log_sip.html',
+                    '/statistics_voip.html', '/statistics_sip.html',
+                    '/diagnostic_voip.html', '/diagnostic_sip.html',
+                    '/ping_voip.html', '/ping_sip.html',
+                    '/traceroute_voip.html', '/traceroute_sip.html'
                 ]
             }
             
@@ -1093,7 +1335,7 @@ class ChromeRouterBruteForce:
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
             # Step 1: Identify router brand and model
-            brands, models = self.identify_router_brand()
+            brands, models, footer_info, device_info = self.identify_router_brand()
             
             # Step 2: Get brand-specific VoIP/SIP paths
             voip_paths = self.get_brand_specific_voip_paths(brands)
