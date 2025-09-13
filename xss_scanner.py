@@ -19,6 +19,14 @@ from tqdm import tqdm
 import random
 from fake_useragent import UserAgent
 
+# Import advanced modules
+from advanced_reconnaissance import AdvancedReconnaissance
+from poc_capture import PoCCapture
+from character_filter_analyzer import CharacterFilterAnalyzer
+from context_analyzer import ContextAnalyzer
+from vulnerability_detector import VulnerabilityDetector
+from report_generator import ReportGenerator
+
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
 
@@ -33,6 +41,14 @@ class XSSScanner:
         self.vulnerabilities = []
         self.payloads = self._load_payloads()
         self.ua = UserAgent()
+        
+        # Initialize advanced modules
+        self.advanced_recon = AdvancedReconnaissance(target_url, options)
+        self.poc_capture = PoCCapture(options)
+        self.filter_analyzer = CharacterFilterAnalyzer(self.session)
+        self.context_analyzer = ContextAnalyzer()
+        self.vuln_detector = VulnerabilityDetector()
+        self.report_generator = ReportGenerator()
         
         # Setup logging
         self._setup_logging()
@@ -396,56 +412,72 @@ class XSSScanner:
         return False, ""
         
     def scan_target(self):
-        """Main scanning function"""
+        """Main scanning function with advanced reconnaissance"""
         self.print_banner()
         
-        # Phase 1: Discovery
-        print(f"{Fore.CYAN}[PHASE 1] URL Discovery and Reconnaissance{Style.RESET_ALL}")
-        discovered_urls = self.discover_urls()
+        # Phase 1: Advanced Reconnaissance
+        print(f"{Fore.CYAN}[PHASE 1] Advanced Reconnaissance{Style.RESET_ALL}")
+        recon_results = self.advanced_recon.comprehensive_reconnaissance()
         
-        if not discovered_urls:
+        if not recon_results['discovered_urls']:
             print(f"{Fore.RED}[ERROR] No URLs discovered. Exiting.{Style.RESET_ALL}")
             return
             
-        # Phase 2: Input Point Discovery
-        print(f"{Fore.CYAN}[PHASE 2] Input Point Discovery{Style.RESET_ALL}")
-        all_input_points = []
+        # Phase 2: Character Filter Analysis
+        print(f"{Fore.CYAN}[PHASE 2] Character Filter Analysis{Style.RESET_ALL}")
+        filter_analysis = {}
         
-        with tqdm(discovered_urls, desc="Finding input points") as pbar:
-            for url in pbar:
-                input_points = self.find_input_points(url)
-                all_input_points.extend(input_points)
+        for input_point in recon_results['input_points']:
+            if input_point['type'] in ['form', 'url_params']:
+                analysis = self.filter_analyzer.analyze_character_filters(
+                    input_point['url'], input_point
+                )
+                filter_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = analysis
                 
-        print(f"{Fore.GREEN}[SUCCESS] Found {len(all_input_points)} input points{Style.RESET_ALL}")
+        # Phase 3: Context-Aware Vulnerability Testing
+        print(f"{Fore.CYAN}[PHASE 3] Context-Aware Vulnerability Testing{Style.RESET_ALL}")
         
-        if not all_input_points:
-            print(f"{Fore.RED}[ERROR] No input points found. Exiting.{Style.RESET_ALL}")
-            return
-            
-        # Phase 3: XSS Testing
-        print(f"{Fore.CYAN}[PHASE 3] XSS Vulnerability Testing{Style.RESET_ALL}")
-        
-        total_tests = len(all_input_points) * len(self.payloads['basic']) + \
-                     len(all_input_points) * len(self.payloads['filter_bypass'])
-        
+        total_tests = len(recon_results['input_points']) * 20  # Estimate
         with tqdm(total=total_tests, desc="Testing XSS vulnerabilities") as pbar:
-            for input_point in all_input_points:
-                # Test basic payloads
-                for payload in self.payloads['basic']:
+            for input_point in recon_results['input_points']:
+                # Get context analysis
+                context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
+                context_info = recon_results['context_analysis'].get(context_key, {})
+                
+                # Get filter analysis
+                filter_info = filter_analysis.get(context_key, {})
+                
+                # Generate context-specific payloads
+                if context_info.get('suggested_payloads'):
+                    payloads = context_info['suggested_payloads']
+                else:
+                    payloads = self.payloads['basic'][:5]
+                    
+                # Add bypass payloads if filters detected
+                if filter_info.get('bypass_techniques'):
+                    for technique_payloads in filter_info['bypass_techniques'].values():
+                        payloads.extend(technique_payloads[:3])
+                        
+                # Test payloads
+                for payload in payloads[:10]:  # Limit to 10 payloads per input point
                     is_vulnerable, response = self.inject_payload(input_point, payload)
                     if is_vulnerable:
-                        self._record_vulnerability(input_point, payload, response, 'Basic')
+                        # Capture PoC
+                        poc_data = self.poc_capture.capture_xss_poc(
+                            input_point['url'], payload, input_point
+                        )
+                        
+                        self._record_advanced_vulnerability(
+                            input_point, payload, response, context_info, filter_info, poc_data
+                        )
                     pbar.update(1)
                     
-                # Test filter bypass payloads
-                for payload in self.payloads['filter_bypass']:
-                    is_vulnerable, response = self.inject_payload(input_point, payload)
-                    if is_vulnerable:
-                        self._record_vulnerability(input_point, payload, response, 'Filter Bypass')
-                    pbar.update(1)
-                    
-        # Phase 4: Results
-        self._print_results()
+        # Phase 4: Generate Advanced Reports
+        print(f"{Fore.CYAN}[PHASE 4] Generating Advanced Reports{Style.RESET_ALL}")
+        self._generate_advanced_reports(recon_results, filter_analysis)
+        
+        # Phase 5: Results
+        self._print_advanced_results()
         
     def _record_vulnerability(self, input_point: Dict, payload: str, response: str, category: str):
         """Record discovered vulnerability"""
@@ -523,6 +555,116 @@ class XSSScanner:
             json.dump(results, f, indent=2)
             
         print(f"\n{Fore.GREEN}Results saved to: {filename}{Style.RESET_ALL}")
+        
+    def _record_advanced_vulnerability(self, input_point: Dict, payload: str, response: str, 
+                                     context_info: Dict, filter_info: Dict, poc_data: Dict):
+        """Record advanced vulnerability with context and PoC"""
+        vulnerability = {
+            'url': input_point['url'],
+            'type': input_point['type'],
+            'payload': payload,
+            'context_type': context_info.get('context_type', 'unknown'),
+            'response_snippet': response[:1000] if response else '',
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'confidence': 0.9,
+            'severity': 'high',
+            'poc_data': poc_data,
+            'context_analysis': context_info,
+            'filter_analysis': filter_info,
+            'evidence': ['Advanced reconnaissance detected XSS vulnerability']
+        }
+        
+        if input_point['type'] == 'form':
+            vulnerability['form_action'] = input_point.get('action', '')
+            vulnerability['form_method'] = input_point.get('method', '')
+            vulnerability['inputs'] = input_point.get('inputs', [])
+        elif input_point['type'] == 'url_params':
+            vulnerability['parameters'] = input_point.get('params', {})
+            
+        self.vulnerabilities.append(vulnerability)
+        
+        print(f"{Fore.RED}[VULNERABILITY FOUND]{Style.RESET_ALL}")
+        print(f"URL: {vulnerability['url']}")
+        print(f"Type: {vulnerability['type']}")
+        print(f"Context: {vulnerability['context_type']}")
+        print(f"Payload: {payload}")
+        print(f"PoC Screenshot: {poc_data.get('screenshots', {}).get('alert', 'N/A')}")
+        print("-" * 50)
+        
+    def _generate_advanced_reports(self, recon_results: Dict, filter_analysis: Dict):
+        """Generate advanced reports with all analysis data"""
+        scan_results = {
+            'target_url': self.target_url,
+            'scan_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'scan_duration': 0,  # Will be calculated
+            'total_urls': len(recon_results['discovered_urls']),
+            'discovered_urls': list(recon_results['discovered_urls']),
+            'vulnerabilities': self.vulnerabilities,
+            'reconnaissance_results': recon_results,
+            'filter_analysis': filter_analysis,
+            'statistics': {
+                'total_requests': 0,
+                'successful_requests': 0,
+                'failed_requests': 0
+            }
+        }
+        
+        # Generate comprehensive reports
+        reports = self.report_generator.generate_comprehensive_report(scan_results)
+        
+        print(f"{Fore.GREEN}[SUCCESS] Generated reports:{Style.RESET_ALL}")
+        for format_name, filename in reports.items():
+            print(f"  {format_name.upper()}: {filename}")
+            
+    def _print_advanced_results(self):
+        """Print advanced results with detailed analysis"""
+        print(f"\n{Fore.CYAN}╔══════════════════════════════════════════════════════════════╗")
+        print(f"║                    ADVANCED SCAN RESULTS                    ║")
+        print(f"╚══════════════════════════════════════════════════════════════╝{Style.RESET_ALL}")
+        
+        print(f"{Fore.YELLOW}Target URL: {self.target_url}")
+        print(f"URLs Discovered: {len(self.discovered_urls)}")
+        print(f"Vulnerabilities Found: {len(self.vulnerabilities)}{Style.RESET_ALL}")
+        
+        if self.vulnerabilities:
+            print(f"\n{Fore.RED}VULNERABILITIES DETECTED:{Style.RESET_ALL}")
+            for i, vuln in enumerate(self.vulnerabilities, 1):
+                print(f"\n{Fore.RED}[{i}] {vuln['url']}{Style.RESET_ALL}")
+                print(f"Type: {vuln['type']}")
+                print(f"Context: {vuln['context_type']}")
+                print(f"Payload: {vuln['payload']}")
+                print(f"Severity: {vuln['severity']}")
+                print(f"Confidence: {vuln['confidence']}")
+                print(f"Timestamp: {vuln['timestamp']}")
+                
+                # Show PoC information
+                if vuln.get('poc_data', {}).get('screenshots'):
+                    screenshots = vuln['poc_data']['screenshots']
+                    print(f"PoC Screenshots:")
+                    for screenshot_type, screenshot_path in screenshots.items():
+                        if screenshot_path:
+                            print(f"  {screenshot_type}: {screenshot_path}")
+                            
+                # Show context analysis
+                if vuln.get('context_analysis'):
+                    context = vuln['context_analysis']
+                    print(f"Context Analysis:")
+                    print(f"  Type: {context.get('context_type', 'unknown')}")
+                    print(f"  Encoding: {context.get('encoding_detected', False)}")
+                    print(f"  Filters: {context.get('filter_indicators', [])}")
+                    
+                # Show filter analysis
+                if vuln.get('filter_analysis'):
+                    filters = vuln['filter_analysis']
+                    print(f"Filter Analysis:")
+                    print(f"  Filtered Chars: {len(filters.get('filtered_chars', []))}")
+                    print(f"  Allowed Chars: {len(filters.get('allowed_chars', []))}")
+                    print(f"  Bypass Techniques: {len(filters.get('bypass_techniques', {}))}")
+        else:
+            print(f"\n{Fore.GREEN}No XSS vulnerabilities detected.{Style.RESET_ALL}")
+            
+        # Cleanup
+        self.poc_capture.cleanup()
 
 def main():
     """Main function"""
