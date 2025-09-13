@@ -21,6 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import base64
 import urllib.parse
+from live_progress import live_progress
 
 class AdvancedReconnaissance:
     """Advanced reconnaissance engine with comprehensive analysis"""
@@ -190,26 +191,26 @@ class AdvancedReconnaissance:
         
     def comprehensive_reconnaissance(self) -> Dict:
         """Perform comprehensive reconnaissance"""
-        print("🔍 Starting Advanced Reconnaissance...")
+        live_progress.start_phase("Advanced Reconnaissance", "Comprehensive reconnaissance with live progress tracking")
         
         # Phase 1: URL Discovery
-        print("📡 Phase 1: Advanced URL Discovery")
+        live_progress.start_phase("Advanced URL Discovery", "Discovering all accessible URLs and endpoints")
         self._advanced_url_discovery()
         
         # Phase 2: Input Point Discovery
-        print("🎯 Phase 2: Comprehensive Input Point Discovery")
+        live_progress.start_phase("Comprehensive Input Point Discovery", "Finding all user input points")
         self._comprehensive_input_discovery()
         
         # Phase 3: Character Filter Analysis
-        print("🔍 Phase 3: Character Filter Analysis")
+        live_progress.start_phase("Character Filter Analysis", "Analyzing character filtering mechanisms")
         self._analyze_character_filters()
         
         # Phase 4: Context Analysis
-        print("🧠 Phase 4: Context Analysis")
+        live_progress.start_phase("Context Analysis", "Analyzing injection contexts")
         self._perform_context_analysis()
         
         # Phase 5: Vulnerability Testing
-        print("⚡ Phase 5: Context-Aware Vulnerability Testing")
+        live_progress.start_phase("Context-Aware Vulnerability Testing", "Testing XSS vulnerabilities with live Chrome demonstration")
         self._context_aware_vulnerability_testing()
         
         return {
@@ -253,7 +254,15 @@ class AdvancedReconnaissance:
                 
                 if response.status_code == 200:
                     # Parse HTML and find links
-                    soup = BeautifulSoup(response.content, 'html.parser')
+                    # Handle encoding issues
+                    try:
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                    except Exception as e:
+                        # Try with different encoding
+                        try:
+                            soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
+                        except:
+                            soup = BeautifulSoup(response.text, 'html.parser')
                     
                     # Find all links
                     for link in soup.find_all('a', href=True):
@@ -275,7 +284,10 @@ class AdvancedReconnaissance:
             except Exception as e:
                 continue
                 
-        print(f"✅ Discovered {len(self.discovered_urls)} URLs")
+        live_progress.show_phase_complete("URL Discovery", {
+            'discovered_urls': len(self.discovered_urls),
+            'crawled_urls': len(crawled)
+        })
         
     def _comprehensive_input_discovery(self):
         """Comprehensive input point discovery"""
@@ -285,7 +297,15 @@ class AdvancedReconnaissance:
                 if response.status_code != 200:
                     continue
                     
-                soup = BeautifulSoup(response.content, 'html.parser')
+                # Handle encoding issues
+                try:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                except Exception as e:
+                    # Try with different encoding
+                    try:
+                        soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
+                    except:
+                        soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find forms
                 for form in soup.find_all('form'):
@@ -350,7 +370,12 @@ class AdvancedReconnaissance:
             except Exception as e:
                 continue
                 
-        print(f"✅ Found {len(self.input_points)} input points")
+        live_progress.show_phase_complete("Input Point Discovery", {
+            'input_points': len(self.input_points),
+            'forms': len([p for p in self.input_points if p['type'] == 'form']),
+            'url_params': len([p for p in self.input_points if p['type'] == 'url_params']),
+            'js_variables': len([p for p in self.input_points if p['type'] == 'javascript_variables'])
+        })
         
     def _extract_js_variables(self, js_code: str) -> List[Dict]:
         """Extract JavaScript variables that might be user-controlled"""
@@ -379,11 +404,27 @@ class AdvancedReconnaissance:
         
     def _analyze_character_filters(self):
         """Analyze character filtering on input points"""
+        live_progress.update_task("Testing character filters on input points...")
+        
+        total_inputs = len([p for p in self.input_points if p['type'] in ['form', 'url_params']])
+        current = 0
+        
         for input_point in self.input_points:
             if input_point['type'] == 'form':
+                live_progress.update_task(f"Testing form filters: {input_point['url']}")
                 self._test_form_character_filters(input_point)
+                current += 1
+                live_progress.show_progress(current, total_inputs, "Character filter testing")
             elif input_point['type'] == 'url_params':
+                live_progress.update_task(f"Testing URL param filters: {input_point['url']}")
                 self._test_url_character_filters(input_point)
+                current += 1
+                live_progress.show_progress(current, total_inputs, "Character filter testing")
+                
+        live_progress.show_phase_complete("Character Filter Analysis", {
+            'tested_inputs': current,
+            'filtered_chars': len(self.character_filters)
+        })
                 
     def _test_form_character_filters(self, form: Dict):
         """Test character filters on form inputs"""
@@ -475,7 +516,15 @@ class AdvancedReconnaissance:
             if response.status_code != 200:
                 return None
                 
-            soup = BeautifulSoup(response.content, 'html.parser')
+            # Handle encoding issues
+            try:
+                soup = BeautifulSoup(response.content, 'html.parser')
+            except Exception as e:
+                # Try with different encoding
+                try:
+                    soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
+                except:
+                    soup = BeautifulSoup(response.text, 'html.parser')
             context_info = {
                 'context_type': 'unknown',
                 'surrounding_html': '',
@@ -572,22 +621,45 @@ class AdvancedReconnaissance:
         
     def _context_aware_vulnerability_testing(self):
         """Perform context-aware vulnerability testing"""
+        live_progress.update_task("Starting context-aware vulnerability testing...")
+        
+        total_inputs = len(self.input_points)
+        current = 0
+        
         for input_point in self.input_points:
             context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
             context_info = self.context_analysis.get(context_key, {})
             
+            live_progress.update_task(f"Testing: {input_point['url']} ({input_point.get('type', 'unknown')})")
+            
             if context_info and context_info.get('suggested_payloads'):
                 self._test_context_specific_payloads(input_point, context_info)
+            else:
+                # Test with basic payloads
+                self._test_basic_payloads(input_point)
+                
+            current += 1
+            live_progress.show_progress(current, total_inputs, "Vulnerability testing")
+            
+        live_progress.show_phase_complete("Vulnerability Testing", {
+            'tested_inputs': current,
+            'vulnerabilities_found': len(self.vulnerability_confirmations)
+        })
                 
     def _test_context_specific_payloads(self, input_point: Dict, context_info: Dict):
         """Test context-specific payloads"""
         payloads = context_info.get('suggested_payloads', [])
         
-        for payload in payloads:
+        for payload in payloads[:5]:  # Limit to 5 payloads per input point
+            live_progress.show_payload_injection(payload, input_point['url'], context_info.get('context_type', ''))
+            
             # Test payload
             is_vulnerable, response = self._inject_payload(input_point, payload)
             
             if is_vulnerable:
+                # Show Chrome execution
+                live_progress.show_chrome_execution(input_point['url'], payload)
+                
                 # Take screenshot for PoC
                 screenshot_path = self._capture_screenshot(input_point['url'], payload)
                 
@@ -603,7 +675,50 @@ class AdvancedReconnaissance:
                 }
                 
                 self.vulnerability_confirmations.append(vulnerability)
-                print(f"🎯 XSS Found: {input_point['url']} - {payload[:50]}...")
+                live_progress.show_vulnerability_found(vulnerability)
+                
+                if screenshot_path:
+                    live_progress.show_screenshot_capture(screenshot_path)
+                    
+    def _test_basic_payloads(self, input_point: Dict):
+        """Test basic payloads when no context-specific payloads available"""
+        basic_payloads = [
+            '<script>alert("XSS")</script>',
+            '<img src=x onerror=alert("XSS")>',
+            '<svg onload=alert("XSS")>',
+            '" onmouseover="alert(\'XSS\')" x="',
+            'javascript:alert("XSS")'
+        ]
+        
+        for payload in basic_payloads:
+            live_progress.show_payload_injection(payload, input_point['url'], 'basic')
+            
+            # Test payload
+            is_vulnerable, response = self._inject_payload(input_point, payload)
+            
+            if is_vulnerable:
+                # Show Chrome execution
+                live_progress.show_chrome_execution(input_point['url'], payload)
+                
+                # Take screenshot for PoC
+                screenshot_path = self._capture_screenshot(input_point['url'], payload)
+                
+                vulnerability = {
+                    'url': input_point['url'],
+                    'type': input_point['type'],
+                    'payload': payload,
+                    'context': 'basic',
+                    'response_snippet': response[:1000] if response else '',
+                    'screenshot_path': screenshot_path,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'confidence': 0.8
+                }
+                
+                self.vulnerability_confirmations.append(vulnerability)
+                live_progress.show_vulnerability_found(vulnerability)
+                
+                if screenshot_path:
+                    live_progress.show_screenshot_capture(screenshot_path)
                 
     def _inject_payload(self, input_point: Dict, payload: str) -> Tuple[bool, str]:
         """Inject payload into input point"""
@@ -711,14 +826,16 @@ class AdvancedReconnaissance:
         return False, ""
         
     def _capture_screenshot(self, url: str, payload: str) -> str:
-        """Capture screenshot for PoC"""
+        """Capture screenshot for PoC with live Chrome demonstration"""
         try:
-            # Setup Chrome options
+            # Setup Chrome options for visible browser
             chrome_options = Options()
-            chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
-            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--start-maximized')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
             
             # Initialize WebDriver
             driver = webdriver.Chrome(options=chrome_options)
@@ -731,18 +848,50 @@ class AdvancedReconnaissance:
                 EC.presence_of_element_located((By.TAG_NAME, "body"))
             )
             
-            # Take screenshot
+            # Take initial screenshot
             timestamp = int(time.time())
-            screenshot_path = f"screenshot_{timestamp}.png"
-            driver.save_screenshot(screenshot_path)
+            initial_screenshot = f"poc_screenshots/initial_{timestamp}.png"
+            driver.save_screenshot(initial_screenshot)
+            
+            # Inject payload and take screenshot
+            try:
+                # Try to inject payload into forms
+                forms = driver.find_elements(By.TAG_NAME, "form")
+                for form in forms:
+                    inputs = form.find_elements(By.CSS_SELECTOR, "input[type='text'], input[type='email'], input[type='search'], textarea")
+                    for input_field in inputs:
+                        input_field.clear()
+                        input_field.send_keys(payload)
+                        
+                # Submit forms
+                submit_buttons = driver.find_elements(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']")
+                for button in submit_buttons:
+                    button.click()
+                    time.sleep(2)
+                    
+                    # Check for alert
+                    try:
+                        WebDriverWait(driver, 3).until(EC.alert_is_present())
+                        alert = driver.switch_to.alert
+                        live_progress.show_alert_detected()
+                        alert.accept()
+                    except TimeoutException:
+                        pass
+                        
+            except Exception as e:
+                live_progress.show_warning(f"Payload injection failed: {e}")
+            
+            # Take final screenshot
+            final_screenshot = f"poc_screenshots/final_{timestamp}.png"
+            driver.save_screenshot(final_screenshot)
             
             # Close driver
             driver.quit()
             
-            return screenshot_path
+            return final_screenshot
             
         except Exception as e:
-            print(f"⚠️ Screenshot capture failed: {e}")
+            live_progress.show_error(f"Screenshot capture failed: {e}")
             return ""
             
     def generate_advanced_report(self) -> Dict:

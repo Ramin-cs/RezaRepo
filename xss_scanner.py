@@ -26,6 +26,7 @@ from character_filter_analyzer import CharacterFilterAnalyzer
 from context_analyzer import ContextAnalyzer
 from vulnerability_detector import VulnerabilityDetector
 from report_generator import ReportGenerator
+from live_progress import live_progress
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -412,72 +413,78 @@ class XSSScanner:
         return False, ""
         
     def scan_target(self):
-        """Main scanning function with advanced reconnaissance"""
+        """Main scanning function with advanced reconnaissance and live progress"""
         self.print_banner()
         
-        # Phase 1: Advanced Reconnaissance
-        print(f"{Fore.CYAN}[PHASE 1] Advanced Reconnaissance{Style.RESET_ALL}")
-        recon_results = self.advanced_recon.comprehensive_reconnaissance()
-        
-        if not recon_results['discovered_urls']:
-            print(f"{Fore.RED}[ERROR] No URLs discovered. Exiting.{Style.RESET_ALL}")
-            return
+        try:
+            # Phase 1: Advanced Reconnaissance
+            live_progress.start_phase("Advanced Reconnaissance", "Comprehensive reconnaissance with live progress tracking")
+            recon_results = self.advanced_recon.comprehensive_reconnaissance()
             
-        # Phase 2: Character Filter Analysis
-        print(f"{Fore.CYAN}[PHASE 2] Character Filter Analysis{Style.RESET_ALL}")
-        filter_analysis = {}
-        
-        for input_point in recon_results['input_points']:
-            if input_point['type'] in ['form', 'url_params']:
-                analysis = self.filter_analyzer.analyze_character_filters(
-                    input_point['url'], input_point
-                )
-                filter_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = analysis
+            if not recon_results['discovered_urls']:
+                live_progress.show_error("No URLs discovered. Exiting.")
+                return
                 
-        # Phase 3: Context-Aware Vulnerability Testing
-        print(f"{Fore.CYAN}[PHASE 3] Context-Aware Vulnerability Testing{Style.RESET_ALL}")
-        
-        total_tests = len(recon_results['input_points']) * 20  # Estimate
-        with tqdm(total=total_tests, desc="Testing XSS vulnerabilities") as pbar:
+            # Phase 2: Character Filter Analysis
+            live_progress.start_phase("Character Filter Analysis", "Analyzing character filtering mechanisms")
+            filter_analysis = {}
+            
             for input_point in recon_results['input_points']:
-                # Get context analysis
-                context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
-                context_info = recon_results['context_analysis'].get(context_key, {})
-                
-                # Get filter analysis
-                filter_info = filter_analysis.get(context_key, {})
-                
-                # Generate context-specific payloads
-                if context_info.get('suggested_payloads'):
-                    payloads = context_info['suggested_payloads']
-                else:
-                    payloads = self.payloads['basic'][:5]
+                if input_point['type'] in ['form', 'url_params']:
+                    analysis = self.filter_analyzer.analyze_character_filters(
+                        input_point['url'], input_point
+                    )
+                    filter_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = analysis
                     
-                # Add bypass payloads if filters detected
-                if filter_info.get('bypass_techniques'):
-                    for technique_payloads in filter_info['bypass_techniques'].values():
-                        payloads.extend(technique_payloads[:3])
-                        
-                # Test payloads
-                for payload in payloads[:10]:  # Limit to 10 payloads per input point
-                    is_vulnerable, response = self.inject_payload(input_point, payload)
-                    if is_vulnerable:
-                        # Capture PoC
-                        poc_data = self.poc_capture.capture_xss_poc(
-                            input_point['url'], payload, input_point
-                        )
-                        
-                        self._record_advanced_vulnerability(
-                            input_point, payload, response, context_info, filter_info, poc_data
-                        )
-                    pbar.update(1)
+            # Phase 3: Context-Aware Vulnerability Testing
+            live_progress.start_phase("Context-Aware Vulnerability Testing", "Testing XSS vulnerabilities with live Chrome demonstration")
+            
+            total_tests = len(recon_results['input_points']) * 20  # Estimate
+            with tqdm(total=total_tests, desc="Testing XSS vulnerabilities") as pbar:
+                for input_point in recon_results['input_points']:
+                    # Get context analysis
+                    context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
+                    context_info = recon_results['context_analysis'].get(context_key, {})
                     
-        # Phase 4: Generate Advanced Reports
-        print(f"{Fore.CYAN}[PHASE 4] Generating Advanced Reports{Style.RESET_ALL}")
-        self._generate_advanced_reports(recon_results, filter_analysis)
-        
-        # Phase 5: Results
-        self._print_advanced_results()
+                    # Get filter analysis
+                    filter_info = filter_analysis.get(context_key, {})
+                    
+                    # Generate context-specific payloads
+                    if context_info.get('suggested_payloads'):
+                        payloads = context_info['suggested_payloads']
+                    else:
+                        payloads = self.payloads['basic'][:5]
+                        
+                    # Add bypass payloads if filters detected
+                    if filter_info.get('bypass_techniques'):
+                        for technique_payloads in filter_info['bypass_techniques'].values():
+                            payloads.extend(technique_payloads[:3])
+                            
+                    # Test payloads
+                    for payload in payloads[:10]:  # Limit to 10 payloads per input point
+                        is_vulnerable, response = self.inject_payload(input_point, payload)
+                        if is_vulnerable:
+                            # Capture PoC
+                            poc_data = self.poc_capture.capture_xss_poc(
+                                input_point['url'], payload, input_point
+                            )
+                            
+                            self._record_advanced_vulnerability(
+                                input_point, payload, response, context_info, filter_info, poc_data
+                            )
+                        pbar.update(1)
+                        
+            # Phase 4: Generate Advanced Reports
+            live_progress.start_phase("Generating Advanced Reports", "Creating comprehensive vulnerability reports")
+            self._generate_advanced_reports(recon_results, filter_analysis)
+            
+            # Phase 5: Results
+            self._print_advanced_results()
+            
+        except Exception as e:
+            live_progress.show_error(f"Scan failed: {e}")
+        finally:
+            live_progress.stop()
         
     def _record_vulnerability(self, input_point: Dict, payload: str, response: str, category: str):
         """Record discovered vulnerability"""

@@ -71,9 +71,14 @@ class PoCCapture:
             # User agent
             chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
             
-            # Headless mode (can be disabled for debugging)
-            if self.options.get('headless', True):
+            # Headless mode (disabled for live demonstration)
+            if self.options.get('headless', False):
                 chrome_options.add_argument('--headless')
+            else:
+                # Make Chrome visible for live demonstration
+                chrome_options.add_argument('--start-maximized')
+                chrome_options.add_argument('--disable-web-security')
+                chrome_options.add_argument('--disable-features=VizDisplayCompositor')
                 
             # Initialize driver
             self.driver = webdriver.Chrome(options=chrome_options)
