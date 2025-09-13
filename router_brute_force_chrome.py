@@ -1492,8 +1492,174 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error scanning directories: {e}{Colors.END}")
             return []
     
+    def scan_cgi_scripts(self, base_url):
+        """Scan for CGI scripts that might contain VoIP/SIP functionality"""
+        try:
+            print(f"{Colors.CYAN}[*] Scanning for CGI scripts...{Colors.END}")
+            
+            # Common CGI script patterns
+            cgi_patterns = [
+                "/cgi-bin/", "/cgi/", "/scripts/", "/bin/", "/exec/",
+                "/admin.cgi", "/config.cgi", "/settings.cgi", "/system.cgi",
+                "/voip.cgi", "/sip.cgi", "/voice.cgi", "/telephony.cgi",
+                "/phone.cgi", "/pbx.cgi", "/trunk.cgi", "/gateway.cgi",
+                "/proxy.cgi", "/call.cgi", "/dial.cgi", "/fax.cgi",
+                "/status.cgi", "/info.cgi", "/monitor.cgi", "/log.cgi",
+                "/diagnostic.cgi", "/test.cgi", "/ping.cgi", "/traceroute.cgi",
+                "/backup.cgi", "/restore.cgi", "/reboot.cgi", "/reset.cgi",
+                "/upgrade.cgi", "/firmware.cgi", "/license.cgi", "/key.cgi",
+                "/certificate.cgi", "/ssl.cgi", "/security.cgi", "/firewall.cgi",
+                "/qos.cgi", "/bandwidth.cgi", "/traffic.cgi", "/statistics.cgi",
+                "/report.cgi", "/alert.cgi", "/notification.cgi", "/email.cgi",
+                "/sms.cgi", "/snmp.cgi", "/api.cgi", "/json.cgi", "/xml.cgi",
+                "/soap.cgi", "/rest.cgi", "/websocket.cgi", "/ajax.cgi"
+            ]
+            
+            found_cgi = []
+            
+            for pattern in cgi_patterns:
+                try:
+                    test_url = f"{base_url.rstrip('/')}{pattern}"
+                    print(f"{Colors.BLUE}[*] Testing CGI: {test_url}{Colors.END}")
+                    
+                    # Navigate to CGI script
+                    self.driver.get(test_url)
+                    time.sleep(1)
+                    
+                    # Check if CGI script exists and has VoIP content
+                    if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
+                        page_source = self.driver.page_source.lower()
+                        voip_keywords = ["voip", "sip", "voice", "telephony", "phone", "fax", "pbx", "trunk", "call", "dial"]
+                        
+                        for keyword in voip_keywords:
+                            if keyword in page_source:
+                                found_cgi.append(test_url)
+                                print(f"{Colors.GREEN}[+] Found VoIP CGI: {test_url}{Colors.END}")
+                                break
+                    
+                    # Go back to admin panel
+                    self.driver.back()
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"{Colors.RED}[!] Error testing CGI {pattern}: {e}{Colors.END}")
+                    continue
+            
+            print(f"{Colors.GREEN}[+] Found {len(found_cgi)} CGI scripts with VoIP content{Colors.END}")
+            return found_cgi
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error scanning CGI scripts: {e}{Colors.END}")
+            return []
+    
+    def scan_advanced_paths(self, base_url):
+        """Scan advanced paths based on router firmware patterns"""
+        try:
+            print(f"{Colors.CYAN}[*] Scanning advanced firmware paths...{Colors.END}")
+            
+            # Advanced paths based on common router firmware
+            advanced_paths = [
+                # OpenWrt patterns
+                "/cgi-bin/luci", "/cgi-bin/luci/admin", "/cgi-bin/luci/admin/network",
+                "/cgi-bin/luci/admin/system", "/cgi-bin/luci/admin/services",
+                "/cgi-bin/luci/admin/status", "/cgi-bin/luci/admin/logout",
+                
+                # DD-WRT patterns
+                "/cgi-bin/", "/cgi-bin/ddwrt", "/cgi-bin/exec", "/cgi-bin/status",
+                "/cgi-bin/Info.live.htm", "/cgi-bin/Info.htm", "/cgi-bin/Status.htm",
+                "/cgi-bin/Setup.htm", "/cgi-bin/Advanced.htm", "/cgi-bin/Tools.htm",
+                
+                # Tomato patterns
+                "/cgi-bin/", "/cgi-bin/tomato.cgi", "/cgi-bin/status.cgi",
+                "/cgi-bin/advanced.cgi", "/cgi-bin/tools.cgi", "/cgi-bin/admin.cgi",
+                
+                # AsusWrt patterns
+                "/cgi-bin/", "/cgi-bin/start_apply.htm", "/cgi-bin/apply.cgi",
+                "/cgi-bin/status.cgi", "/cgi-bin/advanced.cgi", "/cgi-bin/tools.cgi",
+                
+                # Netgear patterns
+                "/cgi-bin/", "/cgi-bin/status.cgi", "/cgi-bin/advanced.cgi",
+                "/cgi-bin/tools.cgi", "/cgi-bin/admin.cgi", "/cgi-bin/config.cgi",
+                
+                # Linksys patterns
+                "/cgi-bin/", "/cgi-bin/status.cgi", "/cgi-bin/advanced.cgi",
+                "/cgi-bin/tools.cgi", "/cgi-bin/admin.cgi", "/cgi-bin/config.cgi",
+                
+                # TP-Link patterns
+                "/cgi-bin/", "/cgi-bin/status.cgi", "/cgi-bin/advanced.cgi",
+                "/cgi-bin/tools.cgi", "/cgi-bin/admin.cgi", "/cgi-bin/config.cgi",
+                
+                # D-Link patterns
+                "/cgi-bin/", "/cgi-bin/status.cgi", "/cgi-bin/advanced.cgi",
+                "/cgi-bin/tools.cgi", "/cgi-bin/admin.cgi", "/cgi-bin/config.cgi",
+                
+                # Generic patterns
+                "/admin/", "/admin/index.html", "/admin/login.html", "/admin/main.html",
+                "/config/", "/config/index.html", "/config/main.html", "/config/advanced.html",
+                "/settings/", "/settings/index.html", "/settings/main.html", "/settings/advanced.html",
+                "/system/", "/system/index.html", "/system/main.html", "/system/advanced.html",
+                "/network/", "/network/index.html", "/network/main.html", "/network/advanced.html",
+                "/advanced/", "/advanced/index.html", "/advanced/main.html", "/advanced/voip.html",
+                "/tools/", "/tools/index.html", "/tools/main.html", "/tools/diagnostics.html",
+                "/status/", "/status/index.html", "/status/main.html", "/status/system.html",
+                "/info/", "/info/index.html", "/info/main.html", "/info/system.html",
+                "/help/", "/help/index.html", "/help/main.html", "/help/support.html",
+                "/support/", "/support/index.html", "/support/main.html", "/support/help.html",
+                
+                # VoIP specific patterns
+                "/voip/", "/voip/index.html", "/voip/main.html", "/voip/config.html",
+                "/sip/", "/sip/index.html", "/sip/main.html", "/sip/config.html",
+                "/voice/", "/voice/index.html", "/voice/main.html", "/voice/config.html",
+                "/telephony/", "/telephony/index.html", "/telephony/main.html", "/telephony/config.html",
+                "/phone/", "/phone/index.html", "/phone/main.html", "/phone/config.html",
+                "/pbx/", "/pbx/index.html", "/pbx/main.html", "/pbx/config.html",
+                "/trunk/", "/trunk/index.html", "/trunk/main.html", "/trunk/config.html",
+                "/gateway/", "/gateway/index.html", "/gateway/main.html", "/gateway/config.html",
+                "/proxy/", "/proxy/index.html", "/proxy/main.html", "/proxy/config.html",
+                "/call/", "/call/index.html", "/call/main.html", "/call/config.html",
+                "/dial/", "/dial/index.html", "/dial/main.html", "/dial/config.html",
+                "/fax/", "/fax/index.html", "/fax/main.html", "/fax/config.html"
+            ]
+            
+            found_paths = []
+            
+            for path in advanced_paths:
+                try:
+                    test_url = f"{base_url.rstrip('/')}{path}"
+                    print(f"{Colors.BLUE}[*] Testing advanced path: {test_url}{Colors.END}")
+                    
+                    # Navigate to path
+                    self.driver.get(test_url)
+                    time.sleep(1)
+                    
+                    # Check if path exists and has VoIP content
+                    if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
+                        page_source = self.driver.page_source.lower()
+                        voip_keywords = ["voip", "sip", "voice", "telephony", "phone", "fax", "pbx", "trunk", "call", "dial"]
+                        
+                        for keyword in voip_keywords:
+                            if keyword in page_source:
+                                found_paths.append(test_url)
+                                print(f"{Colors.GREEN}[+] Found VoIP path: {test_url}{Colors.END}")
+                                break
+                    
+                    # Go back to admin panel
+                    self.driver.back()
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"{Colors.RED}[!] Error testing path {path}: {e}{Colors.END}")
+                    continue
+            
+            print(f"{Colors.GREEN}[+] Found {len(found_paths)} advanced paths with VoIP content{Colors.END}")
+            return found_paths
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error scanning advanced paths: {e}{Colors.END}")
+            return []
+    
     def search_voip_after_success(self, login_url, username, password):
-        """Search for VoIP/SIP pages after successful login using new methods"""
+        """Search for VoIP/SIP pages after successful login using comprehensive methods"""
         try:
             print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages after successful login...{Colors.END}")
             
@@ -1502,7 +1668,7 @@ class ChromeRouterBruteForce:
             parsed_url = urlparse(login_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            print(f"{Colors.BLUE}[*] Starting advanced VoIP/SIP search...{Colors.END}")
+            print(f"{Colors.BLUE}[*] Starting comprehensive VoIP/SIP search...{Colors.END}")
             
             screenshots_taken = []
             
@@ -1518,8 +1684,16 @@ class ChromeRouterBruteForce:
             print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns...{Colors.END}")
             found_directories = self.scan_common_directories(base_url)
             
+            # Method 4: Scan CGI scripts
+            print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts...{Colors.END}")
+            found_cgi = self.scan_cgi_scripts(base_url)
+            
+            # Method 5: Scan advanced firmware paths
+            print(f"{Colors.BLUE}[*] Method 5: Scanning advanced firmware paths...{Colors.END}")
+            found_paths = self.scan_advanced_paths(base_url)
+            
             # Combine all found links
-            all_links = hidden_links + dynamic_links + found_directories
+            all_links = hidden_links + dynamic_links + found_directories + found_cgi + found_paths
             
             # Remove duplicates
             unique_links = list(set(all_links))
@@ -1559,11 +1733,11 @@ class ChromeRouterBruteForce:
                 print(f"{Colors.GREEN}[+] Found {len(screenshots_taken)} VoIP/SIP pages!{Colors.END}")
                 return screenshots_taken
             else:
-                print(f"{Colors.RED}[!] No VoIP/SIP pages found{Colors.END}")
+                print(f"{Colors.RED}[!] No VoIP/SIP pages found with comprehensive search{Colors.END}")
                 return []
             
         except Exception as e:
-            print(f"{Colors.RED}[!] Error in advanced VoIP search: {e}{Colors.END}")
+            print(f"{Colors.RED}[!] Error in comprehensive VoIP search: {e}{Colors.END}")
             return []
     
     def is_voip_sip_page(self):
