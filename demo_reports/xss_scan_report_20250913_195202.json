@@ -1,0 +1,70 @@
+{
+  "scan_metadata": {
+    "scan_timestamp": "2025-09-13 19:52:02",
+    "target_url": "https://demo.example.com",
+    "scanner_version": "1.0.0",
+    "scan_duration": 120,
+    "total_urls_scanned": 25,
+    "total_vulnerabilities": 2
+  },
+  "summary": {
+    "critical_vulnerabilities": 0,
+    "high_vulnerabilities": 1,
+    "medium_vulnerabilities": 1,
+    "low_vulnerabilities": 0,
+    "vulnerability_types": {
+      "reflected_xss_html_context": 1,
+      "reflected_xss_attribute_context": 1
+    },
+    "affected_urls": [
+      "https://demo.example.com/contact",
+      "https://demo.example.com/search"
+    ]
+  },
+  "vulnerabilities": [
+    {
+      "url": "https://demo.example.com/search",
+      "vulnerability_type": "reflected_xss_html_context",
+      "severity": "high",
+      "confidence": 0.9,
+      "payload": "<script>alert(\"XSS\")</script>",
+      "evidence": [
+        "XSS pattern 1 matched",
+        "Payload successfully reflected"
+      ],
+      "timestamp": "2025-09-13 19:52:02",
+      "context_analysis": {
+        "context_type": "html_content",
+        "encoding_detected": false
+      },
+      "payload_reflected": true
+    },
+    {
+      "url": "https://demo.example.com/contact",
+      "vulnerability_type": "reflected_xss_attribute_context",
+      "severity": "medium",
+      "confidence": 0.7,
+      "payload": "\" onmouseover=\"alert('XSS')\" x=\"",
+      "evidence": [
+        "XSS pattern 2 matched"
+      ],
+      "timestamp": "2025-09-13 19:52:02",
+      "context_analysis": {
+        "context_type": "html_attribute",
+        "encoding_detected": false
+      },
+      "payload_reflected": true
+    }
+  ],
+  "urls_discovered": [
+    "https://demo.example.com",
+    "https://demo.example.com/search",
+    "https://demo.example.com/contact",
+    "https://demo.example.com/about"
+  ],
+  "scan_statistics": {
+    "total_requests": 50,
+    "successful_requests": 48,
+    "failed_requests": 2
+  }
+}

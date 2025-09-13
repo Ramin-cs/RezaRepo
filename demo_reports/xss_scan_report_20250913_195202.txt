@@ -1,0 +1,49 @@
+================================================================================
+XSS VULNERABILITY SCAN REPORT
+================================================================================
+
+Target URL: https://demo.example.com
+Scan Date: 2025-09-13 19:52:02
+Scanner Version: 1.0.0
+Total URLs Scanned: 25
+Scan Duration: 120 seconds
+
+SUMMARY
+----------------------------------------
+Critical Vulnerabilities: 0
+High Vulnerabilities: 1
+Medium Vulnerabilities: 1
+Low Vulnerabilities: 0
+Total Vulnerabilities: 2
+
+VULNERABILITIES
+----------------------------------------
+
+Vulnerability #1
+URL: https://demo.example.com/search
+Type: reflected_xss_html_context
+Severity: HIGH
+Confidence: 0.90
+Payload: <script>alert("XSS")</script>
+Timestamp: 2025-09-13 19:52:02
+Evidence:
+  - XSS pattern 1 matched
+  - Payload successfully reflected
+
+----------------------------------------
+
+Vulnerability #2
+URL: https://demo.example.com/contact
+Type: reflected_xss_attribute_context
+Severity: MEDIUM
+Confidence: 0.70
+Payload: " onmouseover="alert('XSS')" x="
+Timestamp: 2025-09-13 19:52:02
+Evidence:
+  - XSS pattern 2 matched
+
+----------------------------------------
+
+================================================================================
+End of Report
+================================================================================
