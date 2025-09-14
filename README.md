@@ -1,132 +1,108 @@
-# Image to HTML/CSS Converter
+# 🖼️ تبدیل عکس به HTML/CSS
 
-A professional web application that converts images into responsive HTML and CSS code using AI-powered analysis.
+برنامه ساده و کاربردی برای تبدیل عکس‌های طراحی به کد HTML و CSS
 
-## Features
+## 🚀 نصب و راه‌اندازی
 
-- 🖼️ **Image Upload**: Support for JPG, PNG, GIF, and WebP formats
-- 🎨 **Color Analysis**: Automatic extraction of color palettes from images
-- 📱 **Responsive Design**: Generates mobile-first, responsive CSS
-- 🏗️ **Layout Detection**: Intelligent analysis of image structure and layout
-- 👁️ **Live Preview**: Real-time preview of generated designs
-- 📱 **Device Simulation**: Preview on mobile, tablet, and desktop views
-- 💾 **Code Export**: Download generated HTML and CSS files
-- ♿ **Accessibility**: WCAG compliant code generation
-- 🎯 **Modern Standards**: Uses CSS Grid, Flexbox, and modern web practices
+### پیش‌نیازها
+- Node.js (نسخه 14 یا بالاتر)
+- npm
 
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd image-to-html-css-converter
-```
-
-2. Install dependencies:
+### نصب
 ```bash
 npm install
 ```
 
-3. Start the server:
+### اجرا
 ```bash
 npm start
 ```
 
-4. Open your browser and navigate to `http://localhost:3000`
+سپس به آدرس `http://localhost:3000` بروید.
 
-## Usage
+## 📖 نحوه استفاده
 
-1. **Upload Image**: Drag and drop an image or click to browse files
-2. **Wait for Processing**: The system will analyze your image and extract design elements
-3. **Preview Results**: View the generated design in different device sizes
-4. **Review Code**: Examine the generated HTML and CSS code
-5. **Download**: Save the generated files to your computer
+1. **آپلود عکس**: عکس طراحی خود را آپلود کنید
+2. **تبدیل**: روی دکمه "تبدیل به HTML/CSS" کلیک کنید
+3. **دانلود**: فایل‌های HTML و CSS را دانلود کنید
+4. **پیش‌نمایش**: نتیجه را در مرورگر مشاهده کنید
 
-## Supported Image Formats
+## 🎯 ویژگی‌ها
 
-- JPEG/JPG
+- ✅ تبدیل خودکار عکس به HTML/CSS
+- ✅ تشخیص عناصر (متن، تصویر)
+- ✅ استخراج رنگ‌های اصلی
+- ✅ طراحی ریسپانسیو
+- ✅ پشتیبانی از RTL
+- ✅ رابط کاربری ساده و زیبا
+
+## 📁 ساختار پروژه
+
+```
+📁 workspace/
+   📁 public/          # فایل‌های فرانت‌اند
+      📄 index.html    # صفحه اصلی
+      📄 styles.css    # استایل‌های صفحه
+      📄 script.js     # JavaScript
+   📁 src/             # کدهای بک‌اند
+      📄 imageToHTMLConverter.js
+   📄 server.js        # سرور Express
+   📄 package.json     # تنظیمات پروژه
+```
+
+## 🔧 API
+
+### POST /api/convert
+آپلود عکس و دریافت HTML/CSS
+
+**پارامترها:**
+- `image`: فایل عکس (multipart/form-data)
+
+**پاسخ:**
+```json
+{
+  "success": true,
+  "html": "...",
+  "css": "...",
+  "analysis": {
+    "width": 800,
+    "height": 600,
+    "colors": {...},
+    "elements": [...]
+  }
+}
+```
+
+## 📝 فرمت‌های پشتیبانی شده
+
+- JPG/JPEG
 - PNG
 - GIF
 - WebP
 
-## Technical Features
+## 🎨 مثال خروجی
 
-### Image Analysis
-- Color palette extraction
-- Layout structure detection
-- Text region identification
-- Image region detection
-- Responsive breakpoint analysis
-
-### Generated Code Features
-- Semantic HTML5 structure
-- Modern CSS with custom properties
-- Responsive design with mobile-first approach
-- CSS Grid and Flexbox layouts
-- Accessibility features (ARIA labels, semantic elements)
-- Cross-browser compatibility
-- Print-friendly styles
-- Dark mode support
-
-### Responsive Breakpoints
-- Mobile: up to 768px
-- Tablet: 769px - 1024px
-- Desktop: 1025px and above
-
-## API Endpoints
-
-- `POST /api/convert` - Upload and convert image
-- `GET /preview/:id` - Preview generated design
-- `GET /api/download/:id` - Download generated files
-
-## File Structure
-
-```
-├── src/
-│   ├── imageAnalyzer.js    # Image analysis logic
-│   ├── htmlGenerator.js    # HTML generation
-│   └── cssGenerator.js     # CSS generation
-├── public/
-│   ├── index.html          # Main application interface
-│   ├── styles.css          # Application styles
-│   └── script.js           # Frontend JavaScript
-├── uploads/                # Temporary image storage
-├── output/                 # Generated files
-├── server.js               # Express server
-└── package.json            # Dependencies
+```html
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تبدیل شده از عکس</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="image-container">
+        <div class="text-element">عنوان اصلی</div>
+        <div class="image-element">🖼️ تصویر اصلی</div>
+    </div>
+</body>
+</html>
 ```
 
-## Development
+## 📄 مجوز
 
-To run in development mode with auto-restart:
-
-```bash
-npm run dev
-```
-
-## Browser Support
-
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions, please create an issue in the repository.
+MIT License
 
 ---
 
-**Note**: This application is designed for educational and prototyping purposes. For production use, consider additional security measures and performance optimizations.
+**ساخته شده با ❤️ برای تبدیل آسان عکس به کد**
