@@ -2,7 +2,7 @@ const Jimp = require('jimp');
 
 class ImageToHTMLConverter {
   constructor() {
-    this.maxElements = 15; // محدود کردن تعداد elements
+    this.maxElements = 8; // محدود کردن تعداد elements
   }
 
   async convertImageToHTMLCSS(imagePath) {
@@ -52,10 +52,12 @@ class ImageToHTMLConverter {
     }
     
     // 5 رنگ اصلی
-    const mainColors = Array.from(colorMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([color]) => color);
+    const sortedColors = Array.from(colorMap.entries())
+      .sort((a, b) => b[1] - a[1]);
+    
+    const mainColors = sortedColors.length > 0 ? 
+      sortedColors.slice(0, Math.min(5, sortedColors.length)).map(([color]) => color) : 
+      ['#ffffff', '#000000', '#cccccc', '#666666', '#333333'];
     
     return {
       background: mainColors[0] || '#ffffff',
@@ -69,18 +71,23 @@ class ImageToHTMLConverter {
   async findElements(image) {
     const { width, height } = image.bitmap;
     const elements = [];
+    const visited = new Set(); // برای جلوگیری از تکرار
     
-    // پیدا کردن عناصر اصلی
-    const step = Math.max(20, Math.floor(Math.min(width, height) / 30));
+    // پیدا کردن عناصر اصلی با step بزرگتر
+    const step = Math.max(50, Math.floor(Math.min(width, height) / 20));
     
     for (let y = 0; y < height - step; y += step) {
       for (let x = 0; x < width - step; x += step) {
+        const key = `${x}-${y}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        
         const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
         
         // تشخیص متن (رنگ‌های تیره)
-        if (pixel.r < 100 && pixel.g < 100 && pixel.b < 100 && pixel.a > 200) {
+        if (pixel.r < 80 && pixel.g < 80 && pixel.b < 80 && pixel.a > 200) {
           const textArea = this.findTextArea(image, x, y, step);
-          if (textArea.width > 30 && textArea.height > 15) {
+          if (textArea.width > 50 && textArea.height > 20) {
             elements.push({
               type: 'text',
               x: textArea.x,
@@ -90,13 +97,20 @@ class ImageToHTMLConverter {
               color: `#${pixel.r.toString(16).padStart(2, '0')}${pixel.g.toString(16).padStart(2, '0')}${pixel.b.toString(16).padStart(2, '0')}`,
               content: this.generateTextContent(elements.length)
             });
+            
+            // علامت‌گذاری ناحیه‌های استفاده شده
+            for (let dy = 0; dy < textArea.height; dy += step) {
+              for (let dx = 0; dx < textArea.width; dx += step) {
+                visited.add(`${textArea.x + dx}-${textArea.y + dy}`);
+              }
+            }
           }
         }
         
         // تشخیص تصاویر (رنگ‌های روشن و متنوع)
-        else if (pixel.r > 150 || pixel.g > 150 || pixel.b > 150) {
+        else if (pixel.r > 120 || pixel.g > 120 || pixel.b > 120) {
           const imageArea = this.findImageArea(image, x, y, step);
-          if (imageArea.width > 50 && imageArea.height > 50) {
+          if (imageArea.width > 80 && imageArea.height > 80) {
             elements.push({
               type: 'image',
               x: imageArea.x,
@@ -105,6 +119,13 @@ class ImageToHTMLConverter {
               height: imageArea.height,
               placeholder: this.generateImagePlaceholder(elements.length)
             });
+            
+            // علامت‌گذاری ناحیه‌های استفاده شده
+            for (let dy = 0; dy < imageArea.height; dy += step) {
+              for (let dx = 0; dx < imageArea.width; dx += step) {
+                visited.add(`${imageArea.x + dx}-${imageArea.y + dy}`);
+              }
+            }
           }
         }
         
