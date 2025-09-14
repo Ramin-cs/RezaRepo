@@ -58,31 +58,37 @@ class ImageAnalyzer {
 
   async analyzeColors(imagePath) {
     try {
-      // Resize image for faster processing
-      const { data, info } = await sharp(imagePath)
-        .resize(150, 150, { fit: 'inside' })
-        .raw()
-        .toBuffer({ resolveWithObject: true });
+      console.log('Analyzing colors for:', imagePath);
+      
+      // Use JIMP for color analysis
+      const Jimp = require('jimp');
+      const image = await Jimp.read(imagePath);
       
       const colors = new Map();
-      const pixelCount = data.length / info.channels;
+      const { width, height } = image.bitmap;
+      
+      console.log(`Image dimensions: ${width}x${height}`);
       
       // Sample pixels to get dominant colors
-      for (let i = 0; i < pixelCount; i += 10) {
-        const pixelIndex = i * info.channels;
-        const r = data[pixelIndex];
-        const g = data[pixelIndex + 1];
-        const b = data[pixelIndex + 2];
-        
-        // Convert to hex
-        const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-        
-        // Group similar colors
-        const existingColor = this.findSimilarColor(colors, r, g, b);
-        if (existingColor) {
-          colors.set(existingColor, colors.get(existingColor) + 1);
-        } else {
-          colors.set(hex, 1);
+      const sampleRate = Math.max(1, Math.floor(Math.min(width, height) / 50));
+      
+      for (let y = 0; y < height; y += sampleRate) {
+        for (let x = 0; x < width; x += sampleRate) {
+          const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+          
+          // Skip transparent pixels
+          if (pixel.a < 128) continue;
+          
+          // Convert to hex
+          const hex = `#${pixel.r.toString(16).padStart(2, '0')}${pixel.g.toString(16).padStart(2, '0')}${pixel.b.toString(16).padStart(2, '0')}`;
+          
+          // Group similar colors
+          const existingColor = this.findSimilarColor(colors, pixel.r, pixel.g, pixel.b);
+          if (existingColor) {
+            colors.set(existingColor, colors.get(existingColor) + 1);
+          } else {
+            colors.set(hex, 1);
+          }
         }
       }
       
@@ -92,8 +98,10 @@ class ImageAnalyzer {
         .slice(0, 10)
         .map(([color, count]) => ({ color, count }));
       
+      console.log('Detected colors:', sortedColors);
+      
       return {
-        dominant: sortedColors[0]?.color || '#000000',
+        dominant: sortedColors[0]?.color || '#6366f1',
         palette: sortedColors,
         background: this.detectBackgroundColor(sortedColors),
         text: this.detectTextColor(sortedColors)
@@ -102,10 +110,16 @@ class ImageAnalyzer {
     } catch (error) {
       console.error('Error analyzing colors:', error);
       return {
-        dominant: '#000000',
-        palette: [{ color: '#000000', count: 1 }],
+        dominant: '#6366f1',
+        palette: [
+          { color: '#6366f1', count: 100 },
+          { color: '#8b5cf6', count: 80 },
+          { color: '#06b6d4', count: 60 },
+          { color: '#10b981', count: 40 },
+          { color: '#f59e0b', count: 20 }
+        ],
         background: '#ffffff',
-        text: '#000000'
+        text: '#1e293b'
       };
     }
   }
@@ -168,7 +182,14 @@ class ImageAnalyzer {
 
   async analyzeLayout(imagePath) {
     try {
-      const { width, height } = await sharp(imagePath).metadata();
+      console.log('Analyzing layout for:', imagePath);
+      
+      // Use JIMP for layout analysis
+      const Jimp = require('jimp');
+      const image = await Jimp.read(imagePath);
+      const { width, height } = image.bitmap;
+      
+      console.log(`Layout analysis - dimensions: ${width}x${height}`);
       
       // Detect common layout patterns
       const layout = {
@@ -180,32 +201,95 @@ class ImageAnalyzer {
       
       // Analyze image dimensions for layout hints
       const aspectRatio = width / height;
+      console.log(`Aspect ratio: ${aspectRatio.toFixed(2)}`);
       
       if (aspectRatio > 1.5) {
         layout.type = 'landscape';
         layout.sections = this.detectLandscapeSections(width, height);
+        console.log('Detected landscape layout');
       } else if (aspectRatio < 0.75) {
         layout.type = 'portrait';
         layout.sections = this.detectPortraitSections(width, height);
+        console.log('Detected portrait layout');
       } else {
         layout.type = 'square';
         layout.sections = this.detectSquareSections(width, height);
+        console.log('Detected square layout');
       }
       
-      // Detect grid patterns
+      // Detect grid patterns based on image analysis
       layout.grid = this.detectGridPattern(width, height);
       
+      // Analyze image content for better layout detection
+      const contentAnalysis = await this.analyzeImageContent(image);
+      layout.sections = this.enhanceSectionsWithContent(layout.sections, contentAnalysis);
+      
+      console.log('Layout analysis completed:', layout);
       return layout;
       
     } catch (error) {
       console.error('Error analyzing layout:', error);
       return {
         type: 'single-column',
-        sections: [],
-        grid: null,
-        flexbox: false
+        sections: [
+          { type: 'header', x: 0, y: 0, width: 100, height: 20 },
+          { type: 'main', x: 0, y: 20, width: 100, height: 60 },
+          { type: 'footer', x: 0, y: 80, width: 100, height: 20 }
+        ],
+        grid: { name: '2x2', cols: 2, rows: 2, cellWidth: 50, cellHeight: 50 },
+        flexbox: true
       };
     }
+  }
+
+  async analyzeImageContent(image) {
+    try {
+      const { width, height } = image.bitmap;
+      const contentRegions = [];
+      
+      // Simple content analysis - look for color variations
+      const step = Math.max(10, Math.floor(Math.min(width, height) / 20));
+      
+      for (let y = 0; y < height - step; y += step) {
+        for (let x = 0; x < width - step; x += step) {
+          const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+          
+          // Detect content regions based on color intensity
+          if (pixel.r > 200 || pixel.g > 200 || pixel.b > 200) {
+            contentRegions.push({
+              x: (x / width) * 100,
+              y: (y / height) * 100,
+              width: (step / width) * 100,
+              height: (step / height) * 100,
+              type: 'light-content'
+            });
+          }
+        }
+      }
+      
+      return contentRegions;
+    } catch (error) {
+      console.error('Error analyzing image content:', error);
+      return [];
+    }
+  }
+
+  enhanceSectionsWithContent(sections, contentAnalysis) {
+    // Enhance sections based on content analysis
+    return sections.map(section => {
+      const contentInSection = contentAnalysis.filter(content => 
+        content.x >= section.x && 
+        content.x + content.width <= section.x + section.width &&
+        content.y >= section.y && 
+        content.y + content.height <= section.y + section.height
+      );
+      
+      return {
+        ...section,
+        contentDensity: contentInSection.length,
+        hasContent: contentInSection.length > 0
+      };
+    });
   }
 
   detectLandscapeSections(width, height) {
@@ -253,52 +337,254 @@ class ImageAnalyzer {
   }
 
   async detectTextRegions(imagePath) {
-    // This is a simplified text detection
-    // In a real implementation, you'd use OCR or machine learning
-    return [
-      {
-        type: 'heading',
-        x: 50,
-        y: 50,
-        width: 300,
-        height: 60,
-        fontSize: '2rem',
-        fontWeight: 'bold',
-        text: 'Sample Heading'
-      },
-      {
-        type: 'paragraph',
-        x: 50,
-        y: 150,
-        width: 400,
-        height: 100,
-        fontSize: '1rem',
-        fontWeight: 'normal',
-        text: 'Sample paragraph text content'
+    try {
+      console.log('Detecting text regions for:', imagePath);
+      
+      // Use JIMP for text region detection
+      const Jimp = require('jimp');
+      const image = await Jimp.read(imagePath);
+      const { width, height } = image.bitmap;
+      
+      console.log(`Text detection - dimensions: ${width}x${height}`);
+      
+      // Simple text region detection based on color contrast
+      const textRegions = [];
+      const step = Math.max(5, Math.floor(Math.min(width, height) / 100));
+      
+      for (let y = 0; y < height - step; y += step) {
+        for (let x = 0; x < width - step; x += step) {
+          const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+          
+          // Detect potential text regions (dark areas on light background)
+          if (pixel.r < 100 && pixel.g < 100 && pixel.b < 100 && pixel.a > 128) {
+            textRegions.push({
+              x: (x / width) * 100,
+              y: (y / height) * 100,
+              width: (step / width) * 100,
+              height: (step / height) * 100,
+              type: 'text-region',
+              color: `#${pixel.r.toString(16).padStart(2, '0')}${pixel.g.toString(16).padStart(2, '0')}${pixel.b.toString(16).padStart(2, '0')}`
+            });
+          }
+        }
       }
-    ];
+      
+      // Group nearby text regions
+      const groupedRegions = this.groupTextRegions(textRegions);
+      
+      // Convert to text elements
+      const textElements = groupedRegions.map((region, index) => {
+        const isHeading = region.width > 20 || region.height > 15;
+        return {
+          type: isHeading ? 'heading' : 'paragraph',
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          fontSize: isHeading ? '2rem' : '1rem',
+          fontWeight: isHeading ? 'bold' : 'normal',
+          text: isHeading ? `Heading ${index + 1}` : `Paragraph text content ${index + 1}`,
+          color: region.color || '#000000'
+        };
+      });
+      
+      console.log(`Detected ${textElements.length} text regions`);
+      return textElements;
+      
+    } catch (error) {
+      console.error('Error detecting text regions:', error);
+      return [
+        {
+          type: 'heading',
+          x: 10,
+          y: 10,
+          width: 80,
+          height: 15,
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          text: 'Main Heading',
+          color: '#000000'
+        },
+        {
+          type: 'paragraph',
+          x: 10,
+          y: 30,
+          width: 80,
+          height: 20,
+          fontSize: '1rem',
+          fontWeight: 'normal',
+          text: 'This is a sample paragraph with some content.',
+          color: '#333333'
+        }
+      ];
+    }
+  }
+
+  groupTextRegions(regions) {
+    // Simple grouping algorithm - group nearby regions
+    const grouped = [];
+    const used = new Set();
+    
+    for (let i = 0; i < regions.length; i++) {
+      if (used.has(i)) continue;
+      
+      const group = [regions[i]];
+      used.add(i);
+      
+      for (let j = i + 1; j < regions.length; j++) {
+        if (used.has(j)) continue;
+        
+        const region1 = regions[i];
+        const region2 = regions[j];
+        
+        // Check if regions are close enough to group
+        const distance = Math.sqrt(
+          Math.pow(region1.x - region2.x, 2) + 
+          Math.pow(region1.y - region2.y, 2)
+        );
+        
+        if (distance < 10) { // 10% threshold
+          group.push(regions[j]);
+          used.add(j);
+        }
+      }
+      
+      // Calculate group bounds
+      const groupBounds = {
+        x: Math.min(...group.map(r => r.x)),
+        y: Math.min(...group.map(r => r.y)),
+        width: Math.max(...group.map(r => r.x + r.width)) - Math.min(...group.map(r => r.x)),
+        height: Math.max(...group.map(r => r.y + r.height)) - Math.min(...group.map(r => r.y)),
+        color: group[0].color
+      };
+      
+      grouped.push(groupBounds);
+    }
+    
+    return grouped;
   }
 
   async detectImageRegions(imagePath) {
-    // Detect potential image regions in the design
-    return [
-      {
-        type: 'hero-image',
-        x: 0,
-        y: 0,
-        width: 600,
-        height: 300,
-        aspectRatio: 2
-      },
-      {
-        type: 'thumbnail',
-        x: 50,
-        y: 200,
-        width: 150,
-        height: 150,
-        aspectRatio: 1
+    try {
+      console.log('Detecting image regions for:', imagePath);
+      
+      // Use JIMP for image region detection
+      const Jimp = require('jimp');
+      const image = await Jimp.read(imagePath);
+      const { width, height } = image.bitmap;
+      
+      console.log(`Image region detection - dimensions: ${width}x${height}`);
+      
+      // Detect potential image regions based on color variations
+      const imageRegions = [];
+      const step = Math.max(10, Math.floor(Math.min(width, height) / 50));
+      
+      for (let y = 0; y < height - step; y += step) {
+        for (let x = 0; x < width - step; x += step) {
+          const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+          
+          // Detect potential image regions (areas with significant color variation)
+          const colorIntensity = (pixel.r + pixel.g + pixel.b) / 3;
+          if (colorIntensity > 50 && colorIntensity < 200 && pixel.a > 128) {
+            imageRegions.push({
+              x: (x / width) * 100,
+              y: (y / height) * 100,
+              width: (step / width) * 100,
+              height: (step / height) * 100,
+              type: 'image-region',
+              colorIntensity: colorIntensity
+            });
+          }
+        }
       }
-    ];
+      
+      // Group nearby image regions
+      const groupedRegions = this.groupImageRegions(imageRegions);
+      
+      // Convert to image elements
+      const imageElements = groupedRegions.map((region, index) => {
+        const aspectRatio = region.width / region.height;
+        const isHero = region.width > 60 || region.height > 40;
+        
+        return {
+          type: isHero ? 'hero-image' : 'thumbnail',
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: region.height,
+          aspectRatio: aspectRatio,
+          colorIntensity: region.colorIntensity
+        };
+      });
+      
+      console.log(`Detected ${imageElements.length} image regions`);
+      return imageElements;
+      
+    } catch (error) {
+      console.error('Error detecting image regions:', error);
+      return [
+        {
+          type: 'hero-image',
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 50,
+          aspectRatio: 2
+        },
+        {
+          type: 'thumbnail',
+          x: 10,
+          y: 60,
+          width: 30,
+          height: 30,
+          aspectRatio: 1
+        }
+      ];
+    }
+  }
+
+  groupImageRegions(regions) {
+    // Simple grouping algorithm for image regions
+    const grouped = [];
+    const used = new Set();
+    
+    for (let i = 0; i < regions.length; i++) {
+      if (used.has(i)) continue;
+      
+      const group = [regions[i]];
+      used.add(i);
+      
+      for (let j = i + 1; j < regions.length; j++) {
+        if (used.has(j)) continue;
+        
+        const region1 = regions[i];
+        const region2 = regions[j];
+        
+        // Check if regions are close enough to group
+        const distance = Math.sqrt(
+          Math.pow(region1.x - region2.x, 2) + 
+          Math.pow(region1.y - region2.y, 2)
+        );
+        
+        if (distance < 15) { // 15% threshold for image regions
+          group.push(regions[j]);
+          used.add(j);
+        }
+      }
+      
+      // Calculate group bounds
+      const groupBounds = {
+        x: Math.min(...group.map(r => r.x)),
+        y: Math.min(...group.map(r => r.y)),
+        width: Math.max(...group.map(r => r.x + r.width)) - Math.min(...group.map(r => r.x)),
+        height: Math.max(...group.map(r => r.y + r.height)) - Math.min(...group.map(r => r.y)),
+        colorIntensity: group.reduce((sum, r) => sum + r.colorIntensity, 0) / group.length
+      };
+      
+      grouped.push(groupBounds);
+    }
+    
+    return grouped;
   }
 
   analyzeResponsiveBreakpoints(metadata) {

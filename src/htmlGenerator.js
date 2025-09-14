@@ -65,12 +65,13 @@ class HTMLGenerator {
 
   generateHeader(layout, text, colors) {
     const heading = text.find(t => t.type === 'heading') || { text: 'Welcome' };
+    const headerSection = layout.sections.find(s => s.type === 'header');
     
-    return `<header class="header" role="banner">
+    return `<header class="header" role="banner" style="background-color: ${colors.background}; color: ${colors.text};">
         <nav class="navbar" role="navigation" aria-label="Main navigation">
             <div class="nav-container">
                 <div class="nav-brand">
-                    <h1 class="brand-title">${heading.text}</h1>
+                    <h1 class="brand-title" style="color: ${colors.dominant};">${heading.text}</h1>
                 </div>
                 <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
                     <span class="hamburger"></span>
@@ -79,16 +80,16 @@ class HTMLGenerator {
                 </button>
                 <ul class="nav-menu" role="menubar">
                     <li class="nav-item" role="none">
-                        <a href="#home" class="nav-link" role="menuitem">Home</a>
+                        <a href="#home" class="nav-link" role="menuitem" style="color: ${colors.text};">Home</a>
                     </li>
                     <li class="nav-item" role="none">
-                        <a href="#about" class="nav-link" role="menuitem">About</a>
+                        <a href="#about" class="nav-link" role="menuitem" style="color: ${colors.text};">About</a>
                     </li>
                     <li class="nav-item" role="none">
-                        <a href="#services" class="nav-link" role="menuitem">Services</a>
+                        <a href="#services" class="nav-link" role="menuitem" style="color: ${colors.text};">Services</a>
                     </li>
                     <li class="nav-item" role="none">
-                        <a href="#contact" class="nav-link" role="menuitem">Contact</a>
+                        <a href="#contact" class="nav-link" role="menuitem" style="color: ${colors.text};">Contact</a>
                     </li>
                 </ul>
             </div>

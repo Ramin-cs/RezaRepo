@@ -41,14 +41,27 @@ class CSSGenerator {
   generateCSSVariables(colors, metadata) {
     const { dominant, background, text, palette } = colors;
     
+    // Generate dynamic color palette based on analysis
+    const primaryColor = dominant || '#6366f1';
+    const secondaryColor = palette[1]?.color || '#8b5cf6';
+    const accentColor = palette[2]?.color || '#06b6d4';
+    const mutedColor = palette[3]?.color || '#f8f9fa';
+    
     return `:root {
-    /* Color Palette */
-    --primary-color: ${dominant};
-    --background-color: ${background};
-    --text-color: ${text};
-    --secondary-color: ${palette[1]?.color || '#666666'};
-    --accent-color: ${palette[2]?.color || '#007bff'};
-    --muted-color: ${palette[3]?.color || '#f8f9fa'};
+    /* Dynamic Color Palette - Extracted from Image */
+    --primary-color: ${primaryColor};
+    --background-color: ${background || '#ffffff'};
+    --text-color: ${text || '#1e293b'};
+    --secondary-color: ${secondaryColor};
+    --accent-color: ${accentColor};
+    --muted-color: ${mutedColor};
+    
+    /* Additional Colors from Analysis */
+    --color-1: ${palette[0]?.color || primaryColor};
+    --color-2: ${palette[1]?.color || secondaryColor};
+    --color-3: ${palette[2]?.color || accentColor};
+    --color-4: ${palette[3]?.color || mutedColor};
+    --color-5: ${palette[4]?.color || '#10b981'};
     
     /* Typography */
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -88,6 +101,11 @@ class CSSGenerator {
     --z-modal: 1040;
     --z-popover: 1050;
     --z-tooltip: 1060;
+    
+    /* Image Analysis Results */
+    --image-width: ${metadata.width}px;
+    --image-height: ${metadata.height}px;
+    --aspect-ratio: ${(metadata.width / metadata.height).toFixed(2)};
 }`;
   }
 
