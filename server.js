@@ -13,6 +13,7 @@ const { AdvancedCSSGenerator } = require('./src/advancedCSSGenerator');
 const { PixelPerfectAnalyzer } = require('./src/pixelPerfectAnalyzer');
 const { PixelPerfectHTMLGenerator } = require('./src/pixelPerfectHTMLGenerator');
 const { PixelPerfectCSSGenerator } = require('./src/pixelPerfectCSSGenerator');
+const { SimpleImageConverter } = require('./src/simpleImageConverter');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,6 +70,9 @@ const advancedCSSGenerator = new AdvancedCSSGenerator();
 const pixelPerfectAnalyzer = new PixelPerfectAnalyzer();
 const pixelPerfectHTMLGenerator = new PixelPerfectHTMLGenerator();
 const pixelPerfectCSSGenerator = new PixelPerfectCSSGenerator();
+
+// Initialize simple image converter
+const simpleImageConverter = new SimpleImageConverter();
 
 // Routes
 app.get('/', (req, res) => {
@@ -222,6 +226,49 @@ app.post('/api/convert-pixel-perfect', upload.single('image'), async (req, res) 
   } catch (error) {
     console.error('Error processing image with pixel-perfect analysis:', error);
     res.status(500).json({ error: 'Failed to process image with pixel-perfect analysis' });
+  }
+});
+
+// Simple image to HTML/CSS converter
+app.post('/api/convert-simple', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const imagePath = req.file.path;
+    console.log('🖼️ Converting image to HTML/CSS:', imagePath);
+
+    // Use simple converter
+    const result = await simpleImageConverter.convertImageToHTMLCSS(imagePath);
+    
+    // Create output directory
+    const outputDir = path.join('output', 'simple-' + Date.now().toString());
+    fs.ensureDirSync(outputDir);
+    
+    // Save generated files
+    const htmlPath = path.join(outputDir, 'index.html');
+    const cssPath = path.join(outputDir, 'styles.css');
+    
+    fs.writeFileSync(htmlPath, result.html);
+    fs.writeFileSync(cssPath, result.css);
+    
+    // Copy original image to output directory
+    const imageOutputPath = path.join(outputDir, 'original-image' + path.extname(imagePath));
+    fs.copyFileSync(imagePath, imageOutputPath);
+    
+    res.json({
+      success: true,
+      html: result.html,
+      css: result.css,
+      analysis: result.analysis,
+      outputPath: outputDir,
+      message: 'Image converted to HTML/CSS successfully!'
+    });
+    
+  } catch (error) {
+    console.error('Error converting image:', error);
+    res.status(500).json({ error: 'Failed to convert image' });
   }
 });
 
