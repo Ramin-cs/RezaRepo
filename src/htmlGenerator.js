@@ -112,10 +112,13 @@ class HTMLGenerator {
                        display: flex; 
                        align-items: center; 
                        justify-content: center;
-                       background-color: rgba(255,255,255,0.8);
-                       border: 1px solid rgba(0,0,0,0.2);
-                       z-index: 20;">
-                <span>${text}</span>
+                       background-color: rgba(255,255,255,0.9);
+                       border: 2px solid rgba(0,0,0,0.3);
+                       border-radius: 4px;
+                       padding: 8px;
+                       z-index: 20;
+                       box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <span style="text-align: center; line-height: 1.2;">${text}</span>
             </div>`;
   }
 
@@ -129,12 +132,14 @@ class HTMLGenerator {
                        width: ${width}px; 
                        height: ${height}px; 
                        background-color: rgba(0,0,0,0.1);
-                       border: 2px dashed rgba(0,0,0,0.3);
+                       border: 3px dashed rgba(0,0,0,0.4);
+                       border-radius: 8px;
                        display: flex;
                        align-items: center;
                        justify-content: center;
-                       z-index: 15;">
-                <span class="image-label">${type}</span>
+                       z-index: 15;
+                       box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <span class="image-label" style="background-color: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${type}</span>
             </div>`;
   }
 

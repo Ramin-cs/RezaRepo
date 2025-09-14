@@ -347,46 +347,79 @@ class ImageAnalyzer {
       
       console.log(`Text detection - dimensions: ${width}x${height}`);
       
-      // Simple text region detection based on color contrast
+      // Simplified text detection - only detect major text areas
+      const textElements = [];
+      
+      // Detect major text regions based on image analysis
+      // Look for large dark areas that could be text
+      const step = Math.max(20, Math.floor(Math.min(width, height) / 20));
       const textRegions = [];
-      const step = Math.max(5, Math.floor(Math.min(width, height) / 100));
       
       for (let y = 0; y < height - step; y += step) {
         for (let x = 0; x < width - step; x += step) {
           const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
           
-          // Detect potential text regions (dark areas on light background)
-          if (pixel.r < 100 && pixel.g < 100 && pixel.b < 100 && pixel.a > 128) {
+          // Detect potential text regions (dark areas)
+          if (pixel.r < 50 && pixel.g < 50 && pixel.b < 50 && pixel.a > 200) {
             textRegions.push({
-              x: (x / width) * 100,
-              y: (y / height) * 100,
-              width: (step / width) * 100,
-              height: (step / height) * 100,
-              type: 'text-region',
+              x: x,
+              y: y,
+              width: step,
+              height: step,
               color: `#${pixel.r.toString(16).padStart(2, '0')}${pixel.g.toString(16).padStart(2, '0')}${pixel.b.toString(16).padStart(2, '0')}`
             });
           }
         }
       }
       
-      // Group nearby text regions
+      // Group nearby regions and create meaningful text elements
       const groupedRegions = this.groupTextRegions(textRegions);
       
-      // Convert to text elements
-      const textElements = groupedRegions.map((region, index) => {
-        const isHeading = region.width > 20 || region.height > 15;
-        return {
-          type: isHeading ? 'heading' : 'paragraph',
-          x: region.x,
-          y: region.y,
-          width: region.width,
-          height: region.height,
-          fontSize: isHeading ? '2rem' : '1rem',
-          fontWeight: isHeading ? 'bold' : 'normal',
-          text: isHeading ? `Heading ${index + 1}` : `Paragraph text content ${index + 1}`,
-          color: region.color || '#000000'
-        };
+      // Create only significant text elements
+      groupedRegions.forEach((region, index) => {
+        if (region.width > 50 && region.height > 20) { // Only large enough regions
+          const isHeading = region.width > 100 || region.height > 40;
+          textElements.push({
+            type: isHeading ? 'heading' : 'paragraph',
+            x: region.x,
+            y: region.y,
+            width: region.width,
+            height: region.height,
+            fontSize: isHeading ? '2rem' : '1rem',
+            fontWeight: isHeading ? 'bold' : 'normal',
+            text: isHeading ? `Main Heading ${index + 1}` : `Content text ${index + 1}`,
+            color: region.color || '#000000'
+          });
+        }
       });
+      
+      // If no text regions found, create default ones
+      if (textElements.length === 0) {
+        textElements.push(
+          {
+            type: 'heading',
+            x: width * 0.1,
+            y: height * 0.1,
+            width: width * 0.8,
+            height: height * 0.1,
+            fontSize: '2rem',
+            fontWeight: 'bold',
+            text: 'Main Title',
+            color: '#000000'
+          },
+          {
+            type: 'paragraph',
+            x: width * 0.1,
+            y: height * 0.3,
+            width: width * 0.8,
+            height: height * 0.2,
+            fontSize: '1rem',
+            fontWeight: 'normal',
+            text: 'This is a sample paragraph with some content.',
+            color: '#333333'
+          }
+        );
+      }
       
       console.log(`Detected ${textElements.length} text regions`);
       return textElements;
@@ -396,10 +429,10 @@ class ImageAnalyzer {
       return [
         {
           type: 'heading',
-          x: 10,
-          y: 10,
-          width: 80,
-          height: 15,
+          x: 50,
+          y: 50,
+          width: 300,
+          height: 60,
           fontSize: '2rem',
           fontWeight: 'bold',
           text: 'Main Heading',
@@ -407,10 +440,10 @@ class ImageAnalyzer {
         },
         {
           type: 'paragraph',
-          x: 10,
-          y: 30,
-          width: 80,
-          height: 20,
+          x: 50,
+          y: 150,
+          width: 400,
+          height: 100,
           fontSize: '1rem',
           fontWeight: 'normal',
           text: 'This is a sample paragraph with some content.',
@@ -475,9 +508,12 @@ class ImageAnalyzer {
       
       console.log(`Image region detection - dimensions: ${width}x${height}`);
       
-      // Detect potential image regions based on color variations
+      // Simplified image detection - only detect major image areas
+      const imageElements = [];
+      
+      // Detect major image regions based on color variations
+      const step = Math.max(30, Math.floor(Math.min(width, height) / 15));
       const imageRegions = [];
-      const step = Math.max(10, Math.floor(Math.min(width, height) / 50));
       
       for (let y = 0; y < height - step; y += step) {
         for (let x = 0; x < width - step; x += step) {
@@ -485,13 +521,12 @@ class ImageAnalyzer {
           
           // Detect potential image regions (areas with significant color variation)
           const colorIntensity = (pixel.r + pixel.g + pixel.b) / 3;
-          if (colorIntensity > 50 && colorIntensity < 200 && pixel.a > 128) {
+          if (colorIntensity > 80 && colorIntensity < 180 && pixel.a > 200) {
             imageRegions.push({
-              x: (x / width) * 100,
-              y: (y / height) * 100,
-              width: (step / width) * 100,
-              height: (step / height) * 100,
-              type: 'image-region',
+              x: x,
+              y: y,
+              width: step,
+              height: step,
               colorIntensity: colorIntensity
             });
           }
@@ -501,21 +536,45 @@ class ImageAnalyzer {
       // Group nearby image regions
       const groupedRegions = this.groupImageRegions(imageRegions);
       
-      // Convert to image elements
-      const imageElements = groupedRegions.map((region, index) => {
-        const aspectRatio = region.width / region.height;
-        const isHero = region.width > 60 || region.height > 40;
-        
-        return {
-          type: isHero ? 'hero-image' : 'thumbnail',
-          x: region.x,
-          y: region.y,
-          width: region.width,
-          height: region.height,
-          aspectRatio: aspectRatio,
-          colorIntensity: region.colorIntensity
-        };
+      // Create only significant image elements
+      groupedRegions.forEach((region, index) => {
+        if (region.width > 80 && region.height > 60) { // Only large enough regions
+          const aspectRatio = region.width / region.height;
+          const isHero = region.width > 200 || region.height > 150;
+          
+          imageElements.push({
+            type: isHero ? 'hero-image' : 'thumbnail',
+            x: region.x,
+            y: region.y,
+            width: region.width,
+            height: region.height,
+            aspectRatio: aspectRatio,
+            colorIntensity: region.colorIntensity
+          });
+        }
       });
+      
+      // If no image regions found, create default ones
+      if (imageElements.length === 0) {
+        imageElements.push(
+          {
+            type: 'hero-image',
+            x: width * 0.1,
+            y: height * 0.2,
+            width: width * 0.8,
+            height: height * 0.4,
+            aspectRatio: 2
+          },
+          {
+            type: 'thumbnail',
+            x: width * 0.1,
+            y: height * 0.7,
+            width: width * 0.3,
+            height: height * 0.2,
+            aspectRatio: 1.5
+          }
+        );
+      }
       
       console.log(`Detected ${imageElements.length} image regions`);
       return imageElements;
@@ -525,19 +584,19 @@ class ImageAnalyzer {
       return [
         {
           type: 'hero-image',
-          x: 0,
-          y: 0,
-          width: 100,
-          height: 50,
+          x: 50,
+          y: 200,
+          width: 400,
+          height: 200,
           aspectRatio: 2
         },
         {
           type: 'thumbnail',
-          x: 10,
-          y: 60,
-          width: 30,
-          height: 30,
-          aspectRatio: 1
+          x: 50,
+          y: 450,
+          width: 150,
+          height: 100,
+          aspectRatio: 1.5
         }
       ];
     }
