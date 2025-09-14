@@ -10,6 +10,9 @@ const { CSSGenerator } = require('./src/cssGenerator');
 const { AdvancedImageAnalyzer } = require('./src/advancedImageAnalyzer');
 const { AdvancedHTMLGenerator } = require('./src/advancedHTMLGenerator');
 const { AdvancedCSSGenerator } = require('./src/advancedCSSGenerator');
+const { PixelPerfectAnalyzer } = require('./src/pixelPerfectAnalyzer');
+const { PixelPerfectHTMLGenerator } = require('./src/pixelPerfectHTMLGenerator');
+const { PixelPerfectCSSGenerator } = require('./src/pixelPerfectCSSGenerator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,6 +64,11 @@ const cssGenerator = new CSSGenerator();
 const advancedImageAnalyzer = new AdvancedImageAnalyzer();
 const advancedHTMLGenerator = new AdvancedHTMLGenerator();
 const advancedCSSGenerator = new AdvancedCSSGenerator();
+
+// Initialize pixel-perfect analyzers and generators
+const pixelPerfectAnalyzer = new PixelPerfectAnalyzer();
+const pixelPerfectHTMLGenerator = new PixelPerfectHTMLGenerator();
+const pixelPerfectCSSGenerator = new PixelPerfectCSSGenerator();
 
 // Routes
 app.get('/', (req, res) => {
@@ -165,6 +173,55 @@ app.post('/api/convert-advanced', upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error('Error processing image with advanced analysis:', error);
     res.status(500).json({ error: 'Failed to process image with advanced analysis' });
+  }
+});
+
+// Pixel-perfect conversion endpoint
+app.post('/api/convert-pixel-perfect', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const imagePath = req.file.path;
+    console.log('🎯 Processing image with Pixel-Perfect Analysis:', imagePath);
+
+    // Use pixel-perfect analyzers and generators
+    const analysisResult = await pixelPerfectAnalyzer.analyzeImage(imagePath);
+    
+    // Generate pixel-perfect HTML structure
+    const htmlContent = pixelPerfectHTMLGenerator.generateHTML(analysisResult);
+    
+    // Generate pixel-perfect CSS styles
+    const cssContent = pixelPerfectCSSGenerator.generateCSS(analysisResult);
+    
+    // Create output directory
+    const outputDir = path.join('output', 'pixel-perfect-' + Date.now().toString());
+    fs.ensureDirSync(outputDir);
+    
+    // Save generated files
+    const htmlPath = path.join(outputDir, 'index.html');
+    const cssPath = path.join(outputDir, 'styles.css');
+    
+    fs.writeFileSync(htmlPath, htmlContent);
+    fs.writeFileSync(cssPath, cssContent);
+    
+    // Copy original image to output directory
+    const imageOutputPath = path.join(outputDir, 'original-image' + path.extname(imagePath));
+    fs.copyFileSync(imagePath, imageOutputPath);
+    
+    res.json({
+      success: true,
+      html: htmlContent,
+      css: cssContent,
+      analysis: analysisResult,
+      outputPath: outputDir,
+      message: 'Pixel-perfect conversion completed successfully!'
+    });
+    
+  } catch (error) {
+    console.error('Error processing image with pixel-perfect analysis:', error);
+    res.status(500).json({ error: 'Failed to process image with pixel-perfect analysis' });
   }
 });
 
