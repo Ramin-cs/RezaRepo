@@ -1,8 +1,8 @@
 const Jimp = require('jimp');
 
-class SimpleImageConverter {
+class ImageToHTMLConverter {
   constructor() {
-    this.maxElements = 20; // محدود کردن تعداد elements
+    this.maxElements = 15; // محدود کردن تعداد elements
   }
 
   async convertImageToHTMLCSS(imagePath) {
@@ -14,19 +14,19 @@ class SimpleImageConverter {
       
       console.log(`📐 Image: ${width}x${height}px`);
       
-      // تحلیل ساده عکس
+      // تحلیل عکس
       const analysis = {
         width,
         height,
-        colors: await this.extractMainColors(image),
-        elements: await this.findMainElements(image)
+        colors: await this.extractColors(image),
+        elements: await this.findElements(image)
       };
       
       // تولید HTML
-      const html = this.generateSimpleHTML(analysis);
+      const html = this.generateHTML(analysis);
       
       // تولید CSS
-      const css = this.generateSimpleCSS(analysis);
+      const css = this.generateCSS(analysis);
       
       console.log('✅ Conversion completed!');
       return { html, css, analysis };
@@ -37,7 +37,7 @@ class SimpleImageConverter {
     }
   }
 
-  async extractMainColors(image) {
+  async extractColors(image) {
     const { width, height } = image.bitmap;
     const colorMap = new Map();
     const step = Math.max(10, Math.floor(Math.min(width, height) / 50));
@@ -66,7 +66,7 @@ class SimpleImageConverter {
     };
   }
 
-  async findMainElements(image) {
+  async findElements(image) {
     const { width, height } = image.bitmap;
     const elements = [];
     
@@ -212,7 +212,7 @@ class SimpleImageConverter {
     return placeholders[index % placeholders.length];
   }
 
-  generateSimpleHTML(analysis) {
+  generateHTML(analysis) {
     const { width, height, colors, elements } = analysis;
     
     return `<!DOCTYPE html>
@@ -247,7 +247,7 @@ class SimpleImageConverter {
     return '';
   }
 
-  generateSimpleCSS(analysis) {
+  generateCSS(analysis) {
     const { width, height, colors } = analysis;
     
     return `/* CSS تولید شده از عکس */
@@ -321,4 +321,4 @@ body {
   }
 }
 
-module.exports = { SimpleImageConverter };
+module.exports = { ImageToHTMLConverter };

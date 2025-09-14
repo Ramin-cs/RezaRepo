@@ -1,12 +1,12 @@
-// Test script for simple image to HTML/CSS conversion
+// Test script for image to HTML/CSS conversion
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const fetch = require('node-fetch').default;
 
-async function testSimpleConversion() {
+async function testConversion() {
     try {
-        console.log('🖼️ Testing Simple Image to HTML/CSS Conversion...\n');
+        console.log('🖼️ Testing Image to HTML/CSS Conversion...\n');
         
         // Create a simple test image
         const Jimp = require('jimp');
@@ -51,26 +51,26 @@ async function testSimpleConversion() {
         }
         
         // Save the test image
-        const testImagePath = path.join(__dirname, 'test-simple-design.png');
+        const testImagePath = path.join(__dirname, 'test-image.png');
         await image.writeAsync(testImagePath);
         
-        console.log('✅ Simple test image created');
+        console.log('✅ Test image created');
         console.log('   - Title (200x30, top-center, black)');
         console.log('   - Subtitle (160x20, below title, gray)');
         console.log('   - Description (150x30, left side, dark gray)');
         console.log('   - Image area (100x100, right side, green gradient)');
         console.log('   - Button (100x30, bottom-center, blue)');
         
-        // Test the simple conversion API
+        // Test the conversion API
         const formData = new FormData();
         formData.append('image', fs.createReadStream(testImagePath), {
-            filename: 'test-simple-design.png',
+            filename: 'test-image.png',
             contentType: 'image/png'
         });
         
-        console.log('\n📤 Sending request to Simple API...');
+        console.log('\n📤 Sending request to API...');
         
-        const response = await fetch('http://localhost:3000/api/convert-simple', {
+        const response = await fetch('http://localhost:3000/api/convert', {
             method: 'POST',
             body: formData
         });
@@ -81,12 +81,11 @@ async function testSimpleConversion() {
         
         const result = await response.json();
         
-        console.log('✅ Simple API Response received');
-        console.log('\n📊 Simple Analysis Results:');
+        console.log('✅ API Response received');
+        console.log('\n📊 Analysis Results:');
         console.log(`   - Image dimensions: ${result.analysis.width}x${result.analysis.height}`);
         console.log(`   - Background color: ${result.analysis.colors.background}`);
         console.log(`   - Primary color: ${result.analysis.colors.primary}`);
-        console.log(`   - Secondary color: ${result.analysis.colors.secondary}`);
         console.log(`   - Elements detected: ${result.analysis.elements.length}`);
         
         console.log('\n🎯 Detected Elements:');
@@ -139,21 +138,21 @@ async function testSimpleConversion() {
         const overallScore = (htmlScore + cssScore) / 9;
         
         if (overallScore >= 0.8) {
-            console.log('\n🎉 Simple conversion is working perfectly!');
+            console.log('\n🎉 Conversion is working perfectly!');
             console.log('   - Image converted to HTML/CSS successfully');
             console.log('   - Elements detected correctly');
             console.log('   - HTML structure is clean and simple');
             console.log('   - CSS styling is comprehensive');
         } else if (overallScore >= 0.6) {
-            console.log('\n✅ Simple conversion is working well!');
+            console.log('\n✅ Conversion is working well!');
             console.log('   - Most elements detected correctly');
             console.log('   - Good HTML/CSS structure');
         } else {
-            console.log('\n⚠️ Simple conversion needs improvement.');
+            console.log('\n⚠️ Conversion needs improvement.');
         }
         
         // Save the result for inspection
-        const outputDir = path.join(__dirname, 'simple-test');
+        const outputDir = path.join(__dirname, 'test-output');
         if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir);
         }
@@ -162,9 +161,9 @@ async function testSimpleConversion() {
         fs.writeFileSync(path.join(outputDir, 'styles.css'), result.css);
         fs.copyFileSync(testImagePath, path.join(outputDir, 'original-image.jpg'));
         
-        console.log(`\n📁 Simple test files saved to: ${outputDir}`);
-        console.log('   - index.html (simple HTML)');
-        console.log('   - styles.css (simple CSS)');
+        console.log(`\n📁 Test files saved to: ${outputDir}`);
+        console.log('   - index.html (converted HTML)');
+        console.log('   - styles.css (converted CSS)');
         console.log('   - original-image.jpg (test image)');
         
         // Clean up
@@ -172,10 +171,10 @@ async function testSimpleConversion() {
         console.log('\n🧹 Cleanup completed');
         
     } catch (error) {
-        console.error('❌ Simple test failed:', error.message);
+        console.error('❌ Test failed:', error.message);
         process.exit(1);
     }
 }
 
 // Run the test
-testSimpleConversion();
+testConversion();
