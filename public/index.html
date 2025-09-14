@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تبدیل عکس به HTML/CSS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🖼️ تبدیل عکس به HTML/CSS</h1>
+            <p>عکس طرح خود را آپلود کنید و کد HTML/CSS دریافت کنید</p>
+        </header>
+
+        <main class="main">
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h3>عکس را اینجا بکشید یا کلیک کنید</h3>
+                    <p>فرمت‌های پشتیبانی شده: JPG, PNG, GIF, WebP</p>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                </div>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h3>پیش‌نمایش عکس:</h3>
+                <div class="image-preview">
+                    <img id="previewImage" alt="پیش‌نمایش عکس">
+                </div>
+                <div class="conversion-options">
+                    <label class="option-label">
+                        <input type="radio" name="conversionMode" value="basic" checked>
+                        <span>🔄 تبدیل ساده</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="conversionMode" value="advanced">
+                        <span>🤖 تبدیل پیشرفته (AI)</span>
+                    </label>
+                </div>
+                <button class="convert-btn" id="convertBtn">🚀 تبدیل به HTML/CSS</button>
+            </div>
+
+            <div class="loading-section" id="loadingSection" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>در حال تبدیل عکس...</p>
+            </div>
+
+            <div class="result-section" id="resultSection" style="display: none;">
+                <h3>✅ تبدیل با موفقیت انجام شد!</h3>
+                <div class="result-actions">
+                    <button class="download-btn" id="downloadHTML">📄 دانلود HTML</button>
+                    <button class="download-btn" id="downloadCSS">🎨 دانلود CSS</button>
+                    <button class="preview-btn" id="previewBtn">👁️ پیش‌نمایش</button>
+                </div>
+                <div class="result-info">
+                    <p><strong>ابعاد عکس:</strong> <span id="imageDimensions"></span></p>
+                    <p><strong>تعداد المنت‌ها:</strong> <span id="elementsCount"></span></p>
+                    <p><strong>رنگ اصلی:</strong> <span id="mainColor"></span></p>
+                    <p><strong>نوع Layout:</strong> <span id="layoutType"></span></p>
+                    <p><strong>حالت تبدیل:</strong> <span id="conversionMode"></span></p>
+                    <p><strong>ویژگی‌ها:</strong> <span id="features"></span></p>
+                </div>
+            </div>
+
+            <div class="error-section" id="errorSection" style="display: none;">
+                <div class="error-message">
+                    <h3>❌ خطا در تبدیل</h3>
+                    <p id="errorText"></p>
+                    <button class="retry-btn" onclick="resetForm()">🔄 تلاش مجدد</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 تبدیل عکس به HTML/CSS - تمامی حقوق محفوظ است</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
