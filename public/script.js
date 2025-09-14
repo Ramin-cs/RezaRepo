@@ -1,11 +1,14 @@
 // JavaScript برای صفحه اصلی
 class ImageConverter {
     constructor() {
+        console.log('🚀 ImageConverter initialized');
         this.initializeElements();
         this.setupEventListeners();
+        console.log('✅ ImageConverter ready');
     }
 
     initializeElements() {
+        console.log('🔍 Initializing DOM elements...');
         this.uploadArea = document.getElementById('uploadArea');
         this.imageInput = document.getElementById('imageInput');
         this.previewSection = document.getElementById('previewSection');
@@ -21,16 +24,47 @@ class ImageConverter {
         this.downloadHTML = document.getElementById('downloadHTML');
         this.downloadCSS = document.getElementById('downloadCSS');
         this.previewBtn = document.getElementById('previewBtn');
+        
+        // بررسی وجود elements
+        const elements = {
+            uploadArea: this.uploadArea,
+            imageInput: this.imageInput,
+            previewSection: this.previewSection,
+            previewImage: this.previewImage,
+            convertBtn: this.convertBtn,
+            loadingSection: this.loadingSection,
+            resultSection: this.resultSection,
+            errorSection: this.errorSection,
+            errorText: this.errorText,
+            imageDimensions: this.imageDimensions,
+            elementsCount: this.elementsCount,
+            mainColor: this.mainColor,
+            downloadHTML: this.downloadHTML,
+            downloadCSS: this.downloadCSS,
+            previewBtn: this.previewBtn
+        };
+        
+        for (const [name, element] of Object.entries(elements)) {
+            if (!element) {
+                console.error(`❌ Element not found: ${name}`);
+            } else {
+                console.log(`✅ Element found: ${name}`);
+            }
+        }
     }
 
     setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+        
         // کلیک روی آپلود
         this.uploadArea.addEventListener('click', () => {
+            console.log('🖱️ Upload area clicked');
             this.imageInput.click();
         });
 
         // انتخاب فایل
         this.imageInput.addEventListener('change', (e) => {
+            console.log('📁 File input changed:', e.target.files);
             this.handleFileSelect(e.target.files[0]);
         });
 
@@ -70,17 +104,22 @@ class ImageConverter {
     }
 
     handleFileSelect(file) {
+        console.log('📁 File selected:', file);
         if (!file) return;
 
         // بررسی نوع فایل
         if (!file.type.startsWith('image/')) {
+            console.error('❌ Invalid file type:', file.type);
             this.showError('لطفاً یک فایل تصویری انتخاب کنید');
             return;
         }
 
+        console.log('✅ Valid image file:', file.name, file.type, file.size);
+
         // نمایش پیش‌نمایش
         const reader = new FileReader();
         reader.onload = (e) => {
+            console.log('🖼️ Image preview loaded');
             this.previewImage.src = e.target.result;
             this.previewSection.style.display = 'block';
             this.hideAllSections();
@@ -88,27 +127,37 @@ class ImageConverter {
         reader.readAsDataURL(file);
 
         this.selectedFile = file;
+        console.log('💾 File stored for conversion');
     }
 
     async convertImage() {
-        if (!this.selectedFile) return;
+        console.log('🔄 Starting conversion...');
+        if (!this.selectedFile) {
+            console.error('❌ No file selected');
+            return;
+        }
 
+        console.log('📤 Uploading file:', this.selectedFile.name);
         this.showLoading();
         
         try {
             const formData = new FormData();
             formData.append('image', this.selectedFile);
 
+            console.log('🌐 Sending request to /api/convert');
             const response = await fetch('/api/convert', {
                 method: 'POST',
                 body: formData
             });
+
+            console.log('📥 Response received:', response.status, response.statusText);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
+            console.log('✅ Conversion result:', result);
 
             if (result.success) {
                 this.showResult(result);
@@ -117,7 +166,7 @@ class ImageConverter {
             }
 
         } catch (error) {
-            console.error('Conversion error:', error);
+            console.error('❌ Conversion error:', error);
             this.showError('خطا در تبدیل عکس: ' + error.message);
         }
     }
@@ -192,7 +241,9 @@ function resetForm() {
 
 // راه‌اندازی برنامه
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded, initializing ImageConverter...');
     window.imageConverter = new ImageConverter();
+    console.log('🎉 ImageConverter created and ready!');
 });
 
 // نمایش پیام خوش‌آمدگویی
