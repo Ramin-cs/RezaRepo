@@ -15,11 +15,14 @@ class ImageToHTMLConverter {
       console.log(`📐 Image: ${width}x${height}px`);
       
       // تحلیل عکس
+      const colors = await this.extractColors(image);
+      const elements = await this.findElements(image);
+      
       const analysis = {
         width,
         height,
-        colors: await this.extractColors(image),
-        elements: await this.findElements(image)
+        colors,
+        elements
       };
       
       // تولید HTML
@@ -64,7 +67,8 @@ class ImageToHTMLConverter {
       primary: mainColors[1] || '#000000',
       secondary: mainColors[2] || '#cccccc',
       accent: mainColors[3] || '#666666',
-      text: mainColors[4] || '#333333'
+      text: mainColors[4] || '#333333',
+      palette: mainColors // اضافه کردن palette
     };
   }
 

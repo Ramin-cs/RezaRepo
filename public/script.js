@@ -127,10 +127,17 @@ class ImageConverter {
         this.resultCSS = result.css;
         this.resultAnalysis = result.analysis;
 
-        // نمایش اطلاعات
-        this.imageDimensions.textContent = `${result.analysis.width} × ${result.analysis.height} پیکسل`;
-        this.elementsCount.textContent = result.analysis.elements.length;
-        this.mainColor.textContent = result.analysis.colors.primary;
+        // نمایش اطلاعات با error handling
+        try {
+            this.imageDimensions.textContent = `${result.analysis.width} × ${result.analysis.height} پیکسل`;
+            this.elementsCount.textContent = result.analysis.elements ? result.analysis.elements.length : 0;
+            this.mainColor.textContent = result.analysis.colors ? result.analysis.colors.primary : '#000000';
+        } catch (error) {
+            console.error('Error displaying result info:', error);
+            this.imageDimensions.textContent = 'نامشخص';
+            this.elementsCount.textContent = '0';
+            this.mainColor.textContent = '#000000';
+        }
 
         this.hideAllSections();
         this.resultSection.style.display = 'block';
