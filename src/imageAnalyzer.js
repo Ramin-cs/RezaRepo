@@ -294,25 +294,25 @@ class ImageAnalyzer {
 
   detectLandscapeSections(width, height) {
     return [
-      { type: 'header', x: 0, y: 0, width: width, height: height * 0.2 },
-      { type: 'main', x: 0, y: height * 0.2, width: width, height: height * 0.6 },
-      { type: 'footer', x: 0, y: height * 0.8, width: width, height: height * 0.2 }
+      { type: 'header', x: 0, y: 0, width: width, height: Math.floor(height * 0.2) },
+      { type: 'main', x: 0, y: Math.floor(height * 0.2), width: width, height: Math.floor(height * 0.6) },
+      { type: 'footer', x: 0, y: Math.floor(height * 0.8), width: width, height: Math.floor(height * 0.2) }
     ];
   }
 
   detectPortraitSections(width, height) {
     return [
-      { type: 'header', x: 0, y: 0, width: width, height: height * 0.15 },
-      { type: 'content', x: 0, y: height * 0.15, width: width, height: height * 0.7 },
-      { type: 'footer', x: 0, y: height * 0.85, width: width, height: height * 0.15 }
+      { type: 'header', x: 0, y: 0, width: width, height: Math.floor(height * 0.15) },
+      { type: 'content', x: 0, y: Math.floor(height * 0.15), width: width, height: Math.floor(height * 0.7) },
+      { type: 'footer', x: 0, y: Math.floor(height * 0.85), width: width, height: Math.floor(height * 0.15) }
     ];
   }
 
   detectSquareSections(width, height) {
     return [
-      { type: 'header', x: 0, y: 0, width: width, height: height * 0.2 },
-      { type: 'content', x: 0, y: height * 0.2, width: width, height: height * 0.6 },
-      { type: 'footer', x: 0, y: height * 0.8, width: width, height: height * 0.2 }
+      { type: 'header', x: 0, y: 0, width: width, height: Math.floor(height * 0.2) },
+      { type: 'content', x: 0, y: Math.floor(height * 0.2), width: width, height: Math.floor(height * 0.6) },
+      { type: 'footer', x: 0, y: Math.floor(height * 0.8), width: width, height: Math.floor(height * 0.2) }
     ];
   }
 

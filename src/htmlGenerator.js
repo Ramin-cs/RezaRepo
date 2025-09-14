@@ -20,41 +20,27 @@ class HTMLGenerator {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Responsive design generated from image analysis">
+    <meta name="description" content="Pixel-perfect design generated from image">
     <title>Generated Design</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    ${this.generateHeader(layout, text, colors)}
-    ${this.generateMainContent(layout, text, images)}
-    ${this.generateFooter(layout, colors)}
+    <div class="design-container">
+        ${this.generatePixelPerfectLayout(analysis)}
+    </div>
     
     <script>
-        // Responsive navigation toggle
+        // Make the design interactive
         document.addEventListener('DOMContentLoaded', function() {
-            const navToggle = document.querySelector('.nav-toggle');
-            const navMenu = document.querySelector('.nav-menu');
-            
-            if (navToggle && navMenu) {
-                navToggle.addEventListener('click', function() {
-                    navMenu.classList.toggle('active');
+            // Add hover effects to elements
+            document.querySelectorAll('.design-element').forEach(element => {
+                element.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.02)';
+                    this.style.transition = 'transform 0.3s ease';
                 });
-            }
-            
-            // Smooth scrolling for anchor links
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
+                
+                element.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
                 });
             });
         });
@@ -63,38 +49,104 @@ class HTMLGenerator {
 </html>`;
   }
 
-  generateHeader(layout, text, colors) {
-    const heading = text.find(t => t.type === 'heading') || { text: 'Welcome' };
-    const headerSection = layout.sections.find(s => s.type === 'header');
+  generatePixelPerfectLayout(analysis) {
+    const { metadata, layout, text, images, colors } = analysis;
+    const { width, height } = metadata;
     
-    return `<header class="header" role="banner" style="background-color: ${colors.background}; color: ${colors.text};">
-        <nav class="navbar" role="navigation" aria-label="Main navigation">
-            <div class="nav-container">
-                <div class="nav-brand">
-                    <h1 class="brand-title" style="color: ${colors.dominant};">${heading.text}</h1>
-                </div>
-                <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
-                    <span class="hamburger"></span>
-                    <span class="hamburger"></span>
-                    <span class="hamburger"></span>
-                </button>
-                <ul class="nav-menu" role="menubar">
-                    <li class="nav-item" role="none">
-                        <a href="#home" class="nav-link" role="menuitem" style="color: ${colors.text};">Home</a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a href="#about" class="nav-link" role="menuitem" style="color: ${colors.text};">About</a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a href="#services" class="nav-link" role="menuitem" style="color: ${colors.text};">Services</a>
-                    </li>
-                    <li class="nav-item" role="none">
-                        <a href="#contact" class="nav-link" role="menuitem" style="color: ${colors.text};">Contact</a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-    </header>`;
+    let html = '';
+    
+    // Create the main container with exact dimensions
+    html += `<div class="main-design" style="width: ${width}px; height: ${height}px; position: relative; background-color: ${colors.background};">`;
+    
+    // Generate sections based on layout analysis
+    layout.sections.forEach((section, index) => {
+      html += this.generateSection(section, colors, index);
+    });
+    
+    // Generate text elements
+    text.forEach((textElement, index) => {
+      html += this.generateTextElement(textElement, index);
+    });
+    
+    // Generate image elements
+    images.forEach((imageElement, index) => {
+      html += this.generateImageElement(imageElement, index);
+    });
+    
+    // Add the original image as background for reference
+    html += `<div class="original-image-reference" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('original-image.jpg'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: 0.1; pointer-events: none; z-index: 1;"></div>`;
+    
+    html += '</div>';
+    
+    return html;
+  }
+
+  generateSection(section, colors, index) {
+    const { type, x, y, width, height } = section;
+    
+    return `<div class="design-element section-${type}" 
+                style="position: absolute; 
+                       left: ${x}px; 
+                       top: ${y}px; 
+                       width: ${width}px; 
+                       height: ${height}px; 
+                       background-color: ${this.getSectionColor(type, colors)}; 
+                       border: 1px solid rgba(0,0,0,0.1);
+                       z-index: 10;">
+                <div class="section-label">${type}</div>
+            </div>`;
+  }
+
+  generateTextElement(textElement, index) {
+    const { type, x, y, width, height, text, fontSize, fontWeight, color } = textElement;
+    
+    return `<div class="design-element text-element ${type}" 
+                style="position: absolute; 
+                       left: ${x}px; 
+                       top: ${y}px; 
+                       width: ${width}px; 
+                       height: ${height}px; 
+                       font-size: ${fontSize}; 
+                       font-weight: ${fontWeight}; 
+                       color: ${color}; 
+                       display: flex; 
+                       align-items: center; 
+                       justify-content: center;
+                       background-color: rgba(255,255,255,0.8);
+                       border: 1px solid rgba(0,0,0,0.2);
+                       z-index: 20;">
+                <span>${text}</span>
+            </div>`;
+  }
+
+  generateImageElement(imageElement, index) {
+    const { type, x, y, width, height } = imageElement;
+    
+    return `<div class="design-element image-element ${type}" 
+                style="position: absolute; 
+                       left: ${x}px; 
+                       top: ${y}px; 
+                       width: ${width}px; 
+                       height: ${height}px; 
+                       background-color: rgba(0,0,0,0.1);
+                       border: 2px dashed rgba(0,0,0,0.3);
+                       display: flex;
+                       align-items: center;
+                       justify-content: center;
+                       z-index: 15;">
+                <span class="image-label">${type}</span>
+            </div>`;
+  }
+
+  getSectionColor(type, colors) {
+    const colorMap = {
+      'header': colors.dominant,
+      'main': colors.background,
+      'content': colors.background,
+      'footer': colors.secondary || colors.dominant
+    };
+    
+    return colorMap[type] || colors.background;
   }
 
   generateMainContent(layout, text, images) {

@@ -131,6 +131,71 @@ body {
     background-color: var(--background-color);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* Design Container */
+.design-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.main-design {
+    position: relative;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    background-color: var(--background-color);
+}
+
+/* Design Elements */
+.design-element {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.design-element:hover {
+    transform: scale(1.02);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Section Labels */
+.section-label {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background-color: rgba(0,0,0,0.7);
+    color: white;
+    padding: 2px 6px;
+    font-size: 10px;
+    border-radius: 3px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* Text Element Labels */
+.text-element .section-label {
+    background-color: rgba(0,0,255,0.7);
+}
+
+/* Image Element Labels */
+.image-element .section-label {
+    background-color: rgba(255,0,0,0.7);
+}
+
+.image-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: bold;
+    text-transform: uppercase;
 }
 
 /* Typography */
