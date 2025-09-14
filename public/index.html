@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to HTML/CSS Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <i class="fas fa-magic"></i>
+                        <h1>Image to HTML/CSS</h1>
+                    </div>
+                    <p class="tagline">Transform your images into responsive web designs</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Upload Section -->
+                <section class="upload-section">
+                    <div class="upload-container">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <h2>Drop your image here</h2>
+                                <p>or click to browse files</p>
+                                <div class="file-types">
+                                    <span class="file-type">JPG</span>
+                                    <span class="file-type">PNG</span>
+                                    <span class="file-type">GIF</span>
+                                    <span class="file-type">WebP</span>
+                                </div>
+                                <p class="file-limit">Maximum file size: 10MB</p>
+                            </div>
+                            <input type="file" id="fileInput" accept="image/*" hidden>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Processing Section -->
+                <section class="processing-section" id="processingSection" style="display: none;">
+                    <div class="processing-container">
+                        <div class="processing-animation">
+                            <div class="spinner"></div>
+                        </div>
+                        <h2>Analyzing your image...</h2>
+                        <p>We're extracting design elements and generating responsive code</p>
+                        <div class="progress-steps">
+                            <div class="step active" data-step="1">
+                                <i class="fas fa-image"></i>
+                                <span>Image Analysis</span>
+                            </div>
+                            <div class="step" data-step="2">
+                                <i class="fas fa-code"></i>
+                                <span>HTML Generation</span>
+                            </div>
+                            <div class="step" data-step="3">
+                                <i class="fas fa-paint-brush"></i>
+                                <span>CSS Styling</span>
+                            </div>
+                            <div class="step" data-step="4">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span>Responsive Design</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section class="results-section" id="resultsSection" style="display: none;">
+                    <div class="results-container">
+                        <div class="results-header">
+                            <h2>Your responsive design is ready!</h2>
+                            <p>Preview and download your generated HTML/CSS code</p>
+                        </div>
+
+                        <div class="results-content">
+                            <!-- Preview -->
+                            <div class="preview-panel">
+                                <div class="panel-header">
+                                    <h3><i class="fas fa-eye"></i> Live Preview</h3>
+                                    <div class="preview-controls">
+                                        <button class="btn btn-sm" id="mobilePreview">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </button>
+                                        <button class="btn btn-sm" id="tabletPreview">
+                                            <i class="fas fa-tablet-alt"></i>
+                                        </button>
+                                        <button class="btn btn-sm active" id="desktopPreview">
+                                            <i class="fas fa-desktop"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="preview-frame">
+                                    <iframe id="previewFrame" src="" frameborder="0"></iframe>
+                                </div>
+                            </div>
+
+                            <!-- Code Tabs -->
+                            <div class="code-panel">
+                                <div class="panel-header">
+                                    <h3><i class="fas fa-code"></i> Generated Code</h3>
+                                    <div class="code-tabs">
+                                        <button class="tab-btn active" data-tab="html">HTML</button>
+                                        <button class="tab-btn" data-tab="css">CSS</button>
+                                        <button class="tab-btn" data-tab="analysis">Analysis</button>
+                                    </div>
+                                </div>
+                                <div class="code-content">
+                                    <div class="tab-content active" id="htmlTab">
+                                        <div class="code-header">
+                                            <span>index.html</span>
+                                            <button class="btn btn-sm" id="copyHtml">
+                                                <i class="fas fa-copy"></i> Copy
+                                            </button>
+                                        </div>
+                                        <pre><code id="htmlCode"></code></pre>
+                                    </div>
+                                    <div class="tab-content" id="cssTab">
+                                        <div class="code-header">
+                                            <span>styles.css</span>
+                                            <button class="btn btn-sm" id="copyCss">
+                                                <i class="fas fa-copy"></i> Copy
+                                            </button>
+                                        </div>
+                                        <pre><code id="cssCode"></code></pre>
+                                    </div>
+                                    <div class="tab-content" id="analysisTab">
+                                        <div class="analysis-content">
+                                            <div class="analysis-item">
+                                                <h4>Color Palette</h4>
+                                                <div class="color-palette" id="colorPalette"></div>
+                                            </div>
+                                            <div class="analysis-item">
+                                                <h4>Layout Structure</h4>
+                                                <div class="layout-info" id="layoutInfo"></div>
+                                            </div>
+                                            <div class="analysis-item">
+                                                <h4>Responsive Breakpoints</h4>
+                                                <div class="breakpoints-info" id="breakpointsInfo"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" id="downloadZip">
+                                <i class="fas fa-download"></i> Download All Files
+                            </button>
+                            <button class="btn btn-secondary" id="newConversion">
+                                <i class="fas fa-plus"></i> Convert Another Image
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Error Section -->
+                <section class="error-section" id="errorSection" style="display: none;">
+                    <div class="error-container">
+                        <div class="error-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h2>Oops! Something went wrong</h2>
+                        <p id="errorMessage">There was an error processing your image. Please try again.</p>
+                        <button class="btn btn-primary" id="retryButton">
+                            <i class="fas fa-redo"></i> Try Again
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-section">
+                        <h3>Features</h3>
+                        <ul>
+                            <li>Responsive Design</li>
+                            <li>Modern CSS Grid</li>
+                            <li>Accessibility Ready</li>
+                            <li>Cross-browser Compatible</li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h3>Supported Formats</h3>
+                        <ul>
+                            <li>JPEG/JPG</li>
+                            <li>PNG</li>
+                            <li>GIF</li>
+                            <li>WebP</li>
+                        </ul>
+                    </div>
+                    <div class="footer-section">
+                        <h3>About</h3>
+                        <p>Professional image to HTML/CSS converter with AI-powered analysis and responsive design generation.</p>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2024 Image to HTML/CSS Converter. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
