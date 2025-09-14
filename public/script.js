@@ -86,6 +86,7 @@ class ImageConverter {
 
         // دکمه تبدیل
         this.convertBtn.addEventListener('click', () => {
+            console.log('🔄 Convert button clicked');
             this.convertImage();
         });
 
@@ -121,8 +122,11 @@ class ImageConverter {
         reader.onload = (e) => {
             console.log('🖼️ Image preview loaded');
             this.previewImage.src = e.target.result;
-            this.previewSection.style.display = 'block';
-            this.hideAllSections();
+            
+            // نمایش preview section - ساده و مستقیم
+            document.getElementById('previewSection').style.display = 'block';
+            
+            console.log('👁️ Preview section should be visible now');
         };
         reader.readAsDataURL(file);
 
@@ -138,6 +142,12 @@ class ImageConverter {
         }
 
         console.log('📤 Uploading file:', this.selectedFile.name);
+        console.log('📁 File details:', {
+            name: this.selectedFile.name,
+            type: this.selectedFile.type,
+            size: this.selectedFile.size
+        });
+        
         this.showLoading();
         
         try {
@@ -145,12 +155,15 @@ class ImageConverter {
             formData.append('image', this.selectedFile);
 
             console.log('🌐 Sending request to /api/convert');
+            console.log('📤 FormData contents:', formData.get('image'));
+            
             const response = await fetch('/api/convert', {
                 method: 'POST',
                 body: formData
             });
 
             console.log('📥 Response received:', response.status, response.statusText);
+            console.log('📥 Response headers:', response.headers);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -158,10 +171,15 @@ class ImageConverter {
 
             const result = await response.json();
             console.log('✅ Conversion result:', result);
+            console.log('✅ Result success:', result.success);
+            console.log('✅ Result HTML length:', result.html ? result.html.length : 'No HTML');
+            console.log('✅ Result CSS length:', result.css ? result.css.length : 'No CSS');
 
             if (result.success) {
+                console.log('🎉 Calling showResult...');
                 this.showResult(result);
             } else {
+                console.error('❌ Conversion failed:', result.error);
                 throw new Error(result.error || 'خطا در تبدیل عکس');
             }
 
@@ -172,6 +190,7 @@ class ImageConverter {
     }
 
     showResult(result) {
+        console.log('🎉 Showing result:', result);
         this.resultHTML = result.html;
         this.resultCSS = result.css;
         this.resultAnalysis = result.analysis;
@@ -181,33 +200,41 @@ class ImageConverter {
             this.imageDimensions.textContent = `${result.analysis.width} × ${result.analysis.height} پیکسل`;
             this.elementsCount.textContent = result.analysis.elements ? result.analysis.elements.length : 0;
             this.mainColor.textContent = result.analysis.colors ? result.analysis.colors.primary : '#000000';
+            console.log('✅ Result info displayed successfully');
         } catch (error) {
-            console.error('Error displaying result info:', error);
+            console.error('❌ Error displaying result info:', error);
             this.imageDimensions.textContent = 'نامشخص';
             this.elementsCount.textContent = '0';
             this.mainColor.textContent = '#000000';
         }
 
         this.hideAllSections();
-        this.resultSection.style.display = 'block';
+        document.getElementById('resultSection').style.display = 'block';
+        console.log('👁️ Result section should be visible now');
     }
 
     showLoading() {
+        console.log('⏳ Showing loading...');
         this.hideAllSections();
-        this.loadingSection.style.display = 'block';
+        document.getElementById('loadingSection').style.display = 'block';
+        console.log('👁️ Loading section should be visible now');
     }
 
     showError(message) {
+        console.log('❌ Showing error:', message);
         this.errorText.textContent = message;
         this.hideAllSections();
-        this.errorSection.style.display = 'block';
+        document.getElementById('errorSection').style.display = 'block';
+        console.log('👁️ Error section should be visible now');
     }
 
     hideAllSections() {
-        this.previewSection.style.display = 'none';
-        this.loadingSection.style.display = 'none';
-        this.resultSection.style.display = 'none';
-        this.errorSection.style.display = 'none';
+        console.log('🙈 Hiding all sections...');
+        document.getElementById('previewSection').style.display = 'none';
+        document.getElementById('loadingSection').style.display = 'none';
+        document.getElementById('resultSection').style.display = 'none';
+        document.getElementById('errorSection').style.display = 'none';
+        console.log('✅ All sections hidden');
     }
 
     downloadFile(filename, content) {
