@@ -75,71 +75,111 @@ class ImageToHTMLConverter {
   async findElements(image) {
     const { width, height } = image.bitmap;
     const elements = [];
-    const visited = new Set(); // برای جلوگیری از تکرار
     
-    // پیدا کردن عناصر اصلی با step بزرگتر
-    const step = Math.max(50, Math.floor(Math.min(width, height) / 20));
+    console.log(`🔍 Analyzing image for elements: ${width}x${height}px`);
     
-    for (let y = 0; y < height - step; y += step) {
-      for (let x = 0; x < width - step; x += step) {
-        const key = `${x}-${y}`;
-        if (visited.has(key)) continue;
-        visited.add(key);
+    // تقسیم عکس به مناطق مختلف - ساده و مؤثر
+    const regionWidth = Math.floor(width / 3);
+    const regionHeight = Math.floor(height / 3);
+    
+    // ایجاد 9 منطقه (3x3 grid)
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const x = col * regionWidth;
+        const y = row * regionHeight;
+        const w = Math.min(regionWidth, width - x);
+        const h = Math.min(regionHeight, height - y);
         
-        const pixel = Jimp.intToRGBA(image.getPixelColor(x, y));
+        // تحلیل هر منطقه
+        const regionAnalysis = this.analyzeRegion(image, x, y, w, h);
         
-        // تشخیص متن (رنگ‌های تیره)
-        if (pixel.r < 80 && pixel.g < 80 && pixel.b < 80 && pixel.a > 200) {
-          const textArea = this.findTextArea(image, x, y, step);
-          if (textArea.width > 50 && textArea.height > 20) {
-            elements.push({
-              type: 'text',
-              x: textArea.x,
-              y: textArea.y,
-              width: textArea.width,
-              height: textArea.height,
-              color: `#${pixel.r.toString(16).padStart(2, '0')}${pixel.g.toString(16).padStart(2, '0')}${pixel.b.toString(16).padStart(2, '0')}`,
-              content: this.generateTextContent(elements.length)
-            });
-            
-            // علامت‌گذاری ناحیه‌های استفاده شده
-            for (let dy = 0; dy < textArea.height; dy += step) {
-              for (let dx = 0; dx < textArea.width; dx += step) {
-                visited.add(`${textArea.x + dx}-${textArea.y + dy}`);
-              }
-            }
-          }
+        if (regionAnalysis.hasContent) {
+          elements.push({
+            type: regionAnalysis.type,
+            x: x,
+            y: y,
+            width: w,
+            height: h,
+            color: regionAnalysis.color,
+            content: regionAnalysis.content,
+            placeholder: regionAnalysis.placeholder
+          });
         }
-        
-        // تشخیص تصاویر (رنگ‌های روشن و متنوع)
-        else if (pixel.r > 120 || pixel.g > 120 || pixel.b > 120) {
-          const imageArea = this.findImageArea(image, x, y, step);
-          if (imageArea.width > 80 && imageArea.height > 80) {
-            elements.push({
-              type: 'image',
-              x: imageArea.x,
-              y: imageArea.y,
-              width: imageArea.width,
-              height: imageArea.height,
-              placeholder: this.generateImagePlaceholder(elements.length)
-            });
-            
-            // علامت‌گذاری ناحیه‌های استفاده شده
-            for (let dy = 0; dy < imageArea.height; dy += step) {
-              for (let dx = 0; dx < imageArea.width; dx += step) {
-                visited.add(`${imageArea.x + dx}-${imageArea.y + dy}`);
-              }
-            }
-          }
-        }
-        
-        // محدود کردن تعداد elements
-        if (elements.length >= this.maxElements) break;
       }
-      if (elements.length >= this.maxElements) break;
     }
     
+    // اگر هیچ element پیدا نشد، حداقل یک element اضافه کن
+    if (elements.length === 0) {
+      elements.push({
+        type: 'div',
+        x: 0,
+        y: 0,
+        width: width,
+        height: height,
+        color: '#f0f0f0',
+        content: 'محتوای عکس',
+        placeholder: ''
+      });
+    }
+    
+    console.log(`✅ Found ${elements.length} elements`);
     return elements;
+  }
+  
+  analyzeRegion(image, x, y, width, height) {
+    let totalR = 0, totalG = 0, totalB = 0, pixelCount = 0;
+    let hasDarkPixels = false;
+    let hasLightPixels = false;
+    
+    // نمونه‌گیری از منطقه
+    const step = Math.max(5, Math.floor(Math.min(width, height) / 10));
+    
+    for (let dy = 0; dy < height; dy += step) {
+      for (let dx = 0; dx < width; dx += step) {
+        const pixel = Jimp.intToRGBA(image.getPixelColor(x + dx, y + dy));
+        totalR += pixel.r;
+        totalG += pixel.g;
+        totalB += pixel.b;
+        pixelCount++;
+        
+        // تشخیص رنگ‌های تیره و روشن
+        if (pixel.r < 100 && pixel.g < 100 && pixel.b < 100) {
+          hasDarkPixels = true;
+        }
+        if (pixel.r > 150 || pixel.g > 150 || pixel.b > 150) {
+          hasLightPixels = true;
+        }
+      }
+    }
+    
+    const avgR = Math.floor(totalR / pixelCount);
+    const avgG = Math.floor(totalG / pixelCount);
+    const avgB = Math.floor(totalB / pixelCount);
+    const avgColor = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
+    
+    // تشخیص نوع منطقه
+    let type = 'div';
+    let content = '';
+    let placeholder = '';
+    
+    if (hasDarkPixels && hasLightPixels) {
+      type = 'text';
+      content = this.generateTextContent(elements.length);
+    } else if (hasLightPixels && !hasDarkPixels) {
+      type = 'image';
+      placeholder = this.generateImagePlaceholder(elements.length);
+    } else {
+      type = 'div';
+      content = 'منطقه';
+    }
+    
+    return {
+      hasContent: true,
+      type: type,
+      color: avgColor,
+      content: content,
+      placeholder: placeholder
+    };
   }
 
   findTextArea(image, startX, startY, step) {
@@ -261,12 +301,16 @@ class ImageToHTMLConverter {
 
   generateElementHTML(element) {
     if (element.type === 'text') {
-      return `<div class="text-element" style="position: absolute; left: ${element.x}px; top: ${element.y}px; width: ${element.width}px; height: ${element.height}px; color: ${element.color}; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-size: 14px; text-align: center;">
+      return `<div class="text-element" style="position: absolute; left: ${element.x}px; top: ${element.y}px; width: ${element.width}px; height: ${element.height}px; color: ${element.color}; display: flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.9); border: 1px solid #ddd; border-radius: 4px; padding: 8px; font-size: 14px; text-align: center; font-weight: bold;">
                 ${element.content}
               </div>`;
     } else if (element.type === 'image') {
       return `<div class="image-element" style="position: absolute; left: ${element.x}px; top: ${element.y}px; width: ${element.width}px; height: ${element.height}px; background: linear-gradient(135deg, #f0f0f0, #e0e0e0); border: 2px solid #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666;">
                 🖼️ ${element.placeholder}
+              </div>`;
+    } else if (element.type === 'div') {
+      return `<div class="div-element" style="position: absolute; left: ${element.x}px; top: ${element.y}px; width: ${element.width}px; height: ${element.height}px; background-color: ${element.color}; border: 1px solid #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #333; font-weight: bold;">
+                ${element.content}
               </div>`;
     }
     return '';
@@ -318,6 +362,16 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
+.div-element {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.div-element:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
 .original-image {
     z-index: 1;
 }
@@ -331,14 +385,16 @@ body {
     }
     
     .text-element,
-    .image-element {
+    .image-element,
+    .div-element {
         transform: scale(0.8);
     }
 }
 
 @media (max-width: 480px) {
     .text-element,
-    .image-element {
+    .image-element,
+    .div-element {
         transform: scale(0.6);
         font-size: 10px !important;
     }
