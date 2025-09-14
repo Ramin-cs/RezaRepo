@@ -21,6 +21,9 @@ class ImageConverter {
         this.imageDimensions = document.getElementById('imageDimensions');
         this.elementsCount = document.getElementById('elementsCount');
         this.mainColor = document.getElementById('mainColor');
+        this.layoutType = document.getElementById('layoutType');
+        this.conversionMode = document.getElementById('conversionMode');
+        this.features = document.getElementById('features');
         this.downloadHTML = document.getElementById('downloadHTML');
         this.downloadCSS = document.getElementById('downloadCSS');
         this.previewBtn = document.getElementById('previewBtn');
@@ -153,9 +156,14 @@ class ImageConverter {
         try {
             const formData = new FormData();
             formData.append('image', this.selectedFile);
+            
+            // Get conversion mode
+            const conversionMode = document.querySelector('input[name="conversionMode"]:checked').value;
+            formData.append('advanced', conversionMode === 'advanced');
 
             console.log('🌐 Sending request to /api/convert');
             console.log('📤 FormData contents:', formData.get('image'));
+            console.log('🤖 Conversion mode:', conversionMode);
             
             const response = await fetch('/api/convert', {
                 method: 'POST',
@@ -197,15 +205,21 @@ class ImageConverter {
 
         // نمایش اطلاعات با error handling
         try {
-            this.imageDimensions.textContent = `${result.analysis.width} × ${result.analysis.height} پیکسل`;
-            this.elementsCount.textContent = result.analysis.elements ? result.analysis.elements.length : 0;
-            this.mainColor.textContent = result.analysis.colors ? result.analysis.colors.primary : '#000000';
+            this.imageDimensions.textContent = `${result.analysis.width || result.analysis.imageInfo?.width || 'نامشخص'} × ${result.analysis.height || result.analysis.imageInfo?.height || 'نامشخص'} پیکسل`;
+            this.elementsCount.textContent = result.analysis.totalElements || result.analysis.elements?.length || 0;
+            this.mainColor.textContent = result.analysis.dominantColors?.[0] || result.analysis.colors?.primary || '#000000';
+            this.layoutType.textContent = result.analysis.layoutType || 'نامشخص';
+            this.conversionMode.textContent = result.mode === 'advanced' ? '🤖 پیشرفته (AI)' : '🔄 ساده';
+            this.features.textContent = result.metadata?.features?.join(', ') || 'پایه';
             console.log('✅ Result info displayed successfully');
         } catch (error) {
             console.error('❌ Error displaying result info:', error);
             this.imageDimensions.textContent = 'نامشخص';
             this.elementsCount.textContent = '0';
             this.mainColor.textContent = '#000000';
+            this.layoutType.textContent = 'نامشخص';
+            this.conversionMode.textContent = 'نامشخص';
+            this.features.textContent = 'نامشخص';
         }
 
         this.hideAllSections();

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const cors = require('cors');
 const { ImageToHTMLConverter } = require('./src/imageToHTMLConverter');
+const { AdvancedImageConverter } = require('./src/advancedImageConverter');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,8 +47,9 @@ const upload = multer({
   }
 });
 
-// Initialize converter
+// Initialize converters
 const imageConverter = new ImageToHTMLConverter();
+const advancedImageConverter = new AdvancedImageConverter();
 
 // Routes
 app.get('/', (req, res) => {
@@ -62,10 +64,14 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
     }
 
     const imagePath = req.file.path;
-    console.log('🖼️ Converting image to HTML/CSS:', imagePath);
+    const useAdvanced = req.body.advanced === 'true';
+    
+    console.log(`🖼️ Converting image with ${useAdvanced ? 'Advanced' : 'Basic'} mode:`, imagePath);
 
     // Convert image to HTML/CSS
-    const result = await imageConverter.convertImageToHTMLCSS(imagePath);
+    const result = useAdvanced ? 
+      await advancedImageConverter.convertImageToHTMLCSS(imagePath) :
+      await imageConverter.convertImageToHTMLCSS(imagePath);
     
     // Create output directory
     const outputDir = path.join('output', Date.now().toString());
@@ -87,8 +93,11 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
       html: result.html,
       css: result.css,
       analysis: result.analysis,
+      metadata: result.metadata,
       outputPath: outputDir,
-      message: 'Image converted to HTML/CSS successfully!'
+      previewUrl: `/preview/${path.basename(outputDir)}`,
+      mode: useAdvanced ? 'advanced' : 'basic',
+      message: `Image converted to HTML/CSS successfully using ${useAdvanced ? 'Advanced AI' : 'Basic'} mode!`
     });
     
   } catch (error) {

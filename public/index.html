@@ -28,7 +28,17 @@
                 <div class="image-preview">
                     <img id="previewImage" alt="پیش‌نمایش عکس">
                 </div>
-                <button class="convert-btn" id="convertBtn">🔄 تبدیل به HTML/CSS</button>
+                <div class="conversion-options">
+                    <label class="option-label">
+                        <input type="radio" name="conversionMode" value="basic" checked>
+                        <span>🔄 تبدیل ساده</span>
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="conversionMode" value="advanced">
+                        <span>🤖 تبدیل پیشرفته (AI)</span>
+                    </label>
+                </div>
+                <button class="convert-btn" id="convertBtn">🚀 تبدیل به HTML/CSS</button>
             </div>
 
             <div class="loading-section" id="loadingSection" style="display: none;">
@@ -47,6 +57,9 @@
                     <p><strong>ابعاد عکس:</strong> <span id="imageDimensions"></span></p>
                     <p><strong>تعداد المنت‌ها:</strong> <span id="elementsCount"></span></p>
                     <p><strong>رنگ اصلی:</strong> <span id="mainColor"></span></p>
+                    <p><strong>نوع Layout:</strong> <span id="layoutType"></span></p>
+                    <p><strong>حالت تبدیل:</strong> <span id="conversionMode"></span></p>
+                    <p><strong>ویژگی‌ها:</strong> <span id="features"></span></p>
                 </div>
             </div>
 
