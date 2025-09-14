@@ -7,6 +7,9 @@ const cors = require('cors');
 const { ImageAnalyzer } = require('./src/imageAnalyzer');
 const { HTMLGenerator } = require('./src/htmlGenerator');
 const { CSSGenerator } = require('./src/cssGenerator');
+const { AdvancedImageAnalyzer } = require('./src/advancedImageAnalyzer');
+const { AdvancedHTMLGenerator } = require('./src/advancedHTMLGenerator');
+const { AdvancedCSSGenerator } = require('./src/advancedCSSGenerator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +52,16 @@ const upload = multer({
   }
 });
 
+// Initialize analyzers and generators
+const imageAnalyzer = new ImageAnalyzer();
+const htmlGenerator = new HTMLGenerator();
+const cssGenerator = new CSSGenerator();
+
+// Initialize advanced analyzers and generators
+const advancedImageAnalyzer = new AdvancedImageAnalyzer();
+const advancedHTMLGenerator = new AdvancedHTMLGenerator();
+const advancedCSSGenerator = new AdvancedCSSGenerator();
+
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -63,17 +76,15 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
     const imagePath = req.file.path;
     console.log('Processing image:', imagePath);
 
-    // Analyze the image
-    const analyzer = new ImageAnalyzer();
-    const analysisResult = await analyzer.analyzeImage(imagePath);
+    // Use advanced analyzers and generators
+    console.log('🚀 Using Advanced Image Analysis...');
+    const analysisResult = await advancedImageAnalyzer.analyzeImage(imagePath);
     
-    // Generate HTML structure
-    const htmlGenerator = new HTMLGenerator();
-    const htmlContent = htmlGenerator.generateHTML(analysisResult);
+    // Generate advanced HTML structure
+    const htmlContent = advancedHTMLGenerator.generateHTML(analysisResult);
     
-    // Generate CSS styles
-    const cssGenerator = new CSSGenerator();
-    const cssContent = cssGenerator.generateCSS(analysisResult);
+    // Generate advanced CSS styles
+    const cssContent = advancedCSSGenerator.generateCSS(analysisResult);
     
     // Create output directory
     const outputDir = path.join('output', Date.now().toString());
@@ -105,6 +116,55 @@ app.post('/api/convert', upload.single('image'), async (req, res) => {
       error: 'Failed to process image', 
       details: error.message 
     });
+  }
+});
+
+// Advanced conversion endpoint
+app.post('/api/convert-advanced', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const imagePath = req.file.path;
+    console.log('🚀 Processing image with Advanced Analysis:', imagePath);
+
+    // Use advanced analyzers and generators
+    const analysisResult = await advancedImageAnalyzer.analyzeImage(imagePath);
+    
+    // Generate advanced HTML structure
+    const htmlContent = advancedHTMLGenerator.generateHTML(analysisResult);
+    
+    // Generate advanced CSS styles
+    const cssContent = advancedCSSGenerator.generateCSS(analysisResult);
+    
+    // Create output directory
+    const outputDir = path.join('output', 'advanced-' + Date.now().toString());
+    fs.ensureDirSync(outputDir);
+    
+    // Save generated files
+    const htmlPath = path.join(outputDir, 'index.html');
+    const cssPath = path.join(outputDir, 'styles.css');
+    
+    fs.writeFileSync(htmlPath, htmlContent);
+    fs.writeFileSync(cssPath, cssContent);
+    
+    // Copy original image to output directory
+    const imageOutputPath = path.join(outputDir, 'original-image' + path.extname(imagePath));
+    fs.copyFileSync(imagePath, imageOutputPath);
+    
+    res.json({
+      success: true,
+      html: htmlContent,
+      css: cssContent,
+      analysis: analysisResult,
+      outputPath: outputDir,
+      message: 'Advanced conversion completed successfully!'
+    });
+    
+  } catch (error) {
+    console.error('Error processing image with advanced analysis:', error);
+    res.status(500).json({ error: 'Failed to process image with advanced analysis' });
   }
 });
 
