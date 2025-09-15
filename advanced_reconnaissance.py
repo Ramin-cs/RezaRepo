@@ -11,6 +11,7 @@ import random
 import string
 import concurrent.futures
 import threading
+import os
 from typing import Dict, List, Set, Tuple, Optional
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 from bs4 import BeautifulSoup, Comment
@@ -20,7 +21,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoAlertPresentException
 import base64
 import urllib.parse
 from live_progress import live_progress
@@ -224,7 +225,7 @@ class AdvancedReconnaissance:
         }
         
     def _advanced_url_discovery(self):
-        """Advanced URL discovery with multiple techniques and live progress"""
+        """Advanced URL discovery with parallel processing"""
         to_crawl = {self.target_url}
         crawled = set()
         max_depth = self.options.get('depth', 3)
@@ -246,168 +247,115 @@ class AdvancedReconnaissance:
             
         live_progress.update_task(f"Starting URL discovery with {len(to_crawl)} initial URLs...")
         
-        while to_crawl and len(crawled) < max_urls:
-            current_url = to_crawl.pop()
-            if current_url in crawled:
-                continue
+        # Use parallel processing for URL discovery
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            while to_crawl and len(crawled) < max_urls:
+                # Take up to 20 URLs to process in parallel
+                batch_urls = []
+                for _ in range(min(20, len(to_crawl))):
+                    if to_crawl:
+                        batch_urls.append(to_crawl.pop())
                 
-            # Show live progress
-            live_progress.show_url_discovery(current_url, "crawling")
-            live_progress.show_progress(len(crawled), max_urls, f"Discovered: {len(self.discovered_urls)} URLs")
-                
-            try:
-                response = self.session.get(current_url, timeout=10)
-                crawled.add(current_url)
-                self.discovered_urls.add(current_url)
-                
-                # Show successful discovery
-                live_progress.show_url_discovery(current_url, "discovered")
-                
-                if response.status_code == 200:
-                    # Parse HTML and find links
-                    # Handle encoding issues
-                    try:
-                        soup = BeautifulSoup(response.content, 'html.parser')
-                    except Exception as e:
-                        # Try with different encoding
-                        try:
-                            soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
-                        except:
-                            soup = BeautifulSoup(response.text, 'html.parser')
+                if not batch_urls:
+                    break
                     
-                    # Find all links
-                    links_found = 0
-                    for link in soup.find_all('a', href=True):
-                        href = link['href']
-                        full_url = urljoin(current_url, href)
-                        parsed = urlparse(full_url)
-                        
-                        if parsed.netloc == urlparse(self.target_url).netloc:
-                            if full_url not in crawled and len(crawled) < max_urls:
-                                to_crawl.add(full_url)
-                                links_found += 1
-                                
-                    # Find forms
-                    forms_found = 0
-                    for form in soup.find_all('form'):
-                        action = form.get('action', current_url)
-                        form_url = urljoin(current_url, action)
-                        if form_url not in crawled:
-                            to_crawl.add(form_url)
-                            forms_found += 1
+                # Submit batch for parallel processing
+                future_to_url = {executor.submit(self._crawl_single_url, url): url for url in batch_urls}
+                
+                # Process completed tasks
+                for future in concurrent.futures.as_completed(future_to_url):
+                    url = future_to_url[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            crawled.add(url)
+                            self.discovered_urls.add(url)
+                            live_progress.show_url_discovery(url, "discovered")
                             
-                    # Show detailed progress
-                    if links_found > 0 or forms_found > 0:
-                        live_progress.show_info(f"Found {links_found} links and {forms_found} forms on {current_url}")
+                            # Add new URLs to crawl list
+                            for new_url in result.get('new_urls', []):
+                                if new_url not in crawled and len(crawled) < max_urls:
+                                    to_crawl.add(new_url)
+                                    
+                            # Show progress
+                            live_progress.show_progress(len(crawled), max_urls, f"Discovered: {len(self.discovered_urls)} URLs")
                             
-            except Exception as e:
-                live_progress.show_url_discovery(current_url, "error")
-                continue
+                    except Exception as e:
+                        live_progress.show_url_discovery(url, "error")
+                        continue
                 
         live_progress.show_phase_complete("URL Discovery", {
             'discovered_urls': len(self.discovered_urls),
             'crawled_urls': len(crawled)
         })
         
+    def _crawl_single_url(self, url: str) -> Dict:
+        """Crawl a single URL and return discovered links"""
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code != 200:
+                return None
+                
+            # Handle encoding issues
+            try:
+                soup = BeautifulSoup(response.content, 'html.parser')
+            except Exception as e:
+                try:
+                    soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
+                except:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+            
+            new_urls = []
+            
+            # Find all links
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                full_url = urljoin(url, href)
+                parsed = urlparse(full_url)
+                
+                if parsed.netloc == urlparse(self.target_url).netloc:
+                    new_urls.append(full_url)
+                    
+            # Find forms
+            for form in soup.find_all('form'):
+                action = form.get('action', url)
+                form_url = urljoin(url, action)
+                new_urls.append(form_url)
+                
+            return {'new_urls': new_urls}
+            
+        except Exception:
+            return None
+        
     def _comprehensive_input_discovery(self):
-        """Comprehensive input point discovery with live progress"""
+        """Comprehensive input point discovery with parallel processing"""
         live_progress.update_task(f"Analyzing {len(self.discovered_urls)} URLs for input points...")
         
-        for i, url in enumerate(self.discovered_urls):
-            live_progress.show_progress(i, len(self.discovered_urls), f"Analyzing: {url}")
-            live_progress.update_task(f"Analyzing URL {i+1}/{len(self.discovered_urls)}: {url}")
+        # Use parallel processing for input discovery
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            # Submit all URLs for analysis
+            future_to_url = {executor.submit(self._analyze_single_url_inputs, url): url for url in self.discovered_urls}
             
-            try:
-                response = self.session.get(url, timeout=10)
-                if response.status_code != 200:
-                    continue
-                    
-                # Handle encoding issues
-                try:
-                    soup = BeautifulSoup(response.content, 'html.parser')
-                except Exception as e:
-                    # Try with different encoding
-                    try:
-                        soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
-                    except:
-                        soup = BeautifulSoup(response.text, 'html.parser')
+            # Process completed tasks
+            completed = 0
+            for future in concurrent.futures.as_completed(future_to_url):
+                url = future_to_url[future]
+                completed += 1
                 
-                # Find forms
-                forms_found = 0
-                for form in soup.find_all('form'):
-                    form_data = {
-                        'type': 'form',
-                        'url': url,
-                        'action': form.get('action', url),
-                        'method': form.get('method', 'GET').upper(),
-                        'inputs': [],
-                        'form_id': form.get('id', ''),
-                        'form_class': form.get('class', []),
-                        'form_name': form.get('name', '')
-                    }
+                try:
+                    result = future.result()
+                    if result:
+                        # Add discovered input points
+                        for input_point in result:
+                            self.input_points.append(input_point)
+                            live_progress.show_input_point(input_point)
+                            
+                    live_progress.show_progress(completed, len(self.discovered_urls), f"Analyzing: {url}")
+                    live_progress.update_task(f"Analyzing URL {completed}/{len(self.discovered_urls)}: {url}")
                     
-                    for input_tag in form.find_all(['input', 'textarea', 'select']):
-                        input_data = {
-                            'name': input_tag.get('name', ''),
-                            'type': input_tag.get('type', 'text'),
-                            'value': input_tag.get('value', ''),
-                            'tag': input_tag.name,
-                            'id': input_tag.get('id', ''),
-                            'class': input_tag.get('class', []),
-                            'placeholder': input_tag.get('placeholder', ''),
-                            'required': input_tag.has_attr('required'),
-                            'pattern': input_tag.get('pattern', ''),
-                            'maxlength': input_tag.get('maxlength', ''),
-                            'minlength': input_tag.get('minlength', '')
-                        }
-                        form_data['inputs'].append(input_data)
-                        
-                    if form_data['inputs']:
-                        self.input_points.append(form_data)
-                        forms_found += 1
-                        live_progress.show_input_point(form_data)
-                        
-                # Find URL parameters
-                parsed_url = urlparse(url)
-                if parsed_url.query:
-                    params = {}
-                    for param in parsed_url.query.split('&'):
-                        if '=' in param:
-                            key, value = param.split('=', 1)
-                            params[key] = value
-                            
-                    if params:
-                        url_params_data = {
-                            'type': 'url_params',
-                            'url': url,
-                            'params': params
-                        }
-                        self.input_points.append(url_params_data)
-                        live_progress.show_input_point(url_params_data)
-                        
-                # Find JavaScript variables
-                scripts = soup.find_all('script')
-                js_vars_found = 0
-                for script in scripts:
-                    if script.string:
-                        js_vars = self._extract_js_variables(script.string)
-                        if js_vars:
-                            js_vars_data = {
-                                'type': 'javascript_variables',
-                                'url': url,
-                                'variables': js_vars
-                            }
-                            self.input_points.append(js_vars_data)
-                            js_vars_found += 1
-                            live_progress.show_input_point(js_vars_data)
-                            
-                # Show summary for this URL
-                if forms_found > 0 or js_vars_found > 0 or parsed_url.query:
-                    live_progress.show_info(f"Found {forms_found} forms, {js_vars_found} JS vars, {len(params) if parsed_url.query else 0} URL params on {url}")
-                            
-            except Exception as e:
-                live_progress.show_warning(f"Error analyzing {url}: {e}")
-                continue
+                except Exception as e:
+                    live_progress.show_warning(f"Error analyzing {url}: {e}")
+                    continue
                 
         live_progress.show_phase_complete("Input Point Discovery", {
             'input_points': len(self.input_points),
@@ -415,6 +363,91 @@ class AdvancedReconnaissance:
             'url_params': len([p for p in self.input_points if p['type'] == 'url_params']),
             'js_variables': len([p for p in self.input_points if p['type'] == 'javascript_variables'])
         })
+        
+    def _analyze_single_url_inputs(self, url: str) -> List[Dict]:
+        """Analyze a single URL for input points"""
+        input_points = []
+        
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.status_code != 200:
+                return input_points
+                
+            # Handle encoding issues
+            try:
+                soup = BeautifulSoup(response.content, 'html.parser')
+            except Exception as e:
+                try:
+                    soup = BeautifulSoup(response.content.decode('utf-8', errors='ignore'), 'html.parser')
+                except:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find forms
+            for form in soup.find_all('form'):
+                form_data = {
+                    'type': 'form',
+                    'url': url,
+                    'action': form.get('action', url),
+                    'method': form.get('method', 'GET').upper(),
+                    'inputs': [],
+                    'form_id': form.get('id', ''),
+                    'form_class': form.get('class', []),
+                    'form_name': form.get('name', '')
+                }
+                
+                for input_tag in form.find_all(['input', 'textarea', 'select']):
+                    input_data = {
+                        'name': input_tag.get('name', ''),
+                        'type': input_tag.get('type', 'text'),
+                        'value': input_tag.get('value', ''),
+                        'tag': input_tag.name,
+                        'id': input_tag.get('id', ''),
+                        'class': input_tag.get('class', []),
+                        'placeholder': input_tag.get('placeholder', ''),
+                        'required': input_tag.has_attr('required'),
+                        'pattern': input_tag.get('pattern', ''),
+                        'maxlength': input_tag.get('maxlength', ''),
+                        'minlength': input_tag.get('minlength', '')
+                    }
+                    form_data['inputs'].append(input_data)
+                    
+                if form_data['inputs']:
+                    input_points.append(form_data)
+                    
+            # Find URL parameters
+            parsed_url = urlparse(url)
+            if parsed_url.query:
+                params = {}
+                for param in parsed_url.query.split('&'):
+                    if '=' in param:
+                        key, value = param.split('=', 1)
+                        params[key] = value
+                        
+                if params:
+                    url_params_data = {
+                        'type': 'url_params',
+                        'url': url,
+                        'params': params
+                    }
+                    input_points.append(url_params_data)
+                    
+            # Find JavaScript variables
+            scripts = soup.find_all('script')
+            for script in scripts:
+                if script.string:
+                    js_vars = self._extract_js_variables(script.string)
+                    if js_vars:
+                        js_vars_data = {
+                            'type': 'javascript_variables',
+                            'url': url,
+                            'variables': js_vars
+                        }
+                        input_points.append(js_vars_data)
+                        
+        except Exception:
+            pass
+            
+        return input_points
         
     def _extract_js_variables(self, js_code: str) -> List[Dict]:
         """Extract JavaScript variables that might be user-controlled"""
@@ -576,11 +609,30 @@ class AdvancedReconnaissance:
             }
                 
     def _perform_context_analysis(self):
-        """Perform context analysis on input points"""
-        for input_point in self.input_points:
-            context_info = self._analyze_input_context(input_point)
-            if context_info:
-                self.context_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = context_info
+        """Perform context analysis on input points with parallel processing"""
+        live_progress.update_task("Performing context analysis on input points...")
+        
+        # Use parallel processing for context analysis
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all input points for analysis
+            future_to_input = {executor.submit(self._analyze_input_context, input_point): input_point for input_point in self.input_points}
+            
+            # Process completed tasks
+            completed = 0
+            for future in concurrent.futures.as_completed(future_to_input):
+                input_point = future_to_input[future]
+                completed += 1
+                
+                try:
+                    context_info = future.result()
+                    if context_info:
+                        self.context_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = context_info
+                        
+                    live_progress.show_progress(completed, len(self.input_points), "Context analysis")
+                    
+                except Exception as e:
+                    live_progress.show_warning(f"Context analysis failed for {input_point['url']}: {e}")
+                    continue
                 
     def _analyze_input_context(self, input_point: Dict) -> Dict:
         """Analyze the context of an input point"""
@@ -693,29 +745,41 @@ class AdvancedReconnaissance:
         return context_info
         
     def _context_aware_vulnerability_testing(self):
-        """Perform context-aware vulnerability testing"""
+        """Perform context-aware vulnerability testing with parallel processing"""
         live_progress.update_task("Starting context-aware vulnerability testing...")
         
-        total_inputs = len(self.input_points)
-        current = 0
-        
-        for input_point in self.input_points:
-            context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
-            context_info = self.context_analysis.get(context_key, {})
-            
-            live_progress.update_task(f"Testing: {input_point['url']} ({input_point.get('type', 'unknown')})")
-            
-            if context_info and context_info.get('suggested_payloads'):
-                self._test_context_specific_payloads(input_point, context_info)
-            else:
-                # Test with basic payloads
-                self._test_basic_payloads(input_point)
+        # Use parallel processing for vulnerability testing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:  # Lower workers for Chrome instances
+            # Submit all input points for testing
+            future_to_input = {}
+            for input_point in self.input_points:
+                context_key = f"{input_point['url']}#{input_point.get('type', 'unknown')}"
+                context_info = self.context_analysis.get(context_key, {})
                 
-            current += 1
-            live_progress.show_progress(current, total_inputs, "Vulnerability testing")
+                if context_info and context_info.get('suggested_payloads'):
+                    future = executor.submit(self._test_context_specific_payloads, input_point, context_info)
+                else:
+                    future = executor.submit(self._test_basic_payloads, input_point)
+                    
+                future_to_input[future] = input_point
+            
+            # Process completed tasks
+            completed = 0
+            for future in concurrent.futures.as_completed(future_to_input):
+                input_point = future_to_input[future]
+                completed += 1
+                
+                try:
+                    future.result()
+                    live_progress.update_task(f"Testing: {input_point['url']} ({input_point.get('type', 'unknown')})")
+                    live_progress.show_progress(completed, len(self.input_points), "Vulnerability testing")
+                    
+                except Exception as e:
+                    live_progress.show_warning(f"Vulnerability testing failed for {input_point['url']}: {e}")
+                    continue
             
         live_progress.show_phase_complete("Vulnerability Testing", {
-            'tested_inputs': current,
+            'tested_inputs': completed,
             'vulnerabilities_found': len(self.vulnerability_confirmations)
         })
                 
@@ -733,24 +797,24 @@ class AdvancedReconnaissance:
                 # Show Chrome execution
                 live_progress.show_chrome_execution(input_point['url'], payload)
                 
-                # Take screenshot for PoC
-                screenshot_path = self._capture_screenshot(input_point['url'], payload)
+                # Take screenshot for PoC - only if alert is actually detected
+                screenshot_path = self._capture_screenshot(input_point['url'], payload, context_info.get('context_type', ''))
                 
-                vulnerability = {
-                    'url': input_point['url'],
-                    'type': input_point['type'],
-                    'payload': payload,
-                    'context': context_info['context_type'],
-                    'response_snippet': response[:1000] if response else '',
-                    'screenshot_path': screenshot_path,
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'confidence': 0.9
-                }
-                
-                self.vulnerability_confirmations.append(vulnerability)
-                live_progress.show_vulnerability_found(vulnerability)
-                
+                # Only confirm vulnerability if screenshot was captured (alert detected)
                 if screenshot_path:
+                    vulnerability = {
+                        'url': input_point['url'],
+                        'type': input_point['type'],
+                        'payload': payload,
+                        'context': context_info['context_type'],
+                        'response_snippet': response[:1000] if response else '',
+                        'screenshot_path': screenshot_path,
+                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'confidence': 0.9
+                    }
+                    
+                    self.vulnerability_confirmations.append(vulnerability)
+                    live_progress.show_vulnerability_found(vulnerability)
                     live_progress.show_screenshot_capture(screenshot_path)
                     
     def _test_basic_payloads(self, input_point: Dict):
@@ -773,24 +837,24 @@ class AdvancedReconnaissance:
                 # Show Chrome execution
                 live_progress.show_chrome_execution(input_point['url'], payload)
                 
-                # Take screenshot for PoC
-                screenshot_path = self._capture_screenshot(input_point['url'], payload)
+                # Take screenshot for PoC - only if alert is actually detected
+                screenshot_path = self._capture_screenshot(input_point['url'], payload, 'basic')
                 
-                vulnerability = {
-                    'url': input_point['url'],
-                    'type': input_point['type'],
-                    'payload': payload,
-                    'context': 'basic',
-                    'response_snippet': response[:1000] if response else '',
-                    'screenshot_path': screenshot_path,
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'confidence': 0.8
-                }
-                
-                self.vulnerability_confirmations.append(vulnerability)
-                live_progress.show_vulnerability_found(vulnerability)
-                
+                # Only confirm vulnerability if screenshot was captured (alert detected)
                 if screenshot_path:
+                    vulnerability = {
+                        'url': input_point['url'],
+                        'type': input_point['type'],
+                        'payload': payload,
+                        'context': 'basic',
+                        'response_snippet': response[:1000] if response else '',
+                        'screenshot_path': screenshot_path,
+                        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'confidence': 0.8
+                    }
+                    
+                    self.vulnerability_confirmations.append(vulnerability)
+                    live_progress.show_vulnerability_found(vulnerability)
                     live_progress.show_screenshot_capture(screenshot_path)
                 
     def _inject_payload(self, input_point: Dict, payload: str) -> Tuple[bool, str]:
@@ -898,8 +962,8 @@ class AdvancedReconnaissance:
                 
         return False, ""
         
-    def _capture_screenshot(self, url: str, payload: str) -> str:
-        """Capture screenshot for PoC with live Chrome demonstration"""
+    def _capture_screenshot(self, url: str, payload: str, context: str = "unknown") -> str:
+        """Capture screenshot for PoC with proper alert detection"""
         try:
             # Setup Chrome options for visible browser
             chrome_options = Options()
@@ -912,59 +976,68 @@ class AdvancedReconnaissance:
             
             # Initialize WebDriver
             driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(30)
             
-            # Navigate to URL
-            driver.get(url)
-            
-            # Wait for page to load
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-            
-            # Take initial screenshot
-            timestamp = int(time.time())
-            initial_screenshot = f"poc_screenshots/initial_{timestamp}.png"
-            driver.save_screenshot(initial_screenshot)
-            
-            # Inject payload and take screenshot
             try:
-                # Try to inject payload into forms
-                forms = driver.find_elements(By.TAG_NAME, "form")
-                for form in forms:
-                    inputs = form.find_elements(By.CSS_SELECTOR, "input[type='text'], input[type='email'], input[type='search'], textarea")
-                    for input_field in inputs:
-                        input_field.clear()
-                        input_field.send_keys(payload)
-                        
-                # Submit forms
-                submit_buttons = driver.find_elements(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']")
-                for button in submit_buttons:
-                    button.click()
-                    time.sleep(2)
-                    
-                    # Check for alert
+                # Navigate to URL
+                driver.get(url)
+                time.sleep(2)
+                
+                # Check if this is a form-based injection
+                if context == "form":
+                    # Find and fill form fields
                     try:
-                        WebDriverWait(driver, 3).until(EC.alert_is_present())
-                        alert = driver.switch_to.alert
-                        live_progress.show_alert_detected()
-                        alert.accept()
-                    except TimeoutException:
-                        pass
-                        
-            except Exception as e:
-                live_progress.show_warning(f"Payload injection failed: {e}")
-            
-            # Take final screenshot
-            final_screenshot = f"poc_screenshots/final_{timestamp}.png"
-            driver.save_screenshot(final_screenshot)
-            
-            # Close driver
-            driver.quit()
-            
-            return final_screenshot
-            
+                        # Look for common form field names
+                        form_fields = driver.find_elements(By.TAG_NAME, "input")
+                        if form_fields:
+                            # Fill the first text input with payload
+                            for field in form_fields:
+                                if field.get_attribute("type") in ["text", "search", "email", "password"]:
+                                    field.clear()
+                                    field.send_keys(payload)
+                                    break
+                            
+                            # Submit the form
+                            submit_buttons = driver.find_elements(By.XPATH, "//input[@type='submit'] | //button[@type='submit'] | //button[contains(text(), 'Submit')] | //button[contains(text(), 'Search')]")
+                            if submit_buttons:
+                                submit_buttons[0].click()
+                                time.sleep(3)
+                    except Exception as e:
+                        live_progress.show_warning(f"Form injection failed: {e}")
+                
+                # Check for JavaScript alert
+                alert_detected = False
+                try:
+                    alert = driver.switch_to.alert
+                    alert_text = alert.text
+                    if "XSS" in alert_text or "alert" in alert_text.lower():
+                        alert_detected = True
+                        alert.accept()  # Accept the alert
+                        time.sleep(1)
+                except NoAlertPresentException:
+                    pass
+                
+                # Only capture screenshot if alert was actually detected
+                if alert_detected:
+                    # Create screenshots directory
+                    os.makedirs("poc_screenshots", exist_ok=True)
+                    
+                    # Capture screenshot
+                    timestamp = int(time.time())
+                    screenshot_path = f"poc_screenshots/final_{timestamp}.png"
+                    driver.save_screenshot(screenshot_path)
+                    
+                    live_progress.show_screenshot_capture(screenshot_path)
+                    return screenshot_path
+                else:
+                    # No alert detected, this is not a real vulnerability
+                    return ""
+                    
+            finally:
+                driver.quit()
+                
         except Exception as e:
-            live_progress.show_error(f"Screenshot capture failed: {e}")
+            live_progress.show_warning(f"Screenshot capture failed: {e}")
             return ""
             
     def generate_advanced_report(self) -> Dict:

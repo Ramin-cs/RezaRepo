@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "url": "http://testphp.vulnweb.com/listproducts.php?cat=4",
+  "payload": "<svg onload=alert(1)>",
+  "input_point": {
+    "type": "url_params",
+    "url": "http://testphp.vulnweb.com/listproducts.php?cat=4",
+    "params": {
+      "cat": "4"
+    }
+  },
+  "timestamp": "2025-09-15 15:03:01",
+  "screenshots": {
+    "initial": "poc_screenshots/initial_1757948573.png",
+    "injection": "poc_screenshots/injection_1757948578.png",
+    "alert": "",
+    "post_alert": ""
+  },
+  "alert_detected": false,
+  "page_title": "",
+  "current_url": "http://testphp.vulnweb.com/listproducts.php?cat=4?cat=%3Csvg%20onload=alert(1)%3E"
+}
