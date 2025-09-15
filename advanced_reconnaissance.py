@@ -488,8 +488,8 @@ class AdvancedReconnaissance:
             
         live_progress.update_task(f"Testing {total_inputs} input points in parallel...")
         
-        # Use ThreadPoolExecutor for parallel processing
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Use ThreadPoolExecutor for unlimited parallel processing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
             # Submit all tasks
             future_to_input = {}
             for input_point in testable_inputs:

@@ -50,7 +50,8 @@ class PoCCapture:
             chrome_options.add_argument('--disable-extensions')
             chrome_options.add_argument('--disable-plugins')
             chrome_options.add_argument('--disable-images')
-            chrome_options.add_argument('--disable-javascript')
+            # JavaScript MUST be enabled for XSS testing
+            # chrome_options.add_argument('--disable-javascript')  # REMOVED
             chrome_options.add_argument('--disable-css')
             chrome_options.add_argument('--disable-web-security')
             chrome_options.add_argument('--disable-features=VizDisplayCompositor')
@@ -97,7 +98,7 @@ class PoCCapture:
             return False
             
     def capture_xss_poc(self, url: str, payload: str, input_point: Dict) -> Dict:
-        """Capture comprehensive PoC for XSS vulnerability"""
+        """Capture comprehensive PoC for XSS vulnerability - ONLY if alert is detected"""
         if not self.driver:
             if not self.setup_driver():
                 return {'success': False, 'error': 'Failed to setup WebDriver'}
@@ -123,28 +124,28 @@ class PoCCapture:
                 return {'success': False, 'error': 'Failed to inject payload'}
                 
             # Wait for potential XSS execution
-            time.sleep(2)
+            time.sleep(3)
             
-            # Take screenshot after injection
-            injection_screenshot = self._take_screenshot("injection")
-            
-            # Check for alert dialogs
+            # Check for alert dialogs FIRST - this is the key change
             alert_detected = self._check_for_alerts()
             
-            if alert_detected:
-                # Take screenshot of alert
-                alert_screenshot = self._take_screenshot("alert")
-                
-                # Handle alert
-                self._handle_alert()
-                
-                # Take screenshot after alert handling
-                post_alert_screenshot = self._take_screenshot("post_alert")
-            else:
-                alert_screenshot = ""
-                post_alert_screenshot = ""
-                
-            # Generate PoC report
+            # ONLY proceed with PoC if alert is actually detected
+            if not alert_detected:
+                print("❌ No alert detected - this is NOT a confirmed XSS vulnerability")
+                return {'success': False, 'error': 'No alert detected - not a confirmed XSS'}
+            
+            print("✅ ALERT DETECTED - Confirmed XSS vulnerability!")
+            
+            # Take screenshot of alert
+            alert_screenshot = self._take_screenshot("alert")
+            
+            # Handle alert
+            self._handle_alert()
+            
+            # Take screenshot after alert handling
+            post_alert_screenshot = self._take_screenshot("post_alert")
+            
+            # Generate PoC report ONLY for confirmed vulnerabilities
             poc_data = {
                 'success': True,
                 'url': url,
@@ -153,11 +154,10 @@ class PoCCapture:
                 'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
                 'screenshots': {
                     'initial': initial_screenshot,
-                    'injection': injection_screenshot,
                     'alert': alert_screenshot,
                     'post_alert': post_alert_screenshot
                 },
-                'alert_detected': alert_detected,
+                'alert_detected': True,  # Always True if we reach here
                 'page_source': self.driver.page_source,
                 'page_title': self.driver.title,
                 'current_url': self.driver.current_url
@@ -193,32 +193,38 @@ class PoCCapture:
             form_elements = self.driver.find_elements(By.TAG_NAME, "form")
             
             for form_element in form_elements:
-                # Check if this is the target form
-                action = form_element.get_attribute("action")
-                if action and action in form.get('action', ''):
-                    # Find input fields
-                    inputs = form_element.find_elements(By.TAG_NAME, "input")
-                    textareas = form_element.find_elements(By.TAG_NAME, "textarea")
-                    selects = form_element.find_elements(By.TAG_NAME, "select")
+                # Find input fields
+                inputs = form_element.find_elements(By.TAG_NAME, "input")
+                textareas = form_element.find_elements(By.TAG_NAME, "textarea")
+                selects = form_element.find_elements(By.TAG_NAME, "select")
+                
+                all_inputs = inputs + textareas + selects
+                
+                # Inject payload into first text input field
+                for input_field in all_inputs:
+                    field_name = input_field.get_attribute("name")
+                    field_type = input_field.get_attribute("type")
                     
-                    all_inputs = inputs + textareas + selects
-                    
-                    for input_field in all_inputs:
-                        field_name = input_field.get_attribute("name")
-                        field_type = input_field.get_attribute("type")
-                        
-                        # Check if this is a text input field
-                        if field_name and field_type in ['text', 'email', 'search', 'url', 'password']:
+                    # Check if this is a text input field
+                    if field_name and field_type in ['text', 'email', 'search', 'url', 'password']:
+                        try:
                             # Clear field and inject payload
                             input_field.clear()
                             input_field.send_keys(payload)
                             
-                    # Submit form
-                    submit_button = form_element.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], button")
-                    submit_button.click()
-                    
-                    return True
-                    
+                            # Submit form
+                            try:
+                                submit_button = form_element.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], button")
+                                submit_button.click()
+                            except:
+                                # Try pressing Enter if no submit button
+                                input_field.send_keys(Keys.RETURN)
+                            
+                            return True
+                        except Exception as e:
+                            print(f"⚠️ Warning: Payload injection failed: {e}")
+                            continue
+                            
             return False
             
         except Exception as e:

@@ -470,14 +470,19 @@ class XSSScanner:
                     for payload in payloads[:10]:  # Limit to 10 payloads per input point
                         is_vulnerable, response = self.inject_payload(input_point, payload)
                         if is_vulnerable:
-                            # Capture PoC
+                            # Capture PoC - ONLY proceed if alert is detected
                             poc_data = self.poc_capture.capture_xss_poc(
                                 input_point['url'], payload, input_point
                             )
                             
-                            self._record_advanced_vulnerability(
-                                input_point, payload, response, context_info, filter_info, poc_data
-                            )
+                            # ONLY record vulnerability if PoC capture was successful (alert detected)
+                            if poc_data.get('success') and poc_data.get('alert_detected'):
+                                self._record_advanced_vulnerability(
+                                    input_point, payload, response, context_info, filter_info, poc_data
+                                )
+                                live_progress.show_vulnerability_found(input_point['url'], payload)
+                            else:
+                                print(f"❌ No alert detected for {input_point['url']} with payload: {payload}")
                         pbar.update(1)
                         
             # Phase 5: Generate Advanced Reports
