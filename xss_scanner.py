@@ -27,6 +27,7 @@ from context_analyzer import ContextAnalyzer
 from vulnerability_detector import VulnerabilityDetector
 from report_generator import ReportGenerator
 from live_progress import live_progress
+from context_breakdown import ContextBreakdown
 
 # Initialize colorama for cross-platform colored output
 init(autoreset=True)
@@ -50,6 +51,7 @@ class XSSScanner:
         self.context_analyzer = ContextAnalyzer()
         self.vuln_detector = VulnerabilityDetector()
         self.report_generator = ReportGenerator()
+        self.context_breakdown = ContextBreakdown()
         
         # Setup logging
         self._setup_logging()
@@ -425,8 +427,12 @@ class XSSScanner:
                 live_progress.show_error("No URLs discovered. Exiting.")
                 return
                 
-            # Phase 2: Character Filter Analysis
-            live_progress.start_phase("Character Filter Analysis", "Analyzing character filtering mechanisms")
+            # Phase 2: Context Breakdown Analysis
+            live_progress.start_phase("Context Breakdown Analysis", "Analyzing input points by context")
+            context_breakdown = self.context_breakdown.analyze_input_points(recon_results['input_points'])
+            
+            # Phase 3: Character Filter Analysis (Optimized)
+            live_progress.start_phase("Character Filter Analysis", "Analyzing character filtering mechanisms with parallel processing")
             filter_analysis = {}
             
             for input_point in recon_results['input_points']:
@@ -436,7 +442,7 @@ class XSSScanner:
                     )
                     filter_analysis[f"{input_point['url']}#{input_point.get('type', 'unknown')}"] = analysis
                     
-            # Phase 3: Context-Aware Vulnerability Testing
+            # Phase 4: Context-Aware Vulnerability Testing
             live_progress.start_phase("Context-Aware Vulnerability Testing", "Testing XSS vulnerabilities with live Chrome demonstration")
             
             total_tests = len(recon_results['input_points']) * 20  # Estimate
@@ -474,11 +480,11 @@ class XSSScanner:
                             )
                         pbar.update(1)
                         
-            # Phase 4: Generate Advanced Reports
+            # Phase 5: Generate Advanced Reports
             live_progress.start_phase("Generating Advanced Reports", "Creating comprehensive vulnerability reports")
             self._generate_advanced_reports(recon_results, filter_analysis)
             
-            # Phase 5: Results
+            # Phase 6: Results
             self._print_advanced_results()
             
         except Exception as e:

@@ -9,6 +9,8 @@ import time
 import json
 import random
 import string
+import concurrent.futures
+import threading
 from typing import Dict, List, Set, Tuple, Optional
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 from bs4 import BeautifulSoup, Comment
@@ -222,7 +224,7 @@ class AdvancedReconnaissance:
         }
         
     def _advanced_url_discovery(self):
-        """Advanced URL discovery with multiple techniques"""
+        """Advanced URL discovery with multiple techniques and live progress"""
         to_crawl = {self.target_url}
         crawled = set()
         max_depth = self.options.get('depth', 3)
@@ -242,15 +244,24 @@ class AdvancedReconnaissance:
             full_url = urljoin(self.target_url, path)
             to_crawl.add(full_url)
             
+        live_progress.update_task(f"Starting URL discovery with {len(to_crawl)} initial URLs...")
+        
         while to_crawl and len(crawled) < max_urls:
             current_url = to_crawl.pop()
             if current_url in crawled:
                 continue
                 
+            # Show live progress
+            live_progress.show_url_discovery(current_url, "crawling")
+            live_progress.show_progress(len(crawled), max_urls, f"Discovered: {len(self.discovered_urls)} URLs")
+                
             try:
                 response = self.session.get(current_url, timeout=10)
                 crawled.add(current_url)
                 self.discovered_urls.add(current_url)
+                
+                # Show successful discovery
+                live_progress.show_url_discovery(current_url, "discovered")
                 
                 if response.status_code == 200:
                     # Parse HTML and find links
@@ -265,6 +276,7 @@ class AdvancedReconnaissance:
                             soup = BeautifulSoup(response.text, 'html.parser')
                     
                     # Find all links
+                    links_found = 0
                     for link in soup.find_all('a', href=True):
                         href = link['href']
                         full_url = urljoin(current_url, href)
@@ -273,15 +285,23 @@ class AdvancedReconnaissance:
                         if parsed.netloc == urlparse(self.target_url).netloc:
                             if full_url not in crawled and len(crawled) < max_urls:
                                 to_crawl.add(full_url)
+                                links_found += 1
                                 
                     # Find forms
+                    forms_found = 0
                     for form in soup.find_all('form'):
                         action = form.get('action', current_url)
                         form_url = urljoin(current_url, action)
                         if form_url not in crawled:
                             to_crawl.add(form_url)
+                            forms_found += 1
+                            
+                    # Show detailed progress
+                    if links_found > 0 or forms_found > 0:
+                        live_progress.show_info(f"Found {links_found} links and {forms_found} forms on {current_url}")
                             
             except Exception as e:
+                live_progress.show_url_discovery(current_url, "error")
                 continue
                 
         live_progress.show_phase_complete("URL Discovery", {
@@ -290,8 +310,13 @@ class AdvancedReconnaissance:
         })
         
     def _comprehensive_input_discovery(self):
-        """Comprehensive input point discovery"""
-        for url in self.discovered_urls:
+        """Comprehensive input point discovery with live progress"""
+        live_progress.update_task(f"Analyzing {len(self.discovered_urls)} URLs for input points...")
+        
+        for i, url in enumerate(self.discovered_urls):
+            live_progress.show_progress(i, len(self.discovered_urls), f"Analyzing: {url}")
+            live_progress.update_task(f"Analyzing URL {i+1}/{len(self.discovered_urls)}: {url}")
+            
             try:
                 response = self.session.get(url, timeout=10)
                 if response.status_code != 200:
@@ -308,6 +333,7 @@ class AdvancedReconnaissance:
                         soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find forms
+                forms_found = 0
                 for form in soup.find_all('form'):
                     form_data = {
                         'type': 'form',
@@ -338,6 +364,8 @@ class AdvancedReconnaissance:
                         
                     if form_data['inputs']:
                         self.input_points.append(form_data)
+                        forms_found += 1
+                        live_progress.show_input_point(form_data)
                         
                 # Find URL parameters
                 parsed_url = urlparse(url)
@@ -349,25 +377,36 @@ class AdvancedReconnaissance:
                             params[key] = value
                             
                     if params:
-                        self.input_points.append({
+                        url_params_data = {
                             'type': 'url_params',
                             'url': url,
                             'params': params
-                        })
+                        }
+                        self.input_points.append(url_params_data)
+                        live_progress.show_input_point(url_params_data)
                         
                 # Find JavaScript variables
                 scripts = soup.find_all('script')
+                js_vars_found = 0
                 for script in scripts:
                     if script.string:
                         js_vars = self._extract_js_variables(script.string)
                         if js_vars:
-                            self.input_points.append({
+                            js_vars_data = {
                                 'type': 'javascript_variables',
                                 'url': url,
                                 'variables': js_vars
-                            })
+                            }
+                            self.input_points.append(js_vars_data)
+                            js_vars_found += 1
+                            live_progress.show_input_point(js_vars_data)
+                            
+                # Show summary for this URL
+                if forms_found > 0 or js_vars_found > 0 or parsed_url.query:
+                    live_progress.show_info(f"Found {forms_found} forms, {js_vars_found} JS vars, {len(params) if parsed_url.query else 0} URL params on {url}")
                             
             except Exception as e:
+                live_progress.show_warning(f"Error analyzing {url}: {e}")
                 continue
                 
         live_progress.show_phase_complete("Input Point Discovery", {
@@ -403,104 +442,138 @@ class AdvancedReconnaissance:
         return variables
         
     def _analyze_character_filters(self):
-        """Analyze character filtering on input points"""
-        live_progress.update_task("Testing character filters on input points...")
+        """Analyze character filtering on input points with parallel processing"""
+        live_progress.update_task("Testing character filters on input points with parallel processing...")
         
-        total_inputs = len([p for p in self.input_points if p['type'] in ['form', 'url_params']])
-        current = 0
+        # Filter input points that can be tested
+        testable_inputs = [p for p in self.input_points if p['type'] in ['form', 'url_params']]
+        total_inputs = len(testable_inputs)
         
-        for input_point in self.input_points:
-            if input_point['type'] == 'form':
-                live_progress.update_task(f"Testing form filters: {input_point['url']}")
-                self._test_form_character_filters(input_point)
-                current += 1
-                live_progress.show_progress(current, total_inputs, "Character filter testing")
-            elif input_point['type'] == 'url_params':
-                live_progress.update_task(f"Testing URL param filters: {input_point['url']}")
-                self._test_url_character_filters(input_point)
-                current += 1
-                live_progress.show_progress(current, total_inputs, "Character filter testing")
+        if total_inputs == 0:
+            live_progress.show_warning("No testable input points found for character filter analysis")
+            return
+            
+        live_progress.update_task(f"Testing {total_inputs} input points in parallel...")
+        
+        # Use ThreadPoolExecutor for parallel processing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all tasks
+            future_to_input = {}
+            for input_point in testable_inputs:
+                if input_point['type'] == 'form':
+                    future = executor.submit(self._test_form_character_filters, input_point)
+                elif input_point['type'] == 'url_params':
+                    future = executor.submit(self._test_url_character_filters, input_point)
+                future_to_input[future] = input_point
+            
+            # Process completed tasks
+            completed = 0
+            for future in concurrent.futures.as_completed(future_to_input):
+                input_point = future_to_input[future]
+                completed += 1
+                
+                try:
+                    result = future.result()
+                    live_progress.update_task(f"Completed filter test {completed}/{total_inputs}: {input_point['url']}")
+                    live_progress.show_progress(completed, total_inputs, "Character filter testing")
+                except Exception as e:
+                    live_progress.show_warning(f"Filter test failed for {input_point['url']}: {e}")
                 
         live_progress.show_phase_complete("Character Filter Analysis", {
-            'tested_inputs': current,
+            'tested_inputs': completed,
             'filtered_chars': len(self.character_filters)
         })
                 
     def _test_form_character_filters(self, form: Dict):
-        """Test character filters on form inputs"""
+        """Test character filters on form inputs with optimized testing"""
         form_url = form['action']
         if not form_url.startswith(('http://', 'https://')):
             form_url = urljoin(form['url'], form_url)
             
-        for input_field in form['inputs']:
-            if not input_field['name']:
+        # Test only the first input field to save time
+        testable_inputs = [field for field in form['inputs'] if field['name'] and field['type'] in ['text', 'email', 'search', 'url', 'textarea']]
+        
+        if not testable_inputs:
+            return
+            
+        # Test only the first input field
+        input_field = testable_inputs[0]
+        field_name = input_field['name']
+        
+        # Test only a subset of dangerous characters for speed
+        test_chars = ['<', '>', '"', "'", '&', ';', '(', ')', 'script', 'alert', 'javascript']
+        filtered_chars = []
+        allowed_chars = []
+        
+        # Test each character
+        for char in test_chars:
+            form_data = {}
+            for field in form['inputs']:
+                if field['name']:
+                    if field['name'] == field_name:
+                        form_data[field['name']] = char
+                    else:
+                        form_data[field['name']] = field.get('value', '')
+                        
+            try:
+                if form['method'] == 'POST':
+                    response = self.session.post(form_url, data=form_data, timeout=3)
+                else:
+                    response = self.session.get(form_url, params=form_data, timeout=3)
+                    
+                # Check if character was filtered
+                if char not in response.text:
+                    filtered_chars.append(char)
+                else:
+                    allowed_chars.append(char)
+                    
+            except Exception:
                 continue
                 
-            field_name = input_field['name']
-            filtered_chars = []
-            allowed_chars = []
-            
-            # Test each character
-            for char in self.filter_test_payloads:
-                form_data = {}
-                for field in form['inputs']:
-                    if field['name']:
-                        if field['name'] == field_name:
-                            form_data[field['name']] = char
-                        else:
-                            form_data[field['name']] = field.get('value', '')
-                            
-                try:
-                    if form['method'] == 'POST':
-                        response = self.session.post(form_url, data=form_data, timeout=5)
-                    else:
-                        response = self.session.get(form_url, params=form_data, timeout=5)
-                        
-                    # Check if character was filtered
-                    if char not in response.text:
-                        filtered_chars.append(char)
-                    else:
-                        allowed_chars.append(char)
-                        
-                except Exception:
-                    continue
-                    
-            if filtered_chars or allowed_chars:
-                self.character_filters[f"{form['url']}#{field_name}"] = {
-                    'filtered_chars': filtered_chars,
-                    'allowed_chars': allowed_chars,
-                    'input_type': input_field['type']
-                }
+        if filtered_chars or allowed_chars:
+            self.character_filters[f"{form['url']}#{field_name}"] = {
+                'filtered_chars': filtered_chars,
+                'allowed_chars': allowed_chars,
+                'input_type': input_field['type']
+            }
                 
     def _test_url_character_filters(self, url_params: Dict):
-        """Test character filters on URL parameters"""
-        for param_name in url_params['params'].keys():
-            filtered_chars = []
-            allowed_chars = []
+        """Test character filters on URL parameters with optimized testing"""
+        # Test only the first parameter to save time
+        param_names = list(url_params['params'].keys())
+        if not param_names:
+            return
             
-            # Test each character
-            for char in self.filter_test_payloads:
-                test_params = url_params['params'].copy()
-                test_params[param_name] = char
+        param_name = param_names[0]
+        filtered_chars = []
+        allowed_chars = []
+        
+        # Test only a subset of dangerous characters for speed
+        test_chars = ['<', '>', '"', "'", '&', ';', '(', ')', 'script', 'alert', 'javascript']
+        
+        # Test each character
+        for char in test_chars:
+            test_params = url_params['params'].copy()
+            test_params[param_name] = char
+            
+            try:
+                response = self.session.get(url_params['url'], params=test_params, timeout=3)
                 
-                try:
-                    response = self.session.get(url_params['url'], params=test_params, timeout=5)
+                # Check if character was filtered
+                if char not in response.text:
+                    filtered_chars.append(char)
+                else:
+                    allowed_chars.append(char)
                     
-                    # Check if character was filtered
-                    if char not in response.text:
-                        filtered_chars.append(char)
-                    else:
-                        allowed_chars.append(char)
-                        
-                except Exception:
-                    continue
-                    
-            if filtered_chars or allowed_chars:
-                self.character_filters[f"{url_params['url']}#{param_name}"] = {
-                    'filtered_chars': filtered_chars,
-                    'allowed_chars': allowed_chars,
-                    'input_type': 'url_parameter'
-                }
+            except Exception:
+                continue
+                
+        if filtered_chars or allowed_chars:
+            self.character_filters[f"{url_params['url']}#{param_name}"] = {
+                'filtered_chars': filtered_chars,
+                'allowed_chars': allowed_chars,
+                'input_type': 'url_parameter'
+            }
                 
     def _perform_context_analysis(self):
         """Perform context analysis on input points"""
