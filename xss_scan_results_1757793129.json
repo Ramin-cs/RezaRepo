@@ -1,0 +1,15 @@
+{
+  "target_url": "https://httpbin.org",
+  "scan_timestamp": "2025-09-13 19:52:09",
+  "urls_discovered": [
+    "https://httpbin.org/post",
+    "https://httpbin.org/forms/post",
+    "https://httpbin.org"
+  ],
+  "vulnerabilities": [],
+  "summary": {
+    "total_urls": 3,
+    "total_vulnerabilities": 0,
+    "vulnerability_types": {}
+  }
+}

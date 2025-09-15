@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xss_scan_report>
+    <metadata>
+        <target_url>https://demo.example.com</target_url>
+        <scan_timestamp>2025-09-13 19:52:02</scan_timestamp>
+        <scanner_version>1.0.0</scanner_version>
+        <total_urls_scanned>25</total_urls_scanned>
+        <scan_duration>120</scan_duration>
+    </metadata>
+    
+    <summary>
+        <critical_vulnerabilities>0</critical_vulnerabilities>
+        <high_vulnerabilities>1</high_vulnerabilities>
+        <medium_vulnerabilities>1</medium_vulnerabilities>
+        <low_vulnerabilities>0</low_vulnerabilities>
+        <total_vulnerabilities>2</total_vulnerabilities>
+    </summary>
+    
+    <vulnerabilities>
+        <vulnerability id="1">
+            <url>https://demo.example.com/search</url>
+            <type>reflected_xss_html_context</type>
+            <severity>high</severity>
+            <confidence>0.90</confidence>
+            <payload>&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;</payload>
+            <timestamp>2025-09-13 19:52:02</timestamp>
+                    <evidence>
+            <item>XSS pattern 1 matched</item>
+            <item>Payload successfully reflected</item>
+        </evidence>
+
+        </vulnerability>
+        <vulnerability id="2">
+            <url>https://demo.example.com/contact</url>
+            <type>reflected_xss_attribute_context</type>
+            <severity>medium</severity>
+            <confidence>0.70</confidence>
+            <payload>&quot; onmouseover=&quot;alert(&apos;XSS&apos;)&quot; x=&quot;</payload>
+            <timestamp>2025-09-13 19:52:02</timestamp>
+                    <evidence>
+            <item>XSS pattern 2 matched</item>
+        </evidence>
+
+        </vulnerability>
+    </vulnerabilities>
+</xss_scan_report>
