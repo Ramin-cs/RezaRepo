@@ -1,0 +1,130 @@
+{
+  "target": "demo.example.com",
+  "timestamp": "2025-09-16T20:14:24.594105",
+  "reconnaissance": {
+    "target": "demo.example.com",
+    "timestamp": "2025-09-16T20:14:24.593873",
+    "subdomains": [
+      "www.demo.example.com",
+      "api.demo.example.com",
+      "admin.demo.example.com",
+      "staging.demo.example.com",
+      "dev.demo.example.com"
+    ],
+    "valid_subdomains": [
+      {
+        "subdomain": "www.demo.example.com",
+        "protocol": "https",
+        "status_code": 200,
+        "title": "Demo Website - Home",
+        "server": "nginx/1.18.0"
+      },
+      {
+        "subdomain": "api.demo.example.com",
+        "protocol": "https",
+        "status_code": 200,
+        "title": "API Documentation",
+        "server": "nginx/1.18.0"
+      },
+      {
+        "subdomain": "admin.demo.example.com",
+        "protocol": "https",
+        "status_code": 403,
+        "title": "Access Denied",
+        "server": "nginx/1.18.0"
+      }
+    ],
+    "directories": [
+      {
+        "path": "/admin",
+        "url": "https://demo.example.com/admin",
+        "status_code": 403,
+        "content_length": 1234,
+        "server": "nginx/1.18.0"
+      },
+      {
+        "path": "/api",
+        "url": "https://demo.example.com/api",
+        "status_code": 200,
+        "content_length": 5678,
+        "server": "nginx/1.18.0"
+      },
+      {
+        "path": "/robots.txt",
+        "url": "https://demo.example.com/robots.txt",
+        "status_code": 200,
+        "content_length": 234,
+        "server": "nginx/1.18.0"
+      }
+    ],
+    "parameters": [
+      "id",
+      "page",
+      "search",
+      "q",
+      "url",
+      "redirect",
+      "return",
+      "next",
+      "callback"
+    ],
+    "waf_info": {
+      "detected": true,
+      "type": "Cloudflare",
+      "confidence": 85,
+      "indicators": [
+        "cf-ray header detected",
+        "Cloudflare error page pattern",
+        "Rate limiting behavior"
+      ]
+    }
+  },
+  "vulnerabilities": [
+    {
+      "type": "XSS",
+      "subtype": "Reflected XSS",
+      "url": "https://demo.example.com/search?q=<script>alert(\"XSS\")</script>",
+      "parameter": "q",
+      "payload": "<script>alert(\"XSS\")</script>",
+      "severity": "High",
+      "description": "Reflected XSS found in search parameter",
+      "evidence": "Payload reflected in response without proper encoding",
+      "target_subdomain": "www.demo.example.com",
+      "scan_timestamp": "2025-09-16T20:14:24.593910"
+    },
+    {
+      "type": "SQL Injection",
+      "subtype": "Union-based SQL Injection",
+      "url": "https://demo.example.com/user?id=1' UNION SELECT 1,2,3--",
+      "parameter": "id",
+      "payload": "1' UNION SELECT 1,2,3--",
+      "severity": "Critical",
+      "description": "SQL Injection found in user ID parameter",
+      "evidence": "SQL error message detected in response",
+      "target_subdomain": "www.demo.example.com",
+      "scan_timestamp": "2025-09-16T20:14:24.593914"
+    },
+    {
+      "type": "Open Redirect",
+      "subtype": "Unvalidated Redirect",
+      "url": "https://demo.example.com/redirect?url=http://evil.com",
+      "parameter": "url",
+      "payload": "http://evil.com",
+      "severity": "Medium",
+      "description": "Open Redirect found in redirect parameter",
+      "evidence": "Redirects to external domain without validation",
+      "target_subdomain": "www.demo.example.com",
+      "scan_timestamp": "2025-09-16T20:14:24.593915"
+    }
+  ],
+  "summary": {
+    "total_vulnerabilities": 3,
+    "critical_vulnerabilities": 1,
+    "high_vulnerabilities": 1,
+    "medium_vulnerabilities": 1,
+    "subdomains_found": 5,
+    "directories_found": 3,
+    "parameters_found": 9,
+    "waf_detected": true
+  }
+}
