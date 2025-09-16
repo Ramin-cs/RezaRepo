@@ -609,6 +609,166 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
         
         return parameters
     
+    def sensitive_files_discovery(self, base_url):
+        """
+        Discover sensitive files and directories
+        
+        Args:
+            base_url (str): Base URL to scan for sensitive files
+            
+        Returns:
+            list: List of discovered sensitive files
+        """
+        self.log(f"Starting sensitive files discovery on {base_url}...", "INFO")
+        
+        # Common sensitive files and directories
+        sensitive_files = [
+            # Configuration files
+            '.env', '.env.local', '.env.production', '.env.development',
+            'config.php', 'configuration.php', 'config.inc.php', 'config.ini',
+            'settings.php', 'settings.ini', 'config.json', 'config.xml',
+            'database.yml', 'database.yaml', 'db.yml', 'db.yaml',
+            'secrets.yml', 'secrets.yaml', 'credentials.yml', 'credentials.yaml',
+            
+            # Backup files
+            'backup.sql', 'backup.zip', 'backup.tar.gz', 'backup.rar',
+            'database.sql', 'database.zip', 'db.sql', 'db.zip',
+            'dump.sql', 'dump.zip', 'export.sql', 'export.zip',
+            'backup_', 'backup.', 'bak.', 'old.', 'temp.',
+            
+            # Log files
+            'access.log', 'error.log', 'access_log', 'error_log',
+            'apache.log', 'nginx.log', 'iis.log', 'server.log',
+            'application.log', 'app.log', 'debug.log', 'system.log',
+            'security.log', 'auth.log', 'login.log', 'admin.log',
+            
+            # Development files
+            '.git/config', '.git/HEAD', '.git/index', '.git/logs/HEAD',
+            '.svn/entries', '.svn/wc.db', '.hg/store/00manifest.i',
+            'composer.json', 'package.json', 'yarn.lock', 'package-lock.json',
+            'requirements.txt', 'Pipfile', 'Pipfile.lock', 'poetry.lock',
+            'Gemfile', 'Gemfile.lock', 'Cargo.toml', 'Cargo.lock',
+            
+            # IDE and editor files
+            '.vscode/settings.json', '.idea/workspace.xml', '.idea/tasks.xml',
+            '.sublime-project', '.sublime-workspace', '.atom/config.cson',
+            '.vimrc', '.emacs', '.bashrc', '.zshrc', '.profile',
+            
+            # Web server files
+            '.htaccess', '.htpasswd', 'web.config', 'robots.txt',
+            'sitemap.xml', 'crossdomain.xml', 'clientaccesspolicy.xml',
+            'favicon.ico', 'apple-touch-icon.png', 'manifest.json',
+            
+            # Security files
+            'security.txt', '.well-known/security.txt', 'security.txt',
+            'key.pem', 'cert.pem', 'private.key', 'public.key',
+            'id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519',
+            
+            # Database files
+            'database.db', 'database.sqlite', 'database.sqlite3',
+            'app.db', 'app.sqlite', 'app.sqlite3', 'data.db',
+            'users.db', 'accounts.db', 'sessions.db', 'cache.db',
+            
+            # Temporary files
+            'tmp/', 'temp/', 'temporary/', 'cache/', 'logs/',
+            'uploads/', 'files/', 'documents/', 'images/',
+            'media/', 'assets/', 'static/', 'public/',
+            
+            # Admin and management files
+            'admin/', 'administrator/', 'management/', 'control/',
+            'panel/', 'dashboard/', 'cpanel/', 'phpmyadmin/',
+            'adminer.php', 'pma/', 'mysql/', 'sql/',
+            
+            # API and documentation files
+            'api/', 'swagger.json', 'swagger.yaml', 'openapi.json',
+            'api-docs/', 'documentation/', 'docs/', 'help/',
+            'readme.txt', 'README.md', 'CHANGELOG.md', 'LICENSE',
+            
+            # Test and development files
+            'test/', 'tests/', 'testing/', 'dev/', 'development/',
+            'staging/', 'stage/', 'demo/', 'sample/', 'example/',
+            'test.php', 'test.html', 'test.js', 'test.py',
+            
+            # Version control files
+            '.git/', '.svn/', '.hg/', '.bzr/', '.cvs/',
+            '.gitignore', '.svnignore', '.hgignore',
+            
+            # OS specific files
+            '.DS_Store', 'Thumbs.db', 'desktop.ini', '.directory',
+            'Icon?', '._*', '.Spotlight-V100', '.Trashes',
+            
+            # Application specific files
+            'wp-config.php', 'wp-config-sample.php', 'wp-content/',
+            'drupal/', 'joomla/', 'magento/', 'prestashop/',
+            'laravel/', 'symfony/', 'codeigniter/', 'cakephp/',
+            
+            # Cloud and deployment files
+            '.dockerignore', 'Dockerfile', 'docker-compose.yml',
+            '.travis.yml', '.circleci/', '.github/', '.gitlab-ci.yml',
+            'deploy.sh', 'deploy.yml', 'deployment.yml',
+            
+            # Monitoring and analytics files
+            'monitoring/', 'analytics/', 'stats/', 'metrics/',
+            'newrelic.ini', 'newrelic.cfg', 'appdynamics.cfg',
+            'datadog.yaml', 'prometheus.yml', 'grafana.ini'
+        ]
+        
+        found_files = []
+        
+        for file_path in tqdm(sensitive_files, desc="Sensitive Files Discovery"):
+            try:
+                # Construct full URL
+                if file_path.startswith('/'):
+                    full_url = f"{base_url}{file_path}"
+                else:
+                    full_url = f"{base_url}/{file_path}"
+                
+                # Make request
+                response = self.session.get(full_url, timeout=5, allow_redirects=False)
+                
+                # Check response
+                if response.status_code == 200:
+                    file_info = {
+                        'path': file_path,
+                        'url': full_url,
+                        'status_code': response.status_code,
+                        'content_length': len(response.content),
+                        'content_type': response.headers.get('Content-Type', 'N/A'),
+                        'server': response.headers.get('Server', 'N/A'),
+                        'last_modified': response.headers.get('Last-Modified', 'N/A'),
+                        'size_category': self._categorize_file_size(len(response.content))
+                    }
+                    found_files.append(file_info)
+                    self.log(f"Found sensitive file: {full_url} (Status: {response.status_code}, Size: {len(response.content)} bytes)", "SUCCESS")
+                
+                elif response.status_code == 403:
+                    self.log(f"Sensitive file forbidden: {full_url} (Status: {response.status_code})", "WARNING")
+                
+                elif response.status_code == 401:
+                    self.log(f"Sensitive file requires authentication: {full_url} (Status: {response.status_code})", "WARNING")
+                
+                elif response.status_code in [301, 302, 307, 308]:
+                    self.log(f"Sensitive file redirect: {full_url} -> {response.headers.get('Location', 'N/A')}", "INFO")
+                
+            except Exception as e:
+                continue
+        
+        # Save results
+        self.results['sensitive_files'] = found_files
+        self.log(f"Sensitive files discovery found {len(found_files)} accessible files", "SUCCESS")
+        return found_files
+    
+    def _categorize_file_size(self, size):
+        """Categorize file size"""
+        if size < 1024:
+            return "Small (< 1KB)"
+        elif size < 10240:
+            return "Medium (1-10KB)"
+        elif size < 102400:
+            return "Large (10-100KB)"
+        else:
+            return "Very Large (> 100KB)"
+    
     def waf_detection(self, base_url):
         """
         Detect Web Application Firewall (WAF)
@@ -793,7 +953,10 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
             # Phase 4: Parameter discovery
             parameters = self.parameter_discovery(main_url)
             
-            # Phase 5: WAF detection
+            # Phase 5: Sensitive files discovery
+            sensitive_files = self.sensitive_files_discovery(main_url)
+            
+            # Phase 6: WAF detection
             waf_info = self.waf_detection(main_url)
             
             # Save results
