@@ -307,16 +307,16 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
     
     def parameter_discovery(self, base_url):
         """
-        Perform parameter discovery using various techniques
+        Perform comprehensive parameter discovery using various techniques
         
         Args:
             base_url (str): Base URL to discover parameters for
         """
-        self.log(f"Starting parameter discovery on {base_url}...", "INFO")
+        self.log(f"Starting comprehensive parameter discovery on {base_url}...", "INFO")
         
         parameters = set()
         
-        # Check Wayback Machine
+        # 1. Check Wayback Machine for historical URLs
         self.log("Checking Wayback Machine for historical URLs...", "INFO")
         try:
             wayback_params = self.check_wayback_machine(base_url)
@@ -324,7 +324,39 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
         except Exception as e:
             self.log(f"Error checking Wayback Machine: {e}", "WARNING")
         
-        # Common parameter wordlist
+        # 2. Extract parameters from current page forms
+        self.log("Extracting parameters from HTML forms...", "INFO")
+        try:
+            form_params = self.extract_form_parameters(base_url)
+            parameters.update(form_params)
+        except Exception as e:
+            self.log(f"Error extracting form parameters: {e}", "WARNING")
+        
+        # 3. Extract parameters from JavaScript files
+        self.log("Extracting parameters from JavaScript files...", "INFO")
+        try:
+            js_params = self.extract_js_parameters(base_url)
+            parameters.update(js_params)
+        except Exception as e:
+            self.log(f"Error extracting JS parameters: {e}", "WARNING")
+        
+        # 4. Extract parameters from HTTP headers
+        self.log("Extracting parameters from HTTP headers...", "INFO")
+        try:
+            header_params = self.extract_header_parameters(base_url)
+            parameters.update(header_params)
+        except Exception as e:
+            self.log(f"Error extracting header parameters: {e}", "WARNING")
+        
+        # 5. Extract parameters from cookies
+        self.log("Extracting parameters from cookies...", "INFO")
+        try:
+            cookie_params = self.extract_cookie_parameters(base_url)
+            parameters.update(cookie_params)
+        except Exception as e:
+            self.log(f"Error extracting cookie parameters: {e}", "WARNING")
+        
+        # 6. Common parameter wordlist
         common_params = [
             'id', 'page', 'view', 'action', 'cmd', 'command', 'exec', 'execute',
             'file', 'path', 'dir', 'directory', 'url', 'link', 'href', 'src',
@@ -336,11 +368,25 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
             'language', 'locale', 'country', 'region', 'state', 'city',
             'zip', 'code', 'key', 'token', 'session', 'sid', 'uid', 'pid',
             'ref', 'referer', 'return', 'redirect', 'next', 'callback',
-            'jsonp', 'callback', 'format', 'output', 'response', 'result'
+            'jsonp', 'callback', 'format', 'output', 'response', 'result',
+            # Additional common parameters
+            'callback', 'jsonp', 'format', 'output', 'response', 'result',
+            'debug', 'test', 'admin', 'api', 'v1', 'v2', 'version', 'ver',
+            'lang', 'language', 'locale', 'country', 'region', 'state',
+            'city', 'zip', 'code', 'key', 'token', 'session', 'sid',
+            'uid', 'pid', 'ref', 'referer', 'return', 'redirect', 'next',
+            'continue', 'goto', 'target', 'destination', 'success', 'error',
+            'status', 'state', 'mode', 'action', 'method', 'type', 'kind',
+            'class', 'style', 'theme', 'color', 'size', 'width', 'height',
+            'x', 'y', 'z', 'lat', 'lng', 'latitude', 'longitude', 'coords',
+            'address', 'location', 'place', 'venue', 'building', 'room',
+            'floor', 'level', 'section', 'area', 'zone', 'region', 'district',
+            'neighborhood', 'block', 'street', 'avenue', 'road', 'lane',
+            'drive', 'way', 'circle', 'court', 'place', 'plaza', 'square'
         ]
         
-        # Test common parameters
-        self.log("Testing common parameters...", "INFO")
+        # 7. Test common parameters with response analysis
+        self.log("Testing common parameters with response analysis...", "INFO")
         for param in tqdm(common_params, desc="Parameter Testing"):
             try:
                 test_url = f"{base_url}?{param}=test"
@@ -349,15 +395,195 @@ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Style.RESET_ALL}
                 # Check if parameter affects response
                 baseline_response = self.session.get(base_url, timeout=5)
                 
-                if len(response.content) != len(baseline_response.content):
+                # Multiple checks for parameter validation
+                if self.validate_parameter_impact(response, baseline_response, param):
                     parameters.add(param)
                     self.log(f"Found parameter: {param}", "SUCCESS")
             except:
                 continue
         
         self.results['parameters'] = list(parameters)
-        self.log(f"Parameter discovery found {len(parameters)} parameters", "SUCCESS")
+        self.log(f"Comprehensive parameter discovery found {len(parameters)} parameters", "SUCCESS")
         return list(parameters)
+    
+    def extract_form_parameters(self, base_url):
+        """Extract parameters from HTML forms"""
+        parameters = set()
+        try:
+            response = self.session.get(base_url, timeout=5)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find all forms
+            forms = soup.find_all('form')
+            for form in forms:
+                # Get form action
+                action = form.get('action', '')
+                
+                # Find all input fields
+                inputs = form.find_all(['input', 'textarea', 'select'])
+                for input_field in inputs:
+                    name = input_field.get('name')
+                    if name:
+                        parameters.add(name)
+                
+                # Find all hidden fields
+                hidden_inputs = form.find_all('input', {'type': 'hidden'})
+                for hidden in hidden_inputs:
+                    name = hidden.get('name')
+                    if name:
+                        parameters.add(name)
+            
+            # Find standalone input fields outside forms
+            standalone_inputs = soup.find_all(['input', 'textarea', 'select'])
+            for input_field in standalone_inputs:
+                name = input_field.get('name')
+                if name:
+                    parameters.add(name)
+                    
+        except Exception as e:
+            self.log(f"Error extracting form parameters: {e}", "WARNING")
+        
+        return parameters
+    
+    def extract_js_parameters(self, base_url):
+        """Extract parameters from JavaScript files"""
+        parameters = set()
+        try:
+            response = self.session.get(base_url, timeout=5)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Find all script tags
+            scripts = soup.find_all('script')
+            for script in scripts:
+                if script.string:
+                    # Look for common parameter patterns in JS
+                    js_content = script.string
+                    
+                    # Pattern 1: URL parameters
+                    import re
+                    url_patterns = re.findall(r'[?&]([a-zA-Z_][a-zA-Z0-9_]*)=', js_content)
+                    parameters.update(url_patterns)
+                    
+                    # Pattern 2: Form data
+                    form_patterns = re.findall(r'\.([a-zA-Z_][a-zA-Z0-9_]*)\s*=', js_content)
+                    parameters.update(form_patterns)
+                    
+                    # Pattern 3: AJAX parameters
+                    ajax_patterns = re.findall(r'data\s*:\s*\{([^}]+)\}', js_content)
+                    for ajax_match in ajax_patterns:
+                        param_matches = re.findall(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*:', ajax_match)
+                        parameters.update(param_matches)
+            
+            # Find external JS files
+            script_srcs = soup.find_all('script', src=True)
+            for script_src in script_srcs:
+                try:
+                    js_url = urljoin(base_url, script_src['src'])
+                    js_response = self.session.get(js_url, timeout=5)
+                    if js_response.status_code == 200:
+                        js_content = js_response.text
+                        
+                        # Extract parameters from external JS
+                        url_patterns = re.findall(r'[?&]([a-zA-Z_][a-zA-Z0-9_]*)=', js_content)
+                        parameters.update(url_patterns)
+                        
+                        form_patterns = re.findall(r'\.([a-zA-Z_][a-zA-Z0-9_]*)\s*=', js_content)
+                        parameters.update(form_patterns)
+                except:
+                    continue
+                    
+        except Exception as e:
+            self.log(f"Error extracting JS parameters: {e}", "WARNING")
+        
+        return parameters
+    
+    def extract_header_parameters(self, base_url):
+        """Extract parameters from HTTP headers"""
+        parameters = set()
+        try:
+            response = self.session.get(base_url, timeout=5)
+            
+            # Check for parameters in headers
+            headers_to_check = [
+                'User-Agent', 'Referer', 'X-Forwarded-For', 'X-Real-IP',
+                'X-Forwarded-Host', 'X-Forwarded-Proto', 'X-Original-URL',
+                'X-Rewrite-URL', 'X-Forwarded-Server', 'X-Host', 'X-Forwarded',
+                'X-Cluster-Client-IP', 'X-Client-IP', 'X-Remote-IP', 'X-Remote-Addr'
+            ]
+            
+            for header in headers_to_check:
+                if header in response.request.headers:
+                    # Extract potential parameters from header values
+                    header_value = response.request.headers[header]
+                    if '=' in header_value:
+                        # Split by common separators
+                        parts = re.split(r'[;&,]', header_value)
+                        for part in parts:
+                            if '=' in part:
+                                param_name = part.split('=')[0].strip()
+                                if param_name:
+                                    parameters.add(param_name)
+                                    
+        except Exception as e:
+            self.log(f"Error extracting header parameters: {e}", "WARNING")
+        
+        return parameters
+    
+    def extract_cookie_parameters(self, base_url):
+        """Extract parameters from cookies"""
+        parameters = set()
+        try:
+            response = self.session.get(base_url, timeout=5)
+            
+            # Check cookies for parameters
+            for cookie in self.session.cookies:
+                cookie_name = cookie.name
+                parameters.add(cookie_name)
+                
+                # Check cookie value for parameters
+                cookie_value = cookie.value
+                if '=' in cookie_value:
+                    parts = re.split(r'[;&,]', cookie_value)
+                    for part in parts:
+                        if '=' in part:
+                            param_name = part.split('=')[0].strip()
+                            if param_name:
+                                parameters.add(param_name)
+                                
+        except Exception as e:
+            self.log(f"Error extracting cookie parameters: {e}", "WARNING")
+        
+        return parameters
+    
+    def validate_parameter_impact(self, test_response, baseline_response, param):
+        """Validate if parameter actually affects the response"""
+        try:
+            # Check content length difference
+            if len(test_response.content) != len(baseline_response.content):
+                return True
+            
+            # Check for parameter reflection in response
+            if param in test_response.text:
+                return True
+            
+            # Check for different status codes
+            if test_response.status_code != baseline_response.status_code:
+                return True
+            
+            # Check for different headers
+            test_headers = set(test_response.headers.keys())
+            baseline_headers = set(baseline_response.headers.keys())
+            if test_headers != baseline_headers:
+                return True
+            
+            # Check for different response times (basic check)
+            if abs(len(test_response.content) - len(baseline_response.content)) > 100:
+                return True
+            
+            return False
+            
+        except:
+            return False
     
     def check_wayback_machine(self, base_url):
         """Check Wayback Machine for historical URLs and parameters"""
