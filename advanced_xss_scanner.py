@@ -104,6 +104,15 @@ class AdvancedReconnaissance:
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
+        
+        # Configure connection pool
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=50,
+            pool_maxsize=50,
+            max_retries=3
+        )
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
         self.visited_urls = set()
         self.discovered_urls = set()
         self.forms = []
@@ -776,13 +785,29 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
     
     def generate_report(self):
         """Generate XSS reconnaissance report"""
+        # Convert XSSPoint objects to dictionaries
+        xss_points_dict = []
+        for point in self.xss_points:
+            xss_points_dict.append({
+                'url': point.url,
+                'parameter': point.parameter,
+                'method': point.method,
+                'context': point.context,
+                'form_data': point.form_data,
+                'is_reflected': point.is_reflected
+            })
+        
         report = {
             'target': self.target_url,
             'timestamp': datetime.now().isoformat(),
             'discovered_urls': list(self.discovered_urls),
             'forms': self.forms,
             'parameters': list(self.parameters),
-            'xss_points': self.xss_points,
+            'xss_points': xss_points_dict,
+            'technologies': list(self.technologies),
+            'sensitive_files': self.sensitive_files,
+            'js_files': self.js_files,
+            'api_endpoints': self.api_endpoints,
             'total_urls': len(self.discovered_urls),
             'total_forms': len(self.forms),
             'total_parameters': len(self.parameters),
@@ -800,6 +825,8 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
         print(f"{Colors.CYAN}Forms found: {len(self.forms)}{Colors.END}")
         print(f"{Colors.CYAN}Parameters found: {len(self.parameters)}{Colors.END}")
         print(f"{Colors.CYAN}XSS testing points: {len(self.xss_points)}{Colors.END}")
+        print(f"{Colors.CYAN}Technologies: {', '.join(self.technologies)}{Colors.END}")
+        print(f"{Colors.CYAN}Sensitive files: {len(self.sensitive_files)}{Colors.END}")
         print(f"{Colors.GREEN}Report saved to: xss_recon_report.json{Colors.END}\n")
         
         return report
@@ -1309,13 +1336,29 @@ class AdvancedXSSScanner:
     
     def generate_xss_report(self):
         """Generate XSS vulnerability report"""
+        # Convert XSSVulnerability objects to dictionaries
+        vulnerabilities_dict = []
+        for vuln in self.vulnerabilities:
+            vulnerabilities_dict.append({
+                'url': vuln.url,
+                'parameter': vuln.parameter,
+                'payload': vuln.payload,
+                'context': vuln.context,
+                'method': vuln.method,
+                'test_url': vuln.test_url,
+                'screenshot': vuln.screenshot,
+                'alert_text': vuln.alert_text,
+                'severity': vuln.severity,
+                'timestamp': vuln.timestamp
+            })
+        
         report = {
             'scan_info': {
                 'target': self.recon_data['target'],
                 'timestamp': datetime.now().isoformat(),
                 'total_vulnerabilities': len(self.vulnerabilities)
             },
-            'vulnerabilities': self.vulnerabilities
+            'vulnerabilities': vulnerabilities_dict
         }
         
         # Save report to file
@@ -1392,10 +1435,10 @@ def main():
     print(f"\n{Colors.BLUE}{Colors.BOLD}=== PHASE 2: CHROME-BASED XSS TESTING ==={Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Starting Chrome browser for real XSS testing...{Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Chrome will open and test each payload in real browser{Colors.END}")
-    print(f"{Colors.MAGENTA}[INFO] Unique alert identifier: {scanner.unique_alert_id if 'scanner' in locals() else 'N/A'}{Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Screenshots will be captured for confirmed vulnerabilities{Colors.END}\n")
     
     scanner = AdvancedXSSScanner(recon_data)
+    print(f"{Colors.MAGENTA}[INFO] Unique alert identifier: {scanner.unique_alert_id}{Colors.END}")
     
     try:
         scanner.scan_forms()
