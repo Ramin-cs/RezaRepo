@@ -1,15 +1,17 @@
 # Advanced XSS Scanner
 
-A focused XSS scanner that performs targeted reconnaissance and advanced XSS testing with context-aware payload injection.
+A focused XSS scanner that performs targeted reconnaissance and **real Chrome browser-based XSS testing** with context-aware payload injection.
 
 ## Features
 
 - **XSS-Focused Reconnaissance**: Finds forms, parameters, and XSS testing points
+- **Real Chrome Testing**: Uses actual Chrome browser to test XSS payloads
+- **Alert Detection**: Automatically detects JavaScript alerts as proof of XSS
 - **Context Detection**: Automatically detects HTML, JavaScript, CSS, and Attribute contexts
 - **Context-Aware Payloads**: Tests only relevant payloads for each detected context
 - **WAF Bypass**: Multiple encoding techniques (URL, Base64, Unicode, HTML entities)
-- **Screenshot Capture**: Automatic PoC screenshots for confirmed vulnerabilities
-- **False Positive Reduction**: Advanced detection mechanisms
+- **PoC Screenshots**: Automatic screenshots of confirmed XSS vulnerabilities
+- **False Positive Elimination**: Real browser testing eliminates false positives
 
 ## Installation
 

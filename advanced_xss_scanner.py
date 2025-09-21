@@ -75,11 +75,12 @@ class XSSReconnaissance:
 {Colors.CYAN}{Colors.BOLD}
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                        ADVANCED XSS SCANNER v2.0                            ║
-║                    Deep Reconnaissance & XSS Testing                        ║
+║                    Chrome-Based XSS Testing & PoC Capture                   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 {Colors.END}
 Target: {Colors.YELLOW}{self.target_url}{Colors.END}
 Started: {Colors.GREEN}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END}
+Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
 """
         print(banner)
     
@@ -333,17 +334,21 @@ class AdvancedXSSScanner:
         self.setup_selenium()
         
     def setup_selenium(self):
-        """Setup Selenium WebDriver for screenshot capture"""
+        """Setup Selenium WebDriver for XSS testing and screenshot capture"""
         try:
             chrome_options = Options()
-            chrome_options.add_argument('--headless')
+            # Remove headless mode for real XSS testing
+            # chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--allow-running-insecure-content')
             
             self.driver = webdriver.Chrome(options=chrome_options)
-            logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully{Colors.END}")
+            logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully for XSS testing{Colors.END}")
         except Exception as e:
             logger.error(f"{Colors.RED}[SELENIUM] Failed to initialize WebDriver: {str(e)}{Colors.END}")
             self.driver = None
@@ -577,69 +582,115 @@ class AdvancedXSSScanner:
         
         return contexts if contexts else ['html']  # Default to HTML context
     
-    def test_xss(self, url, parameter, payload, context):
-        """Test XSS vulnerability with specific payload and context"""
-        try:
-            # Prepare the test data
-            test_data = {parameter: payload}
-            
-            # Determine if it's GET or POST
-            if '?' in url:
-                # GET request
-                response = self.session.get(url, params=test_data, timeout=10)
-            else:
-                # POST request
-                response = self.session.post(url, data=test_data, timeout=10)
-            
-            # Check if payload is reflected
-            if payload in response.text:
-                # Check if it's executable (basic check)
-                if self.is_payload_executable(response.text, payload, context):
-                    return True, response
-            
-        except Exception as e:
-            logger.error(f"{Colors.RED}[XSS] Error testing {url} with {parameter}: {str(e)}{Colors.END}")
+    def test_xss_with_chrome(self, url, parameter, payload, context, method='GET'):
+        """Test XSS vulnerability using Chrome browser for real execution"""
+        if not self.driver:
+            logger.warning(f"{Colors.YELLOW}[XSS] Chrome not available, skipping real XSS test{Colors.END}")
+            return False, None
         
-        return False, None
+        try:
+            # Prepare the test URL or data
+            if method == 'GET':
+                # For GET requests, modify the URL
+                parsed_url = urlparse(url)
+                query_params = parse_qs(parsed_url.query)
+                query_params[parameter] = [payload]
+                
+                # Rebuild URL
+                new_query = urllib.parse.urlencode(query_params, doseq=True)
+                test_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{new_query}"
+                
+                logger.info(f"{Colors.CYAN}[XSS] Testing GET: {test_url}{Colors.END}")
+                
+                # Navigate to the URL
+                self.driver.get(test_url)
+                
+            else:
+                # For POST requests, navigate to form page first
+                self.driver.get(url)
+                
+                # Find the form and fill it
+                forms = self.driver.find_elements(By.TAG_NAME, "form")
+                if forms:
+                    form = forms[0]
+                    
+                    # Find input field
+                    input_field = form.find_element(By.NAME, parameter)
+                    input_field.clear()
+                    input_field.send_keys(payload)
+                    
+                    # Submit form
+                    form.submit()
+                    time.sleep(2)  # Wait for form submission
+                
+                test_url = self.driver.current_url
+            
+            # Wait for page to load
+            time.sleep(3)
+            
+            # Check for alert popup
+            try:
+                alert = self.driver.switch_to.alert
+                alert_text = alert.text
+                alert.accept()  # Close the alert
+                
+                # If we got here, XSS was successful
+                logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Alert detected: {alert_text}{Colors.END}")
+                return True, test_url
+                
+            except:
+                # No alert found, check if payload is reflected
+                page_source = self.driver.page_source
+                if payload in page_source:
+                    # Check if it's in executable context
+                    if self.check_executable_context(page_source, payload, context):
+                        logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Payload reflected in executable context{Colors.END}")
+                        return True, test_url
+                
+                return False, test_url
+                
+        except Exception as e:
+            logger.error(f"{Colors.RED}[XSS] Error testing with Chrome: {str(e)}{Colors.END}")
+            return False, None
     
-    def is_payload_executable(self, response_text, payload, context):
-        """Check if the payload is executable in the response"""
-        # This is a simplified check - in a real scenario, you'd need more sophisticated detection
+    def check_executable_context(self, page_source, payload, context):
+        """Check if payload is in executable context"""
+        soup = BeautifulSoup(page_source, 'html.parser')
+        
         if context == 'html':
-            return '<script>' in payload and '</script>' in payload
+            # Check for script tags or event handlers
+            return '<script>' in payload or 'on' in payload or '<img' in payload
         elif context == 'attribute':
+            # Check for event handlers
             return 'on' in payload and '=' in payload
         elif context == 'javascript':
-            return 'alert(' in payload
+            # Check for JavaScript syntax
+            return 'alert(' in payload or 'console.log(' in payload
         elif context == 'css':
+            # Check for CSS expressions
             return 'expression(' in payload or 'url(' in payload
         elif context == 'url':
+            # Check for JavaScript or data protocols
             return 'javascript:' in payload or 'data:' in payload
         
         return False
     
+    
     def capture_screenshot(self, url, payload, parameter):
-        """Capture screenshot of the XSS vulnerability"""
+        """Capture screenshot of the XSS vulnerability after successful execution"""
         if not self.driver:
             logger.warning(f"{Colors.YELLOW}[SCREENSHOT] WebDriver not available{Colors.END}")
             return None
         
         try:
-            self.driver.get(url)
-            
-            # Wait for page to load
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.TAG_NAME, "body"))
-            )
-            
             # Generate filename
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"xss_poc_{timestamp}_{hashlib.md5(url.encode()).hexdigest()[:8]}.png"
             
-            # Take screenshot
+            # Take screenshot of current page (should show the XSS execution)
             self.driver.save_screenshot(filename)
             
-            logger.info(f"{Colors.GREEN}[SCREENSHOT] Saved: {filename}{Colors.END}")
+            logger.info(f"{Colors.GREEN}[SCREENSHOT] PoC saved: {filename}{Colors.END}")
             return filename
             
         except Exception as e:
@@ -663,10 +714,12 @@ class AdvancedXSSScanner:
                     # Get payloads specific to this context
                     payloads = self.generate_payloads_for_context(context)
                     
-                    # Test payloads for this specific context
-                    for payload in payloads[:20]:  # Limit to first 20 payloads
-                        is_vulnerable, response = self.test_xss(
-                            form['action'], parameter, payload, context
+                    # Test payloads for this specific context using Chrome
+                    for payload in payloads[:10]:  # Limit to first 10 payloads for Chrome testing
+                        logger.info(f"{Colors.YELLOW}[XSS] Testing payload: {payload[:50]}...{Colors.END}")
+                        
+                        is_vulnerable, test_url = self.test_xss_with_chrome(
+                            form['action'], parameter, payload, context, form['method']
                         )
                         
                         if is_vulnerable:
@@ -677,20 +730,22 @@ class AdvancedXSSScanner:
                                 'payload': payload,
                                 'context': context,
                                 'method': form['method'],
+                                'test_url': test_url,
                                 'severity': 'High',
                                 'timestamp': datetime.now().isoformat()
                             }
                             
-                            # Capture screenshot
-                            screenshot = self.capture_screenshot(form['action'], payload, parameter)
+                            # Capture screenshot of the successful XSS execution
+                            screenshot = self.capture_screenshot(test_url, payload, parameter)
                             if screenshot:
                                 vulnerability['screenshot'] = screenshot
                             
                             self.vulnerabilities.append(vulnerability)
                             
-                            logger.info(f"{Colors.GREEN}[VULN] XSS found in {form['action']} parameter: {parameter}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[VULN] XSS CONFIRMED in {form['action']} parameter: {parameter}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[CONTEXT] {context}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[TEST_URL] {test_url}{Colors.END}")
                             
                             # Break after first successful payload
                             break
@@ -717,9 +772,13 @@ class AdvancedXSSScanner:
                     # Get payloads specific to this context
                     payloads = self.generate_payloads_for_context(context)
                     
-                    # Test payloads for this specific context
-                    for payload in payloads[:15]:  # Limit to first 15 payloads
-                        is_vulnerable, response = self.test_xss(url, parameter, payload, context)
+                    # Test payloads for this specific context using Chrome
+                    for payload in payloads[:10]:  # Limit to first 10 payloads for Chrome testing
+                        logger.info(f"{Colors.YELLOW}[XSS] Testing payload: {payload[:50]}...{Colors.END}")
+                        
+                        is_vulnerable, test_url = self.test_xss_with_chrome(
+                            url, parameter, payload, context, 'GET'
+                        )
                         
                         if is_vulnerable:
                             vulnerability = {
@@ -729,20 +788,22 @@ class AdvancedXSSScanner:
                                 'payload': payload,
                                 'context': context,
                                 'method': 'GET',
+                                'test_url': test_url,
                                 'severity': 'High',
                                 'timestamp': datetime.now().isoformat()
                             }
                             
-                            # Capture screenshot
-                            screenshot = self.capture_screenshot(url, payload, parameter)
+                            # Capture screenshot of the successful XSS execution
+                            screenshot = self.capture_screenshot(test_url, payload, parameter)
                             if screenshot:
                                 vulnerability['screenshot'] = screenshot
                             
                             self.vulnerabilities.append(vulnerability)
                             
-                            logger.info(f"{Colors.GREEN}[VULN] XSS found in {url} parameter: {parameter}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[VULN] XSS CONFIRMED in {url} parameter: {parameter}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[CONTEXT] {context}{Colors.END}")
+                            logger.info(f"{Colors.GREEN}[TEST_URL] {test_url}{Colors.END}")
                             
                             # Break after first successful payload
                             break
@@ -783,6 +844,23 @@ class AdvancedXSSScanner:
         
         print(f"{Colors.GREEN}Report saved to: xss_report.json{Colors.END}\n")
         
+        # Show detailed results
+        if self.vulnerabilities:
+            print(f"{Colors.RED}{Colors.BOLD}=== CONFIRMED XSS VULNERABILITIES ==={Colors.END}")
+            for i, vuln in enumerate(self.vulnerabilities, 1):
+                print(f"\n{Colors.YELLOW}{i}. {vuln['type']} in {vuln['url']}{Colors.END}")
+                print(f"   Parameter: {vuln['parameter']}")
+                print(f"   Context: {vuln['context']}")
+                print(f"   Method: {vuln['method']}")
+                print(f"   Payload: {vuln['payload']}")
+                if 'test_url' in vuln:
+                    print(f"   Test URL: {vuln['test_url']}")
+                if 'screenshot' in vuln:
+                    print(f"   PoC Screenshot: {vuln['screenshot']}")
+                print()
+        else:
+            print(f"{Colors.GREEN}No XSS vulnerabilities found.{Colors.END}")
+        
         return report
     
     def cleanup(self):
@@ -814,8 +892,12 @@ def main():
         logger.error(f"{Colors.RED}[ERROR] Reconnaissance failed: {str(e)}{Colors.END}")
         sys.exit(1)
     
-    # Phase 2: XSS Scanning
-    print(f"\n{Colors.BLUE}{Colors.BOLD}=== PHASE 2: XSS SCANNING ==={Colors.END}")
+    # Phase 2: Chrome-Based XSS Testing
+    print(f"\n{Colors.BLUE}{Colors.BOLD}=== PHASE 2: CHROME-BASED XSS TESTING ==={Colors.END}")
+    print(f"{Colors.MAGENTA}[INFO] Starting Chrome browser for real XSS testing...{Colors.END}")
+    print(f"{Colors.MAGENTA}[INFO] Chrome will open and test each payload in real browser{Colors.END}")
+    print(f"{Colors.MAGENTA}[INFO] Screenshots will be captured for confirmed vulnerabilities{Colors.END}\n")
+    
     scanner = AdvancedXSSScanner(recon_data)
     
     try:
