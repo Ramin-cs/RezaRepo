@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Advanced XSS Scanner - Focused on XSS Testing
+Advanced XSS Scanner v3.0 - Professional Grade
 Author: AI Assistant
-Description: A focused XSS scanner that performs targeted reconnaissance and advanced XSS testing
+Description: A professional-grade XSS scanner with deep reconnaissance and Chrome-based testing
 """
 
 import requests
@@ -14,19 +14,26 @@ import base64
 import urllib.parse
 import os
 import sys
-from urllib.parse import urljoin, urlparse, parse_qs
+import re
+import asyncio
+import aiohttp
+from urllib.parse import urljoin, urlparse, parse_qs, unquote
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoAlertPresentException
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 import logging
 from datetime import datetime
 import hashlib
+import queue
+import multiprocessing
+from dataclasses import dataclass
+from typing import List, Dict, Set, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +45,40 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Data classes for better structure
+@dataclass
+class XSSPoint:
+    url: str
+    parameter: str
+    method: str
+    context: str
+    form_data: Optional[Dict] = None
+    is_reflected: bool = False
+
+@dataclass
+class XSSVulnerability:
+    url: str
+    parameter: str
+    payload: str
+    context: str
+    method: str
+    test_url: str
+    screenshot: Optional[str] = None
+    alert_text: Optional[str] = None
+    severity: str = "High"
+    timestamp: str = ""
+
+@dataclass
+class ReconData:
+    target: str
+    discovered_urls: Set[str]
+    forms: List[Dict]
+    parameters: Set[str]
+    xss_points: List[XSSPoint]
+    technologies: Set[str]
+    sensitive_files: List[str]
+    timestamp: str = ""
 
 class Colors:
     """ANSI color codes for terminal output"""
@@ -52,22 +93,38 @@ class Colors:
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
-class XSSReconnaissance:
-    """XSS-focused reconnaissance module for finding XSS testing points"""
+class AdvancedReconnaissance:
+    """Advanced reconnaissance module with deep parameter discovery"""
     
-    def __init__(self, target_url, max_depth=2, max_threads=10):
+    def __init__(self, target_url, max_depth=3, max_threads=20):
         self.target_url = target_url
         self.max_depth = max_depth
         self.max_threads = max_threads
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
         self.visited_urls = set()
         self.discovered_urls = set()
         self.forms = []
         self.parameters = set()
         self.xss_points = []
+        self.technologies = set()
+        self.sensitive_files = []
+        self.js_files = []
+        self.api_endpoints = []
+        self.parameter_patterns = [
+            r'(\w+)=([^&\s]+)',
+            r'name=["\'](\w+)["\']',
+            r'id=["\'](\w+)["\']',
+            r'class=["\']([^"\']*(\w+)[^"\']*)["\']',
+            r'data-(\w+)=',
+            r'ng-(\w+)=',
+            r'v-(\w+)=',
+            r'@(\w+)=',
+            r'#(\w+)',
+            r'\$(\w+)',
+        ]
         
     def print_banner(self):
         """Print the scanner banner"""
@@ -84,23 +141,37 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
 """
         print(banner)
     
-    def find_xss_points(self):
-        """Find potential XSS testing points"""
-        logger.info(f"{Colors.BLUE}[RECON] Finding XSS testing points...{Colors.END}")
+    def run_deep_reconnaissance(self):
+        """Run comprehensive reconnaissance"""
+        logger.info(f"{Colors.BLUE}[RECON] Starting deep reconnaissance...{Colors.END}")
         
-        # Start with the main target URL
+        # Phase 1: Initial discovery
         self.discovered_urls.add(self.target_url)
+        self.deep_crawling()
         
-        # Crawl to find forms and parameters
-        self.web_crawling()
+        # Phase 2: Parameter discovery
+        self.discover_parameters()
         
-        # Extract XSS testing points
-        for url in self.discovered_urls:
-            self.analyze_url_for_xss(url)
+        # Phase 3: Technology detection
+        self.detect_technologies()
+        
+        # Phase 4: Sensitive file discovery
+        self.find_sensitive_files()
+        
+        # Phase 5: JavaScript analysis
+        self.analyze_javascript()
+        
+        # Phase 6: API endpoint discovery
+        self.discover_api_endpoints()
+        
+        # Phase 7: XSS point analysis
+        self.analyze_xss_points()
+        
+        logger.info(f"{Colors.GREEN}[RECON] Reconnaissance completed: {len(self.discovered_urls)} URLs, {len(self.forms)} forms, {len(self.parameters)} parameters{Colors.END}")
     
-    def web_crawling(self):
-        """Crawl website to find XSS testing points"""
-        logger.info(f"{Colors.BLUE}[RECON] Crawling for XSS points...{Colors.END}")
+    def deep_crawling(self):
+        """Deep crawling with parallel processing"""
+        logger.info(f"{Colors.BLUE}[RECON] Starting deep crawling...{Colors.END}")
         
         urls_to_visit = [self.target_url]
         depth = 0
@@ -113,22 +184,435 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
             logger.info(f"{Colors.CYAN}[CRAWL] Depth {depth} - {len(current_urls)} URLs{Colors.END}")
             
             with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-                futures = {executor.submit(self.crawl_url, url): url for url in current_urls}
+                futures = {executor.submit(self.crawl_url_advanced, url): url for url in current_urls}
                 
                 for future in as_completed(futures):
                     url = futures[future]
                     try:
-                        new_urls, forms, params = future.result()
-                        urls_to_visit.extend(new_urls)
-                        self.forms.extend(forms)
-                        self.parameters.update(params)
+                        result = future.result()
+                        if result:
+                            new_urls, forms, params, js_files, tech = result
+                            urls_to_visit.extend(new_urls)
+                            self.forms.extend(forms)
+                            self.parameters.update(params)
+                            self.js_files.extend(js_files)
+                            self.technologies.update(tech)
                     except Exception as e:
-                        logger.error(f"{Colors.RED}[CRAWL] Error: {str(e)}{Colors.END}")
+                        logger.error(f"{Colors.RED}[CRAWL] Error processing {url}: {str(e)}{Colors.END}")
     
-    def crawl_url(self, url):
-        """Crawl a single URL and extract information"""
+    def discover_parameters(self):
+        """Discover parameters from various sources"""
+        logger.info(f"{Colors.BLUE}[RECON] Discovering parameters...{Colors.END}")
+        
+        # Common parameter wordlist
+        common_params = [
+            'id', 'name', 'user', 'username', 'email', 'password', 'pass', 'pwd',
+            'search', 'query', 'q', 'keyword', 'term', 'value', 'val', 'data',
+            'input', 'text', 'message', 'msg', 'content', 'desc', 'description',
+            'title', 'subject', 'topic', 'category', 'cat', 'type', 'sort',
+            'order', 'limit', 'offset', 'page', 'p', 'size', 'count', 'num',
+            'date', 'time', 'year', 'month', 'day', 'hour', 'minute',
+            'lang', 'language', 'locale', 'country', 'region', 'city',
+            'price', 'cost', 'amount', 'total', 'sum', 'quantity', 'qty',
+            'status', 'state', 'active', 'enabled', 'disabled', 'visible',
+            'action', 'method', 'mode', 'format', 'type', 'style', 'class',
+            'id', 'ref', 'reference', 'key', 'token', 'session', 'cookie',
+            'callback', 'redirect', 'return', 'next', 'prev', 'back',
+            'filter', 'where', 'having', 'group', 'order', 'sort',
+            'join', 'union', 'select', 'insert', 'update', 'delete',
+            'create', 'drop', 'alter', 'grant', 'revoke', 'exec', 'execute'
+        ]
+        
+        # Add discovered parameters
+        self.parameters.update(common_params)
+        
+        # Extract parameters from URLs
+        for url in self.discovered_urls:
+            if '?' in url:
+                query_params = parse_qs(urlparse(url).query)
+                self.parameters.update(query_params.keys())
+        
+        # Extract parameters from forms
+        for form in self.forms:
+            for input_field in form.get('inputs', []):
+                if input_field.get('name'):
+                    self.parameters.add(input_field['name'])
+        
+        logger.info(f"{Colors.GREEN}[RECON] Discovered {len(self.parameters)} parameters{Colors.END}")
+    
+    def detect_technologies(self):
+        """Detect web technologies"""
+        logger.info(f"{Colors.BLUE}[RECON] Detecting technologies...{Colors.END}")
+        
+        for url in list(self.discovered_urls)[:10]:  # Check first 10 URLs
+            try:
+                response = self.session.get(url, timeout=10)
+                
+                # Server headers
+                server = response.headers.get('Server', '').lower()
+                if 'apache' in server:
+                    self.technologies.add('Apache')
+                elif 'nginx' in server:
+                    self.technologies.add('Nginx')
+                elif 'iis' in server:
+                    self.technologies.add('IIS')
+                
+                # X-Powered-By
+                powered_by = response.headers.get('X-Powered-By', '').lower()
+                if powered_by:
+                    self.technologies.add(powered_by)
+                
+                # Content analysis
+                content = response.text.lower()
+                if 'jquery' in content:
+                    self.technologies.add('jQuery')
+                if 'bootstrap' in content:
+                    self.technologies.add('Bootstrap')
+                if 'angular' in content:
+                    self.technologies.add('Angular')
+                if 'react' in content:
+                    self.technologies.add('React')
+                if 'vue' in content:
+                    self.technologies.add('Vue.js')
+                if 'php' in content:
+                    self.technologies.add('PHP')
+                if 'asp.net' in content:
+                    self.technologies.add('ASP.NET')
+                if 'django' in content:
+                    self.technologies.add('Django')
+                if 'flask' in content:
+                    self.technologies.add('Flask')
+                if 'laravel' in content:
+                    self.technologies.add('Laravel')
+                
+            except Exception as e:
+                logger.error(f"{Colors.RED}[TECH] Error detecting technologies for {url}: {str(e)}{Colors.END}")
+        
+        logger.info(f"{Colors.GREEN}[RECON] Detected technologies: {', '.join(self.technologies)}{Colors.END}")
+    
+    def find_sensitive_files(self):
+        """Find sensitive files and directories"""
+        logger.info(f"{Colors.BLUE}[RECON] Finding sensitive files...{Colors.END}")
+        
+        sensitive_patterns = [
+            'admin', 'administrator', 'login', 'signin', 'signup', 'register',
+            'config', 'configuration', 'settings', 'setup', 'install',
+            'backup', 'backups', 'bak', 'old', 'temp', 'tmp', 'test',
+            'dev', 'development', 'staging', 'beta', 'alpha', 'demo',
+            'api', 'apis', 'rest', 'graphql', 'soap', 'xmlrpc',
+            'phpinfo', 'info.php', 'test.php', 'debug.php', 'error.php',
+            '.env', '.git', '.svn', '.hg', '.bzr', '.cvs',
+            'robots.txt', 'sitemap.xml', 'crossdomain.xml', 'clientaccesspolicy.xml',
+            'web.config', '.htaccess', '.htpasswd', 'wp-config.php',
+            'database.sql', 'dump.sql', 'backup.sql', 'data.sql',
+            'logs', 'log', 'error.log', 'access.log', 'debug.log',
+            'uploads', 'files', 'documents', 'images', 'media',
+            'includes', 'includes', 'lib', 'libs', 'vendor', 'node_modules'
+        ]
+        
+        base_url = self.target_url.rstrip('/')
+        
+        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+            futures = []
+            for pattern in sensitive_patterns:
+                test_urls = [
+                    f"{base_url}/{pattern}",
+                    f"{base_url}/{pattern}.php",
+                    f"{base_url}/{pattern}.html",
+                    f"{base_url}/{pattern}.txt",
+                    f"{base_url}/.{pattern}",
+                    f"{base_url}/{pattern}/",
+                    f"{base_url}/{pattern}/index.php",
+                    f"{base_url}/{pattern}/index.html"
+                ]
+                for test_url in test_urls:
+                    futures.append(executor.submit(self.check_sensitive_file, test_url))
+            
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        self.sensitive_files.append(result)
+                        logger.info(f"{Colors.YELLOW}[SENSITIVE] Found: {result}{Colors.END}")
+                except Exception as e:
+                    pass
+        
+        logger.info(f"{Colors.GREEN}[RECON] Found {len(self.sensitive_files)} sensitive files{Colors.END}")
+    
+    def check_sensitive_file(self, url):
+        """Check if sensitive file exists"""
+        try:
+            response = self.session.head(url, timeout=5)
+            if response.status_code == 200:
+                return url
+        except:
+            pass
+        return None
+    
+    def analyze_javascript(self):
+        """Analyze JavaScript files for parameters and endpoints"""
+        logger.info(f"{Colors.BLUE}[RECON] Analyzing JavaScript files...{Colors.END}")
+        
+        for js_url in self.js_files[:20]:  # Limit to first 20 JS files
+            try:
+                response = self.session.get(js_url, timeout=10)
+                content = response.text
+                
+                # Extract parameters from JS
+                for pattern in self.parameter_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    for match in matches:
+                        if isinstance(match, tuple):
+                            self.parameters.update(match)
+                        else:
+                            self.parameters.add(match)
+                
+                # Extract API endpoints
+                api_patterns = [
+                    r'["\']([^"\']*api[^"\']*)["\']',
+                    r'["\']([^"\']*endpoint[^"\']*)["\']',
+                    r'["\']([^"\']*service[^"\']*)["\']',
+                    r'["\']([^"\']*ajax[^"\']*)["\']',
+                    r'["\']([^"\']*fetch[^"\']*)["\']',
+                    r'["\']([^"\']*xhr[^"\']*)["\']'
+                ]
+                
+                for pattern in api_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    for match in matches:
+                        if match.startswith('/') or match.startswith('http'):
+                            self.api_endpoints.append(match)
+                
+            except Exception as e:
+                logger.error(f"{Colors.RED}[JS] Error analyzing {js_url}: {str(e)}{Colors.END}")
+        
+        logger.info(f"{Colors.GREEN}[RECON] Analyzed {len(self.js_files)} JavaScript files{Colors.END}")
+    
+    def discover_api_endpoints(self):
+        """Discover API endpoints"""
+        logger.info(f"{Colors.BLUE}[RECON] Discovering API endpoints...{Colors.END}")
+        
+        api_paths = [
+            '/api', '/api/v1', '/api/v2', '/rest', '/restapi', '/graphql',
+            '/soap', '/xmlrpc', '/rpc', '/service', '/services', '/ws',
+            '/webservice', '/endpoint', '/endpoints', '/ajax', '/json',
+            '/data', '/feed', '/rss', '/atom', '/sitemap'
+        ]
+        
+        base_url = self.target_url.rstrip('/')
+        
+        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+            futures = []
+            for path in api_paths:
+                test_url = f"{base_url}{path}"
+                futures.append(executor.submit(self.check_api_endpoint, test_url))
+            
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        self.api_endpoints.append(result)
+                        logger.info(f"{Colors.YELLOW}[API] Found: {result}{Colors.END}")
+                except Exception as e:
+                    pass
+        
+        logger.info(f"{Colors.GREEN}[RECON] Found {len(self.api_endpoints)} API endpoints{Colors.END}")
+    
+    def check_api_endpoint(self, url):
+        """Check if API endpoint exists"""
+        try:
+            response = self.session.get(url, timeout=5)
+            if response.status_code in [200, 401, 403, 405]:
+                return url
+        except:
+            pass
+        return None
+    
+    def analyze_xss_points(self):
+        """Analyze discovered points for XSS potential"""
+        logger.info(f"{Colors.BLUE}[RECON] Analyzing XSS points...{Colors.END}")
+        
+        for url in self.discovered_urls:
+            # Analyze URL parameters
+            if '?' in url:
+                parsed_url = urlparse(url)
+                query_params = parse_qs(parsed_url.query)
+                for param in query_params.keys():
+                    xss_point = XSSPoint(
+                        url=url,
+                        parameter=param,
+                        method='GET',
+                        context='html',
+                        is_reflected=self.test_parameter_reflection(url, param)
+                    )
+                    self.xss_points.append(xss_point)
+            
+            # Analyze forms
+            for form in self.forms:
+                if form['action'] == url:
+                    for input_field in form.get('inputs', []):
+                        if input_field.get('name'):
+                            xss_point = XSSPoint(
+                                url=url,
+                                parameter=input_field['name'],
+                                method=form['method'],
+                                context='html',
+                                form_data=form,
+                                is_reflected=self.test_parameter_reflection(url, input_field['name'])
+                            )
+                            self.xss_points.append(xss_point)
+        
+        logger.info(f"{Colors.GREEN}[RECON] Found {len(self.xss_points)} XSS testing points{Colors.END}")
+    
+    def test_parameter_reflection(self, url, parameter):
+        """Test if parameter is reflected in response"""
+        try:
+            test_value = f"XSS_TEST_{random.randint(1000, 9999)}"
+            test_url = url.replace(parameter + "=" + parse_qs(urlparse(url).query)[parameter][0], parameter + "=" + test_value)
+            
+            response = self.session.get(test_url, timeout=5)
+            return test_value in response.text
+        except:
+            return False
+    
+    def crawl_url_advanced(self, url):
+        """Advanced URL crawling with comprehensive extraction"""
         if url in self.visited_urls:
-            return [], [], []
+            return None
+        
+        self.visited_urls.add(url)
+        new_urls = []
+        forms = []
+        params = set()
+        js_files = []
+        tech = set()
+        
+        try:
+            response = self.session.get(url, timeout=15, allow_redirects=True)
+            response.raise_for_status()
+            
+            # Update final URL after redirects
+            final_url = response.url
+            self.discovered_urls.add(final_url)
+            
+            # Parse HTML
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Extract forms
+            for form in soup.find_all('form'):
+                form_data = self.extract_form_data_advanced(form, final_url)
+                if form_data:
+                    forms.append(form_data)
+            
+            # Extract links
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                absolute_url = urljoin(final_url, href)
+                if self.is_valid_url(absolute_url) and absolute_url not in self.visited_urls:
+                    new_urls.append(absolute_url)
+            
+            # Extract JavaScript files
+            for script in soup.find_all('script', src=True):
+                script_url = urljoin(final_url, script['src'])
+                if self.is_valid_url(script_url):
+                    new_urls.append(script_url)
+                    js_files.append(script_url)
+            
+            # Extract parameters from URL
+            parsed_url = urlparse(final_url)
+            if parsed_url.query:
+                query_params = parse_qs(parsed_url.query)
+                params.update(query_params.keys())
+            
+            # Extract parameters from forms
+            for form in forms:
+                for input_field in form.get('inputs', []):
+                    if input_field.get('name'):
+                        params.add(input_field['name'])
+            
+            # Extract parameters from page content
+            content = response.text
+            for pattern in self.parameter_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        params.update(match)
+                    else:
+                        params.add(match)
+            
+            # Technology detection
+            server_header = response.headers.get('Server', '').lower()
+            if 'apache' in server_header:
+                tech.add('Apache')
+            elif 'nginx' in server_header:
+                tech.add('Nginx')
+            elif 'iis' in server_header:
+                tech.add('IIS')
+            
+            powered_by = response.headers.get('X-Powered-By', '').lower()
+            if powered_by:
+                tech.add(powered_by)
+            
+            # Content analysis
+            content_lower = content.lower()
+            if 'jquery' in content_lower:
+                tech.add('jQuery')
+            if 'bootstrap' in content_lower:
+                tech.add('Bootstrap')
+            if 'angular' in content_lower:
+                tech.add('Angular')
+            if 'react' in content_lower:
+                tech.add('React')
+            if 'vue' in content_lower:
+                tech.add('Vue.js')
+            if 'php' in content_lower:
+                tech.add('PHP')
+            if 'asp.net' in content_lower:
+                tech.add('ASP.NET')
+            if 'django' in content_lower:
+                tech.add('Django')
+            if 'flask' in content_lower:
+                tech.add('Flask')
+            if 'laravel' in content_lower:
+                tech.add('Laravel')
+            
+        except Exception as e:
+            logger.error(f"{Colors.RED}[CRAWL] Error processing {url}: {str(e)}{Colors.END}")
+            return None
+        
+        return new_urls, forms, params, js_files, tech
+    
+    def extract_form_data_advanced(self, form, base_url):
+        """Extract comprehensive form data"""
+        form_data = {
+            'action': form.get('action', ''),
+            'method': form.get('method', 'GET').upper(),
+            'inputs': [],
+            'url': base_url
+        }
+        
+        # Make action URL absolute
+        if form_data['action']:
+            form_data['action'] = urljoin(base_url, form_data['action'])
+        else:
+            form_data['action'] = base_url
+        
+        # Extract input fields
+        for input_tag in form.find_all(['input', 'textarea', 'select']):
+            input_data = {
+                'name': input_tag.get('name', ''),
+                'type': input_tag.get('type', 'text'),
+                'value': input_tag.get('value', ''),
+                'required': input_tag.has_attr('required'),
+                'placeholder': input_tag.get('placeholder', ''),
+                'id': input_tag.get('id', ''),
+                'class': input_tag.get('class', [])
+            }
+            
+            if input_data['name']:
+                form_data['inputs'].append(input_data)
+        
+        return form_data if form_data['inputs'] else None
         
         self.visited_urls.add(url)
         new_urls = []
@@ -321,16 +805,17 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
         return report
 
 class AdvancedXSSScanner:
-    """Advanced XSS scanner with context detection and WAF bypass"""
+    """Advanced XSS scanner with Chrome-based testing and alert detection"""
     
     def __init__(self, recon_data):
         self.recon_data = recon_data
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
         self.vulnerabilities = []
         self.driver = None
+        self.unique_alert_id = f"XSS_SCANNER_{random.randint(10000, 99999)}"
         self.setup_selenium()
         
     def setup_selenium(self):
@@ -583,18 +1068,22 @@ class AdvancedXSSScanner:
         return contexts if contexts else ['html']  # Default to HTML context
     
     def test_xss_with_chrome(self, url, parameter, payload, context, method='GET'):
-        """Test XSS vulnerability using Chrome browser for real execution"""
+        """Test XSS vulnerability using Chrome browser with proper alert handling"""
         if not self.driver:
             logger.warning(f"{Colors.YELLOW}[XSS] Chrome not available, skipping real XSS test{Colors.END}")
-            return False, None
+            return False, None, None
         
         try:
+            # Create unique payload with our identifier
+            unique_payload = payload.replace('alert("XSS")', f'alert("{self.unique_alert_id}")')
+            unique_payload = unique_payload.replace("alert('XSS')", f"alert('{self.unique_alert_id}')")
+            
             # Prepare the test URL or data
             if method == 'GET':
                 # For GET requests, modify the URL
                 parsed_url = urlparse(url)
                 query_params = parse_qs(parsed_url.query)
-                query_params[parameter] = [payload]
+                query_params[parameter] = [unique_payload]
                 
                 # Rebuild URL
                 new_query = urllib.parse.urlencode(query_params, doseq=True)
@@ -617,7 +1106,7 @@ class AdvancedXSSScanner:
                     # Find input field
                     input_field = form.find_element(By.NAME, parameter)
                     input_field.clear()
-                    input_field.send_keys(payload)
+                    input_field.send_keys(unique_payload)
                     
                     # Submit form
                     form.submit()
@@ -628,30 +1117,35 @@ class AdvancedXSSScanner:
             # Wait for page to load
             time.sleep(3)
             
-            # Check for alert popup
+            # Check for alert popup with our unique identifier
             try:
                 alert = self.driver.switch_to.alert
                 alert_text = alert.text
-                alert.accept()  # Close the alert
                 
-                # If we got here, XSS was successful
-                logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Alert detected: {alert_text}{Colors.END}")
-                return True, test_url
+                # Check if it's our unique alert
+                if self.unique_alert_id in alert_text:
+                    alert.accept()  # Close the alert
+                    logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Our unique alert detected: {alert_text}{Colors.END}")
+                    return True, test_url, alert_text
+                else:
+                    # It's not our alert, dismiss it and continue
+                    alert.accept()
+                    logger.info(f"{Colors.YELLOW}[XSS] Alert detected but not ours: {alert_text}{Colors.END}")
                 
-            except:
+            except NoAlertPresentException:
                 # No alert found, check if payload is reflected
                 page_source = self.driver.page_source
-                if payload in page_source:
+                if unique_payload in page_source:
                     # Check if it's in executable context
-                    if self.check_executable_context(page_source, payload, context):
+                    if self.check_executable_context(page_source, unique_payload, context):
                         logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Payload reflected in executable context{Colors.END}")
-                        return True, test_url
+                        return True, test_url, "Reflected in context"
                 
-                return False, test_url
+                return False, test_url, None
                 
         except Exception as e:
             logger.error(f"{Colors.RED}[XSS] Error testing with Chrome: {str(e)}{Colors.END}")
-            return False, None
+            return False, None, None
     
     def check_executable_context(self, page_source, payload, context):
         """Check if payload is in executable context"""
@@ -718,27 +1212,27 @@ class AdvancedXSSScanner:
                     for payload in payloads[:10]:  # Limit to first 10 payloads for Chrome testing
                         logger.info(f"{Colors.YELLOW}[XSS] Testing payload: {payload[:50]}...{Colors.END}")
                         
-                        is_vulnerable, test_url = self.test_xss_with_chrome(
+                        is_vulnerable, test_url, alert_text = self.test_xss_with_chrome(
                             form['action'], parameter, payload, context, form['method']
                         )
                         
                         if is_vulnerable:
-                            vulnerability = {
-                                'type': 'XSS',
-                                'url': form['action'],
-                                'parameter': parameter,
-                                'payload': payload,
-                                'context': context,
-                                'method': form['method'],
-                                'test_url': test_url,
-                                'severity': 'High',
-                                'timestamp': datetime.now().isoformat()
-                            }
+                            vulnerability = XSSVulnerability(
+                                url=form['action'],
+                                parameter=parameter,
+                                payload=payload,
+                                context=context,
+                                method=form['method'],
+                                test_url=test_url,
+                                alert_text=alert_text,
+                                severity='High',
+                                timestamp=datetime.now().isoformat()
+                            )
                             
                             # Capture screenshot of the successful XSS execution
                             screenshot = self.capture_screenshot(test_url, payload, parameter)
                             if screenshot:
-                                vulnerability['screenshot'] = screenshot
+                                vulnerability.screenshot = screenshot
                             
                             self.vulnerabilities.append(vulnerability)
                             
@@ -746,6 +1240,8 @@ class AdvancedXSSScanner:
                             logger.info(f"{Colors.GREEN}[PAYLOAD] {payload}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[CONTEXT] {context}{Colors.END}")
                             logger.info(f"{Colors.GREEN}[TEST_URL] {test_url}{Colors.END}")
+                            if alert_text:
+                                logger.info(f"{Colors.GREEN}[ALERT] {alert_text}{Colors.END}")
                             
                             # Break after first successful payload
                             break
@@ -877,13 +1373,13 @@ def main():
     
     target_url = sys.argv[1]
     
-    # Phase 1: XSS Reconnaissance
-    print(f"{Colors.BLUE}{Colors.BOLD}=== PHASE 1: XSS RECONNAISSANCE ==={Colors.END}")
-    recon = XSSReconnaissance(target_url)
+    # Phase 1: Deep Reconnaissance
+    print(f"{Colors.BLUE}{Colors.BOLD}=== PHASE 1: DEEP RECONNAISSANCE ==={Colors.END}")
+    recon = AdvancedReconnaissance(target_url)
     recon.print_banner()
     
     try:
-        recon.find_xss_points()
+        recon.run_deep_reconnaissance()
         recon_data = recon.generate_report()
     except KeyboardInterrupt:
         print(f"\n{Colors.YELLOW}[INFO] Reconnaissance interrupted by user{Colors.END}")
@@ -896,6 +1392,7 @@ def main():
     print(f"\n{Colors.BLUE}{Colors.BOLD}=== PHASE 2: CHROME-BASED XSS TESTING ==={Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Starting Chrome browser for real XSS testing...{Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Chrome will open and test each payload in real browser{Colors.END}")
+    print(f"{Colors.MAGENTA}[INFO] Unique alert identifier: {scanner.unique_alert_id if 'scanner' in locals() else 'N/A'}{Colors.END}")
     print(f"{Colors.MAGENTA}[INFO] Screenshots will be captured for confirmed vulnerabilities{Colors.END}\n")
     
     scanner = AdvancedXSSScanner(recon_data)
