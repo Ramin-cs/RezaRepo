@@ -165,7 +165,7 @@ Mode: {Colors.MAGENTA}Real Chrome Browser Testing{Colors.END}
         self.detect_technologies()
         
         # Phase 4: Sensitive file discovery
-        self.find_sensitive_files()
+        # Skip sensitive files - not relevant for XSS testing
         
         # Phase 5: JavaScript analysis
         self.analyze_javascript()
@@ -1151,9 +1151,11 @@ class AdvancedXSSScanner:
                 
                 # Check if it's our unique alert
                 if self.unique_alert_id in alert_text:
+                    # Take screenshot BEFORE closing alert
+                    screenshot_path = self.capture_screenshot(test_url, parameter, payload)
                     alert.accept()  # Close the alert
                     logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Our unique alert detected: {alert_text}{Colors.END}")
-                    return True, test_url, alert_text
+                    return True, test_url, alert_text, screenshot_path
                 else:
                     # It's not our alert, dismiss it and continue
                     alert.accept()
@@ -1165,14 +1167,16 @@ class AdvancedXSSScanner:
                 if unique_payload in page_source:
                     # Check if it's in executable context
                     if self.check_executable_context(page_source, unique_payload, context):
+                        # Take screenshot for reflected payload
+                        screenshot_path = self.capture_screenshot(test_url, parameter, payload)
                         logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Payload reflected in executable context{Colors.END}")
-                        return True, test_url, "Reflected in context"
+                        return True, test_url, "Reflected in context", screenshot_path
                 
-                return False, test_url, None
+                return False, test_url, None, None
                 
         except Exception as e:
             logger.error(f"{Colors.RED}[XSS] Error testing with Chrome: {str(e)}{Colors.END}")
-            return False, None, None
+            return False, None, None, None
     
     def check_executable_context(self, page_source, payload, context):
         """Check if payload is in executable context"""
@@ -1239,7 +1243,7 @@ class AdvancedXSSScanner:
                     for payload in payloads[:10]:  # Limit to first 10 payloads for Chrome testing
                         logger.info(f"{Colors.YELLOW}[XSS] Testing payload: {payload[:50]}...{Colors.END}")
                         
-                        is_vulnerable, test_url, alert_text = self.test_xss_with_chrome(
+                        is_vulnerable, test_url, alert_text, screenshot_path = self.test_xss_with_chrome(
                             form['action'], parameter, payload, context, form['method']
                         )
                         
@@ -1251,15 +1255,13 @@ class AdvancedXSSScanner:
                                 context=context,
                                 method=form['method'],
                                 test_url=test_url,
+                                screenshot=screenshot_path,
                                 alert_text=alert_text,
                                 severity='High',
                                 timestamp=datetime.now().isoformat()
                             )
                             
-                            # Capture screenshot of the successful XSS execution
-                            screenshot = self.capture_screenshot(test_url, payload, parameter)
-                            if screenshot:
-                                vulnerability.screenshot = screenshot
+                            # Screenshot already captured in test_xss_with_chrome
                             
                             self.vulnerabilities.append(vulnerability)
                             
@@ -1299,27 +1301,25 @@ class AdvancedXSSScanner:
                     for payload in payloads[:10]:  # Limit to first 10 payloads for Chrome testing
                         logger.info(f"{Colors.YELLOW}[XSS] Testing payload: {payload[:50]}...{Colors.END}")
                         
-                        is_vulnerable, test_url = self.test_xss_with_chrome(
+                        is_vulnerable, test_url, alert_text, screenshot_path = self.test_xss_with_chrome(
                             url, parameter, payload, context, 'GET'
                         )
                         
                         if is_vulnerable:
-                            vulnerability = {
-                                'type': 'XSS',
-                                'url': url,
-                                'parameter': parameter,
-                                'payload': payload,
-                                'context': context,
-                                'method': 'GET',
-                                'test_url': test_url,
-                                'severity': 'High',
-                                'timestamp': datetime.now().isoformat()
-                            }
+                            vulnerability = XSSVulnerability(
+                                url=url,
+                                parameter=parameter,
+                                payload=payload,
+                                context=context,
+                                method='GET',
+                                test_url=test_url,
+                                screenshot=screenshot_path,
+                                alert_text=alert_text,
+                                severity='High',
+                                timestamp=datetime.now().isoformat()
+                            )
                             
-                            # Capture screenshot of the successful XSS execution
-                            screenshot = self.capture_screenshot(test_url, payload, parameter)
-                            if screenshot:
-                                vulnerability['screenshot'] = screenshot
+                            # Screenshot already captured in test_xss_with_chrome
                             
                             self.vulnerabilities.append(vulnerability)
                             
