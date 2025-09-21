@@ -1,76 +1,117 @@
 # Advanced XSS Scanner
 
-A focused XSS scanner that performs targeted reconnaissance and **real Chrome browser-based XSS testing** with context-aware payload injection and **improved alert handling**.
+A powerful and comprehensive Cross-Site Scripting (XSS) vulnerability scanner that combines HTTP request testing with Selenium WebDriver for accurate detection and proof-of-concept generation.
 
 ## Features
 
-- **XSS-Focused Reconnaissance**: Finds forms, parameters, and XSS testing points
-- **Real Chrome Testing**: Uses actual Chrome browser to test XSS payloads
-- **Improved Alert Detection**: Enhanced alert handling with unique IDs and multiple detection attempts
-- **Context Detection**: Automatically detects HTML, JavaScript, CSS, and Attribute contexts
-- **Context-Aware Payloads**: Tests only relevant payloads for each detected context
-- **WAF Bypass**: Multiple encoding techniques (URL, Base64, Unicode, HTML entities)
-- **PoC Screenshots**: Automatic screenshots of confirmed XSS vulnerabilities
-- **False Positive Elimination**: Real browser testing eliminates false positives
-- **Enhanced JavaScript Analysis**: Deep analysis of JS files for parameter discovery
-- **Parallel Processing**: Unlimited parallel processing for speed optimization
+- **Dual Testing Approach**: Uses both HTTP requests and Selenium WebDriver for comprehensive testing
+- **Form Discovery**: Automatically discovers forms and input fields on target websites
+- **Payload Reflection Detection**: Detects when XSS payloads are reflected in server responses
+- **Multiple Payload Types**: Tests various XSS payload types including script tags, event handlers, and HTML elements
+- **Screenshot Capture**: Takes screenshots when XSS vulnerabilities are confirmed (with Selenium)
+- **Comprehensive Logging**: Detailed logging with color-coded output for easy analysis
+- **Error Handling**: Robust error handling and fallback mechanisms
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.7+
+- Chrome browser
+- ChromeDriver
+
+### Dependencies
+
 ```bash
-pip install -r requirements.txt
+pip install requests selenium webdriver-manager
+```
+
+### ChromeDriver Setup
+
+The scanner will automatically download and manage ChromeDriver, but you can also install it manually:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install chromium-chromedriver
+
+# Or download from https://chromedriver.chromium.org/
 ```
 
 ## Usage
 
 ```bash
-python3 advanced_xss_scanner.py <target_url>
+python3 xss_scanner.py <target_url>
 ```
 
 ### Example
+
 ```bash
-python3 advanced_xss_scanner.py http://testphp.vulnweb.com
+python3 xss_scanner.py http://testphp.vulnweb.com
 ```
 
-## Key Improvements
+## How It Works
 
-### Alert Handling
-- **Unique Alert IDs**: Each scan uses a unique alert identifier to avoid confusion with site alerts
-- **Multiple Detection Attempts**: The scanner tries multiple times to detect and handle alerts
-- **Improved Screenshot Timing**: Screenshots are captured before alert dismissal
-- **Better Error Handling**: Robust error handling for Selenium WebDriver issues
+1. **Form Discovery**: Scans the target website for HTML forms and input fields
+2. **Payload Generation**: Creates various XSS payloads for testing
+3. **HTTP Testing**: Sends POST/GET requests with XSS payloads and checks for reflection
+4. **Selenium Testing**: Uses Chrome WebDriver to test payloads in a real browser environment
+5. **Vulnerability Confirmation**: Confirms XSS vulnerabilities through reflection detection and alert handling
+6. **Screenshot Capture**: Takes screenshots when vulnerabilities are confirmed
 
-### Enhanced Reconnaissance
-- **Deeper JavaScript Analysis**: Analyzes more JS files and extracts more parameters
-- **Removed Irrelevant Phases**: Removed "Sensitive Files" reconnaissance as it's not XSS-relevant
-- **Better Parameter Discovery**: Enhanced parameter discovery from multiple sources
+## Payload Types
+
+The scanner tests various XSS payload types:
+
+- `<script>alert("XSS")</script>`
+- `<img src=x onerror=alert("XSS")>`
+- `<svg onload=alert("XSS")>`
+- `<iframe src="javascript:alert('XSS')">`
+- `<body onload=alert("XSS")>`
+- `<input onfocus=alert("XSS") autofocus>`
+- `<details open ontoggle="alert('XSS')">`
+- `<video><source onerror="alert('XSS')">`
+- `<audio src=x onerror=alert("XSS")>`
+- `<object data="javascript:alert('XSS')">`
+- `<embed src="javascript:alert('XSS')">`
+- `<form><button formaction="javascript:alert('XSS')">`
+- `<marquee onstart="alert('XSS')">`
+- `<keygen onfocus=alert("XSS") autofocus>`
+- `<select onfocus=alert("XSS") autofocus>`
+- `<textarea onfocus=alert("XSS") autofocus>`
 
 ## Output
 
-The scanner generates:
-- Console output with real-time progress
-- `xss_vulnerabilities_report.json` - Detailed JSON report
-- `screenshots/` directory with PoC screenshots
+The scanner provides detailed output including:
 
-## Troubleshooting
+- Form discovery results
+- Payload testing progress
+- Vulnerability confirmations
+- Screenshot paths (when available)
+- Summary of found vulnerabilities
 
-If you encounter the "unexpected alert open" error:
-1. The scanner now handles this automatically with improved alert detection
-2. Multiple detection attempts are made before giving up
-3. Screenshots are captured before alert dismissal to ensure PoC generation
+## Example Output
 
-## Technical Details
+```
+🚀 Starting XSS scan on: http://testphp.vulnweb.com
+🔍 Found form: http://testphp.vulnweb.com/search.php?test=query (post) with inputs: ['searchFor', 'goButton']
+📋 Total forms discovered: 3
+✅ Selenium WebDriver initialized successfully
+🔍 Testing form: http://testphp.vulnweb.com/search.php?test=query
+💉 Testing payload: <script>alert("XSS")</script>
+✅ Payload reflected in response: <script>alert("XSS")</script>
+🎯 XSS FOUND! URL: http://testphp.vulnweb.com/search.php?test=query
+💉 Payload: <script>alert("XSS")</script>
+📊 Scan completed. Found 48 vulnerabilities:
+```
 
-### Alert Detection Algorithm
-1. **Unique ID Generation**: Each scan generates a unique alert ID (e.g., `XSS_SCANNER_56217`)
-2. **Payload Injection**: Payloads are modified to include the unique ID
-3. **Multi-Attempt Detection**: Multiple attempts to detect and handle alerts
-4. **Screenshot Capture**: Screenshots are taken before alert dismissal
-5. **Reflection Check**: If no alert, checks for payload reflection in executable context
+## Security Notice
 
-### Error Resolution
-The "unexpected alert open" error has been resolved by:
-- Implementing robust alert detection with multiple attempts
-- Proper screenshot timing before alert dismissal
-- Enhanced error handling for WebDriver exceptions
-- Fallback to reflection checking when alerts fail
+This tool is designed for authorized security testing only. Always ensure you have proper permission before testing any website. Unauthorized testing may violate laws and terms of service.
+
+## License
+
+This project is for educational and authorized security testing purposes only.
+
+## Contributing
+
+Feel free to submit issues and enhancement requests!
