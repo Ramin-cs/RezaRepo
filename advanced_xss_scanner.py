@@ -758,8 +758,8 @@ class AdvancedXSSScanner:
                 
                 test_url = self.driver.current_url
             
-            # Wait for page to load
-            time.sleep(3)
+            # Wait for page to load and potential alert
+            time.sleep(5)  # Increased wait time for better alert detection
             
             # Improved alert detection with multiple attempts
             alert_detected = False
@@ -998,17 +998,51 @@ class AdvancedXSSScanner:
         # Get base payloads for the context
         base_payloads = payloads.get(context, payloads['html'])
         
-        # Add encoded variations
+        # Smart encoding based on context
         encoded_payloads = []
         for payload in base_payloads:
+            # Always add the original payload
             encoded_payloads.append(payload)
-            encoded_payloads.append(urllib.parse.quote(payload))  # URL encode
-            encoded_payloads.append(base64.b64encode(payload.encode()).decode())  # Base64 encode
-            encoded_payloads.append("&#x" + "".join([hex(ord(c))[2:] for c in payload]) + ";")  # HTML entity encode (hex)
-            encoded_payloads.append("&#" + "".join([str(ord(c)) for c in payload]) + ";")  # HTML entity encode (decimal)
-            encoded_payloads.append("".join([f"\\u{ord(c):04x}" for c in payload]))  # Unicode escape
+            
+            # Context-specific encoding
+            if context == 'html':
+                # For HTML context, add URL encoding and HTML entity encoding
+                encoded_payloads.append(urllib.parse.quote(payload))
+                encoded_payloads.append(urllib.parse.quote_plus(payload))
+                # HTML entity encoding (hex)
+                hex_encoded = "".join([f"&#x{ord(c):02x};" for c in payload])
+                encoded_payloads.append(hex_encoded)
+                # HTML entity encoding (decimal)
+                dec_encoded = "".join([f"&#{ord(c)};" for c in payload])
+                encoded_payloads.append(dec_encoded)
+                
+            elif context == 'attribute':
+                # For attribute context, add URL encoding and HTML entity encoding
+                encoded_payloads.append(urllib.parse.quote(payload))
+                # HTML entity encoding (hex)
+                hex_encoded = "".join([f"&#x{ord(c):02x};" for c in payload])
+                encoded_payloads.append(hex_encoded)
+                # HTML entity encoding (decimal)
+                dec_encoded = "".join([f"&#{ord(c)};" for c in payload])
+                encoded_payloads.append(dec_encoded)
+                
+            elif context == 'javascript':
+                # For JavaScript context, add Unicode escape and URL encoding
+                unicode_encoded = "".join([f"\\u{ord(c):04x}" for c in payload])
+                encoded_payloads.append(unicode_encoded)
+                encoded_payloads.append(urllib.parse.quote(payload))
+                
+            elif context == 'css':
+                # For CSS context, add URL encoding
+                encoded_payloads.append(urllib.parse.quote(payload))
+                
+            elif context == 'url':
+                # For URL context, add double URL encoding
+                encoded_payloads.append(urllib.parse.quote(payload))
+                double_encoded = urllib.parse.quote(urllib.parse.quote(payload))
+                encoded_payloads.append(double_encoded)
         
-        return list(set(base_payloads + encoded_payloads))
+        return list(set(encoded_payloads))
 
     def generate_xss_report(self):
         """Generate comprehensive XSS vulnerability report"""
