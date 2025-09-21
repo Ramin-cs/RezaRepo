@@ -505,7 +505,7 @@ class AdvancedReconnaissance:
         if parameter in url:
             contexts.append('url')
         
-        return contexts if contexts else ['html']  # Default to HTML context
+        return contexts[0] if contexts else 'html'  # Return first context or default to HTML
 
     def is_same_domain(self, url):
         """Check if URL is from the same domain"""
@@ -531,7 +531,7 @@ class AdvancedXSSScanner:
         self.setup_selenium()
 
     def setup_selenium(self):
-        """Setup Selenium WebDriver with improved configuration"""
+        """Setup Selenium WebDriver with improved configuration and fallback options"""
         if not SELENIUM_AVAILABLE:
             logger.warning(f"{Colors.YELLOW}[SELENIUM] Selenium not available{Colors.END}")
             return
@@ -563,16 +563,49 @@ class AdvancedXSSScanner:
             chrome_options.add_argument('--ignore-certificate-errors-spki-list')
             chrome_options.add_argument('--ignore-certificate-errors-skip-list')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--allow-running-insecure-content')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
             
             # Set window size
             chrome_options.add_argument('--window-size=1920,1080')
             
-            # Initialize WebDriver
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-            self.driver.set_page_load_timeout(30)
+            # Try multiple approaches to initialize WebDriver
+            driver_initialized = False
             
-            logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully for XSS testing{Colors.END}")
+            # Method 1: Try with ChromeDriverManager
+            try:
+                service = Service(ChromeDriverManager().install())
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                self.driver.set_page_load_timeout(30)
+                driver_initialized = True
+                logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully with ChromeDriverManager{Colors.END}")
+            except Exception as e1:
+                logger.warning(f"{Colors.YELLOW}[SELENIUM] ChromeDriverManager failed: {e1}{Colors.END}")
+                
+                # Method 2: Try without service (use system ChromeDriver)
+                try:
+                    self.driver = webdriver.Chrome(options=chrome_options)
+                    self.driver.set_page_load_timeout(30)
+                    driver_initialized = True
+                    logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully with system ChromeDriver{Colors.END}")
+                except Exception as e2:
+                    logger.warning(f"{Colors.YELLOW}[SELENIUM] System ChromeDriver failed: {e2}{Colors.END}")
+                    
+                    # Method 3: Try with headless mode
+                    try:
+                        chrome_options.add_argument('--headless')
+                        self.driver = webdriver.Chrome(options=chrome_options)
+                        self.driver.set_page_load_timeout(30)
+                        driver_initialized = True
+                        logger.info(f"{Colors.GREEN}[SELENIUM] WebDriver initialized successfully in headless mode{Colors.END}")
+                    except Exception as e3:
+                        logger.error(f"{Colors.RED}[SELENIUM] All WebDriver initialization methods failed: {e3}{Colors.END}")
+            
+            if not driver_initialized:
+                self.driver = None
+                logger.error(f"{Colors.RED}[SELENIUM] Failed to initialize WebDriver. Chrome-based testing will be skipped.{Colors.END}")
+                logger.info(f"{Colors.YELLOW}[SELENIUM] Please ensure Chrome browser and ChromeDriver are properly installed{Colors.END}")
             
         except Exception as e:
             logger.error(f"{Colors.RED}[SELENIUM] Failed to initialize WebDriver: {e}{Colors.END}")
@@ -676,8 +709,8 @@ class AdvancedXSSScanner:
     def test_xss_with_chrome_improved(self, url, parameter, payload, context, method='GET'):
         """Improved XSS testing with better alert handling and screenshot capture"""
         if not self.driver:
-            logger.warning(f"{Colors.YELLOW}[XSS] Chrome not available, skipping real XSS test{Colors.END}")
-            return False, None, None, None
+            logger.warning(f"{Colors.YELLOW}[XSS] Chrome not available, using fallback method{Colors.END}")
+            return self.test_xss_fallback(url, parameter, payload, context, method)
         
         try:
             # Create unique payload with our identifier
@@ -782,6 +815,50 @@ class AdvancedXSSScanner:
             
         except Exception as e:
             logger.error(f"{Colors.RED}[XSS] Error testing with Chrome: {str(e)}{Colors.END}")
+            return False, None, None, None
+
+    def test_xss_fallback(self, url, parameter, payload, context, method='GET'):
+        """Fallback XSS testing method when Chrome is not available"""
+        try:
+            # Create unique payload with our identifier
+            unique_payload = payload.replace('alert("XSS")', f'alert("{self.unique_alert_id}")')
+            unique_payload = unique_payload.replace("alert('XSS')", f"alert('{self.unique_alert_id}')")
+            
+            # Prepare the test URL or data
+            if method == 'GET':
+                # For GET requests, modify the URL
+                parsed_url = urlparse(url)
+                query_params = parse_qs(parsed_url.query)
+                query_params[parameter] = [unique_payload]
+                
+                # Rebuild URL
+                new_query = urllib.parse.urlencode(query_params, doseq=True)
+                test_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{new_query}"
+                
+                logger.info(f"{Colors.CYAN}[XSS] Testing GET (fallback): {test_url}{Colors.END}")
+                
+                # Send request
+                response = self.session.get(test_url, timeout=10)
+                
+            else:
+                # For POST requests
+                test_url = url
+                logger.info(f"{Colors.CYAN}[XSS] Testing POST (fallback): {test_url}{Colors.END}")
+                
+                # Send POST request
+                response = self.session.post(test_url, data={parameter: unique_payload}, timeout=10)
+            
+            # Check if payload is reflected
+            if unique_payload in response.text:
+                # Check if it's in executable context
+                if self.check_executable_context(response.text, unique_payload, context):
+                    logger.info(f"{Colors.GREEN}[XSS] SUCCESS! Payload reflected in executable context (fallback){Colors.END}")
+                    return True, test_url, "Reflected in context (fallback)", None
+            
+            return False, test_url, None, None
+            
+        except Exception as e:
+            logger.error(f"{Colors.RED}[XSS] Error in fallback testing: {str(e)}{Colors.END}")
             return False, None, None, None
 
     def capture_screenshot_improved(self, test_url, parameter, payload):
