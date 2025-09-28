@@ -658,12 +658,18 @@ class FinalPopupScanner:
                         screenshot_path = os.path.join('screenshots', filename)
                         
                         try:
-                            # Take screenshot immediately when YOUR popup appears
-                            test_page.screenshot(path=screenshot_path, full_page=True, timeout=3000)
+                            # Take screenshot immediately when YOUR popup appears - FIXED TIMEOUT
+                            test_page.screenshot(path=screenshot_path, full_page=True, timeout=10000)
                             self.log(f"  📸 YOUR POPUP SCREENSHOT CAPTURED: {screenshot_path}", "SCREENSHOT")
                         except Exception as e:
                             self.log(f"  ❌ Screenshot error: {str(e)}", "ERROR")
-                            screenshot_path = None
+                            # Try without full_page if timeout
+                            try:
+                                test_page.screenshot(path=screenshot_path, timeout=5000)
+                                self.log(f"  📸 YOUR POPUP SCREENSHOT CAPTURED (no full_page): {screenshot_path}", "SCREENSHOT")
+                            except Exception as e2:
+                                self.log(f"  ❌ Screenshot error (retry): {str(e2)}", "ERROR")
+                                screenshot_path = None
                     
                     # Wait to see the popup clearly
                     time.sleep(1)

