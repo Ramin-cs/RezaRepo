@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Ultimate XSS Scanner - Fixed Version
-Comprehensive parameter discovery + Accurate validation + Screenshot only after confirmation
+Ultimate XSS Scanner - Version 9.0
+Fixed comprehensive reconnaissance + Accurate validation
 Author: AI Assistant
-Version: 8.0 Ultimate Fixed
+Version: 9.0 Ultimate Fixed
 """
 
 import requests
@@ -30,7 +30,7 @@ except ImportError:
 # Initialize colorama
 init()
 
-class UltimateXSSScannerFixed:
+class UltimateXSSScannerV9:
     def __init__(self, target_url, max_threads=8, delay=0.2, max_depth=4, timeout=10):
         self.target_url = target_url
         self.max_threads = max_threads
@@ -135,7 +135,7 @@ class UltimateXSSScannerFixed:
             return None
     
     def _comprehensive_crawl(self):
-        """Comprehensive crawling with all parameter types"""
+        """Comprehensive crawling with all parameter types - FIXED VERSION"""
         urls_to_visit = [(self.target_url, 0)]
         discovered_urls = set()
         all_forms = []
@@ -148,6 +148,9 @@ class UltimateXSSScannerFixed:
         all_contexts = {}
         base_domain = urlparse(self.target_url).netloc
         
+        self.log(f"Starting crawl from: {self.target_url}", "INFO")
+        self.log(f"Base domain: {base_domain}", "INFO")
+        
         while urls_to_visit:
             current_url, depth = urls_to_visit.pop(0)
             
@@ -158,6 +161,8 @@ class UltimateXSSScannerFixed:
             
             self.visited_urls.add(current_url)
             discovered_urls.add(current_url)
+            
+            self.log(f"Crawling: {current_url} (depth: {depth})", "INFO")
             
             try:
                 response = self.session.get(current_url, timeout=self.timeout)
@@ -180,8 +185,9 @@ class UltimateXSSScannerFixed:
                 # Store contexts
                 all_contexts[current_url] = param_data['contexts']
                 
-                # Extract links
+                # Extract links - FIXED LINK EXTRACTION
                 links = self._extract_links_comprehensive(response.text, current_url)
+                self.log(f"Found {len(links)} links on {current_url}", "INFO")
                 
                 # Add same-origin links
                 for link in links:
@@ -189,13 +195,18 @@ class UltimateXSSScannerFixed:
                     if (parsed.scheme in ('http', 'https') and 
                         parsed.netloc == base_domain and
                         link not in discovered_urls and
+                        link not in self.visited_urls and
                         not self._is_static_resource(link)):
                         urls_to_visit.append((link, depth + 1))
+                        self.log(f"Added to queue: {link}", "INFO")
                 
                 time.sleep(self.delay)
                 
-            except Exception:
+            except Exception as e:
+                self.log(f"Error crawling {current_url}: {str(e)}", "ERROR")
                 continue
+        
+        self.log(f"Crawl completed. Total URLs: {len(discovered_urls)}", "SUCCESS")
         
         return {
             'urls': list(discovered_urls),
@@ -358,7 +369,7 @@ class UltimateXSSScannerFixed:
         return contexts
     
     def _extract_links_comprehensive(self, html_content, base_url):
-        """Comprehensive link extraction"""
+        """Comprehensive link extraction - FIXED VERSION"""
         links = []
         
         # Extract from <a> tags
@@ -382,11 +393,33 @@ class UltimateXSSScannerFixed:
         form_pattern = r'<form[^>]+action=["\']([^"\']+)["\'][^>]*>'
         form_matches = re.findall(form_pattern, html_content, re.IGNORECASE)
         
+        # Extract from BeautifulSoup for better accuracy
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Extract all href attributes
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if href and not href.startswith('#') and not href.startswith('javascript:'):
+                full_url = urljoin(base_url, href)
+                links.append(full_url)
+        
+        # Extract form actions
+        for form in soup.find_all('form', action=True):
+            action = form['action']
+            if action:
+                full_url = urljoin(base_url, action)
+                links.append(full_url)
+        
+        # Add regex matches
         all_matches = a_matches + js_matches + form_matches
         
         for href in all_matches:
-            full_url = urljoin(base_url, href)
-            links.append(full_url)
+            if href and not href.startswith('#') and not href.startswith('javascript:'):
+                full_url = urljoin(base_url, href)
+                links.append(full_url)
+        
+        # Remove duplicates
+        links = list(set(links))
         
         return links
     
@@ -902,7 +935,7 @@ class UltimateXSSScannerFixed:
         """Main scanning method"""
         start_time = time.time()
         
-        self.log("🚀 Starting Ultimate XSS Scanner v8.0 Fixed", "SUCCESS")
+        self.log("🚀 Starting Ultimate XSS Scanner v9.0", "SUCCESS")
         self.log(f"Target: {self.target_url}", "INFO")
         
         try:
@@ -960,7 +993,7 @@ class UltimateXSSScannerFixed:
         self.log("\n🔒 Screenshots taken ONLY for confirmed XSS vulnerabilities", "SUCCESS")
 
 def main():
-    parser = argparse.ArgumentParser(description='Ultimate XSS Scanner v8.0 Fixed')
+    parser = argparse.ArgumentParser(description='Ultimate XSS Scanner v9.0')
     parser.add_argument('url', help='Target URL to scan')
     parser.add_argument('-t', '--threads', type=int, default=8, help='Number of threads (default: 8)')
     parser.add_argument('-d', '--delay', type=float, default=0.2, help='Delay between requests (default: 0.2)')
@@ -969,7 +1002,7 @@ def main():
     
     args = parser.parse_args()
     
-    scanner = UltimateXSSScannerFixed(
+    scanner = UltimateXSSScannerV9(
         args.url,
         args.threads,
         args.delay,
