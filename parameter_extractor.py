@@ -7,7 +7,7 @@ import re
 import json
 import base64
 from typing import List, Dict, Set, Optional
-from urllib.parse import urlparse, parse_qs, unquote, quote
+from urllib.parse import urlparse, parse_qs, unquote, quote, urljoin
 from dataclasses import dataclass
 from datetime import datetime
 
