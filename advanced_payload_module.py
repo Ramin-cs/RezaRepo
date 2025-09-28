@@ -392,7 +392,7 @@ class AdvancedPayloadModule:
     def _escape_character_bypass(self, payload: str) -> List[str]:
         """Escape character injection bypass"""
         variations = []
-        esc = ['\e', '%1b', '\\e', '\\033']
+        esc = [r'\e', '%1b', r'\\e', r'\\033']
         
         for e in esc:
             variations.append(payload + e)
