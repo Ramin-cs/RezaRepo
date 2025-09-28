@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-XSS Scanner - اسکنر باگ XSS پیشرفته
-نویسنده: AI Assistant
-نسخه: 1.0
+XSS Scanner - Advanced XSS vulnerability scanner
+Author: AI Assistant
+Version: 1.0
 """
 
 import requests
@@ -36,7 +36,7 @@ class XSSScanner:
         self.lock = threading.Lock()
         
     def log(self, message, level="INFO"):
-        """نمایش پیام با رنگ مناسب"""
+        """Print a colored log message based on level"""
         colors = {
             "INFO": Fore.CYAN,
             "SUCCESS": Fore.GREEN,
@@ -47,7 +47,7 @@ class XSSScanner:
         print(f"{colors.get(level, Fore.WHITE)}[{level}] {message}{Style.RESET_ALL}")
     
     def extract_forms(self, html_content, base_url):
-        """استخراج فرم‌ها از HTML"""
+        """Extract forms from HTML"""
         forms = []
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -58,7 +58,7 @@ class XSSScanner:
                 'inputs': []
             }
             
-            # استخراج فیلدهای ورودی
+            # Extract input fields
             for input_tag in form.find_all(['input', 'textarea', 'select']):
                 input_data = {
                     'name': input_tag.get('name', ''),
@@ -67,7 +67,7 @@ class XSSScanner:
                 }
                 form_data['inputs'].append(input_data)
             
-            # تبدیل action به URL کامل
+            # Convert action to absolute URL
             if form_data['action']:
                 form_data['action'] = urljoin(base_url, form_data['action'])
             else:
@@ -78,7 +78,7 @@ class XSSScanner:
         return forms
     
     def extract_links(self, html_content, base_url):
-        """استخراج لینک‌ها از HTML"""
+        """Extract links from HTML"""
         links = []
         soup = BeautifulSoup(html_content, 'html.parser')
         
@@ -90,32 +90,32 @@ class XSSScanner:
         return links
     
     def extract_parameters(self, url):
-        """استخراج پارامترها از URL"""
+        """Extract query parameters from URL"""
         parsed_url = urlparse(url)
         params = parse_qs(parsed_url.query)
         return params
     
     def reconnaissance(self):
-        """فاز reconnaissance - جمع‌آوری اطلاعات"""
-        self.log("شروع فاز Reconnaissance...", "INFO")
+        """Reconnaissance phase - information gathering"""
+        self.log("Starting Reconnaissance phase...", "INFO")
         
         try:
             response = self.session.get(self.target_url, timeout=10)
             response.raise_for_status()
             
-            self.log(f"درخواست موفق به {self.target_url}", "SUCCESS")
+            self.log(f"Successful request to {self.target_url}", "SUCCESS")
             
-            # استخراج فرم‌ها
+            # Extract forms
             forms = self.extract_forms(response.text, self.target_url)
-            self.log(f"تعداد فرم‌های یافت شده: {len(forms)}", "INFO")
+            self.log(f"Number of forms found: {len(forms)}", "INFO")
             
-            # استخراج لینک‌ها
+            # Extract links
             links = self.extract_links(response.text, self.target_url)
-            self.log(f"تعداد لینک‌های یافت شده: {len(links)}", "INFO")
+            self.log(f"Number of links found: {len(links)}", "INFO")
             
-            # استخراج پارامترها از URL اصلی
+            # Extract parameters from base URL
             params = self.extract_parameters(self.target_url)
-            self.log(f"تعداد پارامترهای URL: {len(params)}", "INFO")
+            self.log(f"Number of URL parameters: {len(params)}", "INFO")
             
             return {
                 'forms': forms,
@@ -125,11 +125,11 @@ class XSSScanner:
             }
             
         except Exception as e:
-            self.log(f"خطا در reconnaissance: {str(e)}", "ERROR")
+            self.log(f"Error during reconnaissance: {str(e)}", "ERROR")
             return None
     
     def identify_contexts(self, param_value, html_content):
-        """شناسایی context های مختلف برای پارامتر"""
+        """Identify potential reflection contexts for a parameter value"""
         contexts = []
         
         # HTML Context
@@ -155,7 +155,7 @@ class XSSScanner:
         return contexts if contexts else ['html']  # Default to HTML context
     
     def generate_payloads(self, context):
-        """تولید پیلودهای XSS بر اساس context"""
+        """Generate XSS payloads per detected context"""
         payloads = {
             'html': [
                 '<script>alert("XSS")</script>',
@@ -268,32 +268,32 @@ class XSSScanner:
         return payloads.get(context, payloads['html'])
     
     def test_payload(self, url, param_name, payload, method='GET'):
-        """تست یک پیلود XSS"""
+        """Test a single XSS payload against a parameter"""
         try:
             if method.upper() == 'GET':
-                # تست GET
+                # Test GET
                 test_url = f"{url}?{param_name}={urllib.parse.quote(payload)}"
                 response = self.session.get(test_url, timeout=10)
             else:
-                # تست POST
+                # Test POST
                 data = {param_name: payload}
                 response = self.session.post(url, data=data, timeout=10)
             
-            # بررسی وجود alert در پاسخ
+            # Check for alert presence in response
             if 'alert(' in response.text or 'alert("' in response.text or "alert('" in response.text:
                 return True, response.text
                 
         except Exception as e:
-            self.log(f"خطا در تست پیلود: {str(e)}", "ERROR")
+            self.log(f"Error testing payload: {str(e)}", "ERROR")
             
         return False, ""
     
     def scan_parameter(self, url, param_name, contexts, method='GET'):
-        """اسکن یک پارامتر برای XSS"""
-        self.log(f"اسکن پارامتر: {param_name}", "INFO")
+        """Scan a single parameter for XSS"""
+        self.log(f"Scanning parameter: {param_name}", "INFO")
         
         for context in contexts:
-            self.log(f"تست context: {context}", "INFO")
+            self.log(f"Testing context: {context}", "INFO")
             payloads = self.generate_payloads(context)
             
             for payload in payloads:
@@ -307,31 +307,31 @@ class XSSScanner:
                             'payload': payload,
                             'context': context,
                             'method': method,
-                            'response': response[:1000]  # محدود کردن طول پاسخ
+                            'response': response[:1000]  # limit response length
                         }
                         self.vulnerabilities.append(vuln)
-                        self.log(f"XSS یافت شد! پارامتر: {param_name}, Context: {context}", "VULN")
-                        self.log(f"پیلود: {payload}", "VULN")
+                        self.log(f"XSS FOUND! Parameter: {param_name}, Context: {context}", "VULN")
+                        self.log(f"Payload: {payload}", "VULN")
                         return True
                 
-                time.sleep(self.delay)  # تاخیر بین درخواست‌ها
+                time.sleep(self.delay)  # delay between requests
         
         return False
     
     def scan_form(self, form):
-        """اسکن یک فرم برای XSS"""
-        self.log(f"اسکن فرم: {form['action']}", "INFO")
+        """Scan a single form for XSS"""
+        self.log(f"Scanning form: {form['action']}", "INFO")
         
         for input_field in form['inputs']:
             if input_field['name']:
-                # تست با context های مختلف
+                # Test with multiple contexts
                 contexts = ['html', 'attribute', 'javascript']
                 
                 for context in contexts:
                     payloads = self.generate_payloads(context)
                     
                     for payload in payloads:
-                        # آماده‌سازی داده‌های فرم
+                        # Prepare form data
                         form_data = {}
                         for field in form['inputs']:
                             if field['name'] == input_field['name']:
@@ -356,43 +356,43 @@ class XSSScanner:
                                         'response': response.text[:1000]
                                     }
                                     self.vulnerabilities.append(vuln)
-                                    self.log(f"XSS یافت شد! فرم: {form['action']}, فیلد: {input_field['name']}", "VULN")
-                                    self.log(f"پیلود: {payload}", "VULN")
+                                    self.log(f"XSS FOUND! Form: {form['action']}, Field: {input_field['name']}", "VULN")
+                                    self.log(f"Payload: {payload}", "VULN")
                                     return True
                                     
                         except Exception as e:
-                            self.log(f"خطا در تست فرم: {str(e)}", "ERROR")
+                            self.log(f"Error testing form: {str(e)}", "ERROR")
                         
                         time.sleep(self.delay)
         
         return False
     
     def run_scan(self):
-        """اجرای اسکن کامل"""
-        self.log("شروع اسکن XSS...", "INFO")
+        """Run full XSS scan"""
+        self.log("Starting XSS scan...", "INFO")
         
-        # فاز Reconnaissance
+        # Reconnaissance phase
         recon_data = self.reconnaissance()
         if not recon_data:
-            self.log("خطا در فاز reconnaissance", "ERROR")
+            self.log("Error in reconnaissance phase", "ERROR")
             return
         
-        # اسکن پارامترهای URL
+        # Scan URL parameters
         if recon_data['params']:
-            self.log("اسکن پارامترهای URL...", "INFO")
+            self.log("Scanning URL parameters...", "INFO")
             for param_name in recon_data['params']:
                 contexts = self.identify_contexts(recon_data['params'][param_name][0], recon_data['html'])
                 self.scan_parameter(self.target_url, param_name, contexts, 'GET')
         
-        # اسکن فرم‌ها
+        # Scan forms
         if recon_data['forms']:
-            self.log("اسکن فرم‌ها...", "INFO")
+            self.log("Scanning forms...", "INFO")
             for form in recon_data['forms']:
                 self.scan_form(form)
         
-        # اسکن لینک‌ها (پارامترهای جدید)
-        self.log("اسکن لینک‌های اضافی...", "INFO")
-        for link in recon_data['links'][:10]:  # محدود کردن به 10 لینک اول
+        # Scan additional links (discover new parameters)
+        self.log("Scanning additional links...", "INFO")
+        for link in recon_data['links'][:10]:  # limit to first 10 links
             try:
                 link_params = self.extract_parameters(link)
                 if link_params:
@@ -402,47 +402,47 @@ class XSSScanner:
             except:
                 continue
         
-        # نمایش نتایج
+        # Show results
         self.show_results()
     
     def show_results(self):
-        """نمایش نتایج اسکن"""
+        """Display scan results"""
         self.log("=" * 50, "INFO")
-        self.log("نتایج اسکن XSS", "INFO")
+        self.log("XSS Scan Results", "INFO")
         self.log("=" * 50, "INFO")
         
         if not self.vulnerabilities:
-            self.log("هیچ آسیب‌پذیری XSS یافت نشد", "WARNING")
+            self.log("No XSS vulnerabilities found", "WARNING")
             return
         
-        self.log(f"تعداد آسیب‌پذیری‌های یافت شده: {len(self.vulnerabilities)}", "SUCCESS")
+        self.log(f"Total findings: {len(self.vulnerabilities)}", "SUCCESS")
         
         for i, vuln in enumerate(self.vulnerabilities, 1):
-            self.log(f"\n--- آسیب‌پذیری {i} ---", "VULN")
+            self.log(f"\n--- Vulnerability {i} ---", "VULN")
             self.log(f"URL: {vuln['url']}", "VULN")
-            self.log(f"پارامتر: {vuln['parameter']}", "VULN")
+            self.log(f"Parameter: {vuln['parameter']}", "VULN")
             self.log(f"Context: {vuln['context']}", "VULN")
             self.log(f"Method: {vuln['method']}", "VULN")
-            self.log(f"پیلود: {vuln['payload']}", "VULN")
+            self.log(f"Payload: {vuln['payload']}", "VULN")
             self.log(f"POC: {vuln['url']}?{vuln['parameter']}={urllib.parse.quote(vuln['payload'])}", "VULN")
         
-        # ذخیره نتایج در فایل
+        # Save results
         self.save_results()
     
     def save_results(self):
-        """ذخیره نتایج در فایل JSON"""
+        """Save results to JSON file"""
         try:
             with open('xss_results.json', 'w', encoding='utf-8') as f:
                 json.dump(self.vulnerabilities, f, ensure_ascii=False, indent=2)
-            self.log("نتایج در فایل xss_results.json ذخیره شد", "SUCCESS")
+            self.log("Results saved to xss_results.json", "SUCCESS")
         except Exception as e:
-            self.log(f"خطا در ذخیره نتایج: {str(e)}", "ERROR")
+            self.log(f"Error saving results: {str(e)}", "ERROR")
 
 def main():
-    parser = argparse.ArgumentParser(description='XSS Scanner - اسکنر باگ XSS پیشرفته')
-    parser.add_argument('url', help='URL هدف برای اسکن')
-    parser.add_argument('-t', '--threads', type=int, default=10, help='تعداد thread ها (پیش‌فرض: 10)')
-    parser.add_argument('-d', '--delay', type=float, default=1, help='تاخیر بین درخواست‌ها (ثانیه)')
+    parser = argparse.ArgumentParser(description='XSS Scanner - Advanced XSS vulnerability scanner')
+    parser.add_argument('url', help='Target URL to scan')
+    parser.add_argument('-t', '--threads', type=int, default=10, help='Number of threads (default: 10)')
+    parser.add_argument('-d', '--delay', type=float, default=1, help='Delay between requests in seconds (default: 1)')
     
     args = parser.parse_args()
     

@@ -1,86 +1,76 @@
-# XSS Scanner - اسکنر باگ XSS پیشرفته
+# XSS Scanner - Advanced
 
-یک اسکنر XSS کامل و پیشرفته که شامل reconnaissance، شناسایی context ها و تست پیلودهای مناسب است.
+A complete XSS scanner that performs reconnaissance, identifies reflection contexts, and tests context-aware payloads. Generates POC upon successful injection.
 
-## ویژگی‌ها
+## Features
 
-- **Reconnaissance کامل**: استخراج فرم‌ها، لینک‌ها و پارامترها
-- **شناسایی Context**: تشخیص HTML، Attribute، JavaScript، CSS و URL contexts
-- **پیلودهای متنوع**: بیش از 100 پیلود XSS برای context های مختلف
-- **تست خودکار**: تست خودکار پیلودها و تشخیص موفقیت
-- **گزارش‌گیری**: نمایش POC و ذخیره نتایج در JSON
-- **رنگ‌بندی**: خروجی رنگی برای بهتر دیدن نتایج
+- **Full Reconnaissance**: Extracts forms, links, and URL parameters
+- **Context Detection**: HTML, Attribute, JavaScript, CSS, and URL contexts
+- **Rich Payload Set**: 100+ XSS payloads mapped to contexts
+- **Automated Testing**: GET and POST testing, success detection via `alert`
+- **Reporting**: Prints POCs and saves findings to JSON
+- **Colored Output**: Easier-to-read logs
 
-## نصب
+## Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## استفاده
+## Usage
 
-### استفاده ساده
 ```bash
+# Basic
 python xss_scanner.py https://example.com
-```
 
-### استفاده با تنظیمات
-```bash
+# With options
 python xss_scanner.py https://example.com -t 20 -d 0.5
 ```
 
-### پارامترها
-- `url`: URL هدف برای اسکن
-- `-t, --threads`: تعداد thread ها (پیش‌فرض: 10)
-- `-d, --delay`: تاخیر بین درخواست‌ها در ثانیه (پیش‌فرض: 1)
+### Arguments
+- `url`: Target URL to scan
+- `-t, --threads`: Number of threads (default: 10)
+- `-d, --delay`: Delay between requests in seconds (default: 1)
 
-## مثال خروجی
+## Sample Output
 
 ```
-[INFO] شروع فاز Reconnaissance...
-[SUCCESS] درخواست موفق به https://example.com
-[INFO] تعداد فرم‌های یافت شده: 3
-[INFO] تعداد لینک‌های یافت شده: 15
-[INFO] تعداد پارامترهای URL: 2
-[INFO] شروع اسکن XSS...
-[INFO] اسکن پارامترهای URL...
-[INFO] اسکن پارامتر: search
-[INFO] تست context: html
-[VULN] XSS یافت شد! پارامتر: search, Context: html
-[VULN] پیلود: <script>alert("XSS")</script>
+[INFO] Starting Reconnaissance phase...
+[SUCCESS] Successful request to https://example.com
+[INFO] Number of forms found: 3
+[INFO] Number of links found: 15
+[INFO] Number of URL parameters: 2
+[INFO] Starting XSS scan...
+[INFO] Scanning URL parameters...
+[INFO] Scanning parameter: search
+[INFO] Testing context: html
+[VULN] XSS FOUND! Parameter: search, Context: html
+[VULN] Payload: <script>alert("XSS")</script>
 ==================================================
-نتایج اسکن XSS
+XSS Scan Results
 ==================================================
-[SUCCESS] تعداد آسیب‌پذیری‌های یافت شده: 1
+[SUCCESS] Total findings: 1
 
---- آسیب‌پذیری 1 ---
+--- Vulnerability 1 ---
 [VULN] URL: https://example.com
-[VULN] پارامتر: search
+[VULN] Parameter: search
 [VULN] Context: html
 [VULN] Method: GET
-[VULN] پیلود: <script>alert("XSS")</script>
+[VULN] Payload: <script>alert("XSS")</script>
 [VULN] POC: https://example.com?search=%3Cscript%3Ealert%28%22XSS%22%29%3C%2Fscript%3E
-[SUCCESS] نتایج در فایل xss_results.json ذخیره شد
+[SUCCESS] Results saved to xss_results.json
 ```
 
-## Context های پشتیبانی شده
+## Output Files
 
-1. **HTML Context**: پیلودهای HTML مستقیم
-2. **Attribute Context**: پیلودهای برای attribute ها
-3. **JavaScript Context**: پیلودهای برای کد JavaScript
-4. **CSS Context**: پیلودهای برای CSS
-5. **URL Context**: پیلودهای برای URL ها
+- `xss_results.json`: Full findings in JSON format
 
-## فایل‌های خروجی
+## Security Notes
 
-- `xss_results.json`: نتایج کامل اسکن در فرمت JSON
+- Use this tool only on targets you own or are authorized to test
+- Obtain all required permissions before scanning
+- Do not use this tool for illegal purposes
 
-## نکات امنیتی
+## Support
 
-- این ابزار فقط برای تست امنیتی وب‌سایت‌های خودتان استفاده کنید
-- قبل از استفاده، مجوزهای لازم را دریافت کنید
-- از استفاده غیرقانونی این ابزار خودداری کنید
-
-## پشتیبانی
-
-برای گزارش باگ یا پیشنهادات، لطفاً issue ایجاد کنید.
+Open an issue for bugs or feature requests.
