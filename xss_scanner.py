@@ -105,54 +105,22 @@ class XSSScanner:
         return params
     
     def reconnaissance(self):
-        """Browser-based reconnaissance phase - comprehensive information gathering"""
-        self.log("Starting browser-based reconnaissance phase...", "INFO")
+        """Reconnaissance phase - use requests for crawling, browser only for XSS testing"""
+        self.log("Starting reconnaissance phase...", "INFO")
         
-        if not self.init_browser():
-            self.log("Falling back to requests-based reconnaissance", "WARNING")
-            return self.reconnaissance_requests()
+        # Always use requests for reconnaissance (faster, more reliable)
+        recon_data = self.reconnaissance_requests()
         
-        try:
-            # Multi-level crawling
-            all_urls = self.crawl_with_browser(self.target_url, self.max_depth)
-            self.log(f"Discovered {len(all_urls)} URLs for analysis", "SUCCESS")
-            
-            all_forms = []
-            all_params = set()
-            
-            # Analyze each discovered URL
-            for url in all_urls:
-                try:
-                    # Extract forms from each URL
-                    forms = self.extract_forms_with_browser(url)
-                    all_forms.extend(forms)
-                    
-                    # Extract parameters
-                    params = self.extract_parameters(url)
-                    all_params.update(params.keys())
-                    
-                except Exception as e:
-                    self.log(f"Error analyzing {url}: {str(e)}", "ERROR")
-                    continue
-            
-            # Get base URL parameters
-            base_params = self.extract_parameters(self.target_url)
-            
-            self.log(f"Total forms found: {len(all_forms)}", "INFO")
-            self.log(f"Total unique parameters: {len(all_params)}", "INFO")
-            self.log(f"Base URL parameters: {len(base_params)}", "INFO")
-            
-            return {
-                'forms': all_forms,
-                'urls': all_urls,
-                'params': base_params,
-                'all_params': list(all_params),
-                'browser_ready': True
-            }
-            
-        except Exception as e:
-            self.log(f"Error during browser reconnaissance: {str(e)}", "ERROR")
-            return self.reconnaissance_requests()
+        # Initialize browser only for XSS testing
+        if recon_data:
+            self.log("Initializing browser for XSS testing...", "INFO")
+            if self.init_browser():
+                recon_data['browser_ready'] = True
+            else:
+                recon_data['browser_ready'] = False
+                self.log("Browser initialization failed, using requests for testing", "WARNING")
+        
+        return recon_data
     
     def reconnaissance_requests(self):
         """Fallback reconnaissance using requests"""
@@ -176,7 +144,7 @@ class XSSScanner:
                 discovered_urls.append(current_url)
 
                 try:
-                    response = self.session.get(current_url, timeout=10)
+                    response = self.session.get(current_url, timeout=5)
                     response.raise_for_status()
                     if current_url == self.target_url:
                         self.log(f"Successful request to {self.target_url}", "SUCCESS")
@@ -185,11 +153,15 @@ class XSSScanner:
                     page_forms = self.extract_forms(response.text, current_url)
                     all_forms.extend(page_forms)
 
-                    # Extract and enqueue same-origin links
+                    # Extract and enqueue same-origin links only
                     links = self.extract_links(response.text, current_url)
                     for link in links:
                         parsed = urlparse(link)
-                        if parsed.scheme in ("http", "https") and parsed.netloc == base_origin and link not in visited:
+                        # Only follow same-origin links to avoid external timeouts
+                        if (parsed.scheme in ("http", "https") and 
+                            parsed.netloc == base_origin and 
+                            link not in visited and
+                            not any(ext in link.lower() for ext in ['.pdf', '.jpg', '.png', '.gif', '.css', '.js', '.ico'])):
                             urls_to_visit.append((link, depth + 1))
 
                     time.sleep(self.delay)
