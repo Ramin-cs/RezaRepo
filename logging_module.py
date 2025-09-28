@@ -27,7 +27,7 @@ class LoggingModule:
         
         # Create logs directory
         self.logs_dir = output_dir / "logs"
-        self.logs_dir.mkdir(exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize logging
         self._setup_logging()

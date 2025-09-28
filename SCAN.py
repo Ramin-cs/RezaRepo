@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-EXECUTE_ME.py - Open Redirect Scanner
-This is the main file to run the scanner
+SCAN.py - Open Redirect Scanner
+Simple and clean executable file
 """
 
 import asyncio
@@ -27,12 +27,12 @@ def print_banner():
 def print_usage():
     """Print usage information"""
     print("""
-    Usage: python EXECUTE_ME.py <target_url> [options]
+    Usage: python SCAN.py <target_url> [options]
     
     Examples:
-        python EXECUTE_ME.py https://target-website.com
-        python EXECUTE_ME.py https://target-website.com --output results --threads 20
-        python EXECUTE_ME.py https://target-website.com --preset thorough
+        python SCAN.py https://target-website.com
+        python SCAN.py https://target-website.com --output results --threads 20
+        python SCAN.py https://target-website.com --preset thorough
     
     Options:
         --output DIR          Output directory (default: scan_results)
@@ -179,21 +179,21 @@ def show_usage_examples():
     print("=" * 50)
     
     print("1. Basic scan:")
-    print("   python EXECUTE_ME.py https://target-website.com")
+    print("   python SCAN.py https://target-website.com")
     
     print("\n2. Advanced scan:")
-    print("   python EXECUTE_ME.py https://target-website.com --output results --threads 20 --depth 3")
+    print("   python SCAN.py https://target-website.com --output results --threads 20 --depth 3")
     
     print("\n3. Using presets:")
-    print("   python EXECUTE_ME.py --preset thorough https://target-website.com")
-    print("   python EXECUTE_ME.py --preset stealth https://target-website.com")
-    print("   python EXECUTE_ME.py --preset debug https://target-website.com")
+    print("   python SCAN.py --preset thorough https://target-website.com")
+    print("   python SCAN.py --preset stealth https://target-website.com")
+    print("   python SCAN.py --preset debug https://target-website.com")
     
     print("\n4. Test functionality:")
-    print("   python EXECUTE_ME.py --test")
+    print("   python SCAN.py --test")
     
     print("\n5. Show capabilities:")
-    print("   python EXECUTE_ME.py --capabilities")
+    print("   python SCAN.py --capabilities")
 
 def run_test():
     """Run functionality test"""
@@ -240,6 +240,40 @@ def show_capabilities_only():
     show_usage_examples()
     
     print("\n🎉 Scanner capabilities displayed!")
+    return True
+
+async def run_scan(target_url: str, output_dir: str, threads: int, depth: int, preset: str = None):
+    """Run the actual scan"""
+    try:
+        from open_redirect_scanner import OpenRedirectScanner
+        from pathlib import Path
+        
+        # Create scanner instance
+        scanner = OpenRedirectScanner(
+            target_url=target_url,
+            output_dir=Path(output_dir),
+            max_threads=threads,
+            max_depth=depth,
+            timeout=30
+        )
+        
+        print(f"\n🎯 Starting scan of: {target_url}")
+        print(f"📁 Output directory: {output_dir}")
+        print(f"🧵 Threads: {threads}")
+        print(f"🔍 Depth: {depth}")
+        if preset:
+            print(f"⚙️ Preset: {preset}")
+        
+        # Run the scan
+        await scanner.scan()
+        
+        print("\n🎉 Scan completed successfully!")
+        print(f"📊 Check results in: {output_dir}")
+        
+    except Exception as e:
+        print(f"❌ Scan error: {str(e)}")
+        return False
+    
     return True
 
 def main():
@@ -320,7 +354,6 @@ def main():
     
     print("\n🎉 Scanner is ready to use!")
     print("📚 See README.md for detailed documentation")
-    print("🚀 Run 'python main.py --help' for command line options")
     
     # Note about Chrome requirement
     print("\n⚠️ Note: For full functionality, Chrome browser is required")

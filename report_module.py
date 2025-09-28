@@ -18,7 +18,7 @@ class ReportModule:
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
         self.reports_dir = output_dir / "reports"
-        self.reports_dir.mkdir(exist_ok=True)
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
         
     async def generate_report(self, vulnerabilities: List[Dict], target_url: str) -> str:
         """Generate comprehensive HTML report"""

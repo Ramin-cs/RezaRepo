@@ -58,7 +58,7 @@ class OpenRedirectScanner:
         self.reporter = ReportModule(self.output_dir)
         
         # Create output directory
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Load custom payloads
         self.custom_payloads = self._load_custom_payloads()

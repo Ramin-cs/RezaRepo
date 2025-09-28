@@ -44,7 +44,7 @@ class ChromeModule:
         self.output_dir = output_dir
         self.driver = None
         self.screenshots_dir = output_dir / "screenshots"
-        self.screenshots_dir.mkdir(exist_ok=True)
+        self.screenshots_dir.mkdir(parents=True, exist_ok=True)
         
         # Target domain for redirect validation
         self.target_domain = "google.com"
