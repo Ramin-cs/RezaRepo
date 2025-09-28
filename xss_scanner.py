@@ -159,26 +159,53 @@ class XSSScanner:
         self.log("Using requests-based reconnaissance...", "INFO")
         
         try:
-            response = self.session.get(self.target_url, timeout=10)
-            response.raise_for_status()
-            
-            self.log(f"Successful request to {self.target_url}", "SUCCESS")
-            
-            # Extract forms
-            forms = self.extract_forms(response.text, self.target_url)
-            self.log(f"Number of forms found: {len(forms)}", "INFO")
-            
-            # Extract links
-            links = self.extract_links(response.text, self.target_url)
-            self.log(f"Number of links found: {len(links)}", "INFO")
-            
+            # BFS crawl with requests (same-origin)
+            urls_to_visit = [(self.target_url, 0)]
+            visited = set()
+            discovered_urls = []
+            all_forms = []
+
+            base_origin = urlparse(self.target_url).netloc
+
+            while urls_to_visit:
+                current_url, depth = urls_to_visit.pop(0)
+                if current_url in visited or depth > self.max_depth:
+                    continue
+
+                visited.add(current_url)
+                discovered_urls.append(current_url)
+
+                try:
+                    response = self.session.get(current_url, timeout=10)
+                    response.raise_for_status()
+                    if current_url == self.target_url:
+                        self.log(f"Successful request to {self.target_url}", "SUCCESS")
+
+                    # Extract forms on this page
+                    page_forms = self.extract_forms(response.text, current_url)
+                    all_forms.extend(page_forms)
+
+                    # Extract and enqueue same-origin links
+                    links = self.extract_links(response.text, current_url)
+                    for link in links:
+                        parsed = urlparse(link)
+                        if parsed.scheme in ("http", "https") and parsed.netloc == base_origin and link not in visited:
+                            urls_to_visit.append((link, depth + 1))
+
+                    time.sleep(self.delay)
+                except Exception:
+                    continue
+
+            self.log(f"Discovered {len(discovered_urls)} URLs (requests crawler)", "INFO")
+            self.log(f"Total forms found: {len(all_forms)}", "INFO")
+
             # Extract parameters from base URL
             params = self.extract_parameters(self.target_url)
-            self.log(f"Number of URL parameters: {len(params)}", "INFO")
+            self.log(f"Number of base URL parameters: {len(params)}", "INFO")
             
             return {
-                'forms': forms,
-                'urls': [self.target_url],
+                'forms': all_forms,
+                'urls': discovered_urls or [self.target_url],
                 'params': params,
                 'all_params': list(params.keys()),
                 'browser_ready': False
@@ -805,7 +832,16 @@ class XSSScanner:
             self.log(f"Context: {vuln['context']}", "VULN")
             self.log(f"Method: {vuln['method']}", "VULN")
             self.log(f"Payload: {vuln['payload']}", "VULN")
-            self.log(f"POC: {vuln['url']}?{vuln['parameter']}={urllib.parse.quote(vuln['payload'])}", "VULN")
+            # Robust POC URL builder
+            try:
+                parsed = urlparse(vuln['url'])
+                query = parse_qs(parsed.query)
+                query[vuln['parameter']] = [vuln['payload']]
+                new_query = urllib.parse.urlencode(query, doseq=True, safe='/:?&=')
+                poc_url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
+                self.log(f"POC: {poc_url}", "VULN")
+            except Exception:
+                self.log(f"POC: {vuln['url']}?{vuln['parameter']}={urllib.parse.quote(vuln['payload'])}", "VULN")
         
         # Save results
         self.save_results()
