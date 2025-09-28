@@ -12,22 +12,22 @@ pip install -r requirements.txt
 ### 2. Run the Scanner
 ```bash
 # Basic scan
-python SCAN.py https://target-website.com
+python START_SCANNING.py https://target-website.com
 
 # Advanced scan
-python SCAN.py https://target-website.com --output results --threads 20 --depth 3
+python START_SCANNING.py https://target-website.com --output results --threads 20 --depth 3
 
 # Using presets
-python SCAN.py --preset thorough https://target-website.com
+python START_SCANNING.py --preset thorough https://target-website.com
 ```
 
 ### 3. Test Functionality
 ```bash
 # Test all modules
-python SCAN.py --test
+python START_SCANNING.py --test
 
 # Show capabilities
-python SCAN.py --capabilities
+python START_SCANNING.py --capabilities
 ```
 
 ## 📋 Features
@@ -68,9 +68,7 @@ python SCAN.py --capabilities
 
 ```
 open_redirect_scanner/
-├── SCAN.py                     # Main executable file (USE THIS)
-├── RUN_SCANNER.py              # Alternative executable file
-├── main.py                     # Alternative entry point
+├── START_SCANNING.py           # Main executable file
 ├── open_redirect_scanner.py    # Core scanner class
 ├── recon_module.py             # Reconnaissance module
 ├── payload_module.py           # Payload generation module
@@ -78,9 +76,10 @@ open_redirect_scanner/
 ├── report_module.py            # HTML report generation
 ├── logging_module.py           # Logging system
 ├── configuration.py            # Configuration management
+├── main.py                     # Alternative entry point
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # This file
-└── scan_results/              # Output directory (created automatically)
+└── test_output/               # Output directory
 ```
 
 ## 🔧 Configuration
@@ -172,25 +171,25 @@ The scanner generates 144+ payloads for each target, including:
 
 ### Basic Usage
 ```bash
-python SCAN.py https://target-website.com
+python START_SCANNING.py https://target-website.com
 ```
 
 ### Advanced Usage
 ```bash
-python SCAN.py https://target-website.com --output results --threads 20 --depth 3
+python START_SCANNING.py https://target-website.com --output results --threads 20 --depth 3
 ```
 
 ### Preset Usage
 ```bash
-python SCAN.py --preset thorough https://target-website.com
-python SCAN.py --preset stealth https://target-website.com
-python SCAN.py --preset debug https://target-website.com
+python START_SCANNING.py --preset thorough https://target-website.com
+python START_SCANNING.py --preset stealth https://target-website.com
+python START_SCANNING.py --preset debug https://target-website.com
 ```
 
 ### Testing
 ```bash
-python SCAN.py --test
-python SCAN.py --capabilities
+python START_SCANNING.py --test
+python START_SCANNING.py --capabilities
 ```
 
 ## 📋 Requirements
@@ -235,14 +234,11 @@ sudo yum install google-chrome-stable
 
 # macOS
 brew install --cask google-chrome
-
-# Windows
-# Download from https://www.google.com/chrome/
 ```
 
 ### 4. Run Scanner
 ```bash
-python SCAN.py --test
+python START_SCANNING.py --test
 ```
 
 ## 📊 Output
@@ -280,7 +276,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support, please:
 1. Check the documentation
-2. Run `python SCAN.py --test` to verify installation
+2. Run `python START_SCANNING.py --test` to verify installation
 3. Check log files for error details
 4. Submit issues with detailed information
 
@@ -301,49 +297,4 @@ Regular updates include:
 
 ---
 
-**Ready to scan? Run: `python SCAN.py --test`**
-
-## 🎯 Quick Commands
-
-```bash
-# Test everything
-python SCAN.py --test
-
-# Show capabilities
-python SCAN.py --capabilities
-
-# Run a scan
-python SCAN.py https://target-website.com
-
-# Advanced scan
-python SCAN.py https://target-website.com --output results --threads 20 --depth 3
-
-# Using presets
-python SCAN.py --preset thorough https://target-website.com
-```
-
-The scanner is ready to use! 🎉
-
-## 🔧 Fixed Issues
-
-- ✅ Fixed directory creation error (`parents=True` added)
-- ✅ Removed duplicate executable files
-- ✅ Cleaned up project structure
-- ✅ Fixed Windows path issues
-- ✅ Improved error handling
-
-## 📁 Files to Use
-
-- **Main File**: `SCAN.py` - Use this for scanning
-- **Alternative**: `RUN_SCANNER.py` - Alternative executable
-- **Full Scanner**: `main.py` - Complete scanner with all features
-- **Documentation**: `README.md` - This file
-
-## 🚀 Ready to Use!
-
-The scanner is now fully functional and ready to use. All directory creation issues have been fixed, and the scanner will work properly on both Windows and Linux systems.
-
-**Start scanning now:**
-```bash
-python SCAN.py https://static.mgm.mo/redirection/tc/?targetURL= --output results --threads 20 --depth 3
-```
+**Ready to scan? Run: `python START_SCANNING.py --test`**

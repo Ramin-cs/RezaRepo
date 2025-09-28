@@ -1,3 +1,7 @@
+# Git
+.git
+.gitignore
+
 # Python
 __pycache__/
 *.py[cod]
@@ -76,45 +80,23 @@ coverage.xml
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# pyenv
-.python-version
+# Documentation
+docs/
+*.md
+!README.md
 
-# pipenv
-Pipfile.lock
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
 
-# PEP 582
-__pypackages__/
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
 
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
+# Other
+*.bak
+*.backup
+*.old
