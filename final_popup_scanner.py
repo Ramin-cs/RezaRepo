@@ -657,24 +657,16 @@ class FinalPopupScanner:
                         filename = f"popup_xss_{param_name}_{timestamp}.png"
                         screenshot_path = os.path.join('screenshots', filename)
                         
+                        # Take screenshot IMMEDIATELY - no waiting for fonts
                         try:
-                            # Take screenshot immediately when YOUR popup appears - FIXED TIMEOUT
-                            test_page.screenshot(path=screenshot_path, full_page=True, timeout=10000)
+                            # Skip font loading completely
+                            test_page.screenshot(path=screenshot_path, timeout=1000)
                             self.log(f"  📸 YOUR POPUP SCREENSHOT CAPTURED: {screenshot_path}", "SCREENSHOT")
                         except Exception as e:
                             self.log(f"  ❌ Screenshot error: {str(e)}", "ERROR")
-                            # Try without full_page if timeout
-                            try:
-                                test_page.screenshot(path=screenshot_path, timeout=5000)
-                                self.log(f"  📸 YOUR POPUP SCREENSHOT CAPTURED (no full_page): {screenshot_path}", "SCREENSHOT")
-                            except Exception as e2:
-                                self.log(f"  ❌ Screenshot error (retry): {str(e2)}", "ERROR")
-                                screenshot_path = None
+                            screenshot_path = None
                     
-                    # Wait to see the popup clearly
-                    time.sleep(1)
-                    
-                    # Accept dialog
+                    # Accept dialog immediately after screenshot
                     try:
                         dialog.accept()
                     except Exception as e:
