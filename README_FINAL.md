@@ -12,22 +12,22 @@ pip install -r requirements.txt
 ### 2. Run the Scanner
 ```bash
 # Basic scan
-python SCAN_ME.py https://target-website.com
+python START_SCANNING.py https://target-website.com
 
 # Advanced scan
-python SCAN_ME.py https://target-website.com --output results --threads 20 --depth 3
+python START_SCANNING.py https://target-website.com --output results --threads 20 --depth 3
 
 # Using presets
-python SCAN_ME.py --preset thorough https://target-website.com
+python START_SCANNING.py --preset thorough https://target-website.com
 ```
 
 ### 3. Test Functionality
 ```bash
 # Test all modules
-python SCAN_ME.py --test
+python START_SCANNING.py --test
 
 # Show capabilities
-python SCAN_ME.py --capabilities
+python START_SCANNING.py --capabilities
 ```
 
 ## 📋 Features
@@ -68,7 +68,7 @@ python SCAN_ME.py --capabilities
 
 ```
 open_redirect_scanner/
-├── SCAN_ME.py                  # Main executable file
+├── START_SCANNING.py           # Main executable file
 ├── open_redirect_scanner.py    # Core scanner class
 ├── recon_module.py             # Reconnaissance module
 ├── payload_module.py           # Payload generation module
@@ -171,25 +171,25 @@ The scanner generates 144+ payloads for each target, including:
 
 ### Basic Usage
 ```bash
-python SCAN_ME.py https://target-website.com
+python START_SCANNING.py https://target-website.com
 ```
 
 ### Advanced Usage
 ```bash
-python SCAN_ME.py https://target-website.com --output results --threads 20 --depth 3
+python START_SCANNING.py https://target-website.com --output results --threads 20 --depth 3
 ```
 
 ### Preset Usage
 ```bash
-python SCAN_ME.py --preset thorough https://target-website.com
-python SCAN_ME.py --preset stealth https://target-website.com
-python SCAN_ME.py --preset debug https://target-website.com
+python START_SCANNING.py --preset thorough https://target-website.com
+python START_SCANNING.py --preset stealth https://target-website.com
+python START_SCANNING.py --preset debug https://target-website.com
 ```
 
 ### Testing
 ```bash
-python SCAN_ME.py --test
-python SCAN_ME.py --capabilities
+python START_SCANNING.py --test
+python START_SCANNING.py --capabilities
 ```
 
 ## 📋 Requirements
@@ -238,7 +238,7 @@ brew install --cask google-chrome
 
 ### 4. Run Scanner
 ```bash
-python SCAN_ME.py --test
+python START_SCANNING.py --test
 ```
 
 ## 📊 Output
@@ -276,7 +276,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support, please:
 1. Check the documentation
-2. Run `python SCAN_ME.py --test` to verify installation
+2. Run `python START_SCANNING.py --test` to verify installation
 3. Check log files for error details
 4. Submit issues with detailed information
 
@@ -297,4 +297,4 @@ Regular updates include:
 
 ---
 
-**Ready to scan? Run: `python SCAN_ME.py --test`**
+**Ready to scan? Run: `python START_SCANNING.py --test`**
