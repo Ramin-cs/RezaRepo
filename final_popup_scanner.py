@@ -334,13 +334,15 @@ class FinalPopupScanner:
             return None
     
     def _enhanced_crawl_parallel(self):
-        """Enhanced parallel crawling"""
+        """Enhanced parallel crawling - FIXED"""
         urls_to_visit = [(self.target_url, 0)]
         discovered_urls = set()
         all_forms = []
         all_url_params = set()
         all_form_params = set()
         base_domain = urlparse(self.target_url).netloc
+        
+        self.log(f"Starting crawl with base domain: {base_domain}", "INFO")
         
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
             while urls_to_visit and self.running:
@@ -452,19 +454,44 @@ class FinalPopupScanner:
         return forms
     
     def _extract_links_enhanced(self, html_content, base_url, base_domain):
-        """Enhanced link extraction"""
+        """Enhanced link extraction - FIXED"""
         links = []
         soup = BeautifulSoup(html_content, 'html.parser')
         
+        # Extract all possible links from various sources
+        link_sources = []
+        
+        # 1. Regular <a> tags
         for link in soup.find_all('a', href=True):
-            href = link['href']
+            link_sources.append(link['href'])
+        
+        # 2. Form actions
+        for form in soup.find_all('form', action=True):
+            if form['action']:
+                link_sources.append(form['action'])
+        
+        # 3. JavaScript redirects and window.location
+        js_patterns = [
+            r'window\.location\s*=\s*["\']([^"\']+)["\']',
+            r'location\.href\s*=\s*["\']([^"\']+)["\']',
+            r'window\.open\s*\(\s*["\']([^"\']+)["\']',
+            r'href\s*=\s*["\']([^"\']+)["\']'
+        ]
+        
+        for pattern in js_patterns:
+            matches = re.findall(pattern, html_content, re.IGNORECASE)
+            link_sources.extend(matches)
+        
+        # Process all found links
+        for href in link_sources:
             if href and not href.startswith('#') and not href.startswith('javascript:'):
                 full_url = urljoin(base_url, href)
                 parsed = urlparse(full_url)
                 if parsed.netloc == base_domain and not self._is_static_resource(full_url):
                     links.append(full_url)
         
-        return links
+        # Remove duplicates
+        return list(set(links))
     
     def _is_static_resource(self, url):
         """Check if URL is static resource"""
