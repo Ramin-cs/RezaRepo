@@ -41,10 +41,12 @@ class OpenRedirectScanner:
     Comprehensive testing with smart crawling and WAF bypass techniques
     """
     
-    def __init__(self, target_url: str, output_dir: str = "scan_results", max_threads: int = 10):
+    def __init__(self, target_url: str, output_dir: str = "scan_results", max_threads: int = 10, max_depth: int = 3, timeout: int = 30):
         self.target_url = target_url
         self.output_dir = Path(output_dir)
         self.max_threads = max_threads
+        self.max_depth = max_depth
+        self.timeout = timeout
         self.results = []
         self.vulnerabilities = []
         self.scanned_urls = set()
@@ -338,34 +340,45 @@ class OpenRedirectScanner:
     async def scan(self):
         """Main scanning function"""
         try:
+            print(f"🎯 Starting comprehensive scan of: {self.target_url}")
             self.logger.info(f"Starting comprehensive scan of: {self.target_url}")
             
             # Step 1: Comprehensive Reconnaissance
+            print("🔍 Phase 1: Comprehensive Reconnaissance...")
             self.logger.info("Phase 1: Comprehensive Reconnaissance")
             recon_results = await self.recon.perform_recon(self.target_url, self.session)
             
             if not recon_results:
+                print("❌ Reconnaissance failed, aborting scan")
                 self.logger.error("Reconnaissance failed, aborting scan")
                 return False
             
+            print("✅ Reconnaissance completed successfully")
+            
             # Step 2: Extract all parameters and injection points
+            print("🔍 Phase 2: Parameter Extraction...")
             self.logger.info("Phase 2: Parameter Extraction")
             injection_points = self.recon.extract_injection_points(recon_results)
             
+            print(f"✅ Found {len(injection_points)} injection points")
             self.logger.info(f"Found {len(injection_points)} injection points")
             
             # Step 3: Test payloads with parallel processing
+            print("🔍 Phase 3: Payload Testing...")
             self.logger.info("Phase 3: Payload Testing")
             vulnerabilities = await self._test_payloads_parallel(injection_points)
             
             # Step 4: Generate comprehensive report
+            print("🔍 Phase 4: Report Generation...")
             self.logger.info("Phase 4: Report Generation")
             await self.reporter.generate_report(vulnerabilities, self.target_url)
             
+            print(f"✅ Scan completed. Found {len(vulnerabilities)} vulnerabilities")
             self.logger.info(f"Scan completed. Found {len(vulnerabilities)} vulnerabilities")
             return True
             
         except Exception as e:
+            print(f"❌ Scan failed: {str(e)}")
             self.logger.error(f"Scan failed: {str(e)}")
             return False
     
@@ -375,11 +388,17 @@ class OpenRedirectScanner:
         
         # Create task queue
         task_queue = Queue()
+        total_tasks = 0
         for point in injection_points:
             for payload in self.custom_payloads:
                 task_queue.put((point, payload))
+                total_tasks += 1
+        
+        print(f"🧪 Testing {total_tasks} payloads across {len(injection_points)} injection points...")
+        print(f"🧵 Using {self.max_threads} threads for parallel processing")
         
         # Process tasks in parallel
+        completed_tasks = 0
         with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
             futures = []
             
@@ -388,15 +407,26 @@ class OpenRedirectScanner:
                 future = executor.submit(self._test_single_payload, point, payload)
                 futures.append(future)
             
-            # Collect results
+            # Collect results with progress tracking
             for future in as_completed(futures):
                 try:
                     result = future.result()
+                    completed_tasks += 1
+                    
+                    # Show progress every 10 tasks
+                    if completed_tasks % 10 == 0 or completed_tasks == total_tasks:
+                        progress = (completed_tasks / total_tasks) * 100
+                        print(f"📊 Progress: {completed_tasks}/{total_tasks} ({progress:.1f}%)")
+                    
                     if result:
                         vulnerabilities.append(result)
+                        print(f"🎯 Vulnerability found! {result.get('url', 'Unknown')}")
+                        
                 except Exception as e:
                     self.logger.error(f"Payload test failed: {str(e)}")
+                    completed_tasks += 1
         
+        print(f"✅ Payload testing completed. Found {len(vulnerabilities)} vulnerabilities")
         return vulnerabilities
     
     def _test_single_payload(self, injection_point: Dict, payload: str) -> Optional[Dict]:

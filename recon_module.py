@@ -188,7 +188,12 @@ class ReconModule:
                     return
                 
                 content = await response.text()
+                if not content:
+                    return
+                    
                 soup = BeautifulSoup(content, 'html.parser')
+                if not soup:
+                    return
                 
                 # Extract URL parameters
                 url_params = self._extract_url_parameters(url)
@@ -214,7 +219,8 @@ class ReconModule:
                 headers = self._extract_headers(response.headers, url)
                 results['headers'].extend(headers)
                 
-                # Find new URLs to crawl
+            # Find new URLs to crawl
+            if soup:
                 new_urls = self._extract_links(soup, url)
                 
                 # Crawl new URLs
@@ -423,22 +429,27 @@ class ReconModule:
         links = []
         
         try:
+            if not soup:
+                return links
+                
             # Extract all links
             for link in soup.find_all('a', href=True):
-                href = link['href']
-                full_url = urljoin(base_url, href)
-                
-                # Only crawl same domain
-                if self._is_same_domain(base_url, full_url):
-                    links.append(full_url)
+                href = link.get('href')
+                if href:
+                    full_url = urljoin(base_url, href)
+                    
+                    # Only crawl same domain
+                    if self._is_same_domain(base_url, full_url):
+                        links.append(full_url)
             
             # Extract form actions
             for form in soup.find_all('form', action=True):
-                action = form['action']
-                full_url = urljoin(base_url, action)
-                
-                if self._is_same_domain(base_url, full_url):
-                    links.append(full_url)
+                action = form.get('action')
+                if action:
+                    full_url = urljoin(base_url, action)
+                    
+                    if self._is_same_domain(base_url, full_url):
+                        links.append(full_url)
         
         except Exception as e:
             self.logger.error(f"Error extracting links: {str(e)}")
@@ -459,59 +470,68 @@ class ReconModule:
         injection_points = []
         
         try:
+            if not recon_results:
+                return injection_points
+                
             # URL parameters
             for param in recon_results.get('urls', []):
-                injection_points.append({
-                    'type': 'url',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'url',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
             
             # Form parameters
             for param in recon_results.get('forms', []):
-                injection_points.append({
-                    'type': 'form',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'form',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
             
             # JavaScript variables
             for param in recon_results.get('javascript_vars', []):
-                injection_points.append({
-                    'type': 'javascript',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'javascript',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
             
             # Meta tags
             for param in recon_results.get('meta_tags', []):
-                injection_points.append({
-                    'type': 'meta',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'meta',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
             
             # Cookies
             for param in recon_results.get('cookies', []):
-                injection_points.append({
-                    'type': 'cookie',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'cookie',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
             
             # Headers
             for param in recon_results.get('headers', []):
-                injection_points.append({
-                    'type': 'header',
-                    'parameter': param['parameter'],
-                    'url': param['url'],
-                    'context': param['context']
-                })
+                if param and isinstance(param, dict):
+                    injection_points.append({
+                        'type': 'header',
+                        'parameter': param.get('parameter', ''),
+                        'url': param.get('url', ''),
+                        'context': param.get('context', '')
+                    })
         
         except Exception as e:
             self.logger.error(f"Error extracting injection points: {str(e)}")

@@ -248,6 +248,8 @@ async def run_scan(target_url: str, output_dir: str, threads: int, depth: int, p
         from open_redirect_scanner import OpenRedirectScanner
         from pathlib import Path
         
+        print("🔧 Initializing scanner...")
+        
         # Create scanner instance
         scanner = OpenRedirectScanner(
             target_url=target_url,
@@ -257,21 +259,23 @@ async def run_scan(target_url: str, output_dir: str, threads: int, depth: int, p
             timeout=30
         )
         
-        print(f"\n🎯 Starting scan of: {target_url}")
-        print(f"📁 Output directory: {output_dir}")
-        print(f"🧵 Threads: {threads}")
-        print(f"🔍 Depth: {depth}")
-        if preset:
-            print(f"⚙️ Preset: {preset}")
+        print("✅ Scanner initialized successfully")
+        print("🔍 Starting reconnaissance phase...")
         
         # Run the scan
         await scanner.scan()
         
         print("\n🎉 Scan completed successfully!")
         print(f"📊 Check results in: {output_dir}")
+        print("📁 Generated files:")
+        print(f"   - HTML Report: {output_dir}/reports/")
+        print(f"   - Screenshots: {output_dir}/screenshots/")
+        print(f"   - Logs: {output_dir}/logs/")
         
     except Exception as e:
         print(f"❌ Scan error: {str(e)}")
+        import traceback
+        print(f"🔍 Error details: {traceback.format_exc()}")
         return False
     
     return True
@@ -354,6 +358,23 @@ def main():
     
     print("\n🎉 Scanner is ready to use!")
     print("📚 See README.md for detailed documentation")
+    
+    # Run the actual scan
+    print(f"\n🚀 Starting actual scan...")
+    print(f"🎯 Target: {target_url}")
+    print(f"📁 Output: {output_dir}")
+    print(f"🧵 Threads: {threads}")
+    print(f"🔍 Depth: {depth}")
+    if preset:
+        print(f"⚙️ Preset: {preset}")
+    print("=" * 60)
+    
+    # Run scan asynchronously
+    try:
+        asyncio.run(run_scan(target_url, output_dir, threads, depth, preset))
+    except Exception as e:
+        print(f"❌ Scan failed: {str(e)}")
+        sys.exit(1)
     
     # Note about Chrome requirement
     print("\n⚠️ Note: For full functionality, Chrome browser is required")
