@@ -14,6 +14,13 @@ from datetime import datetime
 from collections import deque
 from bs4 import BeautifulSoup
 
+# Optional Playwright for live browser validation
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except Exception:
+    PLAYWRIGHT_AVAILABLE = False
+
 def main():
     if len(os.sys.argv) != 2:
         print("Usage: python final_xss_scanner.py <URL>")
@@ -28,10 +35,12 @@ def main():
     session = requests.Session()
     session.headers.update({'User-Agent': 'Mozilla/5.0'})
     
+    # Use a unique marker so dialog text is recognizable
     payloads = [
-        '<script>alert("XSS")</script>',
-        '<img src=x onerror=alert("XSS")>',
-        '" onmouseover="alert(\'XSS\')" x="'
+        '<script>alert("XSS_CONFIRMED")</script>',
+        '<img src=x onerror=alert("XSS_CONFIRMED")>',
+        '<svg onload=alert("XSS_CONFIRMED")>',
+        '" onmouseover="alert(\'XSS_CONFIRMED\')" x="'
     ]
     
     vulnerabilities = []
@@ -84,13 +93,17 @@ def main():
             url_params = parse_qs(parsed_url.query)
             
             for param_name in url_params:
-                print(f"Testing URL parameter: {param_name}")
+                print(f"[TEST] URL param: {param_name} | on: {url}")
                 
                 for payload in payloads:
+                    print(f"  ├─ context=html | payload={payload}")
                     vuln = test_url_parameter(session, url, param_name, payload)
                     if vuln:
+                        vuln['context'] = 'html'
+                        vuln['poc_url'] = vuln.get('url')
+                        vuln['score'] = score_vuln(vuln, confirmed=False)
                         vulnerabilities.append(vuln)
-                        print(f"✅ XSS FOUND! Parameter: {param_name}")
+                        print(f"  ✅ reflected detected | param={param_name} | url={vuln.get('url')}")
                         break
         
         # Test form parameters
@@ -98,33 +111,45 @@ def main():
         for form in forms:
             for input_field in form['inputs']:
                 if input_field['name']:
-                    print(f"Testing form parameter: {input_field['name']}")
+                    print(f"[TEST] Form param: {input_field['name']} | on: {form['action']} | method={form['method']}")
                     
                     for payload in payloads:
+                        print(f"  ├─ context=html | payload={payload}")
                         vuln = test_form_parameter(session, form, input_field['name'], payload)
                         if vuln:
+                            vuln['context'] = 'html'
+                            vuln['poc_url'] = vuln.get('url')
+                            vuln['score'] = score_vuln(vuln, confirmed=False)
                             vulnerabilities.append(vuln)
-                            print(f"✅ XSS FOUND! Parameter: {input_field['name']}")
+                            print(f"  ✅ reflected detected | param={input_field['name']} | url={vuln.get('url')}")
                             break
         
+        # Phase 2: Live browser validation (Chrome)
+        confirmed_vulns = vulnerabilities
+        if PLAYWRIGHT_AVAILABLE and vulnerabilities:
+            print("🌐 Launching Chrome for live validation (non-headless)...")
+            confirmed_vulns = browser_validate_and_screenshot(vulnerabilities)
+
         # Show results
         print("=" * 50)
         print("SCAN RESULTS")
         print("=" * 50)
         
-        total_vulns = len(vulnerabilities)
+        total_vulns = len(confirmed_vulns)
         print(f"Total vulnerabilities: {total_vulns}")
         
-        if vulnerabilities:
+        if confirmed_vulns:
             print("\nVulnerabilities found:")
-            for i, vuln in enumerate(vulnerabilities, 1):
-                print(f"  {i}. {vuln.get('type', 'unknown')} - {vuln.get('parameter', 'unknown')}")
-                print(f"     URL: {vuln.get('url', 'unknown')}")
+            for i, vuln in enumerate(confirmed_vulns, 1):
+                print(f"  {i}. {vuln.get('type', 'unknown')} - {vuln.get('parameter', 'unknown')} | context={vuln.get('context','?')} | score={vuln.get('score',0)}")
+                print(f"     POC: {vuln.get('poc_url', vuln.get('url','unknown'))}")
+                if vuln.get('browser_validated'):
+                    print(f"     LIVE: confirmed in Chrome | alert='{vuln.get('alert_message','')}' | screenshot={vuln.get('screenshot','-')}")
         else:
             print("No vulnerabilities found")
         
-        # Generate simple report
-        generate_simple_report(target_url, vulnerabilities)
+        # Generate report (only confirmed)
+        generate_simple_report(target_url, confirmed_vulns)
         
     except Exception as e:
         print(f"❌ Scan failed: {str(e)}")
@@ -232,6 +257,80 @@ def is_static_resource(url):
     path = urlparse(url).path.lower()
     return path.endswith(static_exts)
 
+def score_vuln(vuln, confirmed=False):
+    score = 50  # base for reflection
+    if vuln.get('context') == 'html':
+        score += 10
+    if 'script' in (vuln.get('payload') or '').lower():
+        score += 10
+    if confirmed:
+        score += 30
+    return score
+
+def browser_validate_and_screenshot(vulnerabilities):
+    try:
+        pw = sync_playwright().start()
+        browser = pw.chromium.launch(headless=False, args=['--no-sandbox','--disable-setuid-sandbox'])
+        context = browser.new_context()
+        page = context.new_page()
+    except Exception as e:
+        print(f"[BROWSER] init failed: {e}")
+        return vulnerabilities
+
+    confirmed = []
+    try:
+        for vuln in vulnerabilities:
+            # Attach dialog handler per test
+            dialog_message = {'text': None}
+            def on_dialog(dialog):
+                dialog_message['text'] = dialog.message
+                # Take screenshot before accept
+                try:
+                    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    os.makedirs('screenshots', exist_ok=True)
+                    shot_path = f"screenshots/xss_{ts}.png"
+                    page.screenshot(path=shot_path)
+                    vuln['screenshot'] = shot_path
+                except Exception:
+                    pass
+                try:
+                    dialog.accept()
+                except Exception:
+                    pass
+
+            page.on('dialog', on_dialog)
+            try:
+                page.goto(vuln.get('poc_url') or vuln.get('url'), timeout=15000)
+            except Exception:
+                page.off('dialog', on_dialog)
+                continue
+            # small wait
+            try:
+                page.wait_for_timeout(800)
+            except Exception:
+                pass
+            page.off('dialog', on_dialog)
+            if dialog_message['text'] and 'XSS_CONFIRMED' in dialog_message['text']:
+                vuln['browser_validated'] = True
+                vuln['alert_message'] = dialog_message['text']
+                vuln['score'] = score_vuln(vuln, confirmed=True)
+                confirmed.append(vuln)
+        # close
+        context.close()
+        browser.close()
+        pw.stop()
+    except Exception as e:
+        print(f"[BROWSER] validation error: {e}")
+        try:
+            context.close()
+            browser.close()
+            pw.stop()
+        except Exception:
+            pass
+        # if browser fails, return original reflections (no confirm)
+        return vulnerabilities
+    return confirmed
+
 def test_url_parameter(session, url, param_name, payload):
     try:
         parsed_url = urlparse(url)
@@ -324,9 +423,13 @@ def generate_simple_report(target_url, vulnerabilities):
                     <p><strong>Type:</strong> {vuln.get('type', 'unknown')}</p>
                     <p><strong>URL:</strong> {vuln.get('url', 'unknown')}</p>
                     <p><strong>Parameter:</strong> {vuln.get('parameter', 'unknown')}</p>
+                    <p><strong>Context:</strong> {vuln.get('context','?')}</p>
+                    <p><strong>Score:</strong> {vuln.get('score',0)}</p>
                     <p><strong>Payload:</strong></p>
                     <div class="payload">{vuln.get('payload', 'unknown')}</div>
                     <p><strong>Method:</strong> {vuln.get('method', 'GET')}</p>
+                    {f"<p><strong>Alert:</strong> {vuln.get('alert_message','')}</p>" if vuln.get('browser_validated') else ''}
+                    {f"<p><strong>Screenshot:</strong> {vuln.get('screenshot','')}</p>" if vuln.get('browser_validated') else ''}
                 </div>
 """
         
