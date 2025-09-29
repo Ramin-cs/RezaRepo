@@ -11,6 +11,8 @@ import urllib.parse
 import os
 from urllib.parse import urljoin, urlparse, parse_qs
 from datetime import datetime
+from collections import deque
+from bs4 import BeautifulSoup
 
 def main():
     if len(os.sys.argv) != 2:
@@ -35,52 +37,31 @@ def main():
     vulnerabilities = []
     
     try:
-        # Get main page
-        print("🔍 Getting main page...")
-        response = session.get(target_url, timeout=2)
-        print(f"✅ Target accessible (Status: {response.status_code})")
+        # Phase 1: Deep same-origin crawling (depth=4)
+        print("🔍 Starting deep reconnaissance (same-origin, depth=4)...")
+        crawled_urls, page_html_map = crawl_site(session, target_url, max_depth=4)
         
-        html_content = response.text
-        
-        # Find URLs with parameters
-        print("🔍 Finding URLs with parameters...")
-        urls_with_params = set()
-        urls_with_params.add(target_url)
-        
-        # Simple link extraction
-        links = re.findall(r'href=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-        for link in links:
-            if '=' in link and not link.startswith('#') and not link.startswith('javascript:'):
-                full_url = urljoin(target_url, link)
-                if is_same_domain(target_url, full_url):
-                    urls_with_params.add(full_url)
-                    if len(urls_with_params) >= 5:
-                        break
-        
-        # Find forms
-        print("🔍 Finding forms...")
+        # Phase 1.1: Extract forms from all pages
         forms = []
-        form_matches = re.findall(r'<form[^>]*>(.*?)</form>', html_content, re.IGNORECASE | re.DOTALL)
+        for page_url, html_content in page_html_map.items():
+            page_forms = extract_forms_from_html(html_content, page_url)
+            forms.extend(page_forms)
         
-        for form_html in form_matches:
-            form_data = parse_form_simple(form_html, target_url)
-            if form_data:
-                forms.append(form_data)
-        
-        # Extract parameters
+        # Phase 1.2: Collect URL parameters from all URLs discovered
         url_parameters = set()
-        for url in urls_with_params:
+        for url in crawled_urls:
             parsed_url = urlparse(url)
             params = parse_qs(parsed_url.query)
             url_parameters.update(params.keys())
         
+        # Phase 1.3: Collect form parameters
         form_parameters = set()
         for form in forms:
             for input_field in form['inputs']:
                 if input_field['name']:
                     form_parameters.add(input_field['name'])
         
-        print(f"✅ Discovered {len(urls_with_params)} URLs")
+        print(f"✅ Discovered {len(crawled_urls)} URLs")
         print(f"✅ Found {len(forms)} forms")
         print(f"✅ Found {len(url_parameters)} URL parameters")
         print(f"✅ Found {len(form_parameters)} form parameters")
@@ -98,7 +79,7 @@ def main():
         
         # Test URL parameters
         print("🎯 Testing URL parameters...")
-        for url in urls_with_params:
+        for url in crawled_urls:
             parsed_url = urlparse(url)
             url_params = parse_qs(parsed_url.query)
             
@@ -156,30 +137,100 @@ def is_same_domain(target_url, url):
     except:
         return False
 
-def parse_form_simple(form_html, base_url):
+def extract_forms_from_html(html_content, base_url):
+    forms = []
     try:
-        action_match = re.search(r'action=["\']([^"\']*)["\']', form_html, re.IGNORECASE)
-        action = action_match.group(1) if action_match else ''
-        
-        method_match = re.search(r'method=["\']([^"\']*)["\']', form_html, re.IGNORECASE)
-        method = method_match.group(1).upper() if method_match else 'GET'
-        
-        inputs = []
-        input_matches = re.findall(r'<(?:input|textarea|select)[^>]*name=["\']([^"\']+)["\'][^>]*>', form_html, re.IGNORECASE)
-        
-        for name in input_matches:
-            inputs.append({'name': name, 'type': 'text', 'value': ''})
-        
-        if inputs:
-            return {
-                'action': urljoin(base_url, action) if action else base_url,
-                'method': method,
-                'inputs': inputs
-            }
-    except:
-        pass
+        soup = BeautifulSoup(html_content, 'html.parser')
+        for form in soup.find_all('form'):
+            action = form.get('action', '')
+            method = form.get('method', 'GET').upper()
+            inputs = []
+            for input_field in form.find_all(['input', 'textarea', 'select']):
+                name = input_field.get('name')
+                if not name:
+                    continue
+                value = input_field.get('value', '')
+                inputs.append({'name': name, 'type': input_field.get('type', 'text'), 'value': value})
+            if inputs:
+                forms.append({
+                    'action': urljoin(base_url, action) if action else base_url,
+                    'method': method,
+                    'inputs': inputs
+                })
+    except Exception:
+        return forms
+    return forms
+
+def crawl_site(session, start_url, max_depth=4):
+    visited = set()
+    queue = deque()
+    queue.append((start_url, 0))
+    visited.add(start_url)
+    discovered_urls = set([start_url])
+    page_html_map = {}
+    base_domain = urlparse(start_url).netloc
     
-    return None
+    while queue:
+        current_url, depth = queue.popleft()
+        try:
+            resp = session.get(current_url, timeout=5)
+        except Exception:
+            continue
+        if resp.status_code != 200 or not resp.headers.get('content-type', '').startswith('text'):
+            continue
+        html = resp.text
+        page_html_map[current_url] = html
+        if depth >= max_depth:
+            continue
+        links = extract_links_from_html(html, current_url, base_domain)
+        for link in links:
+            if link in visited:
+                continue
+            visited.add(link)
+            discovered_urls.add(link)
+            queue.append((link, depth + 1))
+    return list(discovered_urls), page_html_map
+
+def extract_links_from_html(html_content, base_url, base_domain):
+    links = set()
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        # a[href]
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            if href.startswith('#') or href.lower().startswith('javascript:'):
+                continue
+            full = urljoin(base_url, href)
+            if urlparse(full).netloc == base_domain and not is_static_resource(full):
+                links.add(full)
+        # form action
+        for form in soup.find_all('form', action=True):
+            action = form['action']
+            full = urljoin(base_url, action)
+            if urlparse(full).netloc == base_domain and not is_static_resource(full):
+                links.add(full)
+        # JS patterns
+        js_patterns = [
+            r'window\.location\s*=\s*["\']([^"\']+)["\']',
+            r'location\.href\s*=\s*["\']([^"\']+)["\']',
+            r'window\.open\s*\(\s*["\']([^"\']+)["\']',
+            r'href\s*=\s*["\']([^"\']+)["\']'
+        ]
+        for pattern in js_patterns:
+            for m in re.findall(pattern, html_content, flags=re.IGNORECASE):
+                if m.startswith('#') or m.lower().startswith('javascript:'):
+                    continue
+                full = urljoin(base_url, m)
+                if urlparse(full).netloc == base_domain and not is_static_resource(full):
+                    links.add(full)
+    except Exception:
+        return list(links)
+    return list(links)
+
+def is_static_resource(url):
+    static_exts = ('.png', '.jpg', '.jpeg', '.gif', '.svg', '.css', '.ico', '.woff', '.woff2', '.ttf', '.otf', '.eot', '.pdf', '.zip', '.rar', '.7z', '.mp4', '.webm', '.mp3', '.wav', '.avi', '.mov', '.mkv', '.json')
+    path = urlparse(url).path.lower()
+    return path.endswith(static_exts)
 
 def test_url_parameter(session, url, param_name, payload):
     try:
