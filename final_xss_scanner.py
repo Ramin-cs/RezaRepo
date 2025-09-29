@@ -124,8 +124,8 @@ def main():
                             print(f"  ✅ reflected detected | param={input_field['name']} | url={vuln.get('url')}")
                             break
         
-        # Phase 2: Live browser validation (Chrome)
-        confirmed_vulns = vulnerabilities
+        # Phase 2: Live browser validation (Chrome) - KEEP ONLY CONFIRMED
+        confirmed_vulns = []
         if PLAYWRIGHT_AVAILABLE and vulnerabilities:
             print("🌐 Launching Chrome for live validation (non-headless)...")
             confirmed_vulns = browser_validate_and_screenshot(vulnerabilities)
