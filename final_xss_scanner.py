@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse, parse_qs
 from datetime import datetime
 from collections import deque
 from bs4 import BeautifulSoup
+import html as html_escape_mod
 
 # Optional Playwright for live browser validation
 try:
@@ -272,7 +273,6 @@ def browser_validate_and_screenshot(vulnerabilities):
         pw = sync_playwright().start()
         browser = pw.chromium.launch(headless=False, args=['--no-sandbox','--disable-setuid-sandbox'])
         context = browser.new_context()
-        page = context.new_page()
     except Exception as e:
         print(f"[BROWSER] init failed: {e}")
         return vulnerabilities
@@ -280,8 +280,9 @@ def browser_validate_and_screenshot(vulnerabilities):
     confirmed = []
     try:
         for vuln in vulnerabilities:
-            # Attach dialog handler per test
-            dialog_message = {'text': None}
+            # Create a fresh page per test to avoid listener cleanup
+            page = context.new_page()
+            dialog_message = {'text': None, 'shot': None}
             def on_dialog(dialog):
                 dialog_message['text'] = dialog.message
                 # Take screenshot before accept
@@ -290,7 +291,7 @@ def browser_validate_and_screenshot(vulnerabilities):
                     os.makedirs('screenshots', exist_ok=True)
                     shot_path = f"screenshots/xss_{ts}.png"
                     page.screenshot(path=shot_path)
-                    vuln['screenshot'] = shot_path
+                    dialog_message['shot'] = shot_path
                 except Exception:
                     pass
                 try:
@@ -300,19 +301,27 @@ def browser_validate_and_screenshot(vulnerabilities):
 
             page.on('dialog', on_dialog)
             try:
-                page.goto(vuln.get('poc_url') or vuln.get('url'), timeout=15000)
+                page.goto(vuln.get('poc_url') or vuln.get('url'), timeout=20000)
             except Exception:
-                page.off('dialog', on_dialog)
+                try:
+                    page.close()
+                except Exception:
+                    pass
                 continue
             # small wait
             try:
-                page.wait_for_timeout(800)
+                page.wait_for_timeout(1200)
             except Exception:
                 pass
-            page.off('dialog', on_dialog)
+            try:
+                page.close()
+            except Exception:
+                pass
             if dialog_message['text'] and 'XSS_CONFIRMED' in dialog_message['text']:
                 vuln['browser_validated'] = True
                 vuln['alert_message'] = dialog_message['text']
+                if dialog_message['shot']:
+                    vuln['screenshot'] = dialog_message['shot']
                 vuln['score'] = score_vuln(vuln, confirmed=True)
                 confirmed.append(vuln)
         # close
@@ -417,19 +426,26 @@ def generate_simple_report(target_url, vulnerabilities):
             html_content += '<div style="text-align: center; color: #28a745; font-size: 1.2em;">✅ No vulnerabilities found</div>'
         else:
             for i, vuln in enumerate(vulnerabilities, 1):
+                safe_url = html_escape_mod.escape(vuln.get('url', 'unknown') or '')
+                safe_param = html_escape_mod.escape(vuln.get('parameter', 'unknown') or '')
+                safe_ctx = html_escape_mod.escape(vuln.get('context','?') or '')
+                safe_score = html_escape_mod.escape(str(vuln.get('score',0)))
+                safe_payload = html_escape_mod.escape(vuln.get('payload', 'unknown') or '')
+                safe_alert = html_escape_mod.escape(vuln.get('alert_message','') or '')
+                safe_shot = html_escape_mod.escape(vuln.get('screenshot','') or '')
                 html_content += f"""
                 <div class="vulnerability">
                     <h3>🔍 Vulnerability #{i}</h3>
-                    <p><strong>Type:</strong> {vuln.get('type', 'unknown')}</p>
-                    <p><strong>URL:</strong> {vuln.get('url', 'unknown')}</p>
-                    <p><strong>Parameter:</strong> {vuln.get('parameter', 'unknown')}</p>
-                    <p><strong>Context:</strong> {vuln.get('context','?')}</p>
-                    <p><strong>Score:</strong> {vuln.get('score',0)}</p>
+                    <p><strong>Type:</strong> {html_escape_mod.escape(vuln.get('type', 'unknown'))}</p>
+                    <p><strong>URL:</strong> {safe_url}</p>
+                    <p><strong>Parameter:</strong> {safe_param}</p>
+                    <p><strong>Context:</strong> {safe_ctx}</p>
+                    <p><strong>Score:</strong> {safe_score}</p>
                     <p><strong>Payload:</strong></p>
-                    <div class="payload">{vuln.get('payload', 'unknown')}</div>
-                    <p><strong>Method:</strong> {vuln.get('method', 'GET')}</p>
-                    {f"<p><strong>Alert:</strong> {vuln.get('alert_message','')}</p>" if vuln.get('browser_validated') else ''}
-                    {f"<p><strong>Screenshot:</strong> {vuln.get('screenshot','')}</p>" if vuln.get('browser_validated') else ''}
+                    <div class="payload">{safe_payload}</div>
+                    <p><strong>Method:</strong> {html_escape_mod.escape(vuln.get('method', 'GET'))}</p>
+                    {f"<p><strong>Alert:</strong> {safe_alert}</p>" if vuln.get('browser_validated') else ''}
+                    {f"<p><strong>Screenshot:</strong> {safe_shot}</p>" if vuln.get('browser_validated') else ''}
                 </div>
 """
         
