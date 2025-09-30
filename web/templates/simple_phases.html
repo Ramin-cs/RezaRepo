@@ -287,6 +287,45 @@
             console.log('Connected to server');
         });
         
+        // Phase started event
+        socket.on('phase_started', function(data) {
+            console.log('Phase started:', data);
+            
+            // Update live phase display
+            const livePhaseContainer = document.getElementById('live-phase-container');
+            const livePhaseTitle = document.getElementById('live-phase-title');
+            const livePhaseOutput = document.getElementById('live-phase-output');
+            
+            if (data.phase && livePhaseContainer) {
+                livePhaseContainer.style.display = 'block';
+                
+                // Update phase title
+                const phaseNames = {
+                    1: 'Real IP Extraction & CDN Bypass',
+                    2: 'Subdomain Discovery',
+                    3: 'Port Scanning & Service Detection',
+                    4: 'Technology Detection',
+                    5: 'Directory Discovery',
+                    6: 'Parameter Discovery & JS Analysis',
+                    7: 'Endpoint Discovery (REST/GraphQL)',
+                    8: 'Cloud Analysis',
+                    9: 'OSINT Analysis',
+                    10: 'Vulnerability Assessment'
+                };
+                
+                if (livePhaseTitle) {
+                    livePhaseTitle.textContent = `Phase ${data.phase}: ${phaseNames[data.phase] || 'Unknown'}`;
+                }
+                
+                // Add live output
+                if (livePhaseOutput) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    livePhaseOutput.textContent += `\n[${timestamp}] ${data.message}`;
+                    livePhaseOutput.scrollTop = livePhaseOutput.scrollHeight;
+                }
+            }
+        });
+        
         socket.on('task_update', function(data) {
             console.log('Task update:', data);
             

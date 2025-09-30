@@ -4,6 +4,7 @@ ARAT Simple Web Panel - No Database Version
 
 import json
 import os
+import time
 from datetime import datetime
 from typing import Dict, List, Any
 from pathlib import Path
@@ -335,7 +336,20 @@ class SimpleWebPanel:
                         
                         # Add delay to make phases more realistic
                         print(f"   ⏳ Running Phase {phase_num} for {target}...")
-                        time.sleep(3)  # Add realistic delay
+                        
+                        # Send phase start update
+                        self.socketio.emit('phase_started', {
+                            'task_id': task_id,
+                            'phase': phase_num,
+                            'message': f'Starting Phase {phase_num}...'
+                        }, room=f'task_{task_id}')
+                        
+                        time.sleep(2)  # Add realistic delay
+                        
+                        # Check if task was stopped before phase execution
+                        if self.active_tasks[task_id]['status'] == 'stopped':
+                            print(f"Task {task_id} was stopped before phase {phase_num} execution")
+                            break
                         
                         result = recon.run_phase(phase_num, target)
                         
