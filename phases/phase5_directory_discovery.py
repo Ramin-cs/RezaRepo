@@ -185,82 +185,48 @@ class Phase5DirectoryDiscovery:
                     if result:
                         results['techniques_used'].append('Directory Discovery')
             
-            # Technique 2: Gobuster Integration
-            print("   🔍 Gobuster Integration...")
-            results['techniques_used'].append('Gobuster Integration')
+            # Technique 2: External Tools Integration
+            print("   🔍 External Tools Integration...")
+            results['techniques_used'].append('External Tools Integration')
             
-            if self._is_gobuster_available():
-                try:
-                    gobuster_results = self._run_gobuster(target)
-                    if gobuster_results:
-                        results['tool_results']['gobuster'] = gobuster_results
-                        print(f"   ✅ Gobuster scan completed")
-                except Exception as e:
-                    results['errors'].append(f"Gobuster scan failed: {str(e)}")
-            else:
-                print("   ℹ️ Gobuster not available, skipping")
+            external_tools = [
+                ('Gobuster', self._is_gobuster_available, self._run_gobuster),
+                ('Dirsearch', self._is_dirsearch_available, self._run_dirsearch),
+                ('Feroxbuster', self._is_feroxbuster_available, self._run_feroxbuster),
+                ('Katana', self._is_katana_available, self._run_katana),
+                ('Gospider', self._is_gospider_available, self._run_gospider)
+            ]
             
-            # Technique 3: Dirsearch Integration
-            print("   🔍 Dirsearch Integration...")
-            results['techniques_used'].append('Dirsearch Integration')
+            for tool_name, check_func, run_func in external_tools:
+                if check_func():
+                    try:
+                        tool_results = run_func(target)
+                        if tool_results and tool_results.get('success'):
+                            results['tool_results'][tool_name.lower()] = tool_results
+                            
+                            # Extract directories from tool results
+                            if 'directories' in tool_results:
+                                for directory in tool_results['directories']:
+                                    if directory not in [d['path'] for d in results['directories_found']]:
+                                        results['directories_found'].append({
+                                            'path': directory,
+                                            'status_code': 200,
+                                            'source': tool_name.lower(),
+                                            'tool_detected': True
+                                        })
+                                        print(f"   ✅ {tool_name} found: {directory}")
+                            
+                            print(f"   ✅ {tool_name} completed successfully")
+                        else:
+                            print(f"   ⚠️ {tool_name} completed but no results")
+                    except Exception as e:
+                        error_msg = f"{tool_name} failed: {str(e)}"
+                        results['errors'].append(error_msg)
+                        print(f"   ❌ {error_msg}")
+                else:
+                    print(f"   ℹ️ {tool_name} not available, skipping")
             
-            if self._is_dirsearch_available():
-                try:
-                    dirsearch_results = self._run_dirsearch(target)
-                    if dirsearch_results:
-                        results['tool_results']['dirsearch'] = dirsearch_results
-                        print(f"   ✅ Dirsearch scan completed")
-                except Exception as e:
-                    results['errors'].append(f"Dirsearch scan failed: {str(e)}")
-            else:
-                print("   ℹ️ Dirsearch not available, skipping")
-            
-            # Technique 4: Feroxbuster Integration
-            print("   🔍 Feroxbuster Integration...")
-            results['techniques_used'].append('Feroxbuster Integration')
-            
-            if self._is_feroxbuster_available():
-                try:
-                    feroxbuster_results = self._run_feroxbuster(target)
-                    if feroxbuster_results:
-                        results['tool_results']['feroxbuster'] = feroxbuster_results
-                        print(f"   ✅ Feroxbuster scan completed")
-                except Exception as e:
-                    results['errors'].append(f"Feroxbuster scan failed: {str(e)}")
-            else:
-                print("   ℹ️ Feroxbuster not available, skipping")
-            
-            # Technique 5: Katana Integration (for crawling)
-            print("   🕷️ Katana Integration...")
-            results['techniques_used'].append('Katana Integration')
-            
-            if self._is_katana_available():
-                try:
-                    katana_results = self._run_katana(target)
-                    if katana_results:
-                        results['tool_results']['katana'] = katana_results
-                        print(f"   ✅ Katana crawling completed")
-                except Exception as e:
-                    results['errors'].append(f"Katana crawling failed: {str(e)}")
-            else:
-                print("   ℹ️ Katana not available, skipping")
-            
-            # Technique 6: Gospider Integration
-            print("   🕷️ Gospider Integration...")
-            results['techniques_used'].append('Gospider Integration')
-            
-            if self._is_gospider_available():
-                try:
-                    gospider_results = self._run_gospider(target)
-                    if gospider_results:
-                        results['tool_results']['gospider'] = gospider_results
-                        print(f"   ✅ Gospider crawling completed")
-                except Exception as e:
-                    results['errors'].append(f"Gospider crawling failed: {str(e)}")
-            else:
-                print("   ℹ️ Gospider not available, skipping")
-            
-            # Technique 7: HTTP Methods Testing
+            # Technique 3: HTTP Methods Testing
             print("   🔍 HTTP Methods Testing...")
             results['techniques_used'].append('HTTP Methods Testing')
             
@@ -339,23 +305,40 @@ class Phase5DirectoryDiscovery:
                 cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', wordlist, '-t', '50', '-q', '-o', '/tmp/gobuster_output.txt']
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 
-                # Read output file if it exists
-                output_content = ""
+                directories = []
+                # Parse gobuster output
+                output_lines = result.stdout.split('\n')
+                for line in output_lines:
+                    if 'Status: 200' in line or 'Status: 301' in line or 'Status: 302' in line:
+                        # Extract directory path
+                        parts = line.split()
+                        if len(parts) > 0:
+                            directory = parts[0]
+                            if directory.startswith('/'):
+                                directories.append(directory)
+                
+                # Also read from output file if it exists
                 if os.path.exists('/tmp/gobuster_output.txt'):
                     with open('/tmp/gobuster_output.txt', 'r') as f:
-                        output_content = f.read()
+                        for line in f:
+                            line = line.strip()
+                            if 'Status: 200' in line or 'Status: 301' in line or 'Status: 302' in line:
+                                parts = line.split()
+                                if len(parts) > 0:
+                                    directory = parts[0]
+                                    if directory.startswith('/') and directory not in directories:
+                                        directories.append(directory)
                     os.remove('/tmp/gobuster_output.txt')
                 
-                if result.returncode == 0 or output_content:
-                    return {
-                        'stdout': result.stdout + output_content,
-                        'stderr': result.stderr,
-                        'success': True,
-                        'wordlist_used': wordlist
-                    }
+                return {
+                    'directories': directories,
+                    'success': len(directories) > 0,
+                    'tool': 'gobuster',
+                    'wordlist_used': wordlist
+                }
         except Exception as e:
-            print(f"   ❌ Gobuster error: {e}")
-        return None
+            return {'success': False, 'error': str(e), 'tool': 'gobuster'}
+        return {'success': False, 'error': 'No wordlist found', 'tool': 'gobuster'}
     
     def _is_dirsearch_available(self) -> bool:
         """Check if dirsearch is available"""

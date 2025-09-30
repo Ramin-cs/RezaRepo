@@ -431,19 +431,27 @@ class SimpleWebPanel:
                     
                     print(f"❌ {error_msg}")
             
-            # Complete task
-            self.active_tasks[task_id]['status'] = 'completed'
-            self.active_tasks[task_id]['progress'] = 100
-            self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
-            
-            # Send completion message
-            self.socketio.emit('task_completed', {
-                'task_id': task_id,
-                'message': 'Reconnaissance completed',
-                'results': self.active_tasks[task_id]['results']
-            }, room=f'task_{task_id}')
-            
-            print(f"✅ Task {task_id} completed")
+               # Complete task
+               self.active_tasks[task_id]['status'] = 'completed'
+               self.active_tasks[task_id]['progress'] = 100
+               self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
+
+               # Send completion message with target info
+               self.socketio.emit('task_completed', {
+                   'task_id': task_id,
+                   'target': target,
+                   'message': 'Reconnaissance completed successfully',
+                   'results': self.active_tasks[task_id]['results'],
+                   'summary': {
+                       'total_phases': len(phases),
+                       'completed_phases': len(phases),
+                       'total_findings': self._count_total_findings(self.active_tasks[task_id]['results']),
+                       'duration': self._calculate_duration(self.active_tasks[task_id])
+                   }
+               }, room=f'task_{task_id}')
+
+               print(f"✅ Task {task_id} completed for {target}")
+               print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
             
         except Exception as e:
             error_msg = f"Error in task {task_id}: {str(e)}"
@@ -457,6 +465,50 @@ class SimpleWebPanel:
             }, room=f'task_{task_id}')
             
             print(f"❌ {error_msg}")
+    
+    def _count_total_findings(self, results):
+        """Count total findings from all phases"""
+        total = 0
+        for phase_key, result in results.items():
+            if phase_key.startswith('phase_'):
+                phase_num = int(phase_key.split('_')[1])
+                if phase_num == 1 and 'real_ips' in result:
+                    total += len(result['real_ips'])
+                elif phase_num == 2 and 'subdomains' in result:
+                    total += len(result['subdomains'])
+                elif phase_num == 3 and 'open_ports' in result:
+                    total += len(result['open_ports'])
+                elif phase_num == 4 and 'technologies' in result:
+                    total += len(result['technologies'])
+                elif phase_num == 5:
+                    if 'directories_found' in result:
+                        total += len(result['directories_found'])
+                    if 'files_found' in result:
+                        total += len(result['files_found'])
+                elif phase_num == 6:
+                    if 'parameters_found' in result:
+                        total += len(result['parameters_found'])
+                    if 'endpoints_found' in result:
+                        total += len(result['endpoints_found'])
+                elif phase_num == 7 and 'endpoints_found' in result:
+                    total += len(result['endpoints_found'])
+                elif phase_num == 8 and 'cloud_services' in result:
+                    total += len(result['cloud_services'])
+                elif phase_num == 9 and 'osint_data' in result:
+                    total += len(result['osint_data'])
+                elif phase_num == 10 and 'vulnerabilities' in result:
+                    total += len(result['vulnerabilities'])
+        return total
+    
+    def _calculate_duration(self, task):
+        """Calculate task duration"""
+        try:
+            start_time = datetime.fromisoformat(task['start_time'])
+            end_time = datetime.fromisoformat(task.get('end_time', datetime.now().isoformat()))
+            duration = end_time - start_time
+            return str(duration).split('.')[0]  # Remove microseconds
+        except:
+            return "Unknown"
     
     def start(self, host: str = "0.0.0.0", port: int = 8080):
         """Start web panel"""

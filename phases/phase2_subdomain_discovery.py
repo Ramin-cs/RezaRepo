@@ -247,7 +247,47 @@ class Phase2SubdomainDiscovery:
                     if result:
                         results['valid_subdomains'].append(result['subdomain'])
             
-            # Technique 5: Reverse DNS Lookup
+            # Technique 5: External Tools Integration
+            print("   🔍 External Tools Integration...")
+            results['techniques_used'].append('External Tools Integration')
+            
+            external_tools = [
+                ('Sublist3r', self._is_sublist3r_available, self._run_sublist3r),
+                ('Amass', self._is_amass_available, self._run_amass),
+                ('Findomain', self._is_findomain_available, self._run_findomain),
+                ('Subfinder', self._is_subfinder_available, self._run_subfinder),
+                ('Assetfinder', self._is_assetfinder_available, self._run_assetfinder)
+            ]
+            
+            for tool_name, check_func, run_func in external_tools:
+                if check_func():
+                    try:
+                        tool_results = run_func(target)
+                        if tool_results and tool_results.get('success'):
+                            results['tool_results'][tool_name.lower()] = tool_results
+                            
+                            # Extract subdomains from tool results
+                            if 'subdomains' in tool_results:
+                                for subdomain in tool_results['subdomains']:
+                                    if subdomain not in [s['subdomain'] for s in results['subdomains']]:
+                                        results['subdomains'].append({
+                                            'subdomain': subdomain,
+                                            'source': tool_name.lower(),
+                                            'validated': False
+                                        })
+                                        print(f"   ✅ {tool_name} found: {subdomain}")
+                            
+                            print(f"   ✅ {tool_name} completed successfully")
+                        else:
+                            print(f"   ⚠️ {tool_name} completed but no results")
+                    except Exception as e:
+                        error_msg = f"{tool_name} failed: {str(e)}"
+                        results['errors'].append(error_msg)
+                        print(f"   ❌ {error_msg}")
+                else:
+                    print(f"   ℹ️ {tool_name} not available, skipping")
+            
+            # Technique 6: Reverse DNS Lookup
             print("   🔄 Reverse DNS Lookup...")
             results['techniques_used'].append('Reverse DNS Lookup')
             
@@ -287,6 +327,159 @@ class Phase2SubdomainDiscovery:
         except:
             pass
         return 'No title found'
+    
+    def _is_sublist3r_available(self) -> bool:
+        """Check if sublist3r is available"""
+        try:
+            subprocess.run(['sublist3r', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_sublist3r(self, target: str) -> Dict[str, Any]:
+        """Run sublist3r if available"""
+        try:
+            cmd = ['sublist3r', '-d', target, '--quiet', '-o', '/tmp/sublist3r_output.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            subdomains = []
+            if os.path.exists('/tmp/sublist3r_output.txt'):
+                with open('/tmp/sublist3r_output.txt', 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and '.' in line:
+                            subdomains.append(line)
+                os.remove('/tmp/sublist3r_output.txt')
+            
+            return {
+                'subdomains': subdomains,
+                'success': len(subdomains) > 0,
+                'tool': 'sublist3r'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'sublist3r'}
+    
+    def _is_amass_available(self) -> bool:
+        """Check if amass is available"""
+        try:
+            subprocess.run(['amass', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_amass(self, target: str) -> Dict[str, Any]:
+        """Run amass if available"""
+        try:
+            cmd = ['amass', 'enum', '-d', target, '-silent', '-o', '/tmp/amass_output.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            subdomains = []
+            if os.path.exists('/tmp/amass_output.txt'):
+                with open('/tmp/amass_output.txt', 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and '.' in line:
+                            subdomains.append(line)
+                os.remove('/tmp/amass_output.txt')
+            
+            return {
+                'subdomains': subdomains,
+                'success': len(subdomains) > 0,
+                'tool': 'amass'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'amass'}
+    
+    def _is_findomain_available(self) -> bool:
+        """Check if findomain is available"""
+        try:
+            subprocess.run(['findomain', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_findomain(self, target: str) -> Dict[str, Any]:
+        """Run findomain if available"""
+        try:
+            cmd = ['findomain', '-t', target, '--quiet', '-o', '/tmp/findomain_output']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            subdomains = []
+            output_file = f'/tmp/findomain_output_{target}.txt'
+            if os.path.exists(output_file):
+                with open(output_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and '.' in line:
+                            subdomains.append(line)
+                os.remove(output_file)
+            
+            return {
+                'subdomains': subdomains,
+                'success': len(subdomains) > 0,
+                'tool': 'findomain'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'findomain'}
+    
+    def _is_subfinder_available(self) -> bool:
+        """Check if subfinder is available"""
+        try:
+            subprocess.run(['subfinder', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_subfinder(self, target: str) -> Dict[str, Any]:
+        """Run subfinder if available"""
+        try:
+            cmd = ['subfinder', '-d', target, '-silent', '-o', '/tmp/subfinder_output.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            subdomains = []
+            if os.path.exists('/tmp/subfinder_output.txt'):
+                with open('/tmp/subfinder_output.txt', 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and '.' in line:
+                            subdomains.append(line)
+                os.remove('/tmp/subfinder_output.txt')
+            
+            return {
+                'subdomains': subdomains,
+                'success': len(subdomains) > 0,
+                'tool': 'subfinder'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'subfinder'}
+    
+    def _is_assetfinder_available(self) -> bool:
+        """Check if assetfinder is available"""
+        try:
+            subprocess.run(['assetfinder', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_assetfinder(self, target: str) -> Dict[str, Any]:
+        """Run assetfinder if available"""
+        try:
+            cmd = ['assetfinder', target]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            subdomains = []
+            for line in result.stdout.split('\n'):
+                line = line.strip()
+                if line and '.' in line:
+                    subdomains.append(line)
+            
+            return {
+                'subdomains': subdomains,
+                'success': len(subdomains) > 0,
+                'tool': 'assetfinder'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'assetfinder'}
 
 if __name__ == "__main__":
     phase = Phase2SubdomainDiscovery()

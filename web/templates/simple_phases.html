@@ -444,16 +444,17 @@
             // Reset current task
             currentTaskId = null;
             
-            // Show completion message with option to view report
-            const viewReport = confirm('Reconnaissance completed successfully!\n\nDo you want to view the detailed report?');
-            if (viewReport) {
-                // Redirect to report page
+            // Auto redirect to report after 3 seconds
+            setTimeout(() => {
                 const target = data.target || localStorage.getItem('lastReconTarget') || 'Unknown';
                 const taskId = data.task_id || localStorage.getItem('lastReconTaskId') || '';
+                
+                // Show completion message
+                alert('Reconnaissance completed successfully!\n\nRedirecting to report...');
+                
+                // Redirect to report page
                 window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
-            } else {
-                alert('Reconnaissance completed! You can view the report later from the dashboard.');
-            }
+            }, 3000);
         });
         
         socket.on('task_error', function(data) {
