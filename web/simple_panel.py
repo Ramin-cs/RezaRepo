@@ -287,20 +287,10 @@ class SimpleWebPanel:
                         'message': f'Phase {phase_num} running...'
                     }, room=f'task_{task_id}')
                     
-                    # Simulate phase execution
-                    import time
-                    time.sleep(2)  # Simulate work
-                    
-                    # Simulate result
-                    result = {
-                        'phase': phase_num,
-                        'target': target,
-                        'status': 'completed',
-                        'results': {
-                            'ips_found': 1 if phase_num == 1 else 0,
-                            'subdomains_found': 5 if phase_num == 2 else 0
-                        }
-                    }
+                    # Run real reconnaissance
+                    from reconnaissance import RealReconnaissance
+                    recon = RealReconnaissance()
+                    result = recon.run_phase(phase_num, target)
                     
                     # Save result
                     self.active_tasks[task_id]['results'][f'phase_{phase_num}'] = result

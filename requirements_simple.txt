@@ -9,6 +9,9 @@ jinja2==3.1.2
 # HTTP
 requests==2.31.0
 
+# DNS
+dnspython==2.4.2
+
 # Configuration
 pyyaml==6.0.1
 

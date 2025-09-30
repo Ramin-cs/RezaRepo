@@ -85,22 +85,41 @@ def run_single_phase(target, phase):
     print(f"⚙️  Phase: {phase}")
     print("=" * 30)
     
-    if phase == 1:
-        print("🔍 Phase 1: Real IP Extraction & CDN Bypass")
-        print("   - CDN Detection")
-        print("   - Real IP Extraction")
-        print("   - DNS History Analysis")
-        print("✅ Phase 1 completed (demo)")
+    try:
+        from reconnaissance import RealReconnaissance
+        recon = RealReconnaissance()
+        result = recon.run_phase(phase, target)
         
-    elif phase == 2:
-        print("🔍 Phase 2: Subdomain Discovery")
-        print("   - Passive discovery")
-        print("   - Active discovery")
-        print("   - Validation")
-        print("✅ Phase 2 completed (demo)")
-        
-    else:
-        print(f"⚠️  Phase {phase} not implemented yet")
+        if result['status'] == 'completed':
+            print(f"✅ Phase {phase} completed successfully!")
+            print(f"📊 Summary: {result.get('summary', 'No summary available')}")
+            
+            # Show key results
+            if phase == 1:
+                if result.get('real_ips'):
+                    print(f"🎯 Real IPs found: {result['real_ips']}")
+                if result.get('cdn_detected'):
+                    print(f"🛡️ CDN detected: {result.get('cdn_type', 'Unknown')}")
+                    
+            elif phase == 2:
+                subdomains = result.get('subdomains', [])
+                valid = result.get('valid_subdomains', [])
+                print(f"🔍 Subdomains found: {len(subdomains)}")
+                print(f"✅ Valid subdomains: {len(valid)}")
+                if valid:
+                    print("📋 Valid subdomains:")
+                    for sub in valid[:5]:  # Show first 5
+                        print(f"   - {sub.get('subdomain', 'Unknown')} ({sub.get('status_code', 'Unknown')})")
+                        
+        else:
+            print(f"❌ Phase {phase} failed")
+            if result.get('errors'):
+                print("Errors:")
+                for error in result['errors']:
+                    print(f"   - {error}")
+                    
+    except Exception as e:
+        print(f"❌ Error running phase {phase}: {e}")
         print("💡 Available phases: 1, 2")
 
 def run_all_phases(target):
