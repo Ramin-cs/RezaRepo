@@ -86,8 +86,8 @@ def run_single_phase(target, phase):
     print("=" * 30)
     
     try:
-        from reconnaissance import RealReconnaissance
-        recon = RealReconnaissance()
+        from advanced_reconnaissance import AdvancedReconnaissance
+        recon = AdvancedReconnaissance()
         result = recon.run_phase(phase, target)
         
         if result['status'] == 'completed':

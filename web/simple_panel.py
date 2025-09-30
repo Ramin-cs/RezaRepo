@@ -330,8 +330,8 @@ class SimpleWebPanel:
                     
                     # Run real reconnaissance
                     try:
-                        from reconnaissance import RealReconnaissance
-                        recon = RealReconnaissance()
+                        from advanced_reconnaissance import AdvancedReconnaissance
+                        recon = AdvancedReconnaissance()
                         result = recon.run_phase(phase_num, target)
                     except Exception as recon_error:
                         result = {
