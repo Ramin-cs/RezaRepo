@@ -648,46 +648,69 @@ class AdvancedReconnaissance:
             'open_ports': [],
             'services': {},
             'os_detection': {},
+            'banner_grabbing': {},
+            'service_versions': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            # Extended port list
+            # Technique 1: Comprehensive Port Scanning
             print("   🔍 Comprehensive Port Scanning...")
             results['techniques_used'].append('Comprehensive Port Scanning')
             
-            # Common ports + extended list
+            # Extended port list with all common services
             ports_to_scan = [
                 # Web services
-                80, 443, 8080, 8443, 8000, 8008, 8888, 9000, 9080, 9443,
+                80, 443, 8080, 8443, 8000, 8008, 8888, 9000, 9080, 9443, 9444, 9445,
                 # SSH/Telnet
-                22, 23, 2222, 22222,
+                22, 23, 2222, 22222, 2223, 2224,
                 # FTP
-                21, 2121, 990, 989,
+                21, 2121, 990, 989, 20, 115,
                 # Mail
-                25, 110, 143, 993, 995, 587, 465, 2525,
+                25, 110, 143, 993, 995, 587, 465, 2525, 26, 465, 587, 25025,
                 # DNS
-                53, 853,
+                53, 853, 5353,
                 # Database
-                3306, 5432, 1433, 1521, 27017, 6379, 11211, 5984,
+                3306, 5432, 1433, 1521, 27017, 6379, 11211, 5984, 9200, 9300, 5601,
                 # RDP/VNC
-                3389, 5900, 5901, 5902,
+                3389, 5900, 5901, 5902, 5903, 5904, 5905,
                 # Other services
                 161, 162, 389, 636, 2049, 3268, 3269, 5985, 5986,
-                9200, 9300, 5601, 3000, 5000, 5001, 8001, 8002
+                3000, 5000, 5001, 8001, 8002, 8003, 8004, 8005,
+                # Development
+                3000, 3001, 4000, 4001, 5000, 5001, 6000, 6001, 7000, 7001,
+                # Monitoring
+                9090, 9091, 9100, 9101, 9102, 9103,
+                # Security
+                8444, 8445, 8446, 8447, 8448, 8449, 8450,
+                # Cloud services
+                8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089,
+                # Special services
+                9999, 10000, 10001, 10002, 10003, 10004, 10005
             ]
             
             def scan_port(port):
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout = 2
+                    sock.settimeout = 3
                     result = sock.connect_ex((target, port))
-                    sock.close()
                     
                     if result == 0:
+                        # Banner grabbing
+                        try:
+                            sock.settimeout = 2
+                            banner = sock.recv(1024).decode('utf-8', errors='ignore').strip()
+                            if banner:
+                                results['banner_grabbing'][port] = banner
+                        except:
+                            pass
+                        
+                        sock.close()
                         service = self._detect_service_advanced(target, port)
                         return port, service
+                    else:
+                        sock.close()
                 except:
                     pass
                 return None, None
@@ -703,9 +726,61 @@ class AdvancedReconnaissance:
                         results['services'][port] = service
                         print(f"   ✅ Port {port} is open ({service})")
             
+            # Technique 2: OS Detection via TTL
+            print("   🖥️ OS Detection via TTL...")
+            results['techniques_used'].append('OS Detection via TTL')
+            
+            try:
+                ttl = self._get_ttl(target)
+                os_guess = self._guess_os_from_ttl(ttl)
+                results['os_detection'] = {
+                    'ttl': ttl,
+                    'os_guess': os_guess,
+                    'method': 'TTL Analysis'
+                }
+                print(f"   ✅ TTL: {ttl}, OS guess: {os_guess}")
+            except Exception as e:
+                results['errors'].append(f"OS detection failed: {str(e)}")
+            
+            # Technique 3: Service Version Detection
+            print("   🔍 Service Version Detection...")
+            results['techniques_used'].append('Service Version Detection')
+            
+            for port in results['open_ports']:
+                try:
+                    version_info = self._get_service_version(target, port)
+                    if version_info:
+                        results['service_versions'][port] = version_info
+                        print(f"   ✅ Service version on port {port}: {version_info}")
+                except Exception as e:
+                    results['errors'].append(f"Version detection for port {port} failed: {str(e)}")
+            
+            # Technique 4: HTTP Service Analysis
+            print("   🌐 HTTP Service Analysis...")
+            results['techniques_used'].append('HTTP Service Analysis')
+            
+            http_ports = [80, 443, 8080, 8443, 8000, 8008, 8888, 9000, 9080, 9443]
+            for port in http_ports:
+                if port in results['open_ports']:
+                    try:
+                        protocol = 'https' if port in [443, 8443, 9443] else 'http'
+                        url = f"{protocol}://{target}:{port}"
+                        response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=True)
+                        
+                        results['services'][port] = {
+                            'service': results['services'].get(port, 'HTTP'),
+                            'status_code': response.status_code,
+                            'server': response.headers.get('Server', 'Unknown'),
+                            'title': self._extract_title(response.text),
+                            'content_length': len(response.content)
+                        }
+                        print(f"   ✅ HTTP analysis for port {port}: {response.status_code}")
+                    except Exception as e:
+                        results['errors'].append(f"HTTP analysis for port {port} failed: {str(e)}")
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['open_ports'])} open ports using advanced scanning"
+            results['summary'] = f"Found {len(results['open_ports'])} open ports using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 3 completed: {results['summary']}")
             return results
@@ -716,8 +791,35 @@ class AdvancedReconnaissance:
             print(f"   ❌ Phase 3 failed: {e}")
             return results
     
+    def _get_service_version(self, target: str, port: int) -> str:
+        """Get service version information"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout = 3
+            sock.connect((target, port))
+            
+            # Send common probes based on port
+            if port in [21, 2121]:  # FTP
+                sock.send(b'QUIT\r\n')
+            elif port in [22, 2222]:  # SSH
+                pass  # SSH version is sent automatically
+            elif port in [25, 587, 465]:  # SMTP
+                sock.send(b'HELO test\r\n')
+            elif port in [80, 8080, 8000]:  # HTTP
+                sock.send(b'GET / HTTP/1.1\r\nHost: ' + target.encode() + b'\r\n\r\n')
+            elif port in [443, 8443]:  # HTTPS
+                pass  # SSL handshake will reveal version
+            
+            banner = sock.recv(1024).decode('utf-8', errors='ignore').strip()
+            sock.close()
+            
+            return banner[:100] if banner else None
+            
+        except:
+            return None
+    
     def phase4_advanced_technology_detection(self, target: str) -> Dict[str, Any]:
-        """Phase 4: Advanced Technology Detection"""
+        """Phase 4: Advanced Technology Detection with comprehensive analysis"""
         print(f"🔍 Phase 4: Advanced Technology Detection for {target}")
         results = {
             'target': target,
@@ -726,63 +828,166 @@ class AdvancedReconnaissance:
             'technologies': [],
             'headers_analysis': {},
             'content_analysis': {},
+            'javascript_analysis': {},
+            'css_analysis': {},
+            'cms_detection': {},
+            'framework_detection': {},
+            'server_detection': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
+            # Technique 1: Comprehensive Technology Analysis
             print("   🌐 Comprehensive Technology Analysis...")
             results['techniques_used'].append('Comprehensive Technology Analysis')
             
             try:
                 response = requests.get(f"https://{target}", headers=self.headers, timeout=10, allow_redirects=True)
                 results['headers_analysis'] = dict(response.headers)
+                content = response.text.lower()
                 
                 # Advanced technology detection
                 technologies = []
-                content = response.text.lower()
                 
                 # Server detection
+                print("   🖥️ Server Detection...")
+                results['techniques_used'].append('Server Detection')
+                
                 server = response.headers.get('Server', '').lower()
-                if 'nginx' in server:
-                    technologies.append('Nginx')
-                elif 'apache' in server:
-                    technologies.append('Apache')
-                elif 'iis' in server:
-                    technologies.append('IIS')
+                server_headers = response.headers.get('X-Server', '').lower()
+                
+                server_patterns = {
+                    'nginx': ['nginx', 'ngx'],
+                    'apache': ['apache', 'httpd'],
+                    'iis': ['iis', 'microsoft-iis'],
+                    'lighttpd': ['lighttpd', 'lighty'],
+                    'tomcat': ['tomcat', 'apache-tomcat'],
+                    'jetty': ['jetty'],
+                    'node': ['node', 'nodejs'],
+                    'cloudflare': ['cloudflare'],
+                    'cloudfront': ['cloudfront']
+                }
+                
+                for server_name, patterns in server_patterns.items():
+                    if any(pattern in server for pattern in patterns) or any(pattern in server_headers for pattern in patterns):
+                        technologies.append(server_name.title())
+                        results['server_detection'][server_name] = {
+                            'detected': True,
+                            'version': self._extract_version(server),
+                            'header': server
+                        }
+                        print(f"   ✅ Server detected: {server_name}")
                 
                 # Framework detection
+                print("   🔧 Framework Detection...")
+                results['techniques_used'].append('Framework Detection')
+                
                 x_powered_by = response.headers.get('X-Powered-By', '').lower()
-                if 'php' in x_powered_by:
-                    technologies.append('PHP')
-                elif 'asp.net' in x_powered_by:
-                    technologies.append('ASP.NET')
-                elif 'express' in x_powered_by:
-                    technologies.append('Express.js')
+                framework_patterns = {
+                    'php': ['php', 'x-powered-by'],
+                    'asp.net': ['asp.net', 'aspnet'],
+                    'express.js': ['express', 'expressjs'],
+                    'django': ['django'],
+                    'flask': ['flask'],
+                    'rails': ['rails', 'ruby'],
+                    'laravel': ['laravel'],
+                    'symfony': ['symfony'],
+                    'spring': ['spring'],
+                    'angular': ['angular']
+                }
+                
+                for framework, patterns in framework_patterns.items():
+                    if any(pattern in x_powered_by for pattern in patterns) or any(pattern in content for pattern in patterns):
+                        technologies.append(framework.title())
+                        results['framework_detection'][framework] = {
+                            'detected': True,
+                            'version': self._extract_version(x_powered_by),
+                            'source': 'header' if any(pattern in x_powered_by for pattern in patterns) else 'content'
+                        }
+                        print(f"   ✅ Framework detected: {framework}")
                 
                 # CMS detection
-                if 'wordpress' in content or '/wp-content/' in content:
-                    technologies.append('WordPress')
-                if 'drupal' in content or '/sites/default/' in content:
-                    technologies.append('Drupal')
-                if 'joomla' in content or '/media/system/' in content:
-                    technologies.append('Joomla')
+                print("   📝 CMS Detection...")
+                results['techniques_used'].append('CMS Detection')
+                
+                cms_patterns = {
+                    'wordpress': ['wordpress', '/wp-content/', '/wp-includes/', 'wp-json', 'xmlrpc.php'],
+                    'drupal': ['drupal', '/sites/default/', 'drupal.js', 'drupal.css'],
+                    'joomla': ['joomla', '/media/system/', '/templates/', 'joomla.js'],
+                    'magento': ['magento', '/skin/frontend/', '/js/magento/'],
+                    'prestashop': ['prestashop', '/themes/', '/modules/'],
+                    'shopify': ['shopify', 'shopify.com', 'cdn.shopify.com'],
+                    'squarespace': ['squarespace', 'squarespace.com'],
+                    'wix': ['wix', 'wix.com', 'wixstatic.com'],
+                    'ghost': ['ghost', '/ghost/', 'ghost.js'],
+                    'hugo': ['hugo', 'hugo.js']
+                }
+                
+                for cms, patterns in cms_patterns.items():
+                    if any(pattern in content for pattern in patterns):
+                        technologies.append(cms.title())
+                        results['cms_detection'][cms] = {
+                            'detected': True,
+                            'patterns_found': [p for p in patterns if p in content],
+                            'confidence': len([p for p in patterns if p in content]) / len(patterns)
+                        }
+                        print(f"   ✅ CMS detected: {cms}")
                 
                 # Frontend frameworks
-                if 'react' in content or 'reactjs' in content:
-                    technologies.append('React')
-                if 'angular' in content or 'angularjs' in content:
-                    technologies.append('Angular')
-                if 'vue' in content or 'vuejs' in content:
-                    technologies.append('Vue.js')
-                if 'jquery' in content:
-                    technologies.append('jQuery')
+                print("   🎨 Frontend Framework Detection...")
+                results['techniques_used'].append('Frontend Framework Detection')
+                
+                frontend_patterns = {
+                    'react': ['react', 'reactjs', 'react-dom', 'react.js', 'react.min.js'],
+                    'angular': ['angular', 'angularjs', 'ng-app', 'angular.js'],
+                    'vue.js': ['vue', 'vuejs', 'vue.js', 'vue.min.js'],
+                    'jquery': ['jquery', 'jquery.js', 'jquery.min.js'],
+                    'bootstrap': ['bootstrap', 'bootstrap.js', 'bootstrap.css'],
+                    'foundation': ['foundation', 'foundation.js'],
+                    'materialize': ['materialize', 'materialize.js'],
+                    'bulma': ['bulma', 'bulma.css'],
+                    'tailwind': ['tailwind', 'tailwindcss'],
+                    'sass': ['sass', 'scss', 'sass.js'],
+                    'less': ['less', 'less.js'],
+                    'typescript': ['typescript', 'ts.js']
+                }
+                
+                for framework, patterns in frontend_patterns.items():
+                    if any(pattern in content for pattern in patterns):
+                        technologies.append(framework.title())
+                        print(f"   ✅ Frontend framework detected: {framework}")
+                
+                # JavaScript analysis
+                print("   📜 JavaScript Analysis...")
+                results['techniques_used'].append('JavaScript Analysis')
+                
+                js_patterns = re.findall(r'<script[^>]*src=["\']([^"\']*)["\'][^>]*>', response.text, re.IGNORECASE)
+                results['javascript_analysis'] = {
+                    'scripts_found': len(js_patterns),
+                    'external_scripts': [script for script in js_patterns if not script.startswith('/')],
+                    'inline_scripts': len(re.findall(r'<script[^>]*>(.*?)</script>', response.text, re.DOTALL | re.IGNORECASE))
+                }
+                
+                # CSS analysis
+                print("   🎨 CSS Analysis...")
+                results['techniques_used'].append('CSS Analysis')
+                
+                css_patterns = re.findall(r'<link[^>]*href=["\']([^"\']*\.css[^"\']*)["\'][^>]*>', response.text, re.IGNORECASE)
+                results['css_analysis'] = {
+                    'stylesheets_found': len(css_patterns),
+                    'external_stylesheets': [css for css in css_patterns if not css.startswith('/')],
+                    'inline_styles': len(re.findall(r'<style[^>]*>(.*?)</style>', response.text, re.DOTALL | re.IGNORECASE))
+                }
                 
                 results['technologies'] = list(set(technologies))
                 results['content_analysis'] = {
                     'title': self._extract_title(response.text),
                     'technologies_found': len(technologies),
-                    'content_length': len(response.content)
+                    'content_length': len(response.content),
+                    'meta_tags': len(re.findall(r'<meta[^>]*>', response.text, re.IGNORECASE)),
+                    'images': len(re.findall(r'<img[^>]*>', response.text, re.IGNORECASE)),
+                    'links': len(re.findall(r'<a[^>]*>', response.text, re.IGNORECASE))
                 }
                 
                 print(f"   ✅ Technologies found: {results['technologies']}")
@@ -790,9 +995,50 @@ class AdvancedReconnaissance:
             except Exception as e:
                 results['errors'].append(f"Main page analysis failed: {str(e)}")
             
+            # Technique 2: Robots.txt Analysis
+            print("   🤖 Robots.txt Analysis...")
+            results['techniques_used'].append('Robots.txt Analysis')
+            
+            try:
+                robots_response = requests.get(f"https://{target}/robots.txt", headers=self.headers, timeout=5)
+                if robots_response.status_code == 200:
+                    results['content_analysis']['robots_txt'] = {
+                        'found': True,
+                        'content': robots_response.text[:500],
+                        'disallowed_paths': re.findall(r'Disallow:\s*(.*)', robots_response.text, re.IGNORECASE),
+                        'sitemaps': re.findall(r'Sitemap:\s*(.*)', robots_response.text, re.IGNORECASE)
+                    }
+                    print(f"   ✅ Robots.txt found with {len(results['content_analysis']['robots_txt']['disallowed_paths'])} disallowed paths")
+            except Exception as e:
+                results['errors'].append(f"Robots.txt analysis failed: {str(e)}")
+            
+            # Technique 3: Sitemap Analysis
+            print("   🗺️ Sitemap Analysis...")
+            results['techniques_used'].append('Sitemap Analysis')
+            
+            sitemap_urls = [
+                f"https://{target}/sitemap.xml",
+                f"https://{target}/sitemap_index.xml",
+                f"https://{target}/sitemap.xml.gz"
+            ]
+            
+            for sitemap_url in sitemap_urls:
+                try:
+                    sitemap_response = requests.get(sitemap_url, headers=self.headers, timeout=5)
+                    if sitemap_response.status_code == 200:
+                        results['content_analysis']['sitemap'] = {
+                            'found': True,
+                            'url': sitemap_url,
+                            'content_length': len(sitemap_response.content)
+                        }
+                        print(f"   ✅ Sitemap found: {sitemap_url}")
+                        break
+                except:
+                    pass
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['technologies'])} technologies"
+            results['summary'] = f"Found {len(results['technologies'])} technologies using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 4 completed: {results['summary']}")
             return results
@@ -802,6 +1048,12 @@ class AdvancedReconnaissance:
             results['status'] = 'error'
             print(f"   ❌ Phase 4 failed: {e}")
             return results
+    
+    def _extract_version(self, text: str) -> str:
+        """Extract version from text"""
+        version_pattern = r'(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)'
+        match = re.search(version_pattern, text)
+        return match.group(1) if match else 'Unknown'
     
     def phase5_advanced_directory_discovery(self, target: str) -> Dict[str, Any]:
         """Phase 5: Advanced Directory Discovery with 4-level crawling"""
