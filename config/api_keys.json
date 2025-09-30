@@ -1,0 +1,46 @@
+{
+    "github": {
+        "api_key": "",
+        "username": "",
+        "token": "",
+        "description": "GitHub API key for repository analysis and code scanning"
+    },
+    "securitytrails": {
+        "api_key": "",
+        "description": "SecurityTrails API key for historical DNS and subdomain data"
+    },
+    "shodan": {
+        "api_key": "",
+        "description": "Shodan API key for device and service discovery"
+    },
+    "censys": {
+        "api_id": "",
+        "api_secret": "",
+        "description": "Censys API credentials for certificate and host data"
+    },
+    "virustotal": {
+        "api_key": "",
+        "description": "VirusTotal API key for threat intelligence"
+    },
+    "threatcrowd": {
+        "api_key": "",
+        "description": "ThreatCrowd API key for threat intelligence"
+    },
+    "passivetotal": {
+        "username": "",
+        "api_key": "",
+        "description": "PassiveTotal API credentials for passive DNS data"
+    },
+    "dnsdb": {
+        "api_key": "",
+        "description": "DNSDB API key for DNS historical data"
+    },
+    "crtsh": {
+        "api_key": "",
+        "description": "crt.sh API key for certificate transparency data"
+    },
+    "wayback": {
+        "api_key": "",
+        "description": "Wayback Machine API key for historical web data"
+    }
+}

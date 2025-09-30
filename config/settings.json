@@ -1,0 +1,32 @@
+{
+    "general": {
+        "max_workers": 50,
+        "timeout": 30,
+        "enable_parallel": true,
+        "cross_platform": true,
+        "live_output": true
+    },
+    "phases": {
+        "enable_all": true,
+        "custom_phases": [],
+        "skip_phases": [],
+        "phase_timeout": 300
+    },
+    "tools": {
+        "enable_external_tools": true,
+        "tools_path": "/usr/local/bin",
+        "wordlists_path": "/usr/share/wordlists"
+    },
+    "output": {
+        "save_results": true,
+        "results_format": "json",
+        "verbose_output": true,
+        "live_updates": true
+    },
+    "security": {
+        "rate_limit": true,
+        "max_requests_per_second": 10,
+        "user_agent_rotation": true,
+        "proxy_support": false
+    }
+}
