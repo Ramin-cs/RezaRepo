@@ -125,13 +125,61 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="phase-1" value="1">
                                     <label class="form-check-label" for="phase-1">
-                                        Phase 1: Real IP Extraction
+                                        Phase 1: Real IP Extraction & CDN Bypass
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="phase-2" value="2">
                                     <label class="form-check-label" for="phase-2">
                                         Phase 2: Subdomain Discovery
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-3" value="3">
+                                    <label class="form-check-label" for="phase-3">
+                                        Phase 3: Port Scanning & Service Detection
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-4" value="4">
+                                    <label class="form-check-label" for="phase-4">
+                                        Phase 4: Technology Detection
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-5" value="5">
+                                    <label class="form-check-label" for="phase-5">
+                                        Phase 5: Directory Discovery
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-6" value="6">
+                                    <label class="form-check-label" for="phase-6">
+                                        Phase 6: Parameter Discovery & JS Analysis
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-7" value="7">
+                                    <label class="form-check-label" for="phase-7">
+                                        Phase 7: Endpoint Discovery (REST/GraphQL)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-8" value="8">
+                                    <label class="form-check-label" for="phase-8">
+                                        Phase 8: Cloud Analysis
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-9" value="9">
+                                    <label class="form-check-label" for="phase-9">
+                                        Phase 9: OSINT Analysis
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-10" value="10">
+                                    <label class="form-check-label" for="phase-10">
+                                        Phase 10: Vulnerability Assessment
                                     </label>
                                 </div>
                             </div>
@@ -276,11 +324,10 @@
             const target = document.getElementById('target').value.trim();
             const phases = [];
             
-            if (document.getElementById('phase-1').checked) {
-                phases.push(1);
-            }
-            if (document.getElementById('phase-2').checked) {
-                phases.push(2);
+            for (let i = 1; i <= 10; i++) {
+                if (document.getElementById(`phase-${i}`).checked) {
+                    phases.push(i);
+                }
             }
             
             if (!target) {

@@ -111,6 +111,34 @@ def run_single_phase(target, phase):
                     for sub in valid[:5]:  # Show first 5
                         print(f"   - {sub.get('subdomain', 'Unknown')} ({sub.get('status_code', 'Unknown')})")
                         
+            elif phase == 3:
+                ports = result.get('open_ports', [])
+                services = result.get('services', {})
+                print(f"🔍 Open ports found: {len(ports)}")
+                if ports:
+                    print("📋 Open ports:")
+                    for port in ports[:10]:  # Show first 10
+                        service = services.get(port, 'Unknown')
+                        print(f"   - Port {port} ({service})")
+                        
+            elif phase == 4:
+                technologies = result.get('technologies', [])
+                print(f"🔍 Technologies found: {len(technologies)}")
+                if technologies:
+                    print("📋 Technologies:")
+                    for tech in technologies:
+                        print(f"   - {tech}")
+                        
+            elif phase == 5:
+                directories = result.get('directories_found', [])
+                files = result.get('files_found', [])
+                print(f"🔍 Directories found: {len(directories)}")
+                print(f"📄 Files found: {len(files)}")
+                if directories:
+                    print("📋 Directories:")
+                    for dir_info in directories[:5]:
+                        print(f"   - {dir_info.get('path', 'Unknown')} ({dir_info.get('status_code', 'Unknown')})")
+                        
         else:
             print(f"❌ Phase {phase} failed")
             if result.get('errors'):
@@ -128,7 +156,7 @@ def run_all_phases(target):
     print("🚀 Running all phases...")
     print("=" * 30)
     
-    phases = [1, 2]  # Available phases
+    phases = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # All phases
     
     for phase in phases:
         print(f"\n⚙️  Phase {phase}:")

@@ -108,8 +108,16 @@ class SimpleWebPanel:
             """Get available phases"""
             try:
                 phases = [
-                    {"number": 1, "name": "Real IP Extraction", "description": "Extract real IP address", "dependencies": []},
-                    {"number": 2, "name": "Subdomain Discovery", "description": "Discover subdomains", "dependencies": [1]}
+                    {"number": 1, "name": "Real IP Extraction", "description": "Extract real IP address and CDN bypass", "dependencies": []},
+                    {"number": 2, "name": "Subdomain Discovery", "description": "Discover subdomains (active/passive)", "dependencies": [1]},
+                    {"number": 3, "name": "Port Scanning", "description": "Scan ports and detect services", "dependencies": [1]},
+                    {"number": 4, "name": "Technology Detection", "description": "Detect web technologies", "dependencies": [1]},
+                    {"number": 5, "name": "Directory Discovery", "description": "Find directories and files", "dependencies": [1]},
+                    {"number": 6, "name": "Parameter Discovery", "description": "Extract parameters and JS analysis", "dependencies": [4]},
+                    {"number": 7, "name": "Endpoint Discovery", "description": "Extract endpoints (REST/GraphQL)", "dependencies": [4]},
+                    {"number": 8, "name": "Cloud Analysis", "description": "Analyze cloud resources", "dependencies": [2]},
+                    {"number": 9, "name": "OSINT Analysis", "description": "Open source intelligence gathering", "dependencies": []},
+                    {"number": 10, "name": "Vulnerability Assessment", "description": "Recon-based vulnerability assessment", "dependencies": [1,2,3,4,5]}
                 ]
                 return jsonify({'success': True, 'phases': phases})
             except Exception as e:
@@ -268,7 +276,7 @@ class SimpleWebPanel:
         try:
             # If no phases specified, run all available phases
             if not phases:
-                phases = [1, 2]  # Only available phases
+                phases = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # All phases
             
             total_phases = len(phases)
             
