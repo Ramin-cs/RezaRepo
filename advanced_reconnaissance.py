@@ -19,20 +19,13 @@ from typing import List, Dict, Any, Set
 import threading
 import queue
 
-# Import phase modules
+# Import centralized phase manager
 try:
-    from phases.phase2_subdomain_discovery import Phase2SubdomainDiscovery
-    from phases.phase3_port_scanning import Phase3PortScanning
-    from phases.phase4_technology_detection import Phase4TechnologyDetection
-    from phases.phase5_directory_discovery import Phase5DirectoryDiscovery
-    from phases.phase6_parameter_discovery import Phase6ParameterDiscovery
-    from phases.phase7_endpoint_discovery import Phase7EndpointDiscovery
-    from phases.phase8_cloud_analysis import Phase8CloudAnalysis
-    from phases.phase9_osint_analysis import Phase9OSINTAnalysis
-    from phases.phase10_vulnerability_assessment import Phase10VulnerabilityAssessment
+    from phases.phase_manager import phase_manager
     PHASE_MODULES_AVAILABLE = True
+    print("✅ Phase Manager loaded successfully")
 except ImportError as e:
-    print(f"⚠️ Phase modules not available: {e}")
+    print(f"⚠️ Phase Manager not available: {e}")
     PHASE_MODULES_AVAILABLE = False
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -217,8 +210,11 @@ class AdvancedReconnaissance:
         ]
     
     def run_phase(self, phase_number: int, target: str) -> Dict[str, Any]:
-        """Run specific phase with advanced techniques"""
+        """Run specific phase via centralized Phase Manager"""
+        print(f"🎯 Running Phase {phase_number} via Advanced Reconnaissance")
+        
         if not PHASE_MODULES_AVAILABLE:
+            print("⚠️ Phase Manager not available, using fallback methods")
             # Fallback to built-in methods
             if phase_number == 1:
                 return self.phase1_advanced_real_ip_extraction(target)
@@ -247,43 +243,12 @@ class AdvancedReconnaissance:
                     'error': f'Phase {phase_number} not implemented'
                 }
         
-        # Use dedicated phase modules with external tools
+        # Use centralized Phase Manager
         try:
-            if phase_number == 1:
-                return self.phase1_advanced_real_ip_extraction(target)
-            elif phase_number == 2:
-                phase2 = Phase2SubdomainDiscovery()
-                return phase2.run_phase(target)
-            elif phase_number == 3:
-                phase3 = Phase3PortScanning()
-                return phase3.run_phase(target)
-            elif phase_number == 4:
-                phase4 = Phase4TechnologyDetection()
-                return phase4.run_phase(target)
-            elif phase_number == 5:
-                phase5 = Phase5DirectoryDiscovery()
-                return phase5.run_phase(target)
-            elif phase_number == 6:
-                phase6 = Phase6ParameterDiscovery()
-                return phase6.run_phase(target)
-            elif phase_number == 7:
-                phase7 = Phase7EndpointDiscovery()
-                return phase7.run_phase(target)
-            elif phase_number == 8:
-                phase8 = Phase8CloudAnalysis()
-                return phase8.run_phase(target)
-            elif phase_number == 9:
-                phase9 = Phase9OSINTAnalysis()
-                return phase9.run_phase(target)
-            elif phase_number == 10:
-                phase10 = Phase10VulnerabilityAssessment()
-                return phase10.run_phase(target)
-            else:
-                return {
-                    'phase': phase_number,
-                    'status': 'error',
-                    'error': f'Phase {phase_number} not implemented'
-                }
+            print(f"🚀 Delegating Phase {phase_number} to Phase Manager")
+            result = phase_manager.run_phase(phase_number, target)
+            print(f"✅ Phase {phase_number} completed via Phase Manager")
+            return result
         except Exception as e:
             print(f"❌ Error running phase {phase_number}: {str(e)}")
             return {
