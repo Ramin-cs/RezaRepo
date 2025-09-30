@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARAT - Phase Management</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-shield-alt me-2"></i>
+                ARAT
+            </a>
+            
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/targets">Targets</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/phases">Phases</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/reports">Reports</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>
+                        <i class="fas fa-cogs me-2"></i>
+                        Phase Management
+                    </h2>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#runModal">
+                        <i class="fas fa-play me-2"></i>
+                        Start Reconnaissance
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase Selection -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-check me-2"></i>
+                            Available Phases
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="phases-list">
+                            <!-- Phases will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Tasks -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tasks me-2"></i>
+                            Active Tasks
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="active-tasks">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No active tasks
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Run Modal -->
+        <div class="modal fade" id="runModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-play me-2"></i>
+                            Start Reconnaissance
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="run-form">
+                            <div class="mb-3">
+                                <label for="target" class="form-label">Target</label>
+                                <input type="text" class="form-control" id="target" name="target" 
+                                       placeholder="example.com" required>
+                                <div class="form-text">Enter target domain or IP address</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Phases</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-1" value="1">
+                                    <label class="form-check-label" for="phase-1">
+                                        Phase 1: Real IP Extraction
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="phase-2" value="2">
+                                    <label class="form-check-label" for="phase-2">
+                                        Phase 2: Subdomain Discovery
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="start-recon">
+                            <i class="fas fa-play me-2"></i>
+                            Start
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Modal -->
+        <div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            Running...
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span id="progress-target">Target: -</span>
+                                <span id="progress-phase">Phase: -</span>
+                            </div>
+                            <div class="progress mt-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     id="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Current Status:</h6>
+                            <div id="current-status" class="alert alert-info">
+                                Ready to start...
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Results:</h6>
+                            <div id="results-container" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Results will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" id="stop-recon">
+                            <i class="fas fa-stop me-2"></i>
+                            Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script>
+        // Simple JavaScript for phases page
+        let socket;
+        let currentTaskId = null;
+
+        // Initialize Socket.IO
+        socket = io();
+        
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+        
+        socket.on('task_update', function(data) {
+            console.log('Task update:', data);
+            
+            // Update progress bar
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) {
+                progressBar.style.width = `${data.progress}%`;
+            }
+            
+            // Update current status
+            const currentStatus = document.getElementById('current-status');
+            if (currentStatus) {
+                currentStatus.textContent = data.message;
+            }
+            
+            // Update phase info
+            const progressPhase = document.getElementById('progress-phase');
+            if (progressPhase) {
+                progressPhase.textContent = `Phase: ${data.current_phase}`;
+            }
+        });
+        
+        socket.on('phase_completed', function(data) {
+            console.log('Phase completed:', data);
+            
+            // Add result to results container
+            const resultsContainer = document.getElementById('results-container');
+            if (resultsContainer) {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'alert alert-success';
+                resultDiv.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>Phase ${data.phase}:</strong> ${data.message}
+                `;
+                resultsContainer.appendChild(resultDiv);
+                resultsContainer.scrollTop = resultsContainer.scrollHeight;
+            }
+        });
+        
+        socket.on('task_completed', function(data) {
+            console.log('Task completed:', data);
+            
+            // Update status
+            const currentStatus = document.getElementById('current-status');
+            if (currentStatus) {
+                currentStatus.textContent = 'Reconnaissance completed!';
+                currentStatus.className = 'alert alert-success';
+            }
+            
+            // Update progress bar to 100%
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) {
+                progressBar.style.width = '100%';
+            }
+            
+            alert('Reconnaissance completed!');
+        });
+
+        // Start reconnaissance
+        document.getElementById('start-recon').addEventListener('click', function() {
+            const target = document.getElementById('target').value.trim();
+            const phases = [];
+            
+            if (document.getElementById('phase-1').checked) {
+                phases.push(1);
+            }
+            if (document.getElementById('phase-2').checked) {
+                phases.push(2);
+            }
+            
+            if (!target) {
+                alert('Please enter a target');
+                return;
+            }
+            
+            if (phases.length === 0) {
+                alert('Please select at least one phase');
+                return;
+            }
+            
+            // Start reconnaissance
+            fetch('/api/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    target: target,
+                    phases: phases
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentTaskId = data.task_id;
+                    
+                    // Join task room
+                    socket.emit('join_task', { task_id: currentTaskId });
+                    
+                    // Show progress modal
+                    const modal = new bootstrap.Modal(document.getElementById('progressModal'));
+                    modal.show();
+                    
+                    // Update target info
+                    document.getElementById('progress-target').textContent = `Target: ${target}`;
+                    
+                    // Clear results container
+                    document.getElementById('results-container').innerHTML = '';
+                    
+                    // Close run modal
+                    const runModal = bootstrap.Modal.getInstance(document.getElementById('runModal'));
+                    runModal.hide();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error starting reconnaissance');
+            });
+        });
+
+        // Load phases
+        fetch('/api/phases')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const container = document.getElementById('phases-list');
+                    container.innerHTML = data.phases.map(phase => `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">Phase ${phase.number}: ${phase.name}</h6>
+                                    <p class="card-text small">${phase.description}</p>
+                                    <span class="badge bg-secondary">${phase.number}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            });
+    </script>
+</body>
+</html>
