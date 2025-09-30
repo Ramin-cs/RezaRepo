@@ -125,14 +125,26 @@
                             
                             <div class="mb-3">
                                 <label class="form-label">Phases</label>
+                                
+                                <!-- Select All Option -->
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="select-all-phases" onchange="toggleAllPhases()">
+                                    <label class="form-check-label fw-bold" for="select-all-phases">
+                                        <i class="fas fa-check-double"></i> Select All Phases
+                                    </label>
+                                </div>
+                                
+                                <hr class="my-3">
+                                
+                                <!-- Individual Phase Selection -->
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="phase-1" value="1">
+                                    <input class="form-check-input" type="checkbox" id="phase-1" value="1" onchange="updateSelectAll()">
                                     <label class="form-check-label" for="phase-1">
                                         Phase 1: Real IP Extraction & CDN Bypass
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="phase-2" value="2">
+                                    <input class="form-check-input" type="checkbox" id="phase-2" value="2" onchange="updateSelectAll()">
                                     <label class="form-check-label" for="phase-2">
                                         Phase 2: Subdomain Discovery
                                     </label>
@@ -404,7 +416,8 @@
             const phases = [];
             
             for (let i = 1; i <= 10; i++) {
-                if (document.getElementById(`phase-${i}`).checked) {
+                const checkbox = document.getElementById(`phase-${i}`);
+                if (checkbox && checkbox.checked) {
                     phases.push(i);
                 }
             }
@@ -534,6 +547,33 @@
                     `).join('');
                 }
             });
+        
+        // Toggle all phases
+        function toggleAllPhases() {
+            const selectAllCheckbox = document.getElementById('select-all-phases');
+            const phaseCheckboxes = document.querySelectorAll('input[id^="phase-"]');
+            
+            phaseCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+        }
+        
+        // Update select all checkbox
+        function updateSelectAll() {
+            const selectAllCheckbox = document.getElementById('select-all-phases');
+            const phaseCheckboxes = document.querySelectorAll('input[id^="phase-"]');
+            const checkedPhases = document.querySelectorAll('input[id^="phase-"]:checked');
+            
+            if (checkedPhases.length === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (checkedPhases.length === phaseCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
     </script>
 </body>
 </html>

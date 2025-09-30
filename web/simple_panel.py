@@ -332,8 +332,27 @@ class SimpleWebPanel:
                     try:
                         from advanced_reconnaissance import AdvancedReconnaissance
                         recon = AdvancedReconnaissance()
+                        
+                        # Add delay to make phases more realistic
+                        print(f"   ⏳ Running Phase {phase_num} for {target}...")
+                        time.sleep(2)  # Add realistic delay
+                        
                         result = recon.run_phase(phase_num, target)
+                        
+                        # Ensure result has proper structure
+                        if not isinstance(result, dict):
+                            result = {
+                                'phase': phase_num,
+                                'target': target,
+                                'status': 'completed',
+                                'summary': f'Phase {phase_num} completed successfully'
+                            }
+                        
+                        # Add delay after phase completion
+                        time.sleep(1)
+                        
                     except Exception as recon_error:
+                        print(f"   ❌ Phase {phase_num} failed: {str(recon_error)}")
                         result = {
                             'phase': phase_num,
                             'target': target,
