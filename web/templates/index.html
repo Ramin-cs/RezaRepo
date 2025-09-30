@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}ARAT - صفحه اصلی{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded p-5 mb-4">
+            <h1 class="display-4">
+                <i class="fas fa-shield-alt me-3"></i>
+                ARAT
+            </h1>
+            <p class="lead">ابزار پیشرفته Reconnaissance و Security Assessment</p>
+            <hr class="my-4">
+            <p>یک ابزار جامع و modular برای تست نفوذ و reconnaissance با 10 فاز کامل</p>
+            <a class="btn btn-light btn-lg" href="{{ url_for('dashboard') }}" role="button">
+                <i class="fas fa-play me-2"></i>
+                شروع کنید
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-bullseye fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">مدیریت اهداف</h5>
+                <p class="card-text">اضافه کردن و مدیریت اهداف برای reconnaissance</p>
+                <a href="{{ url_for('targets') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>
+                    اضافه کردن هدف
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-cogs fa-3x text-success mb-3"></i>
+                <h5 class="card-title">اجرای فازها</h5>
+                <p class="card-text">اجرای فازهای مختلف reconnaissance</p>
+                <a href="{{ url_for('phases') }}" class="btn btn-success">
+                    <i class="fas fa-play me-2"></i>
+                    شروع فازها
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
+                <h5 class="card-title">گزارش‌ها</h5>
+                <p class="card-text">مشاهده و تحلیل نتایج reconnaissance</p>
+                <a href="{{ url_for('reports') }}" class="btn btn-info">
+                    <i class="fas fa-eye me-2"></i>
+                    مشاهده گزارش‌ها
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-cog fa-3x text-warning mb-3"></i>
+                <h5 class="card-title">تنظیمات</h5>
+                <p class="card-text">پیکربندی API keys و تنظیمات ابزار</p>
+                <a href="{{ url_for('settings') }}" class="btn btn-warning">
+                    <i class="fas fa-wrench me-2"></i>
+                    تنظیمات
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    ویژگی‌های کلیدی
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>10 فاز کامل:</strong> Real IP extraction, Subdomain discovery, Port scanning, Technology detection
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>15+ API Integration:</strong> Shodan, VirusTotal, Censys, SecurityTrails, GitHub
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>پردازش موازی:</strong> اجرای همزمان فازها برای سرعت بالا
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>WAF Bypass:</strong> تکنیک‌های پیشرفته برای دور زدن WAF
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>Real-time Updates:</strong> به‌روزرسانی لحظه‌ای پیشرفت
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>گزارش‌های بصری:</strong> نمودارها و جداول تعاملی
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>پنل وب مدرن:</strong> رابط کاربری responsive و زیبا
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>امنیت بالا:</strong> کدگذاری API keys و مدیریت امن
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>توجه امنیتی:</strong> این ابزار فقط برای تست نفوذ قانونی و با مجوز استفاده شود. 
+            استفاده غیرقانونی ممنوع است و ممکن است منجر به پیگرد قانونی شود.
+        </div>
+    </div>
+</div>
+{% endblock %}

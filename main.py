@@ -179,6 +179,7 @@ class ARAT:
         try:
             self.logger.info(f"🌐 شروع پنل وب روی {host}:{port}")
             
+            from web.panel import WebPanel
             self.web_panel = WebPanel(self.config, self.db, self.phase_manager)
             self.web_panel.start(host, port)
             
