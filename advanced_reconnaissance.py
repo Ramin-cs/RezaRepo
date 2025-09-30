@@ -700,27 +700,130 @@ class AdvancedReconnaissance:
             return results
     
     def phase8_cloud_analysis(self, target: str) -> Dict[str, Any]:
-        """Phase 8: Cloud Analysis"""
-        print(f"🔍 Phase 8: Cloud Analysis for {target}")
+        """Phase 8: Advanced Cloud Analysis"""
+        print(f"🔍 Phase 8: Advanced Cloud Analysis for {target}")
         results = {
             'target': target,
             'phase': 8,
             'start_time': datetime.now().isoformat(),
             'cloud_resources': [],
+            'aws_buckets': [],
+            'azure_blobs': [],
+            'gcp_buckets': [],
+            'cdn_analysis': {},
+            'cloudflare_info': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            print("   ☁️ Cloud Analysis...")
-            results['techniques_used'].append('Cloud Analysis')
+            print("   ☁️ Advanced Cloud Analysis...")
+            results['techniques_used'].append('Advanced Cloud Analysis')
             
-            # Simple cloud analysis
-            results['cloud_resources'] = []
+            # AWS S3 Bucket Discovery
+            print("   🔍 AWS S3 Bucket Discovery...")
+            results['techniques_used'].append('AWS S3 Bucket Discovery')
+            
+            aws_bucket_patterns = [
+                f"{target}",
+                f"{target}-s3",
+                f"{target}-bucket",
+                f"{target}-assets",
+                f"{target}-files",
+                f"{target}-uploads",
+                f"{target}-backup",
+                f"{target}-static",
+                f"{target}-media",
+                f"{target}-images",
+                f"{target}-docs",
+                f"{target}-data"
+            ]
+            
+            for bucket_name in aws_bucket_patterns:
+                try:
+                    # Check if bucket exists (simplified check)
+                    bucket_url = f"https://{bucket_name}.s3.amazonaws.com/"
+                    response = requests.head(bucket_url, timeout=5)
+                    if response.status_code in [200, 403]:  # 403 means exists but no public access
+                        results['aws_buckets'].append({
+                            'bucket': bucket_name,
+                            'url': bucket_url,
+                            'status': 'exists',
+                            'public_access': response.status_code == 200
+                        })
+                        print(f"   ✅ Found AWS bucket: {bucket_name}")
+                except:
+                    pass
+            
+            # Azure Blob Storage Discovery
+            print("   🔍 Azure Blob Storage Discovery...")
+            results['techniques_used'].append('Azure Blob Storage Discovery')
+            
+            azure_patterns = [
+                f"{target}",
+                f"{target}-storage",
+                f"{target}-blob",
+                f"{target}-files",
+                f"{target}-assets"
+            ]
+            
+            for blob_name in azure_patterns:
+                try:
+                    blob_url = f"https://{blob_name}.blob.core.windows.net/"
+                    response = requests.head(blob_url, timeout=5)
+                    if response.status_code in [200, 403]:
+                        results['azure_blobs'].append({
+                            'blob': blob_name,
+                            'url': blob_url,
+                            'status': 'exists',
+                            'public_access': response.status_code == 200
+                        })
+                        print(f"   ✅ Found Azure blob: {blob_name}")
+                except:
+                    pass
+            
+            # GCP Storage Bucket Discovery
+            print("   🔍 GCP Storage Bucket Discovery...")
+            results['techniques_used'].append('GCP Storage Bucket Discovery')
+            
+            gcp_patterns = [
+                f"{target}",
+                f"{target}-storage",
+                f"{target}-bucket",
+                f"{target}-files"
+            ]
+            
+            for bucket_name in gcp_patterns:
+                try:
+                    bucket_url = f"https://storage.googleapis.com/{bucket_name}/"
+                    response = requests.head(bucket_url, timeout=5)
+                    if response.status_code in [200, 403]:
+                        results['gcp_buckets'].append({
+                            'bucket': bucket_name,
+                            'url': bucket_url,
+                            'status': 'exists',
+                            'public_access': response.status_code == 200
+                        })
+                        print(f"   ✅ Found GCP bucket: {bucket_name}")
+                except:
+                    pass
+            
+            # Cloudflare Analysis
+            print("   🔍 Cloudflare Analysis...")
+            results['techniques_used'].append('Cloudflare Analysis')
+            
+            try:
+                response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
+                cf_headers = {k: v for k, v in response.headers.items() if k.lower().startswith('cf-')}
+                if cf_headers:
+                    results['cloudflare_info'] = cf_headers
+                    print(f"   ✅ Cloudflare detected: {len(cf_headers)} headers")
+            except Exception as e:
+                results['errors'].append(f"Cloudflare analysis failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = "Cloud analysis completed"
+            results['summary'] = f"Found {len(results['aws_buckets'])} AWS buckets, {len(results['azure_blobs'])} Azure blobs, {len(results['gcp_buckets'])} GCP buckets"
             
             print(f"   ✅ Phase 8 completed: {results['summary']}")
             return results
@@ -732,27 +835,113 @@ class AdvancedReconnaissance:
             return results
     
     def phase9_osint_analysis(self, target: str) -> Dict[str, Any]:
-        """Phase 9: OSINT Analysis"""
-        print(f"🔍 Phase 9: OSINT Analysis for {target}")
+        """Phase 9: Advanced OSINT Analysis"""
+        print(f"🔍 Phase 9: Advanced OSINT Analysis for {target}")
         results = {
             'target': target,
             'phase': 9,
             'start_time': datetime.now().isoformat(),
             'osint_data': {},
+            'whois_info': {},
+            'dns_history': {},
+            'subdomain_history': {},
+            'certificate_history': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            print("   🔍 OSINT Analysis...")
-            results['techniques_used'].append('OSINT Analysis')
+            print("   🔍 Advanced OSINT Analysis...")
+            results['techniques_used'].append('Advanced OSINT Analysis')
             
-            # Simple OSINT analysis
-            results['osint_data'] = {}
+            # WHOIS Information
+            print("   📋 WHOIS Information...")
+            results['techniques_used'].append('WHOIS Information')
+            
+            try:
+                import whois
+                domain_info = whois.whois(target)
+                results['whois_info'] = {
+                    'registrar': str(domain_info.registrar) if domain_info.registrar else 'Unknown',
+                    'creation_date': str(domain_info.creation_date) if domain_info.creation_date else 'Unknown',
+                    'expiration_date': str(domain_info.expiration_date) if domain_info.expiration_date else 'Unknown',
+                    'name_servers': list(domain_info.name_servers) if domain_info.name_servers else [],
+                    'status': list(domain_info.status) if domain_info.status else [],
+                    'emails': list(domain_info.emails) if domain_info.emails else []
+                }
+                print(f"   ✅ WHOIS info collected for {target}")
+            except Exception as e:
+                results['errors'].append(f"WHOIS lookup failed: {str(e)}")
+            
+            # DNS History Analysis
+            print("   📡 DNS History Analysis...")
+            results['techniques_used'].append('DNS History Analysis')
+            
+            try:
+                # Check multiple DNS resolvers for historical data
+                dns_resolvers = ['8.8.8.8', '1.1.1.1', '208.67.222.222']
+                dns_history = []
+                
+                for resolver in dns_resolvers:
+                    try:
+                        resolver_obj = dns.resolver.Resolver()
+                        resolver_obj.nameservers = [resolver]
+                        resolver_obj.timeout = 3
+                        
+                        # Get various record types
+                        record_types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CNAME']
+                        for record_type in record_types:
+                            try:
+                                answers = resolver_obj.resolve(target, record_type)
+                                for answer in answers:
+                                    dns_history.append({
+                                        'resolver': resolver,
+                                        'type': record_type,
+                                        'value': str(answer)
+                                    })
+                            except:
+                                pass
+                    except:
+                        pass
+                
+                results['dns_history'] = dns_history
+                print(f"   ✅ DNS history collected: {len(dns_history)} records")
+                
+            except Exception as e:
+                results['errors'].append(f"DNS history analysis failed: {str(e)}")
+            
+            # Certificate Transparency Logs
+            print("   🔐 Certificate Transparency Analysis...")
+            results['techniques_used'].append('Certificate Transparency Analysis')
+            
+            try:
+                # Simulate certificate transparency lookup
+                cert_endpoints = [
+                    f"https://crt.sh/?q={target}&output=json",
+                    f"https://censys.io/api/v1/search/certificates?q={target}"
+                ]
+                
+                for endpoint in cert_endpoints:
+                    try:
+                        response = requests.get(endpoint, timeout=10)
+                        if response.status_code == 200:
+                            results['certificate_history'][endpoint] = {
+                                'status': 'accessible',
+                                'content_length': len(response.content)
+                            }
+                    except:
+                        results['certificate_history'][endpoint] = {
+                            'status': 'not_accessible'
+                        }
+                
+                print(f"   ✅ Certificate transparency checked: {len(results['certificate_history'])} endpoints")
+                
+            except Exception as e:
+                results['errors'].append(f"Certificate transparency analysis failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = "OSINT analysis completed"
+            results['summary'] = f"OSINT analysis completed with {len(results['techniques_used'])} techniques"
             
             print(f"   ✅ Phase 9 completed: {results['summary']}")
             return results
@@ -764,27 +953,154 @@ class AdvancedReconnaissance:
             return results
     
     def phase10_vulnerability_assessment(self, target: str) -> Dict[str, Any]:
-        """Phase 10: Vulnerability Assessment"""
-        print(f"🔍 Phase 10: Vulnerability Assessment for {target}")
+        """Phase 10: Advanced Vulnerability Assessment"""
+        print(f"🔍 Phase 10: Advanced Vulnerability Assessment for {target}")
         results = {
             'target': target,
             'phase': 10,
             'start_time': datetime.now().isoformat(),
             'vulnerabilities': [],
+            'security_headers': {},
+            'ssl_analysis': {},
+            'http_methods': [],
+            'cors_analysis': {},
+            'csp_analysis': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            print("   🔍 Vulnerability Assessment...")
-            results['techniques_used'].append('Vulnerability Assessment')
+            print("   🔍 Advanced Vulnerability Assessment...")
+            results['techniques_used'].append('Advanced Vulnerability Assessment')
             
-            # Simple vulnerability assessment
-            results['vulnerabilities'] = []
+            # Security Headers Analysis
+            print("   🛡️ Security Headers Analysis...")
+            results['techniques_used'].append('Security Headers Analysis')
+            
+            try:
+                response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
+                security_headers = {}
+                
+                # Check important security headers
+                security_header_checks = {
+                    'Strict-Transport-Security': 'HSTS',
+                    'X-Content-Type-Options': 'Content Type Options',
+                    'X-Frame-Options': 'Frame Options',
+                    'X-XSS-Protection': 'XSS Protection',
+                    'Content-Security-Policy': 'Content Security Policy',
+                    'Referrer-Policy': 'Referrer Policy',
+                    'Permissions-Policy': 'Permissions Policy',
+                    'Cross-Origin-Embedder-Policy': 'COEP',
+                    'Cross-Origin-Opener-Policy': 'COOP',
+                    'Cross-Origin-Resource-Policy': 'CORP'
+                }
+                
+                for header, description in security_header_checks.items():
+                    if header in response.headers:
+                        security_headers[header] = {
+                            'present': True,
+                            'value': response.headers[header],
+                            'description': description
+                        }
+                    else:
+                        security_headers[header] = {
+                            'present': False,
+                            'description': description,
+                            'risk': 'Missing security header'
+                        }
+                
+                results['security_headers'] = security_headers
+                print(f"   ✅ Security headers analyzed: {len([h for h in security_headers.values() if h['present']])} present")
+                
+            except Exception as e:
+                results['errors'].append(f"Security headers analysis failed: {str(e)}")
+            
+            # HTTP Methods Analysis
+            print("   🔍 HTTP Methods Analysis...")
+            results['techniques_used'].append('HTTP Methods Analysis')
+            
+            try:
+                methods_to_test = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT']
+                allowed_methods = []
+                
+                for method in methods_to_test:
+                    try:
+                        response = requests.request(method, f"https://{target}", timeout=5)
+                        if response.status_code not in [405, 501]:  # Method not allowed
+                            allowed_methods.append({
+                                'method': method,
+                                'status_code': response.status_code,
+                                'allowed': True
+                            })
+                    except:
+                        allowed_methods.append({
+                            'method': method,
+                            'status_code': 'error',
+                            'allowed': False
+                        })
+                
+                results['http_methods'] = allowed_methods
+                print(f"   ✅ HTTP methods analyzed: {len([m for m in allowed_methods if m['allowed']])} allowed")
+                
+            except Exception as e:
+                results['errors'].append(f"HTTP methods analysis failed: {str(e)}")
+            
+            # CORS Analysis
+            print("   🌐 CORS Analysis...")
+            results['techniques_used'].append('CORS Analysis')
+            
+            try:
+                cors_headers = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin', 'Not set'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods', 'Not set'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers', 'Not set'),
+                    'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials', 'Not set')
+                }
+                
+                results['cors_analysis'] = cors_headers
+                
+                # Check for wildcard CORS
+                if cors_headers['Access-Control-Allow-Origin'] == '*':
+                    results['vulnerabilities'].append({
+                        'type': 'CORS Misconfiguration',
+                        'severity': 'Medium',
+                        'description': 'Wildcard CORS policy allows any origin',
+                        'recommendation': 'Restrict CORS to specific domains'
+                    })
+                
+                print(f"   ✅ CORS analysis completed")
+                
+            except Exception as e:
+                results['errors'].append(f"CORS analysis failed: {str(e)}")
+            
+            # Content Security Policy Analysis
+            print("   🔒 Content Security Policy Analysis...")
+            results['techniques_used'].append('CSP Analysis')
+            
+            try:
+                csp_header = response.headers.get('Content-Security-Policy', 'Not set')
+                results['csp_analysis'] = {
+                    'present': csp_header != 'Not set',
+                    'value': csp_header,
+                    'risk': 'No CSP header' if csp_header == 'Not set' else 'CSP configured'
+                }
+                
+                if csp_header == 'Not set':
+                    results['vulnerabilities'].append({
+                        'type': 'Missing CSP',
+                        'severity': 'Medium',
+                        'description': 'No Content Security Policy header',
+                        'recommendation': 'Implement CSP to prevent XSS attacks'
+                    })
+                
+                print(f"   ✅ CSP analysis completed")
+                
+            except Exception as e:
+                results['errors'].append(f"CSP analysis failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = "Vulnerability assessment completed"
+            results['summary'] = f"Found {len(results['vulnerabilities'])} vulnerabilities using {len(results['techniques_used'])} techniques"
             
             print(f"   ✅ Phase 10 completed: {results['summary']}")
             return results
