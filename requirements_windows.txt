@@ -1,3 +1,4 @@
+# ARAT - Requirements for Windows
 # Core Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
@@ -10,14 +11,12 @@ aiohttp==3.9.1
 httpx==0.25.2
 urllib3==2.1.0
 
-# Database
+# Database (SQLite for Windows)
 sqlalchemy==2.0.23
-alembic==1.13.1
 
 # Configuration and Data
 pyyaml==6.0.1
 python-dotenv==1.0.0
-toml==0.10.2
 
 # Security and Crypto
 cryptography==41.0.8
