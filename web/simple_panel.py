@@ -431,27 +431,27 @@ class SimpleWebPanel:
                     
                     print(f"❌ {error_msg}")
             
-               # Complete task
-               self.active_tasks[task_id]['status'] = 'completed'
-               self.active_tasks[task_id]['progress'] = 100
-               self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
+            # Complete task
+            self.active_tasks[task_id]['status'] = 'completed'
+            self.active_tasks[task_id]['progress'] = 100
+            self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
 
-               # Send completion message with target info
-               self.socketio.emit('task_completed', {
-                   'task_id': task_id,
-                   'target': target,
-                   'message': 'Reconnaissance completed successfully',
-                   'results': self.active_tasks[task_id]['results'],
-                   'summary': {
-                       'total_phases': len(phases),
-                       'completed_phases': len(phases),
-                       'total_findings': self._count_total_findings(self.active_tasks[task_id]['results']),
-                       'duration': self._calculate_duration(self.active_tasks[task_id])
-                   }
-               }, room=f'task_{task_id}')
+            # Send completion message with target info
+            self.socketio.emit('task_completed', {
+                'task_id': task_id,
+                'target': target,
+                'message': 'Reconnaissance completed successfully',
+                'results': self.active_tasks[task_id]['results'],
+                'summary': {
+                    'total_phases': len(phases),
+                    'completed_phases': len(phases),
+                    'total_findings': self._count_total_findings(self.active_tasks[task_id]['results']),
+                    'duration': self._calculate_duration(self.active_tasks[task_id])
+                }
+            }, room=f'task_{task_id}')
 
-               print(f"✅ Task {task_id} completed for {target}")
-               print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
+            print(f"✅ Task {task_id} completed for {target}")
+            print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
             
         except Exception as e:
             error_msg = f"Error in task {task_id}: {str(e)}"
