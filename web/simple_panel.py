@@ -333,9 +333,9 @@ class SimpleWebPanel:
                         from advanced_reconnaissance import AdvancedReconnaissance
                         recon = AdvancedReconnaissance()
                         
-                        # Add delay to make phases more realistic
-                        print(f"   ⏳ Running Phase {phase_num} for {target}...")
-                        time.sleep(2)  # Add realistic delay
+                    # Add delay to make phases more realistic
+                    print(f"   ⏳ Running Phase {phase_num} for {target}...")
+                    time.sleep(3)  # Add realistic delay
                         
                         result = recon.run_phase(phase_num, target)
                         
