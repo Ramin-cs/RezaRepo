@@ -415,6 +415,11 @@
                 progressBar.style.width = '100%';
             }
             
+            // Show results summary
+            if (data.results) {
+                showResultsSummary(data.results);
+            }
+            
             // Hide live phase display
             const livePhaseContainer = document.getElementById('live-phase-container');
             if (livePhaseContainer) {
@@ -525,14 +530,22 @@
         
         // Stop reconnaissance
         document.getElementById('stop-recon').addEventListener('click', function() {
-            if (currentTaskId) {
+            // Check if there's an active task in the active_tasks object
+            const hasActiveTask = Object.keys(window.activeTasks || {}).some(taskId => {
+                const task = window.activeTasks[taskId];
+                return task && task.status === 'running';
+            });
+            
+            if (currentTaskId || hasActiveTask) {
+                const taskIdToStop = currentTaskId || Object.keys(window.activeTasks || {})[0];
+                
                 // Send stop request
                 fetch('/api/stop', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ task_id: currentTaskId })
+                    body: JSON.stringify({ task_id: taskIdToStop })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -543,16 +556,16 @@
                             currentStatus.textContent = 'Reconnaissance stopped by user';
                             currentStatus.className = 'alert alert-warning';
                         }
-                        
+
                         // Hide live phase display
                         const livePhaseContainer = document.getElementById('live-phase-container');
                         if (livePhaseContainer) {
                             livePhaseContainer.style.display = 'none';
                         }
-                        
+
                         // Reset current task
                         currentTaskId = null;
-                        
+
                         alert('Reconnaissance stopped');
                     } else {
                         alert('Error stopping reconnaissance: ' + data.error);
@@ -612,6 +625,80 @@
             } else {
                 selectAllCheckbox.indeterminate = true;
             }
+        }
+        
+        // Show results summary
+        function showResultsSummary(results) {
+            console.log('Showing results summary:', results);
+            
+            // Create results container if it doesn't exist
+            let resultsContainer = document.getElementById('results-summary');
+            if (!resultsContainer) {
+                resultsContainer = document.createElement('div');
+                resultsContainer.id = 'results-summary';
+                resultsContainer.className = 'mt-4';
+                resultsContainer.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-line"></i> Reconnaissance Results Summary</h5>
+                        </div>
+                        <div class="card-body" id="results-content">
+                        </div>
+                    </div>
+                `;
+                
+                // Insert after the form
+                const form = document.getElementById('recon-form');
+                form.parentNode.insertBefore(resultsContainer, form.nextSibling);
+            }
+            
+            const resultsContent = document.getElementById('results-content');
+            let html = '<div class="row">';
+            
+            // Phase names mapping
+            const phaseNames = {
+                1: 'Real IP Extraction',
+                2: 'Subdomain Discovery',
+                3: 'Port Scanning',
+                4: 'Technology Detection',
+                5: 'Directory Discovery',
+                6: 'Parameter Discovery',
+                7: 'Endpoint Discovery',
+                8: 'Cloud Analysis',
+                9: 'OSINT Analysis',
+                10: 'Vulnerability Assessment'
+            };
+            
+            // Process each phase result
+            for (const [phaseKey, result] of Object.entries(results)) {
+                if (phaseKey.startsWith('phase_')) {
+                    const phaseNum = parseInt(phaseKey.split('_')[1]);
+                    const phaseName = phaseNames[phaseNum] || `Phase ${phaseNum}`;
+                    
+                    html += `
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                        Phase ${phaseNum}: ${phaseName}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">${result.summary || 'Completed successfully'}</p>
+                                    <small class="text-muted">
+                                        Status: ${result.status || 'completed'}<br>
+                                        Techniques: ${result.techniques_used ? result.techniques_used.length : 0}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            html += '</div>';
+            resultsContent.innerHTML = html;
         }
     </script>
 </body>

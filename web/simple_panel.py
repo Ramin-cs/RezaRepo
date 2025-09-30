@@ -168,30 +168,46 @@ class SimpleWebPanel:
             try:
                 data = request.get_json()
                 task_id = data.get('task_id')
-                
+
                 if not task_id:
                     return jsonify({'success': False, 'error': 'Task ID required'})
-                
+
                 if task_id in self.active_tasks:
                     # Mark task as stopped
                     self.active_tasks[task_id]['status'] = 'stopped'
                     self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
-                    
+
                     # Send stop notification
                     self.socketio.emit('task_error', {
                         'task_id': task_id,
                         'message': 'Task stopped by user'
                     }, room=f'task_{task_id}')
-                    
+
                     return jsonify({'success': True, 'message': 'Task stopped successfully'})
                 else:
                     return jsonify({'success': False, 'error': 'Task not found'})
-                    
+
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
-        @self.app.route('/api/results/<target>', methods=['GET'])
-        def api_results(target):
+        @self.app.route('/api/results/<task_id>', methods=['GET'])
+        def api_results(task_id):
+            """Get reconnaissance results"""
+            try:
+                if task_id in self.active_tasks:
+                    task = self.active_tasks[task_id]
+                    return jsonify({
+                        'success': True,
+                        'task': task
+                    })
+                else:
+                    return jsonify({'success': False, 'error': 'Task not found'})
+            
+            except Exception as e:
+                return jsonify({'success': False, 'error': str(e)})
+        
+        @self.app.route('/api/results-by-target/<target>', methods=['GET'])
+        def api_results_by_target(target):
             """Get results"""
             try:
                 # Simple results
