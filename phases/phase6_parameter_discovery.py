@@ -428,17 +428,58 @@ class Phase6ParameterDiscovery:
     def _run_x8(self, target: str) -> Dict[str, Any]:
         """Run x8 if available"""
         try:
-            cmd = ['x8', '-u', f"https://{target}", '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # Try different wordlist paths
+            wordlist_paths = [
+                '/workspace/wordlists/assetnote_parameters.txt',
+                '/usr/share/wordlists/assetnote_parameters.txt',
+                '/opt/wordlists/assetnote_parameters.txt'
+            ]
             
-            if result.returncode == 0:
-                return {
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'success': True
-                }
-        except:
-            pass
+            wordlist = None
+            for path in wordlist_paths:
+                if os.path.exists(path):
+                    wordlist = path
+                    break
+            
+            if wordlist:
+                cmd = ['x8', '-u', f"https://{target}", '-w', wordlist, '--quiet', '-o', '/tmp/x8_output.txt']
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                
+                # Read output file if it exists
+                output_content = ""
+                if os.path.exists('/tmp/x8_output.txt'):
+                    with open('/tmp/x8_output.txt', 'r') as f:
+                        output_content = f.read()
+                    os.remove('/tmp/x8_output.txt')
+                
+                if result.returncode == 0 or output_content:
+                    return {
+                        'stdout': result.stdout + output_content,
+                        'stderr': result.stderr,
+                        'success': True,
+                        'wordlist_used': wordlist
+                    }
+            else:
+                # Fallback to default x8 run
+                cmd = ['x8', '-u', f"https://{target}", '--quiet', '-o', '/tmp/x8_output.txt']
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                
+                # Read output file if it exists
+                output_content = ""
+                if os.path.exists('/tmp/x8_output.txt'):
+                    with open('/tmp/x8_output.txt', 'r') as f:
+                        output_content = f.read()
+                    os.remove('/tmp/x8_output.txt')
+                
+                if result.returncode == 0 or output_content:
+                    return {
+                        'stdout': result.stdout + output_content,
+                        'stderr': result.stderr,
+                        'success': True,
+                        'wordlist_used': 'default'
+                    }
+        except Exception as e:
+            print(f"   ❌ x8 error: {e}")
         return None
     
     def _run_wayback_machine(self, target: str) -> Dict[str, Any]:

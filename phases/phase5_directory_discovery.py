@@ -320,17 +320,41 @@ class Phase5DirectoryDiscovery:
     def _run_gobuster(self, target: str) -> Dict[str, Any]:
         """Run gobuster if available"""
         try:
-            cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', '/usr/share/wordlists/dirb/common.txt', '-t', '50', '-q']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # Try different wordlist paths
+            wordlist_paths = [
+                '/usr/share/wordlists/dirb/common.txt',
+                '/usr/share/wordlists/SecLists/Discovery/Web-Content/common.txt',
+                '/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt',
+                '/usr/share/wordlists/dirb/big.txt',
+                '/opt/SecLists/Discovery/Web-Content/common.txt'
+            ]
             
-            if result.returncode == 0:
-                return {
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'success': True
-                }
-        except:
-            pass
+            wordlist = None
+            for path in wordlist_paths:
+                if os.path.exists(path):
+                    wordlist = path
+                    break
+            
+            if wordlist:
+                cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', wordlist, '-t', '50', '-q', '-o', '/tmp/gobuster_output.txt']
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                
+                # Read output file if it exists
+                output_content = ""
+                if os.path.exists('/tmp/gobuster_output.txt'):
+                    with open('/tmp/gobuster_output.txt', 'r') as f:
+                        output_content = f.read()
+                    os.remove('/tmp/gobuster_output.txt')
+                
+                if result.returncode == 0 or output_content:
+                    return {
+                        'stdout': result.stdout + output_content,
+                        'stderr': result.stderr,
+                        'success': True,
+                        'wordlist_used': wordlist
+                    }
+        except Exception as e:
+            print(f"   ❌ Gobuster error: {e}")
         return None
     
     def _is_dirsearch_available(self) -> bool:

@@ -54,10 +54,16 @@
                         <i class="fas fa-cogs me-2"></i>
                         Phase Management
                     </h2>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#runModal">
-                        <i class="fas fa-play me-2"></i>
-                        Start Reconnaissance
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#runModal">
+                            <i class="fas fa-play me-2"></i>
+                            Start Reconnaissance
+                        </button>
+                        <button class="btn btn-info" onclick="viewLastReport()">
+                            <i class="fas fa-chart-line me-2"></i>
+                            View Last Report
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -420,6 +426,11 @@
             if (data.results && Object.keys(data.results).length > 0) {
                 console.log('Showing results summary with data:', data.results);
                 showResultsSummary(data.results);
+                
+                // Store results in localStorage for report page
+                localStorage.setItem('lastReconResults', JSON.stringify(data.results));
+                localStorage.setItem('lastReconTarget', data.target || 'Unknown');
+                localStorage.setItem('lastReconTaskId', data.task_id || '');
             } else {
                 console.log('No results data to display');
             }
@@ -433,7 +444,16 @@
             // Reset current task
             currentTaskId = null;
             
-            alert('Reconnaissance completed!');
+            // Show completion message with option to view report
+            const viewReport = confirm('Reconnaissance completed successfully!\n\nDo you want to view the detailed report?');
+            if (viewReport) {
+                // Redirect to report page
+                const target = data.target || localStorage.getItem('lastReconTarget') || 'Unknown';
+                const taskId = data.task_id || localStorage.getItem('lastReconTaskId') || '';
+                window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+            } else {
+                alert('Reconnaissance completed! You can view the report later from the dashboard.');
+            }
         });
         
         socket.on('task_error', function(data) {
@@ -456,6 +476,45 @@
             currentTaskId = null;
             
             alert(`Error: ${data.message}`);
+        });
+        
+        socket.on('task_stopped', function(data) {
+            console.log('Task stopped:', data);
+            
+            // Update status
+            const currentStatus = document.getElementById('current-status');
+            if (currentStatus) {
+                currentStatus.textContent = 'Reconnaissance stopped by user';
+                currentStatus.className = 'alert alert-warning';
+            }
+            
+            // Show partial results if available
+            if (data.results && Object.keys(data.results).length > 0) {
+                console.log('Showing partial results:', data.results);
+                showResultsSummary(data.results);
+                
+                // Store results in localStorage for report page
+                localStorage.setItem('lastReconResults', JSON.stringify(data.results));
+                localStorage.setItem('lastReconTarget', data.target || 'Unknown');
+                localStorage.setItem('lastReconTaskId', data.task_id || '');
+                
+                // Show option to view partial report
+                const viewReport = confirm('Reconnaissance stopped.\n\nDo you want to view the partial results report?');
+                if (viewReport) {
+                    const target = data.target || localStorage.getItem('lastReconTarget') || 'Unknown';
+                    const taskId = data.task_id || localStorage.getItem('lastReconTaskId') || '';
+                    window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+                }
+            }
+            
+            // Hide live phase display
+            const livePhaseContainer = document.getElementById('live-phase-container');
+            if (livePhaseContainer) {
+                livePhaseContainer.style.display = 'none';
+            }
+            
+            // Reset current task
+            currentTaskId = null;
         });
 
         // Start reconnaissance
@@ -631,6 +690,21 @@
             }
         }
         
+        // View last report
+        function viewLastReport() {
+            const lastResults = localStorage.getItem('lastReconResults');
+            const lastTarget = localStorage.getItem('lastReconTarget');
+            const lastTaskId = localStorage.getItem('lastReconTaskId');
+            
+            if (lastResults && lastTarget) {
+                const target = lastTarget || 'Unknown';
+                const taskId = lastTaskId || '';
+                window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+            } else {
+                alert('No previous reconnaissance results found.\n\nPlease run a reconnaissance first.');
+            }
+        }
+
         // Show results summary
         function showResultsSummary(results) {
             console.log('Showing results summary:', results);

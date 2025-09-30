@@ -229,6 +229,16 @@ class SimpleWebPanel:
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
+        @self.app.route('/report')
+        def report():
+            """Report page"""
+            try:
+                return render_template('simple_report.html', 
+                                     target=request.args.get('target', 'Unknown'),
+                                     date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            except Exception as e:
+                return f"Error loading report: {str(e)}"
+        
         @self.app.route('/api/settings', methods=['GET', 'POST'])
         def api_settings():
             """Settings"""
