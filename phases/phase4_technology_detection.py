@@ -240,35 +240,40 @@ class Phase4TechnologyDetection:
                 except:
                     pass
             
-            # Technique 4: Wappalyzer Integration (if available)
-            print("   🔍 Wappalyzer Integration...")
-            results['techniques_used'].append('Wappalyzer Integration')
+            # Technique 4: External Tools Integration
+            print("   🔍 External Tools Integration...")
+            results['techniques_used'].append('External Tools Integration')
             
-            if self._is_wappalyzer_available():
-                try:
-                    wappalyzer_results = self._run_wappalyzer(target)
-                    if wappalyzer_results:
-                        results['wappalyzer_results'] = wappalyzer_results
-                        print(f"   ✅ Wappalyzer analysis completed")
-                except Exception as e:
-                    results['errors'].append(f"Wappalyzer analysis failed: {str(e)}")
-            else:
-                print("   ℹ️ Wappalyzer not available, skipping")
+            external_tools = [
+                ('Wappalyzer', self._is_wappalyzer_available, self._run_wappalyzer),
+                ('Whatweb', self._is_whatweb_available, self._run_whatweb),
+                ('HTTPx', self._is_httpx_available, self._run_httpx)
+            ]
             
-            # Technique 5: Whatweb Integration (if available)
-            print("   🔍 Whatweb Integration...")
-            results['techniques_used'].append('Whatweb Integration')
+            for tool_name, check_func, run_func in external_tools:
+                if check_func():
+                    try:
+                        tool_results = run_func(target)
+                        if tool_results and tool_results.get('success'):
+                            results['tool_results'][tool_name.lower()] = tool_results
+                            
+                            # Extract technologies from tool results
+                            if 'technologies' in tool_results:
+                                for tech in tool_results['technologies']:
+                                    if tech not in results['technologies']:
+                                        results['technologies'].append(tech)
+                                        print(f"   ✅ {tool_name} found: {tech}")
+                            
+                            print(f"   ✅ {tool_name} completed successfully")
+                        else:
+                            print(f"   ⚠️ {tool_name} completed but no results")
+                    except Exception as e:
+                        error_msg = f"{tool_name} failed: {str(e)}"
+                        results['errors'].append(error_msg)
+                        print(f"   ❌ {error_msg}")
+                else:
+                    print(f"   ℹ️ {tool_name} not available, skipping")
             
-            if self._is_whatweb_available():
-                try:
-                    whatweb_results = self._run_whatweb(target)
-                    if whatweb_results:
-                        results['whatweb_results'] = whatweb_results
-                        print(f"   ✅ Whatweb analysis completed")
-                except Exception as e:
-                    results['errors'].append(f"Whatweb analysis failed: {str(e)}")
-            else:
-                print("   ℹ️ Whatweb not available, skipping")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
@@ -346,6 +351,46 @@ class Phase4TechnologyDetection:
         except:
             pass
         return None
+    
+    def _is_httpx_available(self) -> bool:
+        """Check if httpx is available"""
+        try:
+            subprocess.run(['httpx', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_httpx(self, target: str) -> Dict[str, Any]:
+        """Run httpx for technology detection"""
+        try:
+            # Run httpx with tech detection
+            cmd = ['httpx', '-u', f"https://{target}", '-silent', '-status-code', '-content-length', '-title', '-tech-detect', '-o', '/tmp/httpx_tech_results.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            technologies = []
+            if os.path.exists('/tmp/httpx_tech_results.txt'):
+                with open('/tmp/httpx_tech_results.txt', 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and 'tech-detect' in line.lower():
+                            # Extract technologies from httpx output
+                            tech_match = re.search(r'tech-detect:\[([^\]]+)\]', line, re.IGNORECASE)
+                            if tech_match:
+                                tech_list = tech_match.group(1).split(',')
+                                for tech in tech_list:
+                                    tech = tech.strip()
+                                    if tech and tech not in technologies:
+                                        technologies.append(tech)
+                
+                os.remove('/tmp/httpx_tech_results.txt')
+            
+            return {
+                'technologies': technologies,
+                'success': len(technologies) > 0,
+                'tool': 'httpx'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'httpx'}
 
 if __name__ == "__main__":
     phase = Phase4TechnologyDetection()

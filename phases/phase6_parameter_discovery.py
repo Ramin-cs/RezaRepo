@@ -169,9 +169,17 @@ class Phase6ParameterDiscovery:
             except Exception as e:
                 results['errors'].append(f"JavaScript analysis failed: {str(e)}")
             
-            # Technique 2: Parameter Discovery
-            print("   🔍 Parameter Discovery...")
-            results['techniques_used'].append('Parameter Discovery')
+            # Technique 2: Comprehensive Parameter Discovery
+            print("   🔍 Comprehensive Parameter Discovery...")
+            results['techniques_used'].append('Comprehensive Parameter Discovery')
+            
+            # Initialize parameter categories
+            results['url_parameters'] = []
+            results['form_parameters'] = []
+            results['javascript_variables'] = []
+            results['http_headers'] = []
+            results['meta_tags'] = []
+            results['cookie_parameters'] = []
             
             # Extended parameter wordlist
             extended_params = self.parameter_wordlist + [
@@ -308,44 +316,65 @@ class Phase6ParameterDiscovery:
             except Exception as e:
                 results['errors'].append(f"Wayback Machine scan failed: {str(e)}")
             
-            # Technique 6: URL Parameter Analysis
-            print("   🔗 URL Parameter Analysis...")
-            results['techniques_used'].append('URL Parameter Analysis')
+            # Technique 6: URL Parameters Analysis
+            print("   🔗 URL Parameters Analysis...")
+            results['techniques_used'].append('URL Parameters Analysis')
             
-            # Test common parameters with different values
-            test_params = ['id', 'user', 'page', 'search', 'category', 'type', 'status']
-            test_values = ['1', 'admin', 'test', 'debug', 'true', 'false', 'null', 'undefined']
+            try:
+                response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
+                
+                # Parse current URL for existing parameters
+                from urllib.parse import urlparse, parse_qs
+                parsed_url = urlparse(response.url)
+                if parsed_url.query:
+                    query_params = parse_qs(parsed_url.query)
+                    for param, values in query_params.items():
+                        results['url_parameters'].append({
+                            'parameter': param,
+                            'values': values,
+                            'source': 'current_url',
+                            'type': 'query_string'
+                        })
+                        print(f"   ✅ URL parameter found: {param} = {values}")
+                
+                # Test common parameters with different values
+                test_params = ['id', 'user', 'page', 'search', 'category', 'type', 'status', 'sort', 'filter', 'limit', 'offset']
+                test_values = ['1', 'admin', 'test', 'debug', 'true', 'false', 'null', 'undefined']
+                
+                for param in test_params:
+                    for value in test_values:
+                        try:
+                            url = f"https://{target}/?{param}={value}"
+                            test_response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
+                            
+                            if test_response.status_code not in [404, 400]:  # Not a standard error
+                                results['url_parameters'].append({
+                                    'parameter': param,
+                                    'test_value': value,
+                                    'response_code': test_response.status_code,
+                                    'content_length': len(test_response.content),
+                                    'source': 'parameter_testing',
+                                    'type': 'query_string',
+                                    'risk_level': self._assess_parameter_risk(param)
+                                })
+                                print(f"   ✅ Parameter test: {param}={value} -> {test_response.status_code}")
+                        except:
+                            pass
+                            
+            except Exception as e:
+                results['errors'].append(f"URL parameters analysis failed: {str(e)}")
             
-            for param in test_params:
-                for value in test_values:
-                    try:
-                        url = f"https://{target}/?{param}={value}"
-                        response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
-                        
-                        if response.status_code not in [404, 400]:  # Not a standard error
-                            results['parameters_found'].append({
-                                'parameter': param,
-                                'type': 'url_analysis',
-                                'source': 'testing',
-                                'test_value': value,
-                                'response_code': response.status_code,
-                                'risk_level': self._assess_parameter_risk(param)
-                            })
-                            print(f"   ✅ Parameter test: {param}={value} -> {response.status_code}")
-                    except:
-                        pass
-            
-            # Technique 7: Form Parameter Discovery
-            print("   📝 Form Parameter Discovery...")
-            results['techniques_used'].append('Form Parameter Discovery')
+            # Technique 7: Form Parameters Discovery
+            print("   📝 Form Parameters Discovery...")
+            results['techniques_used'].append('Form Parameters Discovery')
             
             try:
                 response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
                 content = response.text
                 
-                # Extract form parameters
+                # Extract form parameters with detailed analysis
                 form_patterns = [
-                    r'<input[^>]*name=["\']([^"\']*)["\'][^>]*>',
+                    r'<input[^>]*name=["\']([^"\']*)["\'][^>]*(?:type=["\']([^"\']*)["\'])?[^>]*>',
                     r'<select[^>]*name=["\']([^"\']*)["\'][^>]*>',
                     r'<textarea[^>]*name=["\']([^"\']*)["\'][^>]*>',
                     r'<button[^>]*name=["\']([^"\']*)["\'][^>]*>'
@@ -354,17 +383,36 @@ class Phase6ParameterDiscovery:
                 for pattern in form_patterns:
                     matches = re.findall(pattern, content, re.IGNORECASE)
                     for match in matches:
-                        if match not in [p['parameter'] for p in results['parameters_found']]:
-                            results['parameters_found'].append({
-                                'parameter': match,
-                                'type': 'form',
-                                'source': 'html_analysis',
-                                'risk_level': self._assess_parameter_risk(match)
-                            })
-                            print(f"   ✅ Form parameter found: {match}")
+                        param_name = match[0] if isinstance(match, tuple) else match
+                        param_type = match[1] if isinstance(match, tuple) and len(match) > 1 else 'text'
+                        
+                        # Check if it's hidden field
+                        is_hidden = 'hidden' in pattern.lower() if isinstance(match, tuple) else False
+                        
+                        results['form_parameters'].append({
+                            'parameter': param_name,
+                            'type': param_type,
+                            'is_hidden': is_hidden,
+                            'source': 'html_form_analysis',
+                            'risk_level': self._assess_parameter_risk(param_name)
+                        })
+                        print(f"   ✅ Form parameter found: {param_name} ({param_type})")
+                
+                # Extract GET/POST forms
+                form_actions = re.findall(r'<form[^>]*action=["\']([^"\']*)["\'][^>]*method=["\']([^"\']*)["\'][^>]*>', content, re.IGNORECASE)
+                for action, method in form_actions:
+                    results['form_parameters'].append({
+                        'parameter': f"form_action_{action}",
+                        'type': 'form_action',
+                        'method': method.upper(),
+                        'action': action,
+                        'source': 'html_form_analysis',
+                        'risk_level': 'medium'
+                    })
+                    print(f"   ✅ Form action found: {action} ({method})")
                 
             except Exception as e:
-                results['errors'].append(f"Form parameter discovery failed: {str(e)}")
+                results['errors'].append(f"Form parameters discovery failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'

@@ -441,20 +441,23 @@
                 livePhaseContainer.style.display = 'none';
             }
             
+            // Store task info before resetting
+            const target = data.target || localStorage.getItem('lastReconTarget') || 'Unknown';
+            const taskId = data.task_id || localStorage.getItem('lastReconTaskId') || '';
+            
+            // Store results in localStorage for report page
+            localStorage.setItem('lastReconResults', JSON.stringify(data.results || {}));
+            localStorage.setItem('lastReconTarget', target);
+            localStorage.setItem('lastReconTaskId', taskId);
+            
             // Reset current task
             currentTaskId = null;
             
-            // Auto redirect to report after 3 seconds
-            setTimeout(() => {
-                const target = data.target || localStorage.getItem('lastReconTarget') || 'Unknown';
-                const taskId = data.task_id || localStorage.getItem('lastReconTaskId') || '';
-                
-                // Show completion message
-                alert('Reconnaissance completed successfully!\n\nRedirecting to report...');
-                
-                // Redirect to report page
-                window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
-            }, 3000);
+            // Show completion message immediately
+            alert('Reconnaissance completed successfully!\n\nRedirecting to report...');
+            
+            // Redirect to report page immediately
+            window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
         });
         
         socket.on('task_error', function(data) {

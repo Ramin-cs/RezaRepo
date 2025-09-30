@@ -256,7 +256,8 @@ class Phase2SubdomainDiscovery:
                 ('Amass', self._is_amass_available, self._run_amass),
                 ('Findomain', self._is_findomain_available, self._run_findomain),
                 ('Subfinder', self._is_subfinder_available, self._run_subfinder),
-                ('Assetfinder', self._is_assetfinder_available, self._run_assetfinder)
+                ('Assetfinder', self._is_assetfinder_available, self._run_assetfinder),
+                ('HTTPx', self._is_httpx_available, self._run_httpx)
             ]
             
             for tool_name, check_func, run_func in external_tools:
@@ -480,6 +481,69 @@ class Phase2SubdomainDiscovery:
             }
         except Exception as e:
             return {'success': False, 'error': str(e), 'tool': 'assetfinder'}
+    
+    def _is_httpx_available(self) -> bool:
+        """Check if httpx is available"""
+        try:
+            subprocess.run(['httpx', '--help'], capture_output=True, timeout=5)
+            return True
+        except:
+            return False
+    
+    def _run_httpx(self, target: str) -> Dict[str, Any]:
+        """Run httpx for subdomain validation"""
+        try:
+            # First get all discovered subdomains
+            all_subdomains = [sub['subdomain'] for sub in self.subdomains if isinstance(sub, dict)] + [sub for sub in self.subdomains if isinstance(sub, str)]
+            
+            if not all_subdomains:
+                return {'success': False, 'error': 'No subdomains to validate', 'tool': 'httpx'}
+            
+            # Create temporary file with subdomains
+            with open('/tmp/subdomains_for_httpx.txt', 'w') as f:
+                for subdomain in all_subdomains:
+                    f.write(f"{subdomain}\n")
+            
+            # Run httpx
+            cmd = ['httpx', '-l', '/tmp/subdomains_for_httpx.txt', '-silent', '-status-code', '-content-length', '-title', '-tech-detect', '-o', '/tmp/httpx_results.txt']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            live_subdomains = []
+            if os.path.exists('/tmp/httpx_results.txt'):
+                with open('/tmp/httpx_results.txt', 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            # Parse httpx output format: URL [status_code] [content_length] [title] [tech]
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                url = parts[0]
+                                status_code = parts[1] if parts[1].isdigit() else 'unknown'
+                                content_length = parts[2] if len(parts) > 2 and parts[2].isdigit() else 'unknown'
+                                title = ' '.join(parts[3:]) if len(parts) > 3 else 'unknown'
+                                
+                                live_subdomains.append({
+                                    'url': url,
+                                    'status_code': status_code,
+                                    'content_length': content_length,
+                                    'title': title,
+                                    'live': True
+                                })
+                
+                os.remove('/tmp/httpx_results.txt')
+            
+            # Cleanup
+            if os.path.exists('/tmp/subdomains_for_httpx.txt'):
+                os.remove('/tmp/subdomains_for_httpx.txt')
+            
+            return {
+                'subdomains': [sub['url'] for sub in live_subdomains],
+                'live_subdomains': live_subdomains,
+                'success': len(live_subdomains) > 0,
+                'tool': 'httpx'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'httpx'}
 
 if __name__ == "__main__":
     phase = Phase2SubdomainDiscovery()
