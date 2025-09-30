@@ -11,7 +11,12 @@ from datetime import datetime
 from typing import Dict, Any, List
 import json
 import re
+import os
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Add Go tools to PATH
+os.environ['PATH'] = os.environ.get('PATH', '') + ':/home/ubuntu/go/bin'
 
 class Phase2SubdomainDiscovery:
     """Advanced Subdomain Discovery with comprehensive techniques"""
@@ -426,15 +431,36 @@ class Phase2SubdomainDiscovery:
     def _is_subfinder_available(self) -> bool:
         """Check if subfinder is available"""
         try:
-            subprocess.run(['subfinder', '--help'], capture_output=True, timeout=5)
-            return True
+            # Try multiple paths
+            paths = ['subfinder', '/home/ubuntu/go/bin/subfinder', '/usr/local/bin/subfinder']
+            for path in paths:
+                try:
+                    subprocess.run([path, '--help'], capture_output=True, timeout=5)
+                    return True
+                except:
+                    continue
+            return False
         except:
             return False
     
     def _run_subfinder(self, target: str) -> Dict[str, Any]:
         """Run subfinder if available"""
         try:
-            cmd = ['subfinder', '-d', target, '-silent', '-o', '/tmp/subfinder_output.txt']
+            # Try multiple paths
+            paths = ['subfinder', '/home/ubuntu/go/bin/subfinder', '/usr/local/bin/subfinder']
+            subfinder_path = None
+            for path in paths:
+                try:
+                    subprocess.run([path, '--help'], capture_output=True, timeout=5)
+                    subfinder_path = path
+                    break
+                except:
+                    continue
+            
+            if not subfinder_path:
+                return {'success': False, 'error': 'Subfinder not found', 'tool': 'subfinder'}
+            
+            cmd = [subfinder_path, '-d', target, '-silent', '-o', '/tmp/subfinder_output.txt']
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             
             subdomains = []
@@ -485,8 +511,15 @@ class Phase2SubdomainDiscovery:
     def _is_httpx_available(self) -> bool:
         """Check if httpx is available"""
         try:
-            subprocess.run(['httpx', '--help'], capture_output=True, timeout=5)
-            return True
+            # Try multiple paths
+            paths = ['httpx', '/home/ubuntu/go/bin/httpx', '/usr/local/bin/httpx']
+            for path in paths:
+                try:
+                    subprocess.run([path, '--help'], capture_output=True, timeout=5)
+                    return True
+                except:
+                    continue
+            return False
         except:
             return False
     

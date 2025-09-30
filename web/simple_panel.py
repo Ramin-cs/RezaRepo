@@ -469,6 +469,11 @@ class SimpleWebPanel:
             print(f"✅ Task {task_id} completed for {target}")
             print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
             
+            # Remove completed task from active tasks
+            if task_id in self.active_tasks:
+                del self.active_tasks[task_id]
+                print(f"🗑️ Task {task_id} removed from active tasks")
+            
         except Exception as e:
             error_msg = f"Error in task {task_id}: {str(e)}"
             self.active_tasks[task_id]['status'] = 'error'

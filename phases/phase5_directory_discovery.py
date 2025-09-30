@@ -14,6 +14,9 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Add Go tools to PATH
+os.environ['PATH'] = os.environ.get('PATH', '') + ':/home/ubuntu/go/bin'
+
 class Phase5DirectoryDiscovery:
     """Advanced Directory Discovery with comprehensive crawling"""
     
@@ -278,8 +281,15 @@ class Phase5DirectoryDiscovery:
     def _is_gobuster_available(self) -> bool:
         """Check if gobuster is available"""
         try:
-            subprocess.run(['gobuster', '--version'], capture_output=True, timeout=5)
-            return True
+            # Try multiple paths
+            paths = ['gobuster', '/home/ubuntu/go/bin/gobuster', '/usr/local/bin/gobuster']
+            for path in paths:
+                try:
+                    subprocess.run([path, '--version'], capture_output=True, timeout=5)
+                    return True
+                except:
+                    continue
+            return False
         except:
             return False
     
