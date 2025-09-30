@@ -454,10 +454,15 @@
             currentTaskId = null;
             
             // Show completion message immediately
+            console.log(`🎉 Task completed for target: ${target}, taskId: ${taskId}`);
+            console.log(`💾 Results stored in localStorage:`, data.results);
+            
             alert('Reconnaissance completed successfully!\n\nRedirecting to report...');
             
             // Redirect to report page immediately
-            window.location.href = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+            const redirectUrl = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+            console.log(`🚀 Redirecting to: ${redirectUrl}`);
+            window.location.href = redirectUrl;
         });
         
         socket.on('task_error', function(data) {

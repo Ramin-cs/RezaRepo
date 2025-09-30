@@ -173,16 +173,28 @@ class SimpleWebPanel:
                     return jsonify({'success': False, 'error': 'Task ID required'})
 
                 if task_id in self.active_tasks:
+                    print(f"🛑 Stopping task {task_id}")
+                    
                     # Mark task as stopped
                     self.active_tasks[task_id]['status'] = 'stopped'
                     self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
 
-                    # Send stop notification
-                    self.socketio.emit('task_stopped', {
+                    # Send stop notification with current results
+                    stop_data = {
                         'task_id': task_id,
                         'message': 'Task stopped by user',
-                        'results': self.active_tasks[task_id].get('results', {})
-                    }, room=f'task_{task_id}')
+                        'results': self.active_tasks[task_id].get('results', {}),
+                        'summary': {
+                            'total_phases': len(self.active_tasks[task_id].get('results', {})),
+                            'completed_phases': len([k for k in self.active_tasks[task_id].get('results', {}).keys() if k.startswith('phase_')]),
+                            'total_findings': self._count_total_findings(self.active_tasks[task_id].get('results', {})),
+                            'duration': self._calculate_duration(self.active_tasks[task_id])
+                        }
+                    }
+                    
+                    print(f"🚀 Emitting task_stopped event for task {task_id}")
+                    self.socketio.emit('task_stopped', stop_data, room=f'task_{task_id}')
+                    print(f"✅ Task stopped event emitted successfully")
 
                     return jsonify({'success': True, 'message': 'Task stopped successfully'})
                 else:
@@ -437,7 +449,7 @@ class SimpleWebPanel:
             self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
 
             # Send completion message with target info
-            self.socketio.emit('task_completed', {
+            completion_data = {
                 'task_id': task_id,
                 'target': target,
                 'message': 'Reconnaissance completed successfully',
@@ -448,7 +460,11 @@ class SimpleWebPanel:
                     'total_findings': self._count_total_findings(self.active_tasks[task_id]['results']),
                     'duration': self._calculate_duration(self.active_tasks[task_id])
                 }
-            }, room=f'task_{task_id}')
+            }
+            
+            print(f"🚀 Emitting task_completed event for task {task_id}")
+            self.socketio.emit('task_completed', completion_data, room=f'task_{task_id}')
+            print(f"✅ Task completion event emitted successfully")
 
             print(f"✅ Task {task_id} completed for {target}")
             print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
