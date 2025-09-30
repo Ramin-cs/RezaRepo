@@ -1,5 +1,5 @@
 """
-پنل وب ARAT - رابط کاربری پیشرفته
+ARAT Web Panel - Advanced User Interface
 """
 
 import asyncio
@@ -20,7 +20,7 @@ from phases.phase_manager import PhaseManager
 
 
 class WebPanel:
-    """کلاس اصلی پنل وب ARAT"""
+    """Main ARAT web panel class"""
     
     def __init__(self, config: Config, database: Database, phase_manager: PhaseManager):
         self.config = config
@@ -44,46 +44,46 @@ class WebPanel:
         self._setup_routes()
         self._setup_socketio_events()
         
-        self.logger.info("پنل وب ARAT مقداردهی شد")
+        self.logger.info("ARAT Web Panel initialized")
     
     def _setup_routes(self):
-        """تنظیم routes"""
+        """Setup routes"""
         
         @self.app.route('/')
         def index():
-            """صفحه اصلی"""
+            """Home page"""
             return render_template('index.html')
         
         @self.app.route('/dashboard')
         def dashboard():
-            """داشبورد اصلی"""
+            """Main dashboard"""
             return render_template('dashboard.html')
         
         @self.app.route('/targets')
         def targets():
-            """مدیریت اهداف"""
+            """Target management"""
             return render_template('targets.html')
         
         @self.app.route('/phases')
         def phases():
-            """مدیریت فازها"""
+            """Phase management"""
             return render_template('phases.html')
         
         @self.app.route('/reports')
         def reports():
-            """گزارش‌ها"""
+            """Reports"""
             return render_template('reports.html')
         
         @self.app.route('/settings')
         def settings():
-            """تنظیمات"""
+            """Settings"""
             return render_template('settings.html')
         
         @self.app.route('/api/targets', methods=['GET', 'POST'])
         def api_targets():
-            """API برای مدیریت اهداف"""
+            """API for target management"""
             if request.method == 'GET':
-                # دریافت لیست اهداف
+                # Get targets list
                 try:
                     targets = self._get_targets()
                     return jsonify({'success': True, 'targets': targets})
@@ -91,35 +91,35 @@ class WebPanel:
                     return jsonify({'success': False, 'error': str(e)})
             
             elif request.method == 'POST':
-                # اضافه کردن هدف جدید
+                # Add new target
                 try:
                     data = request.json
                     target = data.get('target')
                     description = data.get('description', '')
                     
                     if not target:
-                        return jsonify({'success': False, 'error': 'هدف مشخص نشده'})
+                        return jsonify({'success': False, 'error': 'Target not specified'})
                     
-                    # ذخیره هدف
+                    # Save target
                     target_id = asyncio.run(self.db.save_target(target, metadata={'description': description}))
                     
-                    return jsonify({'success': True, 'target_id': target_id, 'message': 'هدف با موفقیت اضافه شد'})
+                    return jsonify({'success': True, 'target_id': target_id, 'message': 'Target added successfully'})
                 
                 except Exception as e:
                     return jsonify({'success': False, 'error': str(e)})
         
         @self.app.route('/api/targets/<int:target_id>', methods=['DELETE'])
         def api_delete_target(target_id):
-            """حذف هدف"""
+            """Delete target"""
             try:
-                # TODO: پیاده‌سازی حذف هدف
-                return jsonify({'success': True, 'message': 'هدف حذف شد'})
+                # TODO: Implement target deletion
+                return jsonify({'success': True, 'message': 'Target deleted'})
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
         @self.app.route('/api/phases', methods=['GET'])
         def api_phases():
-            """دریافت لیست فازهای موجود"""
+            """Get available phases"""
             try:
                 phases = asyncio.run(self.phase_manager.get_available_phases())
                 return jsonify({'success': True, 'phases': phases})
@@ -128,25 +128,25 @@ class WebPanel:
         
         @self.app.route('/api/run', methods=['POST'])
         def api_run():
-            """اجرای reconnaissance"""
+            """Run reconnaissance"""
             try:
                 data = request.json
                 target = data.get('target')
                 phases = data.get('phases', [])
                 
                 if not target:
-                    return jsonify({'success': False, 'error': 'هدف مشخص نشده'})
+                    return jsonify({'success': False, 'error': 'Target not specified'})
                 
-                # ایجاد task ID
+                # Create task ID
                 task_id = str(uuid.uuid4())
                 
-                # شروع task در background
+                # Start task in background
                 self._start_recon_task(task_id, target, phases)
                 
                 return jsonify({
                     'success': True, 
                     'task_id': task_id,
-                    'message': 'Reconnaissance شروع شد'
+                    'message': 'Reconnaissance started'
                 })
                 
             except Exception as e:
@@ -154,19 +154,19 @@ class WebPanel:
         
         @self.app.route('/api/tasks/<task_id>', methods=['GET'])
         def api_task_status(task_id):
-            """وضعیت task"""
+            """Task status"""
             try:
                 if task_id in self.active_tasks:
                     task_info = self.active_tasks[task_id]
                     return jsonify({'success': True, 'task': task_info})
                 else:
-                    return jsonify({'success': False, 'error': 'Task پیدا نشد'})
+                    return jsonify({'success': False, 'error': 'Task not found'})
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
         @self.app.route('/api/results/<target>', methods=['GET'])
         def api_results(target):
-            """دریافت نتایج"""
+            """Get results"""
             try:
                 results = self._get_target_results(target)
                 return jsonify({'success': True, 'results': results})
@@ -175,7 +175,7 @@ class WebPanel:
         
         @self.app.route('/api/settings', methods=['GET', 'POST'])
         def api_settings():
-            """تنظیمات"""
+            """Settings"""
             if request.method == 'GET':
                 try:
                     settings = self._get_settings()
@@ -187,13 +187,13 @@ class WebPanel:
                 try:
                     data = request.json
                     self._update_settings(data)
-                    return jsonify({'success': True, 'message': 'تنظیمات به‌روزرسانی شد'})
+                    return jsonify({'success': True, 'message': 'Settings updated'})
                 except Exception as e:
                     return jsonify({'success': False, 'error': str(e)})
         
         @self.app.route('/api/logs', methods=['GET'])
         def api_logs():
-            """دریافت لاگ‌ها"""
+            """Get logs"""
             try:
                 logs = self._get_recent_logs()
                 return jsonify({'success': True, 'logs': logs})
@@ -201,22 +201,22 @@ class WebPanel:
                 return jsonify({'success': False, 'error': str(e)})
     
     def _setup_socketio_events(self):
-        """تنظیم SocketIO events"""
+        """Setup SocketIO events"""
         
         @self.socketio.on('connect')
         def handle_connect():
-            """اتصال کاربر"""
-            self.logger.info(f"کاربر متصل شد: {request.sid}")
-            emit('status', {'message': 'متصل شدید'})
+            """User connection"""
+            self.logger.info(f"User connected: {request.sid}")
+            emit('status', {'message': 'Connected'})
         
         @self.socketio.on('disconnect')
         def handle_disconnect():
-            """قطع اتصال کاربر"""
-            self.logger.info(f"کاربر قطع شد: {request.sid}")
+            """User disconnection"""
+            self.logger.info(f"User disconnected: {request.sid}")
         
         @self.socketio.on('join_task')
         def handle_join_task(data):
-            """پیوستن به task"""
+            """Join task"""
             task_id = data.get('task_id')
             if task_id:
                 join_room(f'task_{task_id}')
@@ -224,16 +224,16 @@ class WebPanel:
         
         @self.socketio.on('leave_task')
         def handle_leave_task(data):
-            """ترک task"""
+            """Leave task"""
             task_id = data.get('task_id')
             if task_id:
                 leave_room(f'task_{task_id}')
                 emit('left_task', {'task_id': task_id})
     
     def _start_recon_task(self, task_id: str, target: str, phases: List[int]):
-        """شروع task reconnaissance"""
+        """Start reconnaissance task"""
         try:
-            # ثبت task
+            # Register task
             self.active_tasks[task_id] = {
                 'id': task_id,
                 'target': target,
@@ -246,64 +246,64 @@ class WebPanel:
                 'errors': []
             }
             
-            # شروع task در thread جداگانه
+            # Start task in separate thread
             thread = threading.Thread(target=self._run_recon_task, args=(task_id, target, phases))
             thread.daemon = True
             thread.start()
             
-            self.logger.info(f"Task {task_id} شروع شد برای {target}")
+            self.logger.info(f"Task {task_id} started for {target}")
             
         except Exception as e:
-            self.logger.error(f"خطا در شروع task {task_id}: {e}")
+            self.logger.error(f"Error starting task {task_id}: {e}")
             if task_id in self.active_tasks:
                 self.active_tasks[task_id]['status'] = 'error'
                 self.active_tasks[task_id]['errors'].append(str(e))
     
     def _run_recon_task(self, task_id: str, target: str, phases: List[int]):
-        """اجرای task reconnaissance"""
+        """Run reconnaissance task"""
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
-            # اگر phases مشخص نشده، تمام فازها
+            # If no phases specified, run all available phases
             if not phases:
-                phases = [1, 2]  # فقط فازهای موجود
+                phases = [1, 2]  # Only available phases
             
             total_phases = len(phases)
             
             for i, phase_num in enumerate(phases):
                 try:
-                    # به‌روزرسانی وضعیت
+                    # Update status
                     self.active_tasks[task_id]['current_phase'] = phase_num
                     self.active_tasks[task_id]['progress'] = int((i / total_phases) * 100)
                     
-                    # ارسال به‌روزرسانی real-time
+                    # Send real-time update
                     self.socketio.emit('task_update', {
                         'task_id': task_id,
                         'status': 'running',
                         'current_phase': phase_num,
                         'progress': self.active_tasks[task_id]['progress'],
-                        'message': f'فاز {phase_num} در حال اجرا...'
+                        'message': f'Phase {phase_num} running...'
                     }, room=f'task_{task_id}')
                     
-                    # اجرای فاز
+                    # Run phase
                     result = loop.run_until_complete(
                         self.phase_manager.run_phase(phase_num, target)
                     )
                     
-                    # ذخیره نتیجه
+                    # Save result
                     self.active_tasks[task_id]['results'][f'phase_{phase_num}'] = result
                     
-                    # ارسال به‌روزرسانی
+                    # Send update
                     self.socketio.emit('phase_completed', {
                         'task_id': task_id,
                         'phase': phase_num,
                         'result': result,
-                        'message': f'فاز {phase_num} تکمیل شد'
+                        'message': f'Phase {phase_num} completed'
                     }, room=f'task_{task_id}')
                     
                 except Exception as e:
-                    error_msg = f"خطا در فاز {phase_num}: {str(e)}"
+                    error_msg = f"Error in phase {phase_num}: {str(e)}"
                     self.active_tasks[task_id]['errors'].append(error_msg)
                     
                     self.socketio.emit('phase_error', {
@@ -315,22 +315,22 @@ class WebPanel:
                     
                     self.logger.error(error_msg)
             
-            # تکمیل task
+            # Complete task
             self.active_tasks[task_id]['status'] = 'completed'
             self.active_tasks[task_id]['progress'] = 100
             self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
             
-            # ارسال پیام تکمیل
+            # Send completion message
             self.socketio.emit('task_completed', {
                 'task_id': task_id,
-                'message': 'Reconnaissance تکمیل شد',
+                'message': 'Reconnaissance completed',
                 'results': self.active_tasks[task_id]['results']
             }, room=f'task_{task_id}')
             
-            self.logger.info(f"Task {task_id} تکمیل شد")
+            self.logger.info(f"Task {task_id} completed")
             
         except Exception as e:
-            error_msg = f"خطا در task {task_id}: {str(e)}"
+            error_msg = f"Error in task {task_id}: {str(e)}"
             self.active_tasks[task_id]['status'] = 'error'
             self.active_tasks[task_id]['errors'].append(error_msg)
             
@@ -346,27 +346,27 @@ class WebPanel:
             loop.close()
     
     def _get_targets(self) -> List[Dict[str, Any]]:
-        """دریافت لیست اهداف"""
+        """Get targets list"""
         try:
-            # TODO: پیاده‌سازی دریافت اهداف از دیتابیس
+            # TODO: Implement getting targets from database
             return [
                 {
                     'id': 1,
                     'target': 'example.com',
-                    'description': 'هدف نمونه',
+                    'description': 'Sample target',
                     'created_at': datetime.now().isoformat(),
                     'status': 'completed',
                     'phases_completed': 2
                 }
             ]
         except Exception as e:
-            self.logger.error(f"خطا در دریافت اهداف: {e}")
+            self.logger.error(f"Error getting targets: {e}")
             return []
     
     def _get_target_results(self, target: str) -> Dict[str, Any]:
-        """دریافت نتایج هدف"""
+        """Get target results"""
         try:
-            # TODO: پیاده‌سازی دریافت نتایج از دیتابیس
+            # TODO: Implement getting results from database
             return {
                 'target': target,
                 'phases': {},
@@ -378,11 +378,11 @@ class WebPanel:
                 }
             }
         except Exception as e:
-            self.logger.error(f"خطا در دریافت نتایج {target}: {e}")
+            self.logger.error(f"Error getting results for {target}: {e}")
             return {}
     
     def _get_settings(self) -> Dict[str, Any]:
-        """دریافت تنظیمات"""
+        """Get settings"""
         try:
             return {
                 'api_keys': self.config.api_keys,
@@ -398,48 +398,48 @@ class WebPanel:
                 }
             }
         except Exception as e:
-            self.logger.error(f"خطا در دریافت تنظیمات: {e}")
+            self.logger.error(f"Error getting settings: {e}")
             return {}
     
     def _update_settings(self, settings: Dict[str, Any]):
-        """به‌روزرسانی تنظیمات"""
+        """Update settings"""
         try:
-            # به‌روزرسانی API keys
+            # Update API keys
             if 'api_keys' in settings:
                 for service, key in settings['api_keys'].items():
                     self.config.update_config('api_keys', service, key)
             
-            # به‌روزرسانی تنظیمات فازها
+            # Update phase settings
             if 'phases' in settings:
                 for key, value in settings['phases'].items():
                     self.config.update_config('phases', key, value)
             
-            self.logger.info("تنظیمات به‌روزرسانی شد")
+            self.logger.info("Settings updated")
             
         except Exception as e:
-            self.logger.error(f"خطا در به‌روزرسانی تنظیمات: {e}")
+            self.logger.error(f"Error updating settings: {e}")
             raise
     
     def _get_recent_logs(self) -> List[Dict[str, Any]]:
-        """دریافت لاگ‌های اخیر"""
+        """Get recent logs"""
         try:
-            # TODO: پیاده‌سازی دریافت لاگ‌ها
+            # TODO: Implement getting logs
             return [
                 {
                     'timestamp': datetime.now().isoformat(),
                     'level': 'INFO',
-                    'message': 'سیستم شروع شد',
+                    'message': 'System started',
                     'source': 'web_panel'
                 }
             ]
         except Exception as e:
-            self.logger.error(f"خطا در دریافت لاگ‌ها: {e}")
+            self.logger.error(f"Error getting logs: {e}")
             return []
     
     def start(self, host: str = "0.0.0.0", port: int = 8080):
-        """شروع پنل وب"""
+        """Start web panel"""
         try:
-            self.logger.info(f"شروع پنل وب روی {host}:{port}")
+            self.logger.info(f"Starting web panel on {host}:{port}")
             self.socketio.run(
                 self.app,
                 host=host,
@@ -448,13 +448,13 @@ class WebPanel:
                 allow_unsafe_werkzeug=True
             )
         except Exception as e:
-            self.logger.error(f"خطا در شروع پنل وب: {e}")
+            self.logger.error(f"Error starting web panel: {e}")
             raise
     
     async def stop(self):
-        """توقف پنل وب"""
+        """Stop web panel"""
         try:
-            self.logger.info("توقف پنل وب...")
-            # TODO: پیاده‌سازی توقف graceful
+            self.logger.info("Stopping web panel...")
+            # TODO: Implement graceful shutdown
         except Exception as e:
-            self.logger.error(f"خطا در توقف پنل وب: {e}")
+            self.logger.error(f"Error stopping web panel: {e}")

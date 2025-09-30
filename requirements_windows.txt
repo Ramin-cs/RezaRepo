@@ -13,13 +13,14 @@ urllib3==2.1.0
 
 # Database (SQLite for Windows)
 sqlalchemy==2.0.23
+aiosqlite==0.19.0
 
 # Configuration and Data
 pyyaml==6.0.1
 python-dotenv==1.0.0
 
 # Security and Crypto
-cryptography==41.0.8
+cryptography>=42.0.0
 
 # DNS and Network
 dnspython==2.4.2

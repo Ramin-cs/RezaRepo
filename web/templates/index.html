@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}ARAT - صفحه اصلی{% endblock %}
+{% block title %}ARAT - Home{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -10,12 +10,12 @@
                 <i class="fas fa-shield-alt me-3"></i>
                 ARAT
             </h1>
-            <p class="lead">ابزار پیشرفته Reconnaissance و Security Assessment</p>
+            <p class="lead">Advanced Reconnaissance & Security Assessment Tool</p>
             <hr class="my-4">
-            <p>یک ابزار جامع و modular برای تست نفوذ و reconnaissance با 10 فاز کامل</p>
+            <p>A comprehensive and modular tool for penetration testing and reconnaissance with 10 complete phases</p>
             <a class="btn btn-light btn-lg" href="{{ url_for('dashboard') }}" role="button">
                 <i class="fas fa-play me-2"></i>
-                شروع کنید
+                Get Started
             </a>
         </div>
     </div>
@@ -26,11 +26,11 @@
         <div class="card h-100 border-primary">
             <div class="card-body text-center">
                 <i class="fas fa-bullseye fa-3x text-primary mb-3"></i>
-                <h5 class="card-title">مدیریت اهداف</h5>
-                <p class="card-text">اضافه کردن و مدیریت اهداف برای reconnaissance</p>
+                <h5 class="card-title">Target Management</h5>
+                <p class="card-text">Add and manage targets for reconnaissance</p>
                 <a href="{{ url_for('targets') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i>
-                    اضافه کردن هدف
+                    Add Target
                 </a>
             </div>
         </div>
@@ -40,11 +40,11 @@
         <div class="card h-100 border-success">
             <div class="card-body text-center">
                 <i class="fas fa-cogs fa-3x text-success mb-3"></i>
-                <h5 class="card-title">اجرای فازها</h5>
-                <p class="card-text">اجرای فازهای مختلف reconnaissance</p>
+                <h5 class="card-title">Run Phases</h5>
+                <p class="card-text">Execute different reconnaissance phases</p>
                 <a href="{{ url_for('phases') }}" class="btn btn-success">
                     <i class="fas fa-play me-2"></i>
-                    شروع فازها
+                    Start Phases
                 </a>
             </div>
         </div>
@@ -54,11 +54,11 @@
         <div class="card h-100 border-info">
             <div class="card-body text-center">
                 <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
-                <h5 class="card-title">گزارش‌ها</h5>
-                <p class="card-text">مشاهده و تحلیل نتایج reconnaissance</p>
+                <h5 class="card-title">Reports</h5>
+                <p class="card-text">View and analyze reconnaissance results</p>
                 <a href="{{ url_for('reports') }}" class="btn btn-info">
                     <i class="fas fa-eye me-2"></i>
-                    مشاهده گزارش‌ها
+                    View Reports
                 </a>
             </div>
         </div>
@@ -68,11 +68,11 @@
         <div class="card h-100 border-warning">
             <div class="card-body text-center">
                 <i class="fas fa-cog fa-3x text-warning mb-3"></i>
-                <h5 class="card-title">تنظیمات</h5>
-                <p class="card-text">پیکربندی API keys و تنظیمات ابزار</p>
+                <h5 class="card-title">Settings</h5>
+                <p class="card-text">Configure API keys and tool settings</p>
                 <a href="{{ url_for('settings') }}" class="btn btn-warning">
                     <i class="fas fa-wrench me-2"></i>
-                    تنظیمات
+                    Settings
                 </a>
             </div>
         </div>
@@ -85,7 +85,7 @@
             <div class="card-header">
                 <h5 class="mb-0">
                     <i class="fas fa-info-circle me-2"></i>
-                    ویژگی‌های کلیدی
+                    Key Features
                 </h5>
             </div>
             <div class="card-body">
@@ -94,7 +94,7 @@
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>10 فاز کامل:</strong> Real IP extraction, Subdomain discovery, Port scanning, Technology detection
+                                <strong>10 Complete Phases:</strong> Real IP extraction, Subdomain discovery, Port scanning, Technology detection
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
@@ -102,11 +102,11 @@
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>پردازش موازی:</strong> اجرای همزمان فازها برای سرعت بالا
+                                <strong>Parallel Processing:</strong> Concurrent phase execution for high speed
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>WAF Bypass:</strong> تکنیک‌های پیشرفته برای دور زدن WAF
+                                <strong>WAF Bypass:</strong> Advanced techniques to bypass WAF
                             </li>
                         </ul>
                     </div>
@@ -114,19 +114,19 @@
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>Real-time Updates:</strong> به‌روزرسانی لحظه‌ای پیشرفت
+                                <strong>Real-time Updates:</strong> Live progress updates
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>گزارش‌های بصری:</strong> نمودارها و جداول تعاملی
+                                <strong>Visual Reports:</strong> Interactive charts and tables
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>پنل وب مدرن:</strong> رابط کاربری responsive و زیبا
+                                <strong>Modern Web Panel:</strong> Responsive and beautiful UI
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-check text-success me-2"></i>
-                                <strong>امنیت بالا:</strong> کدگذاری API keys و مدیریت امن
+                                <strong>High Security:</strong> Encrypted API keys and secure management
                             </li>
                         </ul>
                     </div>
@@ -140,8 +140,8 @@
     <div class="col-12">
         <div class="alert alert-warning" role="alert">
             <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>توجه امنیتی:</strong> این ابزار فقط برای تست نفوذ قانونی و با مجوز استفاده شود. 
-            استفاده غیرقانونی ممنوع است و ممکن است منجر به پیگرد قانونی شود.
+            <strong>Security Notice:</strong> This tool is for authorized penetration testing only. 
+            Unauthorized use is prohibited and may result in legal action.
         </div>
     </div>
 </div>

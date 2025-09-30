@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,31 +34,31 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard') }}">
                             <i class="fas fa-tachometer-alt me-1"></i>
-                            داشبورد
+                            Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('targets') }}">
                             <i class="fas fa-bullseye me-1"></i>
-                            اهداف
+                            Targets
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('phases') }}">
                             <i class="fas fa-cogs me-1"></i>
-                            فازها
+                            Phases
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('reports') }}">
                             <i class="fas fa-chart-bar me-1"></i>
-                            گزارش‌ها
+                            Reports
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('settings') }}">
                             <i class="fas fa-cog me-1"></i>
-                            تنظیمات
+                            Settings
                         </a>
                     </li>
                 </ul>
@@ -67,7 +67,7 @@
                     <li class="nav-item">
                         <span class="navbar-text">
                             <i class="fas fa-circle text-success me-1"></i>
-                            آنلاین
+                            Online
                         </span>
                     </li>
                 </ul>
@@ -87,7 +87,7 @@
                 &copy; 2024 ARAT - Advanced Reconnaissance & Assessment Tool
                 <span class="ms-3">
                     <i class="fas fa-shield-alt me-1"></i>
-                    برای تست نفوذ قانونی استفاده کنید
+                    For authorized penetration testing only
                 </span>
             </p>
         </div>
@@ -113,10 +113,10 @@
             <div class="modal-content">
                 <div class="modal-body text-center">
                     <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">در حال بارگذاری...</span>
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    <h5 id="loading-title">در حال پردازش...</h5>
-                    <p id="loading-message" class="text-muted">لطفاً صبر کنید</p>
+                    <h5 id="loading-title">Processing...</h5>
+                    <p id="loading-message" class="text-muted">Please wait</p>
                 </div>
             </div>
         </div>
