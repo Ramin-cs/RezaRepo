@@ -178,9 +178,10 @@ class SimpleWebPanel:
                     self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
 
                     # Send stop notification
-                    self.socketio.emit('task_error', {
+                    self.socketio.emit('task_stopped', {
                         'task_id': task_id,
-                        'message': 'Task stopped by user'
+                        'message': 'Task stopped by user',
+                        'results': self.active_tasks[task_id].get('results', {})
                     }, room=f'task_{task_id}')
 
                     return jsonify({'success': True, 'message': 'Task stopped successfully'})

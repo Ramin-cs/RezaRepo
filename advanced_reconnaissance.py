@@ -1504,7 +1504,7 @@ class AdvancedReconnaissance:
                 'analytics': ['analytics', 'tracking', 'metric', 'stat', 'report', 'dashboard']
             }
             
-            for param in extended_params[:100]:  # Limit to first 100
+            for param in extended_params[:200]:  # Increased to 200 parameters
                 category = 'other'
                 for cat, keywords in param_categories.items():
                     if any(keyword in param.lower() for keyword in keywords):
@@ -1895,18 +1895,12 @@ class AdvancedReconnaissance:
             results['techniques_used'].append('AWS S3 Bucket Discovery')
             
             aws_bucket_patterns = [
-                f"{target}",
-                f"{target}-s3",
-                f"{target}-bucket",
-                f"{target}-assets",
-                f"{target}-files",
-                f"{target}-uploads",
-                f"{target}-backup",
-                f"{target}-static",
-                f"{target}-media",
-                f"{target}-images",
-                f"{target}-docs",
-                f"{target}-data"
+                f"{target}", f"{target}-s3", f"{target}-bucket", f"{target}-assets", f"{target}-files",
+                f"{target}-uploads", f"{target}-backup", f"{target}-static", f"{target}-media", f"{target}-images",
+                f"{target}-docs", f"{target}-data", f"{target}-storage", f"{target}-content", f"{target}-public",
+                f"{target}-private", f"{target}-dev", f"{target}-prod", f"{target}-staging", f"{target}-test",
+                f"{target}-www", f"{target}-cdn", f"{target}-cache", f"{target}-logs", f"{target}-temp",
+                f"{target}-archive", f"{target}-backup", f"{target}-snapshot", f"{target}-export", f"{target}-import"
             ]
             
             for bucket_name in aws_bucket_patterns:
