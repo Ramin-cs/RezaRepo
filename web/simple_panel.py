@@ -161,6 +161,34 @@ class SimpleWebPanel:
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
+        @self.app.route('/api/stop', methods=['POST'])
+        def api_stop():
+            """Stop reconnaissance task"""
+            try:
+                data = request.get_json()
+                task_id = data.get('task_id')
+                
+                if not task_id:
+                    return jsonify({'success': False, 'error': 'Task ID required'})
+                
+                if task_id in self.active_tasks:
+                    # Mark task as stopped
+                    self.active_tasks[task_id]['status'] = 'stopped'
+                    self.active_tasks[task_id]['end_time'] = datetime.now().isoformat()
+                    
+                    # Send stop notification
+                    self.socketio.emit('task_error', {
+                        'task_id': task_id,
+                        'message': 'Task stopped by user'
+                    }, room=f'task_{task_id}')
+                    
+                    return jsonify({'success': True, 'message': 'Task stopped successfully'})
+                else:
+                    return jsonify({'success': False, 'error': 'Task not found'})
+                    
+            except Exception as e:
+                return jsonify({'success': False, 'error': str(e)})
+        
         @self.app.route('/api/results/<target>', methods=['GET'])
         def api_results(target):
             """Get results"""
@@ -282,6 +310,11 @@ class SimpleWebPanel:
             
             for i, phase_num in enumerate(phases):
                 try:
+                    # Check if task was stopped
+                    if self.active_tasks[task_id]['status'] == 'stopped':
+                        print(f"Task {task_id} was stopped, exiting...")
+                        break
+                    
                     # Update status
                     self.active_tasks[task_id]['current_phase'] = phase_num
                     self.active_tasks[task_id]['progress'] = int((i / total_phases) * 100)
@@ -296,9 +329,23 @@ class SimpleWebPanel:
                     }, room=f'task_{task_id}')
                     
                     # Run real reconnaissance
-                    from reconnaissance import RealReconnaissance
-                    recon = RealReconnaissance()
-                    result = recon.run_phase(phase_num, target)
+                    try:
+                        from reconnaissance import RealReconnaissance
+                        recon = RealReconnaissance()
+                        result = recon.run_phase(phase_num, target)
+                    except Exception as recon_error:
+                        result = {
+                            'phase': phase_num,
+                            'target': target,
+                            'status': 'error',
+                            'error': str(recon_error),
+                            'summary': f'Phase {phase_num} failed: {str(recon_error)}'
+                        }
+                    
+                    # Check again if task was stopped during phase execution
+                    if self.active_tasks[task_id]['status'] == 'stopped':
+                        print(f"Task {task_id} was stopped during phase {phase_num}, exiting...")
+                        break
                     
                     # Save result
                     self.active_tasks[task_id]['results'][f'phase_{phase_num}'] = result

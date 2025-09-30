@@ -10,6 +10,9 @@
     
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Hacker Theme CSS -->
+    <link href="{{ url_for('static', filename='css/hacker_theme.css') }}" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
@@ -225,6 +228,17 @@
                             </div>
                         </div>
                         
+                        <!-- Live Phase Display -->
+                        <div class="mb-3" id="live-phase-container" style="display: none;">
+                            <h6>Live Phase Execution:</h6>
+                            <div id="live-phase" class="live-phase">
+                                <h5 id="live-phase-title">Phase 1: Real IP Extraction</h5>
+                                <div id="live-phase-output" class="terminal-output">
+                                    Starting phase execution...
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <h6>Results:</h6>
                             <div id="results-container" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
@@ -281,6 +295,40 @@
             if (progressPhase) {
                 progressPhase.textContent = `Phase: ${data.current_phase}`;
             }
+            
+            // Show live phase display
+            const livePhaseContainer = document.getElementById('live-phase-container');
+            const livePhaseTitle = document.getElementById('live-phase-title');
+            const livePhaseOutput = document.getElementById('live-phase-output');
+            
+            if (data.current_phase && livePhaseContainer) {
+                livePhaseContainer.style.display = 'block';
+                
+                // Update phase title
+                const phaseNames = {
+                    1: 'Real IP Extraction & CDN Bypass',
+                    2: 'Subdomain Discovery',
+                    3: 'Port Scanning & Service Detection',
+                    4: 'Technology Detection',
+                    5: 'Directory Discovery',
+                    6: 'Parameter Discovery & JS Analysis',
+                    7: 'Endpoint Discovery (REST/GraphQL)',
+                    8: 'Cloud Analysis',
+                    9: 'OSINT Analysis',
+                    10: 'Vulnerability Assessment'
+                };
+                
+                if (livePhaseTitle) {
+                    livePhaseTitle.textContent = `Phase ${data.current_phase}: ${phaseNames[data.current_phase] || 'Unknown'}`;
+                }
+                
+                // Add live output
+                if (livePhaseOutput) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    livePhaseOutput.textContent += `\n[${timestamp}] ${data.message}`;
+                    livePhaseOutput.scrollTop = livePhaseOutput.scrollHeight;
+                }
+            }
         });
         
         socket.on('phase_completed', function(data) {
@@ -316,7 +364,38 @@
                 progressBar.style.width = '100%';
             }
             
+            // Hide live phase display
+            const livePhaseContainer = document.getElementById('live-phase-container');
+            if (livePhaseContainer) {
+                livePhaseContainer.style.display = 'none';
+            }
+            
+            // Reset current task
+            currentTaskId = null;
+            
             alert('Reconnaissance completed!');
+        });
+        
+        socket.on('task_error', function(data) {
+            console.log('Task error:', data);
+            
+            // Update status
+            const currentStatus = document.getElementById('current-status');
+            if (currentStatus) {
+                currentStatus.textContent = `Error: ${data.message}`;
+                currentStatus.className = 'alert alert-danger';
+            }
+            
+            // Hide live phase display
+            const livePhaseContainer = document.getElementById('live-phase-container');
+            if (livePhaseContainer) {
+                livePhaseContainer.style.display = 'none';
+            }
+            
+            // Reset current task
+            currentTaskId = null;
+            
+            alert(`Error: ${data.message}`);
         });
 
         // Start reconnaissance
@@ -369,6 +448,16 @@
                     // Clear results container
                     document.getElementById('results-container').innerHTML = '';
                     
+                    // Show live phase container
+                    const livePhaseContainer = document.getElementById('live-phase-container');
+                    const livePhaseOutput = document.getElementById('live-phase-output');
+                    if (livePhaseContainer) {
+                        livePhaseContainer.style.display = 'block';
+                    }
+                    if (livePhaseOutput) {
+                        livePhaseOutput.textContent = 'Starting reconnaissance...\n';
+                    }
+                    
                     // Close run modal
                     const runModal = bootstrap.Modal.getInstance(document.getElementById('runModal'));
                     runModal.hide();
@@ -380,6 +469,50 @@
                 console.error('Error:', error);
                 alert('Error starting reconnaissance');
             });
+        });
+        
+        // Stop reconnaissance
+        document.getElementById('stop-recon').addEventListener('click', function() {
+            if (currentTaskId) {
+                // Send stop request
+                fetch('/api/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ task_id: currentTaskId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update status
+                        const currentStatus = document.getElementById('current-status');
+                        if (currentStatus) {
+                            currentStatus.textContent = 'Reconnaissance stopped by user';
+                            currentStatus.className = 'alert alert-warning';
+                        }
+                        
+                        // Hide live phase display
+                        const livePhaseContainer = document.getElementById('live-phase-container');
+                        if (livePhaseContainer) {
+                            livePhaseContainer.style.display = 'none';
+                        }
+                        
+                        // Reset current task
+                        currentTaskId = null;
+                        
+                        alert('Reconnaissance stopped');
+                    } else {
+                        alert('Error stopping reconnaissance: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error stopping reconnaissance');
+                });
+            } else {
+                alert('No active reconnaissance to stop');
+            }
         });
 
         // Load phases
