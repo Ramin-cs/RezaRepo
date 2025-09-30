@@ -1056,7 +1056,7 @@ class AdvancedReconnaissance:
         return match.group(1) if match else 'Unknown'
     
     def phase5_advanced_directory_discovery(self, target: str) -> Dict[str, Any]:
-        """Phase 5: Advanced Directory Discovery with 4-level crawling"""
+        """Phase 5: Advanced Directory Discovery with comprehensive crawling"""
         print(f"🔍 Phase 5: Advanced Directory Discovery for {target}")
         results = {
             'target': target,
@@ -1068,16 +1068,63 @@ class AdvancedReconnaissance:
             'backup_files': [],
             'admin_panels': [],
             'sensitive_files': [],
+            'api_endpoints': [],
+            'development_files': [],
             'crawl_levels': {},
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            # Level 1: Basic Directory Discovery
-            print("   📁 Level 1: Basic Directory Discovery...")
-            results['techniques_used'].append('Basic Directory Discovery')
-            level1_paths = self.directory_wordlist[:50]  # First 50 paths
+            # Technique 1: Comprehensive Directory Discovery
+            print("   📁 Comprehensive Directory Discovery...")
+            results['techniques_used'].append('Comprehensive Directory Discovery')
+            
+            # Extended directory wordlist
+            extended_directories = self.directory_wordlist + [
+                # API endpoints
+                '/api', '/api/v1', '/api/v2', '/api/v3', '/rest', '/graphql', '/rpc', '/soap',
+                '/swagger', '/swagger-ui', '/docs', '/documentation', '/openapi.json',
+                
+                # Development
+                '/dev', '/development', '/staging', '/stage', '/test', '/testing', '/qa', '/preprod', '/prod', '/production',
+                '/debug', '/logs', '/log', '/tmp', '/temp', '/cache', '/session', '/sessions',
+                
+                # Admin panels
+                '/admin', '/administrator', '/adminpanel', '/admin-panel', '/admin_area', '/adminarea',
+                '/admincp', '/admin-cp', '/admincp', '/adm', '/administration', '/administrator',
+                '/panel', '/control', '/controlpanel', '/control-panel', '/dashboard', '/dash',
+                '/wp-admin', '/wp-login.php', '/administrator', '/user', '/users', '/account', '/accounts',
+                
+                # File management
+                '/files', '/file', '/uploads', '/upload', '/download', '/downloads', '/media', '/assets',
+                '/images', '/image', '/img', '/css', '/js', '/javascript', '/scripts', '/script',
+                '/styles', '/style', '/themes', '/theme', '/templates', '/template',
+                
+                # Database and config
+                '/db', '/database', '/sql', '/mysql', '/postgres', '/postgresql', '/mongo', '/mongodb',
+                '/redis', '/elasticsearch', '/cassandra', '/oracle', '/sqlserver', '/mariadb', '/sqlite',
+                '/config', '/configuration', '/conf', '/settings', '/setting', '/options', '/option',
+                '/preferences', '/preference', '/params', '/parameters', '/parameter', '/env', '/environment',
+                
+                # Backup and archives
+                '/backup', '/backups', '/bak', '/old', '/archive', '/archives', '/temp', '/tmp', '/temporary',
+                '/copy', '/copies', '/duplicate', '/duplicates', '/original', '/originals', '/source', '/sources',
+                '/.git', '/.svn', '/.hg', '/.bzr', '/.cvs',
+                
+                # Security
+                '/security', '/secure', '/ssl', '/tls', '/cert', '/certificate', '/certificates', '/certs',
+                '/vpn', '/firewall', '/bastion', '/jump', '/gateway', '/proxy', '/proxies', '/loadbalancer',
+                '/.htaccess', '/.htpasswd', '/robots.txt', '/sitemap.xml', '/crossdomain.xml',
+                
+                # Special files
+                '/phpinfo.php', '/info.php', '/test.php', '/admin.php', '/login.php', '/config.php',
+                '/web.config', '/app.config', '/application.yml', '/application.properties',
+                '/package.json', '/composer.json', '/requirements.txt', '/pom.xml', '/build.xml',
+                '/Dockerfile', '/docker-compose.yml', '/.env', '/.env.local', '/.env.production',
+                '/index.php', '/index.html', '/index.htm', '/default.html', '/home.html',
+                '/main.php', '/main.html', '/start.php', '/start.html', '/welcome.php', '/welcome.html'
+            ]
             
             def check_path(path):
                 try:
@@ -1087,10 +1134,12 @@ class AdvancedReconnaissance:
                     if response.status_code in [200, 301, 302, 403, 401]:
                         result = {
                             'path': path,
+                            'url': url,
                             'status_code': response.status_code,
                             'title': self._extract_title(response.text),
                             'content_length': len(response.content),
-                            'level': 1
+                            'server': response.headers.get('Server', 'Unknown'),
+                            'content_type': response.headers.get('Content-Type', 'Unknown')
                         }
                         
                         if path.endswith('/'):
@@ -1098,34 +1147,153 @@ class AdvancedReconnaissance:
                         else:
                             results['files_found'].append(result)
                         
-                        # Categorize files
-                        if any(keyword in path.lower() for keyword in ['config', 'setting', 'env', 'conf']):
+                        # Advanced categorization
+                        path_lower = path.lower()
+                        
+                        # Config files
+                        if any(keyword in path_lower for keyword in ['config', 'setting', 'env', 'conf', 'ini', 'xml', 'yml', 'yaml', 'properties', 'json']):
                             results['config_files'].append(result)
-                        elif any(keyword in path.lower() for keyword in ['backup', 'bak', 'old', 'archive']):
+                        
+                        # Backup files
+                        elif any(keyword in path_lower for keyword in ['backup', 'bak', 'old', 'archive', 'copy', 'duplicate', '.git', '.svn']):
                             results['backup_files'].append(result)
-                        elif any(keyword in path.lower() for keyword in ['admin', 'panel', 'login', 'dashboard']):
+                        
+                        # Admin panels
+                        elif any(keyword in path_lower for keyword in ['admin', 'panel', 'login', 'dashboard', 'control', 'manage', 'wp-admin', 'administrator']):
                             results['admin_panels'].append(result)
-                        elif any(keyword in path.lower() for keyword in ['passwd', 'shadow', 'htpasswd', 'key', 'cert']):
+                        
+                        # API endpoints
+                        elif any(keyword in path_lower for keyword in ['api', 'rest', 'graphql', 'swagger', 'docs', 'documentation', 'openapi']):
+                            results['api_endpoints'].append(result)
+                        
+                        # Development files
+                        elif any(keyword in path_lower for keyword in ['dev', 'test', 'debug', 'log', 'tmp', 'temp', 'cache', 'session']):
+                            results['development_files'].append(result)
+                        
+                        # Sensitive files
+                        elif any(keyword in path_lower for keyword in ['passwd', 'shadow', 'htpasswd', 'key', 'cert', 'secret', 'password', 'credential']):
                             results['sensitive_files'].append(result)
                         
-                        print(f"   ✅ Found: {path} ({response.status_code})")
+                        print(f"   ✅ Found: {path} ({response.status_code}) - {result['content_length']} bytes")
                         return result
                 except Exception as e:
                     results['errors'].append(f"Path {path} scan failed: {str(e)}")
                 return None
             
             # Use ThreadPoolExecutor for faster scanning
-            with ThreadPoolExecutor(max_workers=20) as executor:
-                future_to_path = {executor.submit(check_path, path): path for path in level1_paths}
+            with ThreadPoolExecutor(max_workers=30) as executor:
+                future_to_path = {executor.submit(check_path, path): path for path in extended_directories[:200]}
                 
                 for future in as_completed(future_to_path):
                     result = future.result()
                     if result:
                         results['crawl_levels'][1] = results['crawl_levels'].get(1, 0) + 1
             
+            # Technique 2: Common File Extensions Discovery
+            print("   📄 Common File Extensions Discovery...")
+            results['techniques_used'].append('Common File Extensions Discovery')
+            
+            common_extensions = [
+                '.php', '.asp', '.aspx', '.jsp', '.cfm', '.pl', '.py', '.rb', '.go', '.java',
+                '.xml', '.json', '.yaml', '.yml', '.ini', '.conf', '.config', '.properties',
+                '.env', '.htaccess', '.htpasswd', '.gitignore', '.gitattributes', '.dockerignore',
+                '.txt', '.log', '.sql', '.bak', '.backup', '.old', '.orig', '.copy',
+                '.zip', '.tar', '.gz', '.rar', '.7z', '.exe', '.dll', '.so', '.dylib'
+            ]
+            
+            def check_extension_file(ext):
+                try:
+                    filename = f"/index{ext}"
+                    url = f"https://{target}{filename}"
+                    response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
+                    
+                    if response.status_code in [200, 301, 302, 403, 401]:
+                        result = {
+                            'path': filename,
+                            'url': url,
+                            'status_code': response.status_code,
+                            'content_length': len(response.content),
+                            'extension': ext
+                        }
+                        results['files_found'].append(result)
+                        print(f"   ✅ Found: {filename} ({response.status_code})")
+                        return result
+                except:
+                    pass
+                return None
+            
+            # Check common extensions
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_ext = {executor.submit(check_extension_file, ext): ext for ext in common_extensions}
+                
+                for future in as_completed(future_to_ext):
+                    result = future.result()
+                    if result:
+                        results['crawl_levels'][2] = results['crawl_levels'].get(2, 0) + 1
+            
+            # Technique 3: Directory Brute Force with Numbers
+            print("   🔢 Directory Brute Force with Numbers...")
+            results['techniques_used'].append('Directory Brute Force with Numbers')
+            
+            def check_numbered_path(number):
+                try:
+                    path = f"/{number}"
+                    url = f"https://{target}{path}"
+                    response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
+                    
+                    if response.status_code in [200, 301, 302, 403, 401]:
+                        result = {
+                            'path': path,
+                            'url': url,
+                            'status_code': response.status_code,
+                            'content_length': len(response.content),
+                            'type': 'numbered'
+                        }
+                        results['directories_found'].append(result)
+                        print(f"   ✅ Found: {path} ({response.status_code})")
+                        return result
+                except:
+                    pass
+                return None
+            
+            # Check numbered directories (1-100)
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_num = {executor.submit(check_numbered_path, i): i for i in range(1, 101)}
+                
+                for future in as_completed(future_to_num):
+                    result = future.result()
+                    if result:
+                        results['crawl_levels'][3] = results['crawl_levels'].get(3, 0) + 1
+            
+            # Technique 4: HTTP Methods Testing
+            print("   🔍 HTTP Methods Testing...")
+            results['techniques_used'].append('HTTP Methods Testing')
+            
+            methods_to_test = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT']
+            allowed_methods = []
+            
+            for method in methods_to_test:
+                try:
+                    response = requests.request(method, f"https://{target}/", headers=self.headers, timeout=5)
+                    if response.status_code not in [405, 501]:  # Method not allowed
+                        allowed_methods.append({
+                            'method': method,
+                            'status_code': response.status_code,
+                            'allowed': True
+                        })
+                        print(f"   ✅ HTTP {method} allowed: {response.status_code}")
+                except Exception as e:
+                    allowed_methods.append({
+                        'method': method,
+                        'status_code': 'error',
+                        'allowed': False
+                    })
+            
+            results['http_methods'] = allowed_methods
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['directories_found'])} directories, {len(results['files_found'])} files"
+            results['summary'] = f"Found {len(results['directories_found'])} directories, {len(results['files_found'])} files using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 5 completed: {results['summary']}")
             return results
@@ -1137,33 +1305,280 @@ class AdvancedReconnaissance:
             return results
     
     def phase6_parameter_discovery(self, target: str) -> Dict[str, Any]:
-        """Phase 6: Parameter Discovery and JS Analysis"""
-        print(f"🔍 Phase 6: Parameter Discovery for {target}")
+        """Phase 6: Advanced Parameter Discovery and JS Analysis"""
+        print(f"🔍 Phase 6: Advanced Parameter Discovery for {target}")
         results = {
             'target': target,
             'phase': 6,
             'start_time': datetime.now().isoformat(),
             'parameters_found': [],
             'js_analysis': {},
+            'js_files': [],
+            'endpoints_found': [],
+            'api_keys': [],
+            'secrets': [],
             'techniques_used': [],
             'errors': []
         }
         
         try:
+            # Technique 1: JavaScript Analysis
+            print("   📜 JavaScript Analysis...")
+            results['techniques_used'].append('JavaScript Analysis')
+            
+            try:
+                response = requests.get(f"https://{target}", headers=self.headers, timeout=10, allow_redirects=True)
+                content = response.text
+                
+                # Extract JavaScript files
+                js_patterns = re.findall(r'<script[^>]*src=["\']([^"\']*\.js[^"\']*)["\'][^>]*>', content, re.IGNORECASE)
+                inline_scripts = re.findall(r'<script[^>]*>(.*?)</script>', content, re.DOTALL | re.IGNORECASE)
+                
+                results['js_analysis'] = {
+                    'external_scripts': len(js_patterns),
+                    'inline_scripts': len(inline_scripts),
+                    'total_scripts': len(js_patterns) + len(inline_scripts)
+                }
+                
+                # Analyze each JavaScript file
+                for js_url in js_patterns[:10]:  # Limit to first 10 for speed
+                    try:
+                        if not js_url.startswith('http'):
+                            js_url = f"https://{target}{js_url}"
+                        
+                        js_response = requests.get(js_url, headers=self.headers, timeout=5)
+                        if js_response.status_code == 200:
+                            js_content = js_response.text
+                            
+                            # Extract endpoints from JavaScript
+                            endpoint_patterns = [
+                                r'["\']([^"\']*\/api\/[^"\']*)["\']',
+                                r'["\']([^"\']*\/rest\/[^"\']*)["\']',
+                                r'["\']([^"\']*\/graphql[^"\']*)["\']',
+                                r'["\']([^"\']*\/v[0-9]+\/[^"\']*)["\']',
+                                r'fetch\(["\']([^"\']*)["\']',
+                                r'axios\.[a-z]+\(["\']([^"\']*)["\']',
+                                r'\.get\(["\']([^"\']*)["\']',
+                                r'\.post\(["\']([^"\']*)["\']',
+                                r'\.put\(["\']([^"\']*)["\']',
+                                r'\.delete\(["\']([^"\']*)["\']'
+                            ]
+                            
+                            for pattern in endpoint_patterns:
+                                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                                for match in matches:
+                                    if match.startswith('/') and match not in results['endpoints_found']:
+                                        results['endpoints_found'].append(match)
+                                        print(f"   ✅ Endpoint found in JS: {match}")
+                            
+                            # Extract API keys and secrets
+                            secret_patterns = [
+                                r'["\'](sk_[a-zA-Z0-9]{20,})["\']',  # Stripe
+                                r'["\'](pk_[a-zA-Z0-9]{20,})["\']',  # Stripe
+                                r'["\'](AIza[0-9A-Za-z\\-_]{35})["\']',  # Google API
+                                r'["\'](AKIA[0-9A-Z]{16})["\']',  # AWS
+                                r'["\']([0-9a-f]{32})["\']',  # MD5 hash
+                                r'["\']([0-9a-f]{40})["\']',  # SHA1 hash
+                                r'["\']([0-9a-f]{64})["\']',  # SHA256 hash
+                                r'["\'](Bearer\s+[a-zA-Z0-9\-_=]+)["\']',  # Bearer token
+                                r'["\'](api_key["\']\s*:\s*["\'][^"\']+["\'])',  # API key pattern
+                                r'["\'](secret["\']\s*:\s*["\'][^"\']+["\'])',  # Secret pattern
+                                r'["\'](password["\']\s*:\s*["\'][^"\']+["\'])',  # Password pattern
+                                r'["\'](token["\']\s*:\s*["\'][^"\']+["\'])'  # Token pattern
+                            ]
+                            
+                            for pattern in secret_patterns:
+                                matches = re.findall(pattern, js_content, re.IGNORECASE)
+                                for match in matches:
+                                    if match not in results['secrets']:
+                                        results['secrets'].append(match)
+                                        print(f"   🔑 Secret found in JS: {match[:50]}...")
+                            
+                            results['js_files'].append({
+                                'url': js_url,
+                                'size': len(js_content),
+                                'endpoints_found': len([e for e in results['endpoints_found'] if e.startswith('/')]),
+                                'secrets_found': len(results['secrets'])
+                            })
+                            
+                    except Exception as e:
+                        results['errors'].append(f"JS file analysis failed for {js_url}: {str(e)}")
+                
+                # Analyze inline scripts
+                for script_content in inline_scripts:
+                    # Extract endpoints from inline scripts
+                    for pattern in [
+                        r'["\']([^"\']*\/api\/[^"\']*)["\']',
+                        r'["\']([^"\']*\/rest\/[^"\']*)["\']',
+                        r'["\']([^"\']*\/graphql[^"\']*)["\']'
+                    ]:
+                        matches = re.findall(pattern, script_content, re.IGNORECASE)
+                        for match in matches:
+                            if match.startswith('/') and match not in results['endpoints_found']:
+                                results['endpoints_found'].append(match)
+                                print(f"   ✅ Endpoint found in inline JS: {match}")
+                
+            except Exception as e:
+                results['errors'].append(f"JavaScript analysis failed: {str(e)}")
+            
+            # Technique 2: Parameter Discovery
             print("   🔍 Parameter Discovery...")
             results['techniques_used'].append('Parameter Discovery')
             
-            # Simple parameter discovery
-            for param in self.parameter_wordlist[:50]:
+            # Extended parameter wordlist
+            extended_params = self.parameter_wordlist + [
+                # API parameters
+                'api_key', 'apikey', 'api-key', 'access_token', 'access-token', 'access_token',
+                'bearer', 'bearer_token', 'bearer-token', 'oauth_token', 'oauth-token',
+                'client_id', 'client-id', 'client_secret', 'client-secret', 'client_secret',
+                
+                # Authentication
+                'auth', 'authorization', 'auth_token', 'auth-token', 'session', 'sessionid',
+                'session_id', 'session-id', 'csrf', 'csrf_token', 'csrf-token', 'csrf_token',
+                'nonce', 'state', 'callback', 'redirect', 'return', 'return_url', 'return-url',
+                
+                # Common web parameters
+                'id', 'user_id', 'user-id', 'userid', 'username', 'user_name', 'user-name',
+                'email', 'mail', 'phone', 'mobile', 'name', 'firstname', 'lastname', 'fullname',
+                'password', 'pass', 'pwd', 'confirm_password', 'confirm-password', 'new_password',
+                
+                # Pagination and filtering
+                'page', 'p', 'offset', 'limit', 'size', 'count', 'per_page', 'per-page',
+                'start', 'end', 'from', 'to', 'since', 'until', 'before', 'after',
+                'search', 'query', 'q', 'filter', 'sort', 'order', 'orderby', 'order-by',
+                
+                # File upload
+                'file', 'files', 'upload', 'upload_file', 'upload-file', 'image', 'img',
+                'photo', 'picture', 'avatar', 'document', 'doc', 'pdf', 'excel', 'csv',
+                
+                # Configuration
+                'config', 'setting', 'settings', 'option', 'options', 'preference', 'preferences',
+                'mode', 'theme', 'language', 'lang', 'locale', 'timezone', 'currency',
+                
+                # Security
+                'security', 'secure', 'encrypt', 'decrypt', 'hash', 'salt', 'iv', 'cipher',
+                'ssl', 'tls', 'cert', 'certificate', 'verify', 'validation', 'validate',
+                
+                # Database
+                'db', 'database', 'table', 'column', 'field', 'value', 'values', 'record',
+                'select', 'insert', 'update', 'delete', 'where', 'join', 'group', 'having',
+                
+                # URL parameters
+                'url', 'link', 'href', 'src', 'source', 'target', 'destination',
+                'next', 'previous', 'back', 'forward', 'continue', 'cancel', 'abort',
+                
+                # Content
+                'title', 'description', 'content', 'body', 'text', 'message', 'subject',
+                'comment', 'comments', 'reply', 'replies', 'post', 'posts', 'article', 'articles',
+                
+                # Social
+                'facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'vimeo',
+                'social', 'share', 'like', 'follow', 'follower', 'following', 'friend', 'friends',
+                
+                # E-commerce
+                'product', 'products', 'category', 'categories', 'brand', 'brands',
+                'price', 'cost', 'quantity', 'amount', 'total', 'subtotal', 'tax',
+                'shipping', 'discount', 'coupon', 'cart', 'checkout', 'payment',
+                
+                # Analytics
+                'analytics', 'tracking', 'track', 'event', 'events', 'action', 'actions',
+                'metric', 'metrics', 'stat', 'stats', 'report', 'reports', 'dashboard',
+                
+                # Development
+                'debug', 'test', 'testing', 'dev', 'development', 'staging', 'stage',
+                'prod', 'production', 'version', 'build', 'release', 'deploy', 'environment'
+            ]
+            
+            # Categorize parameters
+            param_categories = {
+                'authentication': ['auth', 'login', 'password', 'token', 'session', 'csrf', 'oauth'],
+                'api': ['api', 'key', 'token', 'bearer', 'client', 'secret'],
+                'pagination': ['page', 'offset', 'limit', 'size', 'count', 'per_page'],
+                'filtering': ['search', 'query', 'filter', 'sort', 'order', 'category'],
+                'file_upload': ['file', 'upload', 'image', 'document', 'attachment'],
+                'configuration': ['config', 'setting', 'option', 'preference', 'mode', 'theme'],
+                'security': ['security', 'secure', 'encrypt', 'hash', 'cert', 'ssl'],
+                'database': ['db', 'table', 'column', 'field', 'record', 'query'],
+                'content': ['title', 'description', 'content', 'body', 'text', 'message'],
+                'ecommerce': ['product', 'category', 'price', 'cart', 'checkout', 'payment'],
+                'analytics': ['analytics', 'tracking', 'metric', 'stat', 'report', 'dashboard']
+            }
+            
+            for param in extended_params[:100]:  # Limit to first 100
+                category = 'other'
+                for cat, keywords in param_categories.items():
+                    if any(keyword in param.lower() for keyword in keywords):
+                        category = cat
+                        break
+                
                 results['parameters_found'].append({
                     'parameter': param,
-                    'type': 'common',
-                    'source': 'wordlist'
+                    'type': category,
+                    'source': 'wordlist',
+                    'risk_level': self._assess_parameter_risk(param)
                 })
+            
+            # Technique 3: URL Parameter Analysis
+            print("   🔗 URL Parameter Analysis...")
+            results['techniques_used'].append('URL Parameter Analysis')
+            
+            # Test common parameters with different values
+            test_params = ['id', 'user', 'page', 'search', 'category', 'type', 'status']
+            test_values = ['1', 'admin', 'test', 'debug', 'true', 'false', 'null', 'undefined']
+            
+            for param in test_params:
+                for value in test_values:
+                    try:
+                        url = f"https://{target}/?{param}={value}"
+                        response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
+                        
+                        if response.status_code not in [404, 400]:  # Not a standard error
+                            results['parameters_found'].append({
+                                'parameter': param,
+                                'type': 'url_analysis',
+                                'source': 'testing',
+                                'test_value': value,
+                                'response_code': response.status_code,
+                                'risk_level': self._assess_parameter_risk(param)
+                            })
+                            print(f"   ✅ Parameter test: {param}={value} -> {response.status_code}")
+                    except:
+                        pass
+            
+            # Technique 4: Form Parameter Discovery
+            print("   📝 Form Parameter Discovery...")
+            results['techniques_used'].append('Form Parameter Discovery')
+            
+            try:
+                response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
+                content = response.text
+                
+                # Extract form parameters
+                form_patterns = [
+                    r'<input[^>]*name=["\']([^"\']*)["\'][^>]*>',
+                    r'<select[^>]*name=["\']([^"\']*)["\'][^>]*>',
+                    r'<textarea[^>]*name=["\']([^"\']*)["\'][^>]*>',
+                    r'<button[^>]*name=["\']([^"\']*)["\'][^>]*>'
+                ]
+                
+                for pattern in form_patterns:
+                    matches = re.findall(pattern, content, re.IGNORECASE)
+                    for match in matches:
+                        if match not in [p['parameter'] for p in results['parameters_found']]:
+                            results['parameters_found'].append({
+                                'parameter': match,
+                                'type': 'form',
+                                'source': 'html_analysis',
+                                'risk_level': self._assess_parameter_risk(match)
+                            })
+                            print(f"   ✅ Form parameter found: {match}")
+                
+            except Exception as e:
+                results['errors'].append(f"Form parameter discovery failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['parameters_found'])} parameters"
+            results['summary'] = f"Found {len(results['parameters_found'])} parameters, {len(results['endpoints_found'])} endpoints, {len(results['secrets'])} secrets"
             
             print(f"   ✅ Phase 6 completed: {results['summary']}")
             return results
@@ -1174,38 +1589,276 @@ class AdvancedReconnaissance:
             print(f"   ❌ Phase 6 failed: {e}")
             return results
     
+    def _assess_parameter_risk(self, parameter: str) -> str:
+        """Assess risk level of a parameter"""
+        high_risk_keywords = ['password', 'passwd', 'secret', 'key', 'token', 'auth', 'admin', 'root']
+        medium_risk_keywords = ['id', 'user', 'email', 'phone', 'session', 'csrf']
+        
+        param_lower = parameter.lower()
+        
+        if any(keyword in param_lower for keyword in high_risk_keywords):
+            return 'high'
+        elif any(keyword in param_lower for keyword in medium_risk_keywords):
+            return 'medium'
+        else:
+            return 'low'
+    
     def phase7_endpoint_discovery(self, target: str) -> Dict[str, Any]:
-        """Phase 7: Endpoint Discovery"""
-        print(f"🔍 Phase 7: Endpoint Discovery for {target}")
+        """Phase 7: Advanced Endpoint Discovery (REST/GraphQL)"""
+        print(f"🔍 Phase 7: Advanced Endpoint Discovery for {target}")
         results = {
             'target': target,
             'phase': 7,
             'start_time': datetime.now().isoformat(),
             'endpoints_found': [],
+            'rest_endpoints': [],
+            'graphql_endpoints': [],
+            'api_documentation': [],
+            'openapi_specs': [],
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            print("   🔍 Endpoint Discovery...")
-            results['techniques_used'].append('Endpoint Discovery')
+            # Technique 1: REST API Discovery
+            print("   🔍 REST API Discovery...")
+            results['techniques_used'].append('REST API Discovery')
             
-            # Simple endpoint discovery
-            common_endpoints = [
-                '/api', '/api/v1', '/api/v2', '/rest', '/graphql',
-                '/admin', '/login', '/dashboard', '/status', '/health'
+            # Extended REST endpoints
+            rest_endpoints = [
+                # Common API paths
+                '/api', '/api/v1', '/api/v2', '/api/v3', '/api/v4', '/api/v5',
+                '/rest', '/restapi', '/rest-api', '/restapi/v1', '/restapi/v2',
+                '/webapi', '/web-api', '/web_api', '/service', '/services',
+                
+                # Resource endpoints
+                '/users', '/user', '/accounts', '/account', '/profiles', '/profile',
+                '/products', '/product', '/items', '/item', '/orders', '/order',
+                '/posts', '/post', '/articles', '/article', '/comments', '/comment',
+                '/categories', '/category', '/tags', '/tag', '/files', '/file',
+                
+                # Authentication endpoints
+                '/auth', '/login', '/logout', '/register', '/signup', '/signin',
+                '/oauth', '/oauth2', '/token', '/refresh', '/validate', '/verify',
+                
+                # Admin endpoints
+                '/admin', '/admin/api', '/admin/rest', '/admin/service',
+                '/dashboard', '/panel', '/control', '/management', '/manage',
+                
+                # Mobile/App endpoints
+                '/mobile', '/app', '/android', '/ios', '/client', '/sdk',
+                '/push', '/notification', '/message', '/chat', '/messaging',
+                
+                # Third-party integrations
+                '/webhook', '/callback', '/integration', '/sync', '/import', '/export',
+                '/payment', '/billing', '/invoice', '/subscription', '/plan',
+                
+                # Analytics and monitoring
+                '/analytics', '/stats', '/metrics', '/report', '/logs', '/events',
+                '/tracking', '/monitor', '/health', '/status', '/ping', '/heartbeat'
             ]
             
-            for endpoint in common_endpoints:
-                results['endpoints_found'].append({
-                    'endpoint': endpoint,
-                    'type': 'common',
-                    'source': 'wordlist'
-                })
+            def test_endpoint(endpoint):
+                try:
+                    url = f"https://{target}{endpoint}"
+                    response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
+                    
+                    if response.status_code in [200, 201, 202, 204, 301, 302, 400, 401, 403, 405]:
+                        result = {
+                            'endpoint': endpoint,
+                            'url': url,
+                            'status_code': response.status_code,
+                            'content_type': response.headers.get('Content-Type', 'Unknown'),
+                            'content_length': len(response.content),
+                            'server': response.headers.get('Server', 'Unknown'),
+                            'type': 'rest'
+                        }
+                        
+                        # Check if it's JSON response (likely API)
+                        if 'application/json' in result['content_type'].lower():
+                            result['api_type'] = 'JSON API'
+                            result['is_json'] = True
+                            try:
+                                json_data = response.json()
+                                result['json_keys'] = list(json_data.keys())[:10]  # First 10 keys
+                            except:
+                                pass
+                        elif 'application/xml' in result['content_type'].lower():
+                            result['api_type'] = 'XML API'
+                            result['is_xml'] = True
+                        
+                        results['rest_endpoints'].append(result)
+                        print(f"   ✅ REST endpoint found: {endpoint} ({response.status_code}) - {result['content_type']}")
+                        return result
+                except Exception as e:
+                    results['errors'].append(f"REST endpoint test failed for {endpoint}: {str(e)}")
+                return None
+            
+            # Test REST endpoints
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                future_to_endpoint = {executor.submit(test_endpoint, ep): ep for ep in rest_endpoints[:40]}
+                
+                for future in as_completed(future_to_endpoint):
+                    result = future.result()
+                    if result:
+                        results['endpoints_found'].append(result)
+            
+            # Technique 2: GraphQL Discovery
+            print("   🔍 GraphQL Discovery...")
+            results['techniques_used'].append('GraphQL Discovery')
+            
+            graphql_endpoints = [
+                '/graphql', '/graphql/v1', '/graphql/v2', '/gql', '/query', '/api/graphql',
+                '/api/gql', '/api/query', '/service/graphql', '/admin/graphql'
+            ]
+            
+            def test_graphql_endpoint(endpoint):
+                try:
+                    url = f"https://{target}{endpoint}"
+                    
+                    # Test simple GraphQL query
+                    simple_query = {"query": "query { __typename }"}
+                    response = requests.post(url, json=simple_query, headers=self.headers, timeout=5)
+                    
+                    if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', '').lower():
+                        try:
+                            json_data = response.json()
+                            if 'data' in json_data:
+                                result = {
+                                    'endpoint': endpoint,
+                                    'url': url,
+                                    'status_code': response.status_code,
+                                    'type': 'graphql',
+                                    'query_works': True
+                                }
+                                results['graphql_endpoints'].append(result)
+                                print(f"   ✅ GraphQL endpoint found: {endpoint}")
+                                return result
+                        except:
+                            pass
+                            
+                except Exception as e:
+                    results['errors'].append(f"GraphQL endpoint test failed for {endpoint}: {str(e)}")
+                return None
+            
+            # Test GraphQL endpoints
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_endpoint = {executor.submit(test_graphql_endpoint, ep): ep for ep in graphql_endpoints}
+                
+                for future in as_completed(future_to_endpoint):
+                    result = future.result()
+                    if result:
+                        results['endpoints_found'].append(result)
+            
+            # Technique 3: API Documentation Discovery
+            print("   📚 API Documentation Discovery...")
+            results['techniques_used'].append('API Documentation Discovery')
+            
+            doc_endpoints = [
+                '/docs', '/documentation', '/api-docs', '/api/docs', '/swagger', '/swagger-ui',
+                '/swagger-ui.html', '/api/swagger', '/api/swagger-ui', '/openapi', '/openapi.json',
+                '/api/openapi', '/api/openapi.json', '/redoc', '/api/redoc', '/schema',
+                '/api/schema', '/api.json', '/api.yaml', '/api.yml', '/spec', '/api/spec'
+            ]
+            
+            def test_doc_endpoint(endpoint):
+                try:
+                    url = f"https://{target}{endpoint}"
+                    response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
+                    
+                    if response.status_code == 200:
+                        content = response.text.lower()
+                        doc_type = 'Unknown'
+                        
+                        # Detect documentation type
+                        if 'swagger' in content or 'openapi' in content:
+                            doc_type = 'Swagger/OpenAPI'
+                        elif 'redoc' in content:
+                            doc_type = 'ReDoc'
+                        elif 'postman' in content:
+                            doc_type = 'Postman'
+                        elif 'graphql' in content:
+                            doc_type = 'GraphQL'
+                        elif 'api' in content and ('documentation' in content or 'docs' in content):
+                            doc_type = 'API Documentation'
+                        
+                        result = {
+                            'endpoint': endpoint,
+                            'url': url,
+                            'status_code': response.status_code,
+                            'type': 'documentation',
+                            'doc_type': doc_type,
+                            'content_length': len(response.content)
+                        }
+                        results['api_documentation'].append(result)
+                        print(f"   ✅ API documentation found: {endpoint} ({doc_type})")
+                        return result
+                except Exception as e:
+                    results['errors'].append(f"Documentation endpoint test failed for {endpoint}: {str(e)}")
+                return None
+            
+            # Test documentation endpoints
+            with ThreadPoolExecutor(max_workers=15) as executor:
+                future_to_endpoint = {executor.submit(test_doc_endpoint, ep): ep for ep in doc_endpoints}
+                
+                for future in as_completed(future_to_endpoint):
+                    result = future.result()
+                    if result:
+                        results['endpoints_found'].append(result)
+            
+            # Technique 4: OpenAPI Specification Discovery
+            print("   📋 OpenAPI Specification Discovery...")
+            results['techniques_used'].append('OpenAPI Specification Discovery')
+            
+            openapi_endpoints = [
+                '/openapi.json', '/swagger.json', '/api-docs.json', '/api.json',
+                '/openapi.yaml', '/swagger.yaml', '/api-docs.yaml', '/api.yaml',
+                '/openapi.yml', '/swagger.yml', '/api-docs.yml', '/api.yml'
+            ]
+            
+            def test_openapi_endpoint(endpoint):
+                try:
+                    url = f"https://{target}{endpoint}"
+                    response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
+                    
+                    if response.status_code == 200:
+                        content_type = response.headers.get('Content-Type', '').lower()
+                        if 'application/json' in content_type or 'text/yaml' in content_type or 'text/yml' in content_type:
+                            try:
+                                if 'json' in content_type or endpoint.endswith('.json'):
+                                    spec_data = response.json()
+                                    if 'openapi' in spec_data or 'swagger' in spec_data:
+                                        result = {
+                                            'endpoint': endpoint,
+                                            'url': url,
+                                            'status_code': response.status_code,
+                                            'type': 'openapi_spec',
+                                            'format': 'json',
+                                            'version': spec_data.get('openapi', spec_data.get('swagger', 'Unknown')),
+                                            'title': spec_data.get('info', {}).get('title', 'Unknown'),
+                                            'paths_count': len(spec_data.get('paths', {}))
+                                        }
+                                        results['openapi_specs'].append(result)
+                                        print(f"   ✅ OpenAPI spec found: {endpoint} (v{result['version']}) - {result['paths_count']} paths")
+                                        return result
+                            except Exception as e:
+                                results['errors'].append(f"OpenAPI spec parsing failed for {endpoint}: {str(e)}")
+                except Exception as e:
+                    results['errors'].append(f"OpenAPI spec test failed for {endpoint}: {str(e)}")
+                return None
+            
+            # Test OpenAPI specification endpoints
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_endpoint = {executor.submit(test_openapi_endpoint, ep): ep for ep in openapi_endpoints}
+                
+                for future in as_completed(future_to_endpoint):
+                    result = future.result()
+                    if result:
+                        results['endpoints_found'].append(result)
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['endpoints_found'])} endpoints"
+            results['summary'] = f"Found {len(results['endpoints_found'])} endpoints using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 7 completed: {results['summary']}")
             return results
