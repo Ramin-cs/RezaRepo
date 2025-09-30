@@ -1,0 +1,92 @@
+MIT License
+
+Copyright (c) 2024 ARAT - Advanced Reconnaissance & Assessment Tool
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## Security Notice
+
+This software is designed for authorized security testing and reconnaissance
+purposes only. Users must ensure they have proper authorization before testing
+any systems or networks. Unauthorized use of this software is strictly
+prohibited and may violate local, state, and federal laws.
+
+## Responsible Use
+
+By using this software, you agree to:
+
+1. Use it only on systems you own or have explicit written permission to test
+2. Comply with all applicable laws and regulations
+3. Respect rate limits and terms of service of third-party services
+4. Not use it for malicious purposes or to cause harm
+5. Report any vulnerabilities discovered responsibly
+6. Handle any data collected in accordance with applicable privacy laws
+
+## Disclaimer
+
+The authors and contributors of this software are not responsible for any
+misuse of this tool. Users are solely responsible for ensuring their use
+complies with applicable laws and regulations.
+
+## Third-Party Services
+
+This software integrates with various third-party services and APIs. Users
+are responsible for:
+
+1. Obtaining proper API keys and permissions
+2. Complying with the terms of service of these services
+3. Respecting rate limits and usage policies
+4. Paying any applicable fees for API usage
+
+## Data Collection and Privacy
+
+This software may collect and process data from various sources. Users are
+responsible for:
+
+1. Ensuring compliance with applicable data protection regulations
+2. Obtaining proper consent where required
+3. Securely storing and handling collected data
+4. Implementing appropriate data retention policies
+
+## Support and Liability
+
+This software is provided "as is" without any warranty or support guarantee.
+The authors and contributors are not liable for any damages or losses
+resulting from the use of this software.
+
+## Reporting Security Issues
+
+If you discover a security vulnerability in this software, please report it
+responsibly by:
+
+1. Not creating public issues or discussions
+2. Contacting the maintainers privately
+3. Providing detailed information about the vulnerability
+4. Allowing reasonable time for fixes before public disclosure
+
+## Updates and Maintenance
+
+This software may be updated periodically. Users are responsible for:
+
+1. Keeping the software updated to the latest version
+2. Reviewing changelogs for security updates
+3. Testing updates in a safe environment before deployment
+4. Maintaining proper backup and recovery procedures

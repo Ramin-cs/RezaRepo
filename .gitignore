@@ -1,23 +1,225 @@
-# Build artifacts
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual env
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
 venv/
-.env/
-.venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Reports & screenshots
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ARAT specific
+data/
+logs/
 reports/
-router_scan_report_*.html
-*.png
+output/
+*.db
+*.sqlite
+*.sqlite3
 
-# OS junk
+# API Keys
+.env
+config/config.yaml
+config/api_keys.yaml
+
+# Temporary files
+/tmp/
+temp/
+*.tmp
+*.temp
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Selenium drivers
-chromedriver*
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Logs
-*.log
+# Docker
+.dockerignore
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Screenshots
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+# Network captures
+*.pcap
+*.cap
+*.har
+
+# Wordlists (large files)
+wordlists/*.txt
+!wordlists/subdomains.txt
+!wordlists/directories.txt
+!wordlists/parameters.txt
+!wordlists/technology.txt
+!wordlists/endpoints.txt
+
+# Tool outputs
+nmap_output/
+masscan_output/
+nuclei_output/
+httpx_output/
+sublist3r_output/
+amass_output/
+assetfinder_output/
+subfinder_output/
+findomain_output/
+chaos_output/
+hakrawler_output/
+
+# Cache
+.cache/
+cache/
+*.cache
+
+# Session files
+*.session
+*.sess
+
+# Lock files
+*.lock
+*.pid
+
+# Runtime files
+*.run
+*.runtime

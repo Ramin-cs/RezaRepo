@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  arat-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./output:/app/output
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - PYTHONPATH=/app
+    command: ["python", "main.py", "--web-panel", "--host", "0.0.0.0", "--port", "8080"]
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  redis-dev:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  postgres-dev:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: arat_dev
+      POSTGRES_USER: arat_dev
+      POSTGRES_PASSWORD: arat_dev_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  elasticsearch-dev:
+    image: elasticsearch:8.11.0
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_dev_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  kibana-dev:
+    image: kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch-dev:9200
+    depends_on:
+      - elasticsearch-dev
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  grafana-dev:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+  prometheus-dev:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_dev_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - arat-dev-network
+
+volumes:
+  redis_dev_data:
+  postgres_dev_data:
+  elasticsearch_dev_data:
+  grafana_dev_data:
+  prometheus_dev_data:
+
+networks:
+  arat-dev-network:
+    driver: bridge
