@@ -15,8 +15,14 @@ import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Add Go tools to PATH
-os.environ['PATH'] = os.environ.get('PATH', '') + ':/home/ubuntu/go/bin'
+# Import cross-platform manager
+try:
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils.platform_manager import get_platform_manager
+    platform_manager = get_platform_manager()
+except ImportError:
+    platform_manager = None
 
 class Phase2SubdomainDiscovery:
     """Advanced Subdomain Discovery with comprehensive techniques"""
@@ -430,37 +436,27 @@ class Phase2SubdomainDiscovery:
     
     def _is_subfinder_available(self) -> bool:
         """Check if subfinder is available"""
+        if platform_manager:
+            return platform_manager.is_tool_available('subfinder')
+        
+        # Fallback for older versions
         try:
-            # Try multiple paths
-            paths = ['subfinder', '/home/ubuntu/go/bin/subfinder', '/usr/local/bin/subfinder']
-            for path in paths:
-                try:
-                    subprocess.run([path, '--help'], capture_output=True, timeout=5)
-                    return True
-                except:
-                    continue
-            return False
+            subprocess.run(['subfinder', '--help'], capture_output=True, timeout=5)
+            return True
         except:
             return False
     
     def _run_subfinder(self, target: str) -> Dict[str, Any]:
         """Run subfinder if available"""
+        if platform_manager:
+            # Use platform manager
+            result = platform_manager.run_tool('subfinder', ['-d', target, '-silent', '-o', '/tmp/subfinder_output.txt'])
+            if not result['success']:
+                return result
+        
+        # Fallback for older versions
         try:
-            # Try multiple paths
-            paths = ['subfinder', '/home/ubuntu/go/bin/subfinder', '/usr/local/bin/subfinder']
-            subfinder_path = None
-            for path in paths:
-                try:
-                    subprocess.run([path, '--help'], capture_output=True, timeout=5)
-                    subfinder_path = path
-                    break
-                except:
-                    continue
-            
-            if not subfinder_path:
-                return {'success': False, 'error': 'Subfinder not found', 'tool': 'subfinder'}
-            
-            cmd = [subfinder_path, '-d', target, '-silent', '-o', '/tmp/subfinder_output.txt']
+            cmd = ['subfinder', '-d', target, '-silent', '-o', '/tmp/subfinder_output.txt']
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             
             subdomains = []

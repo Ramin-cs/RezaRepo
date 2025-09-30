@@ -1,71 +1,77 @@
 @echo off
-echo ========================================
-echo    ARAT - Windows Installation Script
-echo ========================================
-echo.
+echo 🚀 ARAT Cross-Platform Installer for Windows
+echo ================================================
 
-REM Check if Python is installed
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8+ from https://www.python.org/downloads/
-    echo Make sure to check "Add Python to PATH" during installation
+REM Check if running as administrator
+net session >nul 2>&1
+if %errorLevel% == 0 (
+    echo ✅ Running as administrator
+) else (
+    echo ❌ Please run as administrator
     pause
     exit /b 1
 )
 
-echo Python found:
-python --version
 echo.
+echo 📦 Installing system requirements...
 
-REM Upgrade pip
-echo Upgrading pip...
-python -m pip install --upgrade pip
-echo.
-
-REM Install requirements for Windows
-echo Installing ARAT dependencies for Windows...
-pip install -r requirements_windows.txt
-if errorlevel 1 (
-    echo.
-    echo ERROR: Failed to install some dependencies
-    echo Trying alternative installation...
-    echo.
-    
-    REM Try installing packages one by one
-    echo Installing core packages...
-    pip install fastapi uvicorn pydantic pydantic-settings
-    pip install requests aiohttp httpx urllib3
-    pip install sqlalchemy pyyaml python-dotenv
-    pip install cryptography dnspython
-    pip install beautifulsoup4 lxml
-    pip install shodan virustotal-api
-    pip install tqdm colorama rich loguru
-    pip install pandas numpy matplotlib plotly
-    pip install flask flask-socketio jinja2
-    pip install pytest pytest-asyncio
-    pip install click python-dateutil psutil
-    
-    if errorlevel 1 (
-        echo.
-        echo ERROR: Failed to install dependencies
-        echo Please try installing manually:
-        echo pip install fastapi flask sqlalchemy pyyaml requests
+REM Install Chocolatey if not present
+where choco >nul 2>&1
+if %errorLevel% neq 0 (
+    echo 📦 Installing Chocolatey package manager...
+    powershell -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+    if %errorLevel% neq 0 (
+        echo ❌ Failed to install Chocolatey
         pause
         exit /b 1
     )
 )
 
-echo.
-echo Creating data directory...
-if not exist "data" mkdir data
+REM Install required tools via Chocolatey
+echo 📦 Installing Git...
+choco install git -y
+
+echo 📦 Installing Go...
+choco install golang -y
+
+echo 📦 Installing Python...
+choco install python -y
+
+echo 📦 Installing pip...
+python -m ensurepip --upgrade
 
 echo.
-echo Installation completed successfully!
+echo 🐍 Installing Python packages...
+pip install sublist3r python-whois
+
 echo.
-echo To start ARAT:
-echo   python main.py --web-panel --port 8080
+echo 🔧 Installing Go tools...
+set GOPATH=%USERPROFILE%\go
+set PATH=%PATH%;%GOPATH%\bin
+
+go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+go install github.com/projectdiscovery/httpx/cmd/httpx@latest
+go install github.com/OJ/gobuster/v3@latest
+go install github.com/projectdiscovery/katana/cmd/katana@latest
+go install github.com/projectdiscovery/gospider/cmd/gospider@latest
+
 echo.
-echo Or use: start_arat.bat
+echo 🔧 Setting up environment variables...
+setx PATH "%PATH%;%USERPROFILE%\go\bin;%USERPROFILE%\.local\bin" /M
+
+echo.
+echo 🔍 Verifying installation...
+where git
+where go
+where python
+where pip
+where sublist3r
+where subfinder
+where httpx
+where gobuster
+
+echo.
+echo 🎉 Installation completed!
+echo 🔄 Please restart your command prompt for PATH changes to take effect.
 echo.
 pause
