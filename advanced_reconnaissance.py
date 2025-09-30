@@ -230,7 +230,7 @@ class AdvancedReconnaissance:
             }
     
     def phase1_advanced_real_ip_extraction(self, target: str) -> Dict[str, Any]:
-        """Phase 1: Advanced Real IP Extraction with all techniques"""
+        """Phase 1: Advanced Real IP Extraction with comprehensive techniques"""
         print(f"🔍 Phase 1: Advanced Real IP Extraction for {target}")
         results = {
             'target': target,
@@ -242,12 +242,15 @@ class AdvancedReconnaissance:
             'dns_records': {},
             'ssl_info': {},
             'http_headers': {},
+            'historical_dns': [],
+            'certificate_transparency': [],
+            'reverse_dns': [],
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            # Technique 1: Multiple DNS Resolvers
+            # Technique 1: Multiple DNS Resolvers with Extended List
             print("   📡 Advanced DNS Resolution...")
             results['techniques_used'].append('Multiple DNS Resolvers')
             
@@ -256,7 +259,12 @@ class AdvancedReconnaissance:
                 '1.1.1.1',      # Cloudflare DNS
                 '208.67.222.222', # OpenDNS
                 '9.9.9.9',      # Quad9
-                '76.76.19.21'   # Alternate DNS
+                '76.76.19.21',  # Alternate DNS
+                '8.8.4.4',      # Google DNS Secondary
+                '1.0.0.1',      # Cloudflare DNS Secondary
+                '208.67.220.220', # OpenDNS Secondary
+                '9.9.9.10',     # Quad9 Secondary
+                '76.76.2.22'    # Alternate DNS Secondary
             ]
             
             for resolver_ip in dns_resolvers:
@@ -270,7 +278,7 @@ class AdvancedReconnaissance:
                         answers = resolver.resolve(target, 'A')
                         for answer in answers:
                             ip = str(answer)
-                            if ip not in results['real_ips']:
+                            if ip not in results['real_ips'] and not self._is_private_ip(ip):
                                 results['real_ips'].append(ip)
                                 print(f"   ✅ Found IP via {resolver_ip}: {ip}")
                     except:
@@ -279,18 +287,70 @@ class AdvancedReconnaissance:
                 except Exception as e:
                     results['errors'].append(f"DNS resolver {resolver_ip} failed: {str(e)}")
             
-            # Technique 2: Advanced CDN Detection
+            # Technique 2: Historical DNS Records
+            print("   📚 Historical DNS Records...")
+            results['techniques_used'].append('Historical DNS Records')
+            
+            historical_sources = [
+                f"https://dnsdumpster.com/static/map/{target}",
+                f"https://www.threatcrowd.org/domain.php?domain={target}",
+                f"https://hackertarget.com/dns-lookup/?q={target}"
+            ]
+            
+            for source in historical_sources:
+                try:
+                    response = requests.get(source, headers=self.headers, timeout=10)
+                    if response.status_code == 200:
+                        # Extract IPs from response (simplified)
+                        ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+                        found_ips = re.findall(ip_pattern, response.text)
+                        for ip in found_ips:
+                            if not self._is_private_ip(ip) and ip not in results['real_ips']:
+                                results['historical_dns'].append(ip)
+                                results['real_ips'].append(ip)
+                                print(f"   ✅ Historical IP found: {ip}")
+                except Exception as e:
+                    results['errors'].append(f"Historical DNS source {source} failed: {str(e)}")
+            
+            # Technique 3: Certificate Transparency Logs
+            print("   🔐 Certificate Transparency Logs...")
+            results['techniques_used'].append('Certificate Transparency Logs')
+            
+            ct_sources = [
+                f"https://crt.sh/?q={target}&output=json",
+                f"https://censys.io/api/v1/search/certificates?q={target}",
+                f"https://certspotter.com/api/v0/certs?domain={target}"
+            ]
+            
+            for source in ct_sources:
+                try:
+                    response = requests.get(source, headers=self.headers, timeout=10)
+                    if response.status_code == 200:
+                        # Parse certificate data (simplified)
+                        results['certificate_transparency'].append({
+                            'source': source,
+                            'status': 'accessible',
+                            'records_found': len(response.text.split('\n'))
+                        })
+                        print(f"   ✅ CT logs accessible: {source}")
+                except Exception as e:
+                    results['errors'].append(f"CT source {source} failed: {str(e)}")
+            
+            # Technique 4: Advanced CDN Detection
             print("   🛡️ Advanced CDN Detection...")
             results['techniques_used'].append('Advanced CDN Detection')
             
             cdn_indicators = {
-                'cloudflare': ['cf-ray', 'cf-cache-status', 'cf-request-id'],
-                'cloudfront': ['x-amz-cf-id', 'x-amz-cf-pop'],
-                'fastly': ['fastly-debug-digest', 'fastly-ff'],
-                'akamai': ['x-akamai-edgescape', 'x-akamai-request-id'],
-                'maxcdn': ['x-cache', 'x-cache-hits'],
-                'keycdn': ['x-cache', 'x-cache-status'],
-                'incapsula': ['x-iinfo', 'x-cdn']
+                'cloudflare': ['cf-ray', 'cf-cache-status', 'cf-request-id', 'cf-bgj', 'cf-ray-id'],
+                'cloudfront': ['x-amz-cf-id', 'x-amz-cf-pop', 'x-amz-cf-ray'],
+                'fastly': ['fastly-debug-digest', 'fastly-ff', 'x-fastly-request-id'],
+                'akamai': ['x-akamai-edgescape', 'x-akamai-request-id', 'x-akamai-transformed'],
+                'maxcdn': ['x-cache', 'x-cache-hits', 'x-cache-status'],
+                'keycdn': ['x-cache', 'x-cache-status', 'x-cache-key'],
+                'incapsula': ['x-iinfo', 'x-cdn', 'x-iinfo-server'],
+                'azure': ['x-azure-ref', 'x-azure-ref-originshield'],
+                'aws': ['x-amz-cf-pop', 'x-amz-cf-ray'],
+                'google': ['x-guploader-uploadid', 'x-goog-hash']
             }
             
             try:
@@ -310,9 +370,46 @@ class AdvancedReconnaissance:
             except Exception as e:
                 results['errors'].append(f"CDN detection failed: {str(e)}")
             
+            # Technique 5: Reverse DNS Lookup
+            print("   🔄 Reverse DNS Lookup...")
+            results['techniques_used'].append('Reverse DNS Lookup')
+            
+            for ip in results['real_ips']:
+                try:
+                    hostname = socket.gethostbyaddr(ip)[0]
+                    results['reverse_dns'].append({
+                        'ip': ip,
+                        'hostname': hostname
+                    })
+                    print(f"   ✅ Reverse DNS: {ip} -> {hostname}")
+                except Exception as e:
+                    results['errors'].append(f"Reverse DNS for {ip} failed: {str(e)}")
+            
+            # Technique 6: SSL Certificate Analysis
+            print("   🔒 SSL Certificate Analysis...")
+            results['techniques_used'].append('SSL Certificate Analysis')
+            
+            try:
+                import ssl
+                context = ssl.create_default_context()
+                with socket.create_connection((target, 443), timeout=10) as sock:
+                    with context.wrap_socket(sock, server_hostname=target) as ssock:
+                        cert = ssock.getpeercert()
+                        results['ssl_info'] = {
+                            'subject': dict(x[0] for x in cert['subject']),
+                            'issuer': dict(x[0] for x in cert['issuer']),
+                            'version': cert['version'],
+                            'serialNumber': cert['serialNumber'],
+                            'notBefore': cert['notBefore'],
+                            'notAfter': cert['notAfter']
+                        }
+                        print(f"   ✅ SSL Certificate analyzed")
+            except Exception as e:
+                results['errors'].append(f"SSL analysis failed: {str(e)}")
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['real_ips'])} real IPs using {len(results['techniques_used'])} techniques"
+            results['summary'] = f"Found {len(results['real_ips'])} real IPs using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 1 completed: {results['summary']}")
             return results
@@ -323,8 +420,23 @@ class AdvancedReconnaissance:
             print(f"   ❌ Phase 1 failed: {e}")
             return results
     
+    def _is_private_ip(self, ip: str) -> bool:
+        """Check if IP is private"""
+        try:
+            import ipaddress
+            return ipaddress.ip_address(ip).is_private
+        except:
+            # Fallback for older Python versions
+            private_ranges = [
+                '10.', '172.16.', '172.17.', '172.18.', '172.19.',
+                '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+                '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+                '172.30.', '172.31.', '192.168.'
+            ]
+            return any(ip.startswith(range_prefix) for range_prefix in private_ranges)
+    
     def phase2_advanced_subdomain_discovery(self, target: str) -> Dict[str, Any]:
-        """Phase 2: Advanced Subdomain Discovery with all techniques"""
+        """Phase 2: Advanced Subdomain Discovery with comprehensive techniques"""
         print(f"🔍 Phase 2: Advanced Subdomain Discovery for {target}")
         results = {
             'target': target,
@@ -332,14 +444,106 @@ class AdvancedReconnaissance:
             'start_time': datetime.now().isoformat(),
             'subdomains': [],
             'valid_subdomains': [],
+            'certificate_transparency': [],
+            'passive_sources': [],
+            'http_validation': [],
+            'reverse_dns': [],
             'techniques_used': [],
             'errors': []
         }
         
         try:
-            # Technique 1: DNS Bruteforce with Extended Wordlist
+            # Technique 1: Certificate Transparency Logs
+            print("   🔐 Certificate Transparency Logs...")
+            results['techniques_used'].append('Certificate Transparency Logs')
+            
+            ct_sources = [
+                f"https://crt.sh/?q=%.{target}&output=json",
+                f"https://certspotter.com/api/v0/certs?domain={target}",
+                f"https://censys.io/api/v1/search/certificates?q={target}"
+            ]
+            
+            for source in ct_sources:
+                try:
+                    response = requests.get(source, headers=self.headers, timeout=10)
+                    if response.status_code == 200:
+                        # Parse JSON response (simplified)
+                        try:
+                            data = response.json()
+                            if isinstance(data, list):
+                                for cert in data:
+                                    if 'name_value' in cert:
+                                        subdomains = cert['name_value'].split('\n')
+                                        for subdomain in subdomains:
+                                            subdomain = subdomain.strip().lower()
+                                            if subdomain.endswith(f'.{target}') and subdomain not in results['subdomains']:
+                                                results['subdomains'].append(subdomain)
+                                                results['certificate_transparency'].append(subdomain)
+                                                print(f"   ✅ Found subdomain via CT: {subdomain}")
+                        except:
+                            # Fallback: extract subdomains from text
+                            subdomain_pattern = rf'([a-zA-Z0-9-]+\.{re.escape(target)})'
+                            found_subdomains = re.findall(subdomain_pattern, response.text)
+                            for subdomain in found_subdomains:
+                                if subdomain not in results['subdomains']:
+                                    results['subdomains'].append(subdomain)
+                                    results['certificate_transparency'].append(subdomain)
+                                    print(f"   ✅ Found subdomain via CT: {subdomain}")
+                except Exception as e:
+                    results['errors'].append(f"CT source {source} failed: {str(e)}")
+            
+            # Technique 2: Passive Sources
+            print("   📊 Passive Sources...")
+            results['techniques_used'].append('Passive Sources')
+            
+            passive_sources = [
+                f"https://dnsdumpster.com/static/map/{target}",
+                f"https://www.threatcrowd.org/domain.php?domain={target}",
+                f"https://hackertarget.com/dns-lookup/?q={target}",
+                f"https://www.virustotal.com/ui/domains/{target}/subdomains",
+                f"https://www.shodan.io/search?query=hostname:{target}",
+                f"https://censys.io/ipv4?q={target}"
+            ]
+            
+            for source in passive_sources:
+                try:
+                    response = requests.get(source, headers=self.headers, timeout=10)
+                    if response.status_code == 200:
+                        # Extract subdomains from response
+                        subdomain_pattern = rf'([a-zA-Z0-9-]+\.{re.escape(target)})'
+                        found_subdomains = re.findall(subdomain_pattern, response.text)
+                        for subdomain in found_subdomains:
+                            if subdomain not in results['subdomains']:
+                                results['subdomains'].append(subdomain)
+                                results['passive_sources'].append(subdomain)
+                                print(f"   ✅ Found subdomain via passive: {subdomain}")
+                except Exception as e:
+                    results['errors'].append(f"Passive source {source} failed: {str(e)}")
+            
+            # Technique 3: DNS Bruteforce with Extended Wordlist
             print("   🔍 Advanced DNS Bruteforce...")
             results['techniques_used'].append('DNS Bruteforce')
+            
+            # Extended wordlist for better coverage
+            extended_wordlist = self.subdomain_wordlist + [
+                # Common variations
+                'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1', 'webdisk', 'ns2',
+                'cpanel', 'whm', 'autodiscover', 'autoconfig', 'ns3', 'm', 'imap', 'test', 'ns', 'blog',
+                'pop3', 'dev', 'www2', 'admin', 'forum', 'news', 'vpn', 'ns4', 'mail2', 'new', 'mysql',
+                'old', 'www1', 'beta', 'shop', 'api', 'staging', 'app', 'media', 'mail3', 'www3', 'dns2',
+                
+                # Numbers and patterns
+                '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
+                'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+                
+                # Common prefixes
+                'www-', 'mail-', 'api-', 'dev-', 'test-', 'staging-', 'prod-', 'admin-', 'secure-',
+                'cdn-', 'static-', 'assets-', 'files-', 'upload-', 'download-', 'backup-', 'old-',
+                
+                # Common suffixes
+                '-www', '-mail', '-api', '-dev', '-test', '-staging', '-prod', '-admin', '-secure',
+                '-cdn', '-static', '-assets', '-files', '-upload', '-download', '-backup', '-old'
+            ]
             
             def check_subdomain(subdomain):
                 try:
@@ -351,7 +555,7 @@ class AdvancedReconnaissance:
             
             # Use ThreadPoolExecutor for faster bruteforce
             with ThreadPoolExecutor(max_workers=50) as executor:
-                future_to_subdomain = {executor.submit(check_subdomain, sub): sub for sub in self.subdomain_wordlist[:100]}
+                future_to_subdomain = {executor.submit(check_subdomain, sub): sub for sub in extended_wordlist[:200]}
                 
                 for future in as_completed(future_to_subdomain):
                     subdomain, ips = future.result()
@@ -360,9 +564,70 @@ class AdvancedReconnaissance:
                             results['subdomains'].append(subdomain)
                             print(f"   ✅ Found subdomain via bruteforce: {subdomain}")
             
+            # Technique 4: HTTP/HTTPS Validation
+            print("   🌐 HTTP/HTTPS Validation...")
+            results['techniques_used'].append('HTTP/HTTPS Validation')
+            
+            for subdomain in results['subdomains'][:20]:  # Limit to first 20 for speed
+                try:
+                    # Check HTTP
+                    http_url = f"http://{subdomain}"
+                    response = requests.get(http_url, headers=self.headers, timeout=5, allow_redirects=True)
+                    if response.status_code in [200, 301, 302, 403, 401]:
+                        results['http_validation'].append({
+                            'subdomain': subdomain,
+                            'url': http_url,
+                            'status_code': response.status_code,
+                            'title': self._extract_title(response.text),
+                            'content_length': len(response.content)
+                        })
+                        print(f"   ✅ HTTP validation: {subdomain} ({response.status_code})")
+                except:
+                    pass
+                
+                try:
+                    # Check HTTPS
+                    https_url = f"https://{subdomain}"
+                    response = requests.get(https_url, headers=self.headers, timeout=5, allow_redirects=True)
+                    if response.status_code in [200, 301, 302, 403, 401]:
+                        results['http_validation'].append({
+                            'subdomain': subdomain,
+                            'url': https_url,
+                            'status_code': response.status_code,
+                            'title': self._extract_title(response.text),
+                            'content_length': len(response.content)
+                        })
+                        print(f"   ✅ HTTPS validation: {subdomain} ({response.status_code})")
+                except:
+                    pass
+            
+            # Technique 5: Reverse DNS Lookup
+            print("   🔄 Reverse DNS Lookup...")
+            results['techniques_used'].append('Reverse DNS Lookup')
+            
+            # Get IPs from found subdomains and do reverse DNS
+            for subdomain in results['subdomains'][:10]:  # Limit for speed
+                try:
+                    ips = socket.gethostbyname_ex(subdomain)[2]
+                    for ip in ips:
+                        if not self._is_private_ip(ip):
+                            try:
+                                hostname = socket.gethostbyaddr(ip)[0]
+                                if hostname not in results['subdomains']:
+                                    results['subdomains'].append(hostname)
+                                    results['reverse_dns'].append({
+                                        'ip': ip,
+                                        'hostname': hostname
+                                    })
+                                    print(f"   ✅ Reverse DNS: {ip} -> {hostname}")
+                            except:
+                                pass
+                except:
+                    pass
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['subdomains'])} subdomains using {len(results['techniques_used'])} techniques"
+            results['summary'] = f"Found {len(results['subdomains'])} subdomains using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 2 completed: {results['summary']}")
             return results

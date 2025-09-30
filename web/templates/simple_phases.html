@@ -416,8 +416,12 @@
             }
             
             // Show results summary
-            if (data.results) {
+            console.log('Task completed data:', data);
+            if (data.results && Object.keys(data.results).length > 0) {
+                console.log('Showing results summary with data:', data.results);
                 showResultsSummary(data.results);
+            } else {
+                console.log('No results data to display');
             }
             
             // Hide live phase display
