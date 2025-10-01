@@ -14,6 +14,15 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Import cross-platform manager
+try:
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils.platform_manager import get_platform_manager
+    platform_manager = get_platform_manager()
+except ImportError:
+    platform_manager = None
+
 class Phase6ParameterDiscovery:
     """Advanced Parameter Discovery and JS Analysis with comprehensive techniques"""
     
@@ -281,11 +290,28 @@ class Phase6ParameterDiscovery:
             if self._is_paramspider_available():
                 try:
                     paramspider_results = self._run_paramspider(target)
-                    if paramspider_results:
+                    if paramspider_results and paramspider_results.get('success'):
                         results['tool_results']['paramspider'] = paramspider_results
+                        
+                        # Extract parameters from ParamSpider results
+                        if 'parameters' in paramspider_results and paramspider_results['parameters']:
+                            for param in paramspider_results['parameters']:
+                                if param not in [p['parameter'] for p in results['parameters_found']]:
+                                    results['parameters_found'].append({
+                                        'parameter': param,
+                                        'type': 'paramspider',
+                                        'source': 'paramspider',
+                                        'risk_level': self._assess_parameter_risk(param)
+                                    })
+                                    print(f"   ✅ ParamSpider found: {param}")
+                        
                         print(f"   ✅ ParamSpider scan completed")
+                    else:
+                        error_msg = paramspider_results.get('error', 'No results') if paramspider_results else 'No results'
+                        print(f"   ⚠️ ParamSpider completed but no results: {error_msg}")
                 except Exception as e:
                     results['errors'].append(f"ParamSpider scan failed: {str(e)}")
+                    print(f"   ❌ ParamSpider failed: {str(e)}")
             else:
                 print("   ℹ️ ParamSpider not available, skipping")
             
@@ -443,11 +469,19 @@ class Phase6ParameterDiscovery:
     
     def _is_paramspider_available(self) -> bool:
         """Check if paramspider is available"""
+        if platform_manager:
+            return platform_manager.is_tool_available('paramspider') or platform_manager.is_tool_available('python3')
+        
+        # Fallback for older versions
         try:
             subprocess.run(['paramspider', '--help'], capture_output=True, timeout=5)
             return True
         except:
-            return False
+            try:
+                subprocess.run(['python3', '-c', 'import paramspider'], capture_output=True, timeout=5)
+                return True
+            except:
+                return False
     
     def _run_paramspider(self, target: str) -> Dict[str, Any]:
         """Run paramspider if available"""

@@ -275,11 +275,11 @@ class Phase2SubdomainDiscovery:
                 if check_func():
                     try:
                         tool_results = run_func(target)
-                        if tool_results and tool_results.get('success'):
+                        if tool_results and isinstance(tool_results, dict) and tool_results.get('success'):
                             results['tool_results'][tool_name.lower()] = tool_results
                             
                             # Extract subdomains from tool results
-                            if 'subdomains' in tool_results:
+                            if 'subdomains' in tool_results and tool_results['subdomains']:
                                 for subdomain in tool_results['subdomains']:
                                     if subdomain not in [s['subdomain'] for s in results['subdomains']]:
                                         results['subdomains'].append({
@@ -291,7 +291,8 @@ class Phase2SubdomainDiscovery:
                             
                             print(f"   ✅ {tool_name} completed successfully")
                         else:
-                            print(f"   ⚠️ {tool_name} completed but no results")
+                            error_msg = tool_results.get('error', 'No results') if tool_results else 'No results'
+                            print(f"   ⚠️ {tool_name} completed but no results: {error_msg}")
                     except Exception as e:
                         error_msg = f"{tool_name} failed: {str(e)}"
                         results['errors'].append(error_msg)

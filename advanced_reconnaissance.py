@@ -247,7 +247,6 @@ class AdvancedReconnaissance:
         try:
             print(f"🚀 Delegating Phase {phase_number} to Phase Manager")
             result = phase_manager.run_phase(phase_number, target)
-            print(f"✅ Phase {phase_number} completed via Phase Manager")
             return result
         except Exception as e:
             print(f"❌ Error running phase {phase_number}: {str(e)}")

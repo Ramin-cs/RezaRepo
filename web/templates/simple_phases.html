@@ -415,6 +415,12 @@
                 currentStatus.className = 'alert alert-success';
             }
             
+            // Update modal header
+            const modalTitle = document.querySelector('.modal-title');
+            if (modalTitle) {
+                modalTitle.innerHTML = '<i class="fas fa-check-circle me-2 text-success"></i>Completed!';
+            }
+            
             // Update progress bar to 100%
             const progressBar = document.getElementById('progress-bar');
             if (progressBar) {
