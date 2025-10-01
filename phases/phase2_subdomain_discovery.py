@@ -472,7 +472,11 @@ class Phase2SubdomainDiscovery:
             return {
                 'subdomains': subdomains,
                 'success': len(subdomains) > 0,
-                'tool': 'subfinder'
+                'tool': 'subfinder',
+                'tool_results': {
+                    'subdomains': subdomains,
+                    'output': result.stdout if 'result' in locals() else ''
+                }
             }
         except Exception as e:
             return {'success': False, 'error': str(e), 'tool': 'subfinder'}
@@ -500,7 +504,11 @@ class Phase2SubdomainDiscovery:
             return {
                 'subdomains': subdomains,
                 'success': len(subdomains) > 0,
-                'tool': 'assetfinder'
+                'tool': 'assetfinder',
+                'tool_results': {
+                    'subdomains': subdomains,
+                    'output': result.stdout
+                }
             }
         except Exception as e:
             return {'success': False, 'error': str(e), 'tool': 'assetfinder'}
@@ -523,8 +531,16 @@ class Phase2SubdomainDiscovery:
     def _run_httpx(self, target: str) -> Dict[str, Any]:
         """Run httpx for subdomain validation"""
         try:
-            # First get all discovered subdomains
-            all_subdomains = [sub['subdomain'] for sub in self.subdomains if isinstance(sub, dict)] + [sub for sub in self.subdomains if isinstance(sub, str)]
+            # First get all discovered subdomains from results
+            all_subdomains = []
+            
+            # Try to get subdomains from current results if available
+            if hasattr(self, 'current_results') and 'subdomains' in self.current_results:
+                all_subdomains = [sub['subdomain'] if isinstance(sub, dict) else sub for sub in self.current_results['subdomains']]
+            
+            if not all_subdomains:
+                # Fallback: use common subdomain patterns
+                all_subdomains = [f"www.{target}", f"mail.{target}", f"admin.{target}", f"api.{target}"]
             
             if not all_subdomains:
                 return {'success': False, 'error': 'No subdomains to validate', 'tool': 'httpx'}
@@ -570,7 +586,12 @@ class Phase2SubdomainDiscovery:
                 'subdomains': [sub['url'] for sub in live_subdomains],
                 'live_subdomains': live_subdomains,
                 'success': len(live_subdomains) > 0,
-                'tool': 'httpx'
+                'tool': 'httpx',
+                'tool_results': {
+                    'subdomains': [sub['url'] for sub in live_subdomains],
+                    'live_subdomains': live_subdomains,
+                    'output': result.stdout if 'result' in locals() else ''
+                }
             }
         except Exception as e:
             return {'success': False, 'error': str(e), 'tool': 'httpx'}

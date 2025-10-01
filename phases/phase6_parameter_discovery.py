@@ -486,18 +486,55 @@ class Phase6ParameterDiscovery:
     def _run_paramspider(self, target: str) -> Dict[str, Any]:
         """Run paramspider if available"""
         try:
-            cmd = ['paramspider', '-d', target, '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            # Try different paramspider commands
+            commands = [
+                ['python3', '-m', 'paramspider', '-d', target, '--quiet'],
+                ['paramspider', '-d', target, '--quiet'],
+                ['python3', 'paramspider.py', '-d', target, '--quiet']
+            ]
             
-            if result.returncode == 0:
-                return {
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'success': True
-                }
-        except:
-            pass
-        return None
+            for cmd in commands:
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                    
+                    if result.returncode == 0 and result.stdout:
+                        # Parse paramspider output to extract parameters
+                        parameters = []
+                        lines = result.stdout.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if line and ('?' in line or '=' in line):
+                                # Extract parameters from URLs
+                                if '?' in line:
+                                    url_part = line.split('?')[1]
+                                    if '&' in url_part:
+                                        params = url_part.split('&')
+                                    else:
+                                        params = [url_part]
+                                    
+                                    for param in params:
+                                        if '=' in param:
+                                            param_name = param.split('=')[0]
+                                            if param_name not in parameters:
+                                                parameters.append(param_name)
+                        
+                        return {
+                            'stdout': result.stdout,
+                            'stderr': result.stderr,
+                            'success': True,
+                            'parameters': parameters,
+                            'tool_results': {
+                                'parameters': parameters,
+                                'output': result.stdout
+                            }
+                        }
+                except:
+                    continue
+                    
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'tool': 'paramspider'}
+        
+        return {'success': False, 'error': 'No results', 'tool': 'paramspider'}
     
     def _is_x8_available(self) -> bool:
         """Check if x8 is available"""

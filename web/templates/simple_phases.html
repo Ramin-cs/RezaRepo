@@ -421,6 +421,15 @@
                 modalTitle.innerHTML = '<i class="fas fa-check-circle me-2 text-success"></i>Completed!';
             }
             
+            // Hide the running modal
+            const runningModal = document.getElementById('runningModal');
+            if (runningModal) {
+                const modal = bootstrap.Modal.getInstance(runningModal);
+                if (modal) {
+                    modal.hide();
+                }
+            }
+            
             // Update progress bar to 100%
             const progressBar = document.getElementById('progress-bar');
             if (progressBar) {
@@ -463,12 +472,19 @@
             console.log(`🎉 Task completed for target: ${target}, taskId: ${taskId}`);
             console.log(`💾 Results stored in localStorage:`, data.results);
             
-            alert('Reconnaissance completed successfully!\n\nRedirecting to report...');
+            // Show success message briefly then redirect
+            const currentStatus = document.getElementById('current-status');
+            if (currentStatus) {
+                currentStatus.innerHTML = '<i class="fas fa-check-circle me-2"></i>Reconnaissance completed! Redirecting to report...';
+                currentStatus.className = 'alert alert-success';
+            }
             
-            // Redirect to report page immediately
-            const redirectUrl = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
-            console.log(`🚀 Redirecting to: ${redirectUrl}`);
-            window.location.href = redirectUrl;
+            // Redirect to report page after a short delay
+            setTimeout(() => {
+                const redirectUrl = `/report?target=${encodeURIComponent(target)}&task_id=${taskId}`;
+                console.log(`🚀 Redirecting to: ${redirectUrl}`);
+                window.location.href = redirectUrl;
+            }, 2000);
         });
         
         socket.on('task_error', function(data) {
