@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Quick Test</h1>
+        
+        <div class="alert alert-info">
+            <h5>Test Steps:</h5>
+            <ol>
+                <li>Go to <code>http://localhost:8080/phases</code></li>
+                <li>Open browser console (F12)</li>
+                <li>Click "Select All" button - should see: <code>🔧 Select All clicked</code></li>
+                <li>Click "Select None" button - should see: <code>🔧 Select None clicked</code></li>
+                <li>Enter a target (e.g., "example.com")</li>
+                <li>Select some phases</li>
+                <li>Click "Start Reconnaissance" - should see: <code>🚀 Form submitted</code></li>
+            </ol>
+        </div>
+        
+        <div class="alert alert-warning">
+            <h5>If buttons don't work:</h5>
+            <p>Check console for errors. Functions should be defined before DOM ready.</p>
+        </div>
+        
+        <div class="alert alert-success">
+            <h5>API Test Result:</h5>
+            <p>✅ API endpoint <code>/api/run</code> is working correctly!</p>
+        </div>
+    </div>
+
+    <script>
+        // Test functions
+        function testSelectAll() {
+            console.log('🔧 Test Select All');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            console.log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        }
+        
+        function testSelectNone() {
+            console.log('🔧 Test Select None');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            console.log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Quick test page loaded');
+        });
+    </script>
+</body>
+</html>

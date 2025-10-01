@@ -978,6 +978,81 @@
                 });
         }
         
+        // Define functions first
+        function selectAllPhases() {
+            console.log('🔧 Select All clicked');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            console.log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            console.log('✅ All phases selected');
+        }
+        
+        function selectNoPhases() {
+            console.log('🔧 Select None clicked');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            console.log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            console.log('✅ No phases selected');
+        }
+        
+        function startReconnaissance(target, phases) {
+            console.log('🚀 Starting reconnaissance for:', target, 'with phases:', phases);
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+                submitBtn.disabled = true;
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }, 3000);
+            }
+            
+            // Send request to start reconnaissance
+            fetch('/api/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    target: target,
+                    phases: phases
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🚀 Reconnaissance started:', data);
+                
+                if (data.success) {
+                    showAlert('Reconnaissance started successfully!', 'success');
+                    
+                    currentTaskId = data.task_id;
+                    
+                    // Show running modal
+                    const runningModal = new bootstrap.Modal(document.getElementById('runningModal'));
+                    runningModal.show();
+                    
+                    // Update modal content
+                    document.getElementById('progress-target').textContent = `Target: ${target}`;
+                    document.getElementById('progress-phase').textContent = 'Phase: Starting...';
+                } else {
+                    showAlert('Failed to start reconnaissance: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error starting reconnaissance:', error);
+                showAlert('Error starting reconnaissance: ' + error.message, 'danger');
+            });
+        }
+        
         // Load immediately
         loadPhasesNow();
         
@@ -1124,21 +1199,6 @@
             }
         }
         
-        function selectAllPhases() {
-            const checkboxes = document.querySelectorAll('input[name="phases"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = true;
-            });
-            console.log('✅ All phases selected');
-        }
-        
-        function selectNoPhases() {
-            const checkboxes = document.querySelectorAll('input[name="phases"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            console.log('✅ No phases selected');
-        }
         
         function selectAllModalPhases() {
             const checkboxes = document.querySelectorAll('#modal-phases-container input[name="phases"]');

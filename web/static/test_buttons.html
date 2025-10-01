@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Buttons</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Test Buttons</h1>
+        
+        <div class="mb-3">
+            <button class="btn btn-primary" onclick="testSelectAll()">Test Select All</button>
+            <button class="btn btn-secondary" onclick="testSelectNone()">Test Select None</button>
+            <button class="btn btn-success" onclick="testForm()">Test Form</button>
+        </div>
+        
+        <form id="test-form">
+            <div class="mb-3">
+                <label class="form-label">Target</label>
+                <input type="text" class="form-control" id="target" value="example.com">
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1" id="phase_1" name="phases">
+                    <label class="form-check-label" for="phase_1">Phase 1</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="2" id="phase_2" name="phases">
+                    <label class="form-check-label" for="phase_2">Phase 2</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="3" id="phase_3" name="phases">
+                    <label class="form-check-label" for="phase_3">Phase 3</label>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        
+        <div class="mt-4">
+            <h4>Console Output:</h4>
+            <div id="output" class="bg-dark text-light p-3" style="height: 200px; overflow-y: scroll; font-family: monospace;"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(msg) {
+            const output = document.getElementById('output');
+            const time = new Date().toLocaleTimeString();
+            output.innerHTML += `[${time}] ${msg}<br>`;
+            output.scrollTop = output.scrollHeight;
+            console.log(msg);
+        }
+        
+        function testSelectAll() {
+            log('🧪 Testing Select All...');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            log('✅ All phases selected');
+        }
+        
+        function testSelectNone() {
+            log('🧪 Testing Select None...');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            log(`Found ${checkboxes.length} checkboxes`);
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            log('✅ No phases selected');
+        }
+        
+        function testForm() {
+            log('🧪 Testing Form...');
+            const target = document.getElementById('target').value;
+            const selectedPhases = Array.from(document.querySelectorAll('input[name="phases"]:checked')).map(cb => parseInt(cb.value));
+            
+            log(`Target: ${target}`);
+            log(`Selected phases: [${selectedPhases.join(', ')}]`);
+            
+            if (!target) {
+                log('❌ No target specified');
+                return;
+            }
+            
+            if (selectedPhases.length === 0) {
+                log('❌ No phases selected');
+                return;
+            }
+            
+            log('✅ Form validation passed');
+        }
+        
+        // Form submission handler
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            log('🚀 Form submitted');
+            testForm();
+        });
+        
+        // Auto test on load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Page loaded');
+        });
+    </script>
+</body>
+</html>
