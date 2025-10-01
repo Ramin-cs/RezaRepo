@@ -376,6 +376,7 @@
                     <div class="text-center">
                         <i class="fas fa-check-circle text-success me-2"></i>
                         Reconnaissance completed! All phases finished successfully.
+                        <br><small>Found ${data.summary?.total_findings || Object.keys(phaseResults).length} total findings</small>
                     </div>
                 `;
                 
@@ -387,10 +388,17 @@
                 // Show completion alert
                 showAlert('Reconnaissance completed successfully! Redirecting to report...', 'success');
                 
+                // Store results in localStorage for report page
+                if (data.results) {
+                    localStorage.setItem('lastReconResults', JSON.stringify(data.results));
+                }
+                
                 // Redirect to report page after delay
                 setTimeout(() => {
                     if (data.target && data.task_id) {
                         window.location.href = `/report?target=${encodeURIComponent(data.target)}&task_id=${data.task_id}`;
+                    } else if (data.target) {
+                        window.location.href = `/report?target=${encodeURIComponent(data.target)}`;
                     } else {
                         showAlert('Report page not available', 'warning');
                     }

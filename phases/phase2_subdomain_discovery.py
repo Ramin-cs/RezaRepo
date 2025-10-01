@@ -293,10 +293,14 @@ class Phase2SubdomainDiscovery:
                         else:
                             error_msg = tool_results.get('error', 'No results') if tool_results else 'No results'
                             print(f"   ⚠️ {tool_name} completed but no results: {error_msg}")
+                            # Add empty tool_results to prevent KeyError
+                            results['tool_results'][tool_name.lower()] = {'success': False, 'error': error_msg}
                     except Exception as e:
                         error_msg = f"{tool_name} failed: {str(e)}"
                         results['errors'].append(error_msg)
                         print(f"   ❌ {error_msg}")
+                        # Add empty tool_results to prevent KeyError
+                        results['tool_results'][tool_name.lower()] = {'success': False, 'error': error_msg}
                 else:
                     print(f"   ℹ️ {tool_name} not available, skipping")
             
@@ -440,12 +444,24 @@ class Phase2SubdomainDiscovery:
         if platform_manager:
             return platform_manager.is_tool_available('subfinder')
         
-        # Fallback for older versions
-        try:
-            subprocess.run(['subfinder', '--help'], capture_output=True, timeout=5)
-            return True
-        except:
-            return False
+        # Check multiple paths for Windows
+        possible_paths = [
+            'subfinder',
+            os.path.expanduser('~/go/bin/subfinder'),
+            os.path.expanduser('~/AppData/Local/go/bin/subfinder'),
+            'C:/Program Files/Go/bin/subfinder.exe',
+            'C:/Program Files (x86)/Go/bin/subfinder.exe'
+        ]
+        
+        for path in possible_paths:
+            try:
+                result = subprocess.run([path, '--help'], capture_output=True, timeout=5)
+                if result.returncode == 0:
+                    return True
+            except:
+                continue
+        
+        return False
     
     def _run_subfinder(self, target: str) -> Dict[str, Any]:
         """Run subfinder if available"""

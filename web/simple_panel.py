@@ -498,8 +498,13 @@ class SimpleWebPanel:
             }
             
             print(f"🚀 Emitting task_completed event for task {task_id}")
+            print(f"🔍 Completion data: {completion_data}")
             self.socketio.emit('task_completed', completion_data, room=f'task_{task_id}')
             print(f"✅ Task completion event emitted successfully")
+            
+            # Also emit to all connected clients (fallback)
+            self.socketio.emit('task_completed', completion_data)
+            print(f"✅ Task completion event also emitted to all clients")
 
             print(f"✅ Task {task_id} completed for {target}")
             print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
