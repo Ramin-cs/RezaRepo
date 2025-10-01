@@ -1,3 +1,64 @@
+TP-Link Archer VR2100v Web Console Discovery (Non-intrusive)
+============================================================
+
+This tool discovers TP-Link Archer VR2100v-like web management consoles without attempting login. It is intended for authorized audits only. It does not try default credentials and performs only safe HTTP GET requests.
+
+Features
+--------
+- Non-intrusive: no credential use, no form submissions
+- Scans common HTTP(S) ports and paths
+- Heuristic fingerprinting (title/server/body markers, optional favicon hash)
+- JSON and CSV reporting
+- CIDR, range, and list-of-targets parsing
+- Allowlist/denylist filtering
+- Optional webhook notifications for detections
+
+Quick start
+----------
+```bash
+pip install -r requirements.txt
+python3 scanner.py --targets 192.168.1.0/24 --json report.json --csv report.csv
+```
+
+Targets
+-------
+- Single IPs: `10.0.0.5`
+- Last-octet ranges: `192.168.1.10-50`
+- CIDR: `172.16.0.0/28`
+- From file: one target per line, use `--from-file`
+
+CLI options
+-----------
+```bash
+python3 scanner.py \
+  --targets 192.168.1.10-50,10.0.0.5 \
+  --workers 64 \
+  --ports 80,443,8080,8443 \
+  --paths /,/login,/userRpm/LoginRpm.htm \
+  --timeout 4 \
+  --allow 192.168.1.0/24 \
+  --deny 192.168.1.100-200 \
+  --json report.json \
+  --csv report.csv \
+  --webhook https://example.org/webhook
+```
+
+Output
+------
+- Console line per host: basic detection summary
+- JSON: full structured results per host (`hits` include URL, status, title, server, favicon hash)
+- CSV: compact summary per host
+
+Responsible use
+---------------
+- Use only on networks and devices you own or manage, with explicit authorization.
+- Do not attempt to login or change device state without consent.
+- Prefer HTTPS access and restrict management access to admin networks.
+
+Notes
+-----
+- SOHO devices may use self-signed certs; SSL verification is disabled only for discovery.
+- Favicon hashes are best-effort and may be shared by different models or firmware versions.
 # 🔒 Router Scanner Pro v7.0
 
 **Comprehensive Brand Detection & Session Management - Professional Network Security Tool**
