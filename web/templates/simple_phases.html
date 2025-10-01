@@ -81,14 +81,103 @@
                     <div class="card-body">
                         <div class="row" id="phases-container">
                             <!-- Phases will be loaded here -->
-                            <div class="col-12">
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Phases are loading... If they don't appear, 
-                                    <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="manualLoadPhases()">
-                                        <i class="fas fa-refresh me-1"></i>Load Phases Manually
-                                    </button>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="phase_1" name="phases">
+                                    <label class="form-check-label" for="phase_1">
+                                        <strong>Phase 1:</strong> Real IP Extraction
+                                        <br><small class="text-muted">Extract real IP address and CDN bypass</small>
+                                    </label>
                                 </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="2" id="phase_2" name="phases">
+                                    <label class="form-check-label" for="phase_2">
+                                        <strong>Phase 2:</strong> Subdomain Discovery
+                                        <br><small class="text-muted">Discover subdomains (active/passive)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="3" id="phase_3" name="phases">
+                                    <label class="form-check-label" for="phase_3">
+                                        <strong>Phase 3:</strong> Port Scanning
+                                        <br><small class="text-muted">Scan ports and detect services</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="4" id="phase_4" name="phases">
+                                    <label class="form-check-label" for="phase_4">
+                                        <strong>Phase 4:</strong> Technology Detection
+                                        <br><small class="text-muted">Detect web technologies</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="5" id="phase_5" name="phases">
+                                    <label class="form-check-label" for="phase_5">
+                                        <strong>Phase 5:</strong> Directory Discovery
+                                        <br><small class="text-muted">Find directories and files</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="6" id="phase_6" name="phases">
+                                    <label class="form-check-label" for="phase_6">
+                                        <strong>Phase 6:</strong> Parameter Discovery
+                                        <br><small class="text-muted">Extract parameters and JS analysis</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="7" id="phase_7" name="phases">
+                                    <label class="form-check-label" for="phase_7">
+                                        <strong>Phase 7:</strong> Endpoint Discovery
+                                        <br><small class="text-muted">Extract endpoints (REST/GraphQL)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="8" id="phase_8" name="phases">
+                                    <label class="form-check-label" for="phase_8">
+                                        <strong>Phase 8:</strong> Cloud Analysis
+                                        <br><small class="text-muted">Analyze cloud resources</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="9" id="phase_9" name="phases">
+                                    <label class="form-check-label" for="phase_9">
+                                        <strong>Phase 9:</strong> OSINT Analysis
+                                        <br><small class="text-muted">Open source intelligence gathering</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="10" id="phase_10" name="phases">
+                                    <label class="form-check-label" for="phase_10">
+                                        <strong>Phase 10:</strong> Vulnerability Assessment
+                                        <br><small class="text-muted">Recon-based vulnerability assessment</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="selectAllPhases()">
+                                    <i class="fas fa-check-square"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNoPhases()">
+                                    <i class="fas fa-square"></i> Select None
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -143,11 +232,65 @@
                                 
                                 <!-- Phases will be loaded here by JavaScript -->
                                 <div id="modal-phases-container">
-                                    <div class="text-center">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Loading phases...</span>
-                                        </div>
-                                        <p class="mt-2">Loading available phases...</p>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="1" id="modal_phase_1" name="phases">
+                                        <label class="form-check-label" for="modal_phase_1">
+                                            <strong>Phase 1:</strong> Real IP Extraction
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="2" id="modal_phase_2" name="phases">
+                                        <label class="form-check-label" for="modal_phase_2">
+                                            <strong>Phase 2:</strong> Subdomain Discovery
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="3" id="modal_phase_3" name="phases">
+                                        <label class="form-check-label" for="modal_phase_3">
+                                            <strong>Phase 3:</strong> Port Scanning
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="4" id="modal_phase_4" name="phases">
+                                        <label class="form-check-label" for="modal_phase_4">
+                                            <strong>Phase 4:</strong> Technology Detection
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="5" id="modal_phase_5" name="phases">
+                                        <label class="form-check-label" for="modal_phase_5">
+                                            <strong>Phase 5:</strong> Directory Discovery
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="6" id="modal_phase_6" name="phases">
+                                        <label class="form-check-label" for="modal_phase_6">
+                                            <strong>Phase 6:</strong> Parameter Discovery
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="7" id="modal_phase_7" name="phases">
+                                        <label class="form-check-label" for="modal_phase_7">
+                                            <strong>Phase 7:</strong> Endpoint Discovery
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="8" id="modal_phase_8" name="phases">
+                                        <label class="form-check-label" for="modal_phase_8">
+                                            <strong>Phase 8:</strong> Cloud Analysis
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="9" id="modal_phase_9" name="phases">
+                                        <label class="form-check-label" for="modal_phase_9">
+                                            <strong>Phase 9:</strong> OSINT Analysis
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="10" id="modal_phase_10" name="phases">
+                                        <label class="form-check-label" for="modal_phase_10">
+                                            <strong>Phase 10:</strong> Vulnerability Assessment
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -765,56 +908,84 @@
             resultsContent.innerHTML = html;
         }
         
-        // Initialize the page
-        function initializePage() {
-            console.log('🚀 ARAT Phases Page Initializing...');
+        // Load phases immediately - no waiting
+        function loadPhasesNow() {
+            console.log('🚀 Loading phases NOW...');
             
-            // Debug: Check if phases container exists
-            const phasesContainer = document.getElementById('phases-container');
-            const modalPhasesContainer = document.getElementById('modal-phases-container');
-            console.log('📋 Phases container found:', phasesContainer);
-            console.log('📋 Modal phases container found:', modalPhasesContainer);
-            
-            if (phasesContainer || modalPhasesContainer) {
-                console.log('✅ At least one phases container exists, loading phases...');
-                // Load available phases immediately
-                loadAvailablePhases();
-            } else {
-                console.error('❌ No phases containers found!');
-                // Try to find alternative containers
-                const altContainer = document.getElementById('phases-list');
-                console.log('📋 Alternative container found:', altContainer);
-                
-                // Show error message
-                showAlert('Phases containers not found. Please refresh the page.', 'danger');
-            }
+            fetch('/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log(`✅ Loading ${data.phases.length} phases`);
+                        
+                        // Load main container
+                        const container1 = document.getElementById('phases-container');
+                        if (container1) {
+                            container1.innerHTML = '';
+                            data.phases.forEach(phase => {
+                                const div = document.createElement('div');
+                                div.className = 'col-md-6 mb-3';
+                                div.innerHTML = `
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="${phase.number}" id="phase_${phase.number}" name="phases">
+                                        <label class="form-check-label" for="phase_${phase.number}">
+                                            <strong>Phase ${phase.number}:</strong> ${phase.name}
+                                            <br><small class="text-muted">${phase.description}</small>
+                                        </label>
+                                    </div>
+                                `;
+                                container1.appendChild(div);
+                            });
+                            
+                            // Add select buttons
+                            const buttonsDiv = document.createElement('div');
+                            buttonsDiv.className = 'col-12 mt-3';
+                            buttonsDiv.innerHTML = `
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="selectAllPhases()">
+                                    <i class="fas fa-check-square"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNoPhases()">
+                                    <i class="fas fa-square"></i> Select None
+                                </button>
+                            `;
+                            container1.appendChild(buttonsDiv);
+                        }
+                        
+                        // Load modal container
+                        const container2 = document.getElementById('modal-phases-container');
+                        if (container2) {
+                            container2.innerHTML = '';
+                            data.phases.forEach(phase => {
+                                const div = document.createElement('div');
+                                div.className = 'form-check mb-2';
+                                div.innerHTML = `
+                                    <input class="form-check-input" type="checkbox" value="${phase.number}" id="modal_phase_${phase.number}" name="phases">
+                                    <label class="form-check-label" for="modal_phase_${phase.number}">
+                                        <strong>Phase ${phase.number}:</strong> ${phase.name}
+                                    </label>
+                                `;
+                                container2.appendChild(div);
+                            });
+                        }
+                        
+                        console.log(`✅ ${data.phases.length} phases loaded successfully`);
+                    } else {
+                        console.log('❌ API failed');
+                    }
+                })
+                .catch(error => {
+                    console.log('❌ Error:', error.message);
+                });
         }
         
-        // Try multiple initialization methods
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializePage);
-        } else {
-            // DOM already loaded
-            initializePage();
-        }
+        // Load immediately
+        loadPhasesNow();
         
-        // Also try with a timeout as backup
-        setTimeout(initializePage, 1000);
-        
-        // Emergency fallback - if phases don't load in 3 seconds, load hardcoded
-        setTimeout(() => {
-            const container1 = document.getElementById('phases-container');
-            const container2 = document.getElementById('modal-phases-container');
-            
-            // Check if phases are loaded
-            const hasPhases = (container1 && container1.querySelectorAll('input[name="phases"]').length > 0) ||
-                             (container2 && container2.querySelectorAll('input[name="phases"]').length > 0);
-            
-            if (!hasPhases) {
-                console.log('🚨 Emergency fallback: Loading hardcoded phases');
-                loadHardcodedPhases();
-            }
-        }, 3000);
+        // Also try on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 DOM ready, loading phases...');
+            loadPhasesNow();
+        });
             
             // Get target from URL parameter
             const urlParams = new URLSearchParams(window.location.search);
@@ -862,55 +1033,24 @@
         });
         
         function loadAvailablePhases() {
-            console.log('📋 Loading available phases...');
+            console.log('📋 Loading phases...');
             
-            // Try multiple URL formats
-            const urls = ['/api/phases', './api/phases', window.location.origin + '/api/phases'];
-            let currentUrlIndex = 0;
-            
-            function tryNextUrl() {
-                if (currentUrlIndex >= urls.length) {
-                    console.error('❌ All URL attempts failed');
-                    console.log('🔄 Loading hardcoded phases as fallback...');
+            fetch('/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadPhasesToContainer('phases-container', data.phases, true);
+                        loadPhasesToContainer('modal-phases-container', data.phases, false);
+                        console.log(`✅ ${data.phases.length} phases loaded`);
+                    } else {
+                        console.log('❌ API failed, loading hardcoded');
+                        loadHardcodedPhases();
+                    }
+                })
+                .catch(error => {
+                    console.log('❌ Fetch failed, loading hardcoded:', error.message);
                     loadHardcodedPhases();
-                    return;
-                }
-                
-                const url = urls[currentUrlIndex];
-                console.log(`🔗 Trying URL: ${url}`);
-                
-                fetch(url)
-                    .then(response => {
-                        console.log(`📡 Response status: ${response.status} for ${url}`);
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('📋 Phases loaded:', data);
-                        
-                        if (data.success) {
-                            // Load phases for main page
-                            loadPhasesToContainer('phases-container', data.phases, true);
-                            
-                            // Load phases for modal
-                            loadPhasesToContainer('modal-phases-container', data.phases, false);
-                            
-                            console.log(`✅ ${data.phases.length} phases loaded successfully`);
-                        } else {
-                            console.error('❌ Failed to load phases:', data.error);
-                            showAlert('Failed to load phases: ' + data.error, 'danger');
-                        }
-                    })
-                    .catch(error => {
-                        console.error(`❌ Error with ${url}:`, error.message);
-                        currentUrlIndex++;
-                        setTimeout(tryNextUrl, 500); // Try next URL after 500ms
-                    });
-            }
-            
-            tryNextUrl();
+                });
         }
         
         function loadHardcodedPhases() {
@@ -939,29 +1079,6 @@
             showAlert('Loaded hardcoded phases (API connection failed)', 'warning');
         }
         
-        function manualLoadPhases() {
-            console.log('🔧 Manual phases loading triggered by user...');
-            showAlert('Loading phases manually...', 'info');
-            
-            // Try API first
-            fetch('/api/phases')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        loadPhasesToContainer('phases-container', data.phases, true);
-                        loadPhasesToContainer('modal-phases-container', data.phases, false);
-                        console.log(`✅ ${data.phases.length} phases loaded from API`);
-                        showAlert('Phases loaded successfully from API!', 'success');
-                    } else {
-                        console.log('❌ API failed, loading hardcoded phases');
-                        loadHardcodedPhases();
-                    }
-                })
-                .catch(error => {
-                    console.log('❌ API error, loading hardcoded phases:', error.message);
-                    loadHardcodedPhases();
-                });
-        }
         
         function loadPhasesToContainer(containerId, phases, showButtons = true) {
             console.log(`📦 Loading phases to container: ${containerId}`);
