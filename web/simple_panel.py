@@ -60,6 +60,11 @@ class SimpleWebPanel:
             """Phase management"""
             return render_template('simple_phases.html')
         
+        @self.app.route('/report')
+        def report():
+            """Report page"""
+            return render_template('simple_report.html')
+        
         @self.app.route('/reports')
         def reports():
             """Reports"""
@@ -377,10 +382,24 @@ class SimpleWebPanel:
                         print(f"   ⏳ Running Phase {phase_num} for {target}...")
                         
                         # Send phase start update
+                        phase_names = {
+                            1: 'Real IP Extraction',
+                            2: 'Subdomain Discovery', 
+                            3: 'Port Scanning',
+                            4: 'Technology Detection',
+                            5: 'Directory Discovery',
+                            6: 'Parameter Discovery',
+                            7: 'Endpoint Discovery',
+                            8: 'Cloud Analysis',
+                            9: 'OSINT Analysis',
+                            10: 'Vulnerability Assessment'
+                        }
+                        
                         self.socketio.emit('phase_started', {
                             'task_id': task_id,
                             'phase': phase_num,
-                            'message': f'Starting Phase {phase_num}...'
+                            'name': phase_names.get(phase_num, f'Phase {phase_num}'),
+                            'message': f'Starting Phase {phase_num}: {phase_names.get(phase_num, f"Phase {phase_num}")}...'
                         }, room=f'task_{task_id}')
                         
                         time.sleep(2)  # Add realistic delay
@@ -391,6 +410,25 @@ class SimpleWebPanel:
                             break
                         
                         result = recon.run_phase(phase_num, target)
+                        
+                        # Send phase output updates
+                        if isinstance(result, dict):
+                            # Send summary output
+                            if 'summary' in result:
+                                self.socketio.emit('phase_output', {
+                                    'task_id': task_id,
+                                    'phase': phase_num,
+                                    'output': f"📊 {result['summary']}"
+                                }, room=f'task_{task_id}')
+                            
+                            # Send findings
+                            if 'findings' in result and result['findings']:
+                                for finding in result['findings'][:5]:  # Send first 5 findings
+                                    self.socketio.emit('phase_output', {
+                                        'task_id': task_id,
+                                        'phase': phase_num,
+                                        'output': f"✅ {finding}"
+                                    }, room=f'task_{task_id}')
                         
                         # Ensure result has proper structure
                         if not isinstance(result, dict):

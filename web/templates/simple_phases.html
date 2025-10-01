@@ -19,6 +19,15 @@
             padding: 15px;
             border-radius: 5px;
         }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        .form-check-label small {
+            color: #adb5bd !important;
+        }
+        .alert-info {
+            color: #0c5460 !important;
+        }
         .phase-result {
             background: #2a2a2a;
             border: 1px solid #444;
@@ -316,10 +325,10 @@
             
             socket.on('phase_started', function(data) {
                 console.log('🚀 Phase started:', data);
-                document.getElementById('progress-phase').textContent = `Phase ${data.phase}: ${data.name}`;
+                document.getElementById('progress-phase').textContent = `Phase ${data.phase}: ${data.name || data.message}`;
                 
-                addToOutput(`🚀 Starting Phase ${data.phase}: ${data.name}`, 'info');
-                addToModalOutput(`🚀 Starting Phase ${data.phase}: ${data.name}`, 'info');
+                addToOutput(`🚀 Starting Phase ${data.phase}: ${data.name || data.message}`, 'info');
+                addToModalOutput(`🚀 Starting Phase ${data.phase}: ${data.name || data.message}`, 'info');
             });
             
             socket.on('phase_output', function(data) {
@@ -358,18 +367,33 @@
                 document.getElementById('current-status').innerHTML = `
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>Reconnaissance completed!
-                        <br><small>Found ${data.total_findings || Object.keys(phaseResults).length} findings</small>
+                        <br><small>Found ${data.summary?.total_findings || Object.keys(phaseResults).length} findings in ${data.summary?.total_phases || 10} phases</small>
                     </div>
                 `;
                 
-                addToOutput(`🎉 Reconnaissance completed! Found ${Object.keys(phaseResults).length} phase results`, 'success');
+                // Clear phase results section
+                document.getElementById('phase-results').innerHTML = `
+                    <div class="text-center">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Reconnaissance completed! All phases finished successfully.
+                    </div>
+                `;
+                
+                addToOutput(`🎉 Reconnaissance completed! Found ${data.summary?.total_findings || Object.keys(phaseResults).length} findings`, 'success');
                 
                 // Reset current task
                 currentTaskId = null;
                 
+                // Show completion alert
+                showAlert('Reconnaissance completed successfully! Redirecting to report...', 'success');
+                
                 // Redirect to report page after delay
                 setTimeout(() => {
-                    window.location.href = `/report?target=${encodeURIComponent(data.target)}&task_id=${data.task_id}`;
+                    if (data.target && data.task_id) {
+                        window.location.href = `/report?target=${encodeURIComponent(data.target)}&task_id=${data.task_id}`;
+                    } else {
+                        showAlert('Report page not available', 'warning');
+                    }
                 }, 3000);
             });
             
