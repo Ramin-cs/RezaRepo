@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Simple Phases Test</h1>
+        
+        <div class="mb-3">
+            <button class="btn btn-primary" onclick="testLoad()">Load Phases</button>
+        </div>
+        
+        <div id="phases-container">
+            <div class="alert alert-info">Click "Load Phases" to test</div>
+        </div>
+        
+        <div id="modal-phases-container">
+            <div class="alert alert-info">Modal phases will load here</div>
+        </div>
+    </div>
+
+    <script>
+        function testLoad() {
+            console.log('🧪 Testing phases load...');
+            
+            fetch('/api/phases')
+                .then(response => {
+                    console.log('📡 Response:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📋 Data:', data);
+                    
+                    if (data.success) {
+                        loadPhasesToContainer('phases-container', data.phases, true);
+                        loadPhasesToContainer('modal-phases-container', data.phases, false);
+                        console.log('✅ Success!');
+                    } else {
+                        console.error('❌ API Error:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Fetch Error:', error);
+                });
+        }
+        
+        function loadPhasesToContainer(containerId, phases, showButtons = true) {
+            console.log(`📦 Loading to: ${containerId}`);
+            const container = document.getElementById(containerId);
+            
+            if (container) {
+                container.innerHTML = '';
+                
+                phases.forEach(phase => {
+                    const phaseDiv = document.createElement('div');
+                    phaseDiv.className = 'form-check mb-2';
+                    phaseDiv.innerHTML = `
+                        <input class="form-check-input" type="checkbox" value="${phase.number}" id="${containerId}_phase_${phase.number}" name="phases">
+                        <label class="form-check-label" for="${containerId}_phase_${phase.number}">
+                            <strong>Phase ${phase.number}:</strong> ${phase.name}
+                        </label>
+                    `;
+                    container.appendChild(phaseDiv);
+                });
+                
+                console.log(`✅ ${phases.length} phases loaded to ${containerId}`);
+            } else {
+                console.error(`❌ Container not found: ${containerId}`);
+            }
+        }
+    </script>
+</body>
+</html>

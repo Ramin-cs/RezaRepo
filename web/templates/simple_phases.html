@@ -762,17 +762,22 @@
             
             // Debug: Check if phases container exists
             const phasesContainer = document.getElementById('phases-container');
+            const modalPhasesContainer = document.getElementById('modal-phases-container');
             console.log('📋 Phases container found:', phasesContainer);
+            console.log('📋 Modal phases container found:', modalPhasesContainer);
             
-            if (phasesContainer) {
-                console.log('✅ Phases container exists, loading phases...');
+            if (phasesContainer || modalPhasesContainer) {
+                console.log('✅ At least one phases container exists, loading phases...');
                 // Load available phases
                 loadAvailablePhases();
             } else {
-                console.error('❌ Phases container not found!');
-                // Try to find alternative container
+                console.error('❌ No phases containers found!');
+                // Try to find alternative containers
                 const altContainer = document.getElementById('phases-list');
                 console.log('📋 Alternative container found:', altContainer);
+                
+                // Show error message
+                showAlert('Phases containers not found. Please refresh the page.', 'danger');
             }
             
             // Get target from URL parameter
@@ -823,38 +828,65 @@
         function loadAvailablePhases() {
             console.log('📋 Loading available phases...');
             
-            fetch('/api/phases')
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📋 Phases loaded:', data);
-                    
-                    if (data.success) {
-                        // Load phases for main page
-                        loadPhasesToContainer('phases-container', data.phases, true);
+            // Try multiple URL formats
+            const urls = ['/api/phases', './api/phases', window.location.origin + '/api/phases'];
+            let currentUrlIndex = 0;
+            
+            function tryNextUrl() {
+                if (currentUrlIndex >= urls.length) {
+                    console.error('❌ All URL attempts failed');
+                    showAlert('Failed to load phases: All connection attempts failed', 'danger');
+                    return;
+                }
+                
+                const url = urls[currentUrlIndex];
+                console.log(`🔗 Trying URL: ${url}`);
+                
+                fetch(url)
+                    .then(response => {
+                        console.log(`📡 Response status: ${response.status} for ${url}`);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('📋 Phases loaded:', data);
                         
-                        // Load phases for modal
-                        loadPhasesToContainer('modal-phases-container', data.phases, false);
-                        
-                        console.log(`✅ ${data.phases.length} phases loaded successfully`);
-                    } else {
-                        console.error('❌ Failed to load phases:', data.error);
-                        showAlert('Failed to load phases: ' + data.error, 'danger');
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Error loading phases:', error);
-                    showAlert('Error loading phases: ' + error.message, 'danger');
-                });
+                        if (data.success) {
+                            // Load phases for main page
+                            loadPhasesToContainer('phases-container', data.phases, true);
+                            
+                            // Load phases for modal
+                            loadPhasesToContainer('modal-phases-container', data.phases, false);
+                            
+                            console.log(`✅ ${data.phases.length} phases loaded successfully`);
+                        } else {
+                            console.error('❌ Failed to load phases:', data.error);
+                            showAlert('Failed to load phases: ' + data.error, 'danger');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`❌ Error with ${url}:`, error.message);
+                        currentUrlIndex++;
+                        setTimeout(tryNextUrl, 500); // Try next URL after 500ms
+                    });
+            }
+            
+            tryNextUrl();
         }
         
         function loadPhasesToContainer(containerId, phases, showButtons = true) {
+            console.log(`📦 Loading phases to container: ${containerId}`);
             const container = document.getElementById(containerId);
+            
             if (container) {
+                console.log(`✅ Container found: ${containerId}`);
                 container.innerHTML = '';
                 
                 phases.forEach(phase => {
                     const phaseDiv = document.createElement('div');
-                    phaseDiv.className = 'form-check';
+                    phaseDiv.className = 'form-check mb-2';
                     phaseDiv.innerHTML = `
                         <input class="form-check-input" type="checkbox" value="${phase.number}" id="${containerId}_phase_${phase.number}" name="phases">
                         <label class="form-check-label" for="${containerId}_phase_${phase.number}">
@@ -865,6 +897,8 @@
                     `;
                     container.appendChild(phaseDiv);
                 });
+                
+                console.log(`✅ ${phases.length} phases added to ${containerId}`);
                 
                 // Add select all/none buttons if requested
                 if (showButtons) {
@@ -879,7 +913,10 @@
                         </button>
                     `;
                     container.appendChild(buttonsDiv);
+                    console.log(`✅ Select buttons added to ${containerId}`);
                 }
+            } else {
+                console.error(`❌ Container not found: ${containerId}`);
             }
         }
         
