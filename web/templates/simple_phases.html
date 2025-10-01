@@ -79,7 +79,7 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="row" id="phases-list">
+                        <div class="row" id="phases-container">
                             <!-- Phases will be loaded here -->
                         </div>
                     </div>
@@ -808,6 +808,211 @@
             
             html += '</div>';
             resultsContent.innerHTML = html;
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 ARAT Phases Page Loaded');
+            
+            // Debug: Check if phases container exists
+            const phasesContainer = document.getElementById('phases-container');
+            console.log('📋 Phases container found:', phasesContainer);
+            
+            if (phasesContainer) {
+                console.log('✅ Phases container exists, loading phases...');
+                // Load available phases
+                loadAvailablePhases();
+            } else {
+                console.error('❌ Phases container not found!');
+                // Try to find alternative container
+                const altContainer = document.getElementById('phases-list');
+                console.log('📋 Alternative container found:', altContainer);
+            }
+            
+            // Get target from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const target = urlParams.get('target');
+            if (target) {
+                const targetInput = document.getElementById('target');
+                if (targetInput) {
+                    targetInput.value = target;
+                    console.log(`🎯 Target loaded from URL: ${target}`);
+                } else {
+                    console.error('❌ Target input not found!');
+                }
+            }
+            
+            // Add form submission handler
+            const reconForm = document.getElementById('recon-form');
+            if (reconForm) {
+                console.log('✅ Form found, adding submit handler');
+                reconForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    console.log('🚀 Form submitted');
+                    
+                    const target = document.getElementById('target').value;
+                    const selectedPhases = Array.from(document.querySelectorAll('input[name="phases"]:checked')).map(cb => parseInt(cb.value));
+                    
+                    console.log('🎯 Target:', target);
+                    console.log('📋 Selected phases:', selectedPhases);
+                    
+                    if (!target) {
+                        showAlert('Please enter a target', 'warning');
+                        return;
+                    }
+                    
+                    if (selectedPhases.length === 0) {
+                        showAlert('Please select at least one phase', 'warning');
+                        return;
+                    }
+                    
+                    // Start reconnaissance
+                    startReconnaissance(target, selectedPhases);
+                });
+            } else {
+                console.error('❌ Form not found!');
+            }
+        });
+        
+        function loadAvailablePhases() {
+            console.log('📋 Loading available phases...');
+            
+            fetch('/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📋 Phases loaded:', data);
+                    
+                    if (data.success) {
+                        const phasesContainer = document.getElementById('phases-container');
+                        if (phasesContainer) {
+                            phasesContainer.innerHTML = '';
+                            
+                            data.phases.forEach(phase => {
+                                const phaseDiv = document.createElement('div');
+                                phaseDiv.className = 'form-check';
+                                phaseDiv.innerHTML = `
+                                    <input class="form-check-input" type="checkbox" value="${phase.number}" id="phase_${phase.number}" name="phases">
+                                    <label class="form-check-label" for="phase_${phase.number}">
+                                        <strong>Phase ${phase.number}:</strong> ${phase.name}
+                                        <br><small class="text-muted">${phase.description}</small>
+                                        ${phase.dependencies.length > 0 ? `<br><small class="text-warning">Dependencies: ${phase.dependencies.join(', ')}</small>` : ''}
+                                    </label>
+                                `;
+                                phasesContainer.appendChild(phaseDiv);
+                            });
+                            
+                            // Add select all/none buttons
+                            const buttonsDiv = document.createElement('div');
+                            buttonsDiv.className = 'mt-3 mb-3';
+                            buttonsDiv.innerHTML = `
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="selectAllPhases()">
+                                    <i class="fas fa-check-square"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNoPhases()">
+                                    <i class="fas fa-square"></i> Select None
+                                </button>
+                            `;
+                            phasesContainer.appendChild(buttonsDiv);
+                            
+                            console.log(`✅ ${data.phases.length} phases loaded successfully`);
+                        }
+                    } else {
+                        console.error('❌ Failed to load phases:', data.error);
+                        showAlert('Failed to load phases: ' + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading phases:', error);
+                    showAlert('Error loading phases: ' + error.message, 'danger');
+                });
+        }
+        
+        function selectAllPhases() {
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            console.log('✅ All phases selected');
+        }
+        
+        function selectNoPhases() {
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            console.log('✅ No phases selected');
+        }
+        
+        function showAlert(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        function startReconnaissance(target, phases) {
+            console.log('🚀 Starting reconnaissance for:', target, 'with phases:', phases);
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+            submitBtn.disabled = true;
+            
+            // Send request to start reconnaissance
+            fetch('/api/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    target: target,
+                    phases: phases
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🚀 Reconnaissance started:', data);
+                
+                if (data.success) {
+                    showAlert('Reconnaissance started successfully!', 'success');
+                    
+                    // Store current task
+                    currentTaskId = data.task_id;
+                    
+                    // Show running modal
+                    const runningModal = new bootstrap.Modal(document.getElementById('runningModal'));
+                    runningModal.show();
+                    
+                    // Update modal content
+                    document.getElementById('progress-target').textContent = `Target: ${target}`;
+                    document.getElementById('progress-phase').textContent = 'Phase: Starting...';
+                    
+                } else {
+                    showAlert('Failed to start reconnaissance: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error starting reconnaissance:', error);
+                showAlert('Error starting reconnaissance: ' + error.message, 'danger');
+            })
+            .finally(() => {
+                // Reset button state
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
         }
     </script>
 </body>
