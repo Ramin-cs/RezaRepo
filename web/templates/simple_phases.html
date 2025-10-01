@@ -768,8 +768,10 @@
             
             if (phasesContainer || modalPhasesContainer) {
                 console.log('✅ At least one phases container exists, loading phases...');
-                // Load available phases
-                loadAvailablePhases();
+                // Load available phases with a small delay
+                setTimeout(() => {
+                    loadAvailablePhases();
+                }, 100);
             } else {
                 console.error('❌ No phases containers found!');
                 // Try to find alternative containers
@@ -835,7 +837,8 @@
             function tryNextUrl() {
                 if (currentUrlIndex >= urls.length) {
                     console.error('❌ All URL attempts failed');
-                    showAlert('Failed to load phases: All connection attempts failed', 'danger');
+                    console.log('🔄 Loading hardcoded phases as fallback...');
+                    loadHardcodedPhases();
                     return;
                 }
                 
@@ -874,6 +877,32 @@
             }
             
             tryNextUrl();
+        }
+        
+        function loadHardcodedPhases() {
+            console.log('🔄 Loading hardcoded phases...');
+            
+            const hardcodedPhases = [
+                {number: 1, name: "Real IP Extraction", description: "Extract real IP address and CDN bypass", dependencies: []},
+                {number: 2, name: "Subdomain Discovery", description: "Discover subdomains (active/passive)", dependencies: [1]},
+                {number: 3, name: "Port Scanning", description: "Scan ports and detect services", dependencies: [1]},
+                {number: 4, name: "Technology Detection", description: "Detect web technologies", dependencies: [1]},
+                {number: 5, name: "Directory Discovery", description: "Find directories and files", dependencies: [1]},
+                {number: 6, name: "Parameter Discovery", description: "Extract parameters and JS analysis", dependencies: [4]},
+                {number: 7, name: "Endpoint Discovery", description: "Extract endpoints (REST/GraphQL)", dependencies: [4]},
+                {number: 8, name: "Cloud Analysis", description: "Analyze cloud resources", dependencies: [2]},
+                {number: 9, name: "OSINT Analysis", description: "Open source intelligence gathering", dependencies: []},
+                {number: 10, name: "Vulnerability Assessment", description: "Recon-based vulnerability assessment", dependencies: [1,2,3,4,5]}
+            ];
+            
+            // Load phases for main page
+            loadPhasesToContainer('phases-container', hardcodedPhases, true);
+            
+            // Load phases for modal
+            loadPhasesToContainer('modal-phases-container', hardcodedPhases, false);
+            
+            console.log(`✅ ${hardcodedPhases.length} hardcoded phases loaded successfully`);
+            showAlert('Loaded hardcoded phases (API connection failed)', 'warning');
         }
         
         function loadPhasesToContainer(containerId, phases, showButtons = true) {
