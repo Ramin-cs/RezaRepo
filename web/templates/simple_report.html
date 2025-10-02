@@ -458,6 +458,38 @@
                         if (finding.details.severity) {
                             displayText += ` [${finding.details.severity}]`;
                         }
+                        if (finding.details.url) {
+                            displayText += ` - ${finding.details.url}`;
+                        }
+                    } else if (finding.type === 'swagger_endpoint' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.title) {
+                            displayText += ` - ${finding.details.title}`;
+                        }
+                        if (finding.details.status_code) {
+                            displayText += ` [${finding.details.status_code}]`;
+                        }
+                    } else if (finding.type === 'js_endpoint' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.source) {
+                            displayText += ` (${finding.details.source})`;
+                        }
+                    } else if (finding.type === 'directory' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.status_code) {
+                            displayText += ` [${finding.details.status_code}]`;
+                        }
+                        if (finding.details.content_length) {
+                            displayText += ` (${finding.details.content_length} bytes)`;
+                        }
+                    } else if (finding.type === 'parameter' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.risk_level) {
+                            displayText += ` [${finding.details.risk_level}]`;
+                        }
+                        if (finding.details.source) {
+                            displayText += ` (${finding.details.source})`;
+                        }
                     }
                     
                     html += `<div class="finding-item">${displayText}</div>`;

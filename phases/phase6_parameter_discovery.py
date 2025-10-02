@@ -30,23 +30,55 @@ class Phase6ParameterDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        # Enhanced parameter wordlist with 500+ entries based on research
         self.parameter_wordlist = [
+            # User and authentication
             'id', 'user_id', 'userid', 'username', 'user_name', 'user-name', 'user',
             'email', 'mail', 'phone', 'mobile', 'name', 'firstname', 'lastname', 'fullname',
             'password', 'pass', 'pwd', 'confirm_password', 'confirm-password', 'new_password',
+            'old_password', 'current_password', 'token', 'access_token', 'refresh_token',
+            'api_key', 'apikey', 'api-key', 'secret', 'key', 'session_id', 'sessionid',
+            'session', 'auth', 'authentication', 'login', 'logout', 'signin', 'signout',
+            'register', 'registration', 'signup', 'verification', 'verification_code',
+            
+            # Pagination and filtering
             'page', 'p', 'offset', 'limit', 'size', 'count', 'per_page', 'per-page',
             'start', 'end', 'from', 'to', 'since', 'until', 'before', 'after',
+            'skip', 'take', 'max', 'min', 'range', 'between',
+            
+            # Search and query
             'search', 'query', 'q', 'filter', 'sort', 'order', 'orderby', 'order-by',
+            'sortby', 'sort_by', 'direction', 'asc', 'desc', 'ascending', 'descending',
+            'keyword', 'keywords', 'term', 'terms', 'phrase', 'match', 'contains',
+            
+            # File and upload
             'file', 'files', 'upload', 'upload_file', 'upload-file', 'image', 'img',
             'photo', 'picture', 'avatar', 'document', 'doc', 'pdf', 'excel', 'csv',
+            'attachment', 'attachments', 'media', 'multimedia', 'video', 'audio',
+            'filename', 'file_name', 'filepath', 'file_path', 'filetype', 'file_type',
+            'filesize', 'file_size', 'content_type', 'mime_type', 'extension',
+            
+            # Configuration and settings
             'config', 'setting', 'settings', 'option', 'options', 'preference', 'preferences',
             'mode', 'theme', 'language', 'lang', 'locale', 'timezone', 'currency',
+            'format', 'style', 'template', 'layout', 'view', 'display',
+            
+            # Security and encryption
             'security', 'secure', 'encrypt', 'decrypt', 'hash', 'salt', 'iv', 'cipher',
             'ssl', 'tls', 'cert', 'certificate', 'verify', 'validation', 'validate',
+            'checksum', 'md5', 'sha1', 'sha256', 'signature', 'sign', 'verify_signature',
+            
+            # Database related
             'db', 'database', 'table', 'column', 'field', 'value', 'values', 'record',
             'select', 'insert', 'update', 'delete', 'where', 'join', 'group', 'having',
+            'query', 'sql', 'schema', 'index', 'primary_key', 'foreign_key',
+            
+            # URL and navigation
             'url', 'link', 'href', 'src', 'source', 'target', 'destination',
-            'next', 'previous', 'back', 'forward', 'continue', 'cancel', 'abort',
+            'next', 'previous', 'back', 'forward', 'continue', 'cancel', 'abort', 'redirect',
+            'return', 'return_url', 'callback', 'callback_url', 'referrer', 'referer',
+            
+            # Content and media
             'title', 'description', 'content', 'body', 'text', 'message', 'subject',
             'comment', 'comments', 'reply', 'replies', 'post', 'posts', 'article', 'articles',
             'facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'vimeo',

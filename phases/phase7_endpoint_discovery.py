@@ -79,12 +79,34 @@ class Phase7EndpointDiscovery:
     def _discover_swagger_endpoints(self, target: str) -> List[str]:
         """Discover Swagger/OpenAPI endpoints"""
         swagger_paths = [
+            # Common Swagger paths
             '/swagger', '/swagger-ui', '/swagger-ui.html', '/swagger-ui/index.html',
-            '/api-docs', '/api/docs', '/docs', '/documentation',
-            '/openapi.json', '/swagger.json', '/api.json',
-            '/v1/swagger', '/v2/swagger', '/v3/swagger',
-            '/api/v1/swagger', '/api/v2/swagger', '/api/v3/swagger',
-            '/swagger/v1', '/swagger/v2', '/swagger/v3'
+            '/swagger-ui/dist/index.html', '/swagger-ui/2.2.10/index.html',
+            '/swagger-ui/3.0.0/index.html', '/swagger-ui/3.25.0/index.html',
+            
+            # API documentation paths
+            '/api-docs', '/api/docs', '/docs', '/documentation', '/api-documentation',
+            '/api/swagger', '/api/swagger-ui', '/api/swagger-ui.html',
+            
+            # OpenAPI/Swagger JSON files
+            '/openapi.json', '/swagger.json', '/api.json', '/swagger.yaml',
+            '/openapi.yaml', '/api.yaml', '/swagger.yml', '/openapi.yml',
+            
+            # Versioned API docs
+            '/v1/swagger', '/v2/swagger', '/v3/swagger', '/v1/api-docs',
+            '/v2/api-docs', '/v3/api-docs', '/api/v1/swagger', '/api/v2/swagger',
+            '/api/v3/swagger', '/swagger/v1', '/swagger/v2', '/swagger/v3',
+            
+            # Framework specific paths
+            '/api/swagger-ui.html', '/api/swagger-ui/index.html',
+            '/api-docs/swagger.json', '/api-docs/swagger.yaml',
+            '/rest/swagger', '/rest/api-docs', '/rest/swagger-ui.html',
+            
+            # Alternative paths
+            '/apidoc', '/apidocs', '/api-documentation', '/api-spec',
+            '/swagger-resources', '/swagger-resources/configuration/ui',
+            '/swagger-resources/configuration/security',
+            '/swagger-resources/v2/api-docs', '/swagger-resources/configuration/security'
         ]
         
         found_endpoints = []

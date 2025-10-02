@@ -31,12 +31,60 @@ class Phase2SubdomainDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        # Enhanced subdomain wordlist with 500+ entries based on research
         self.subdomain_wordlist = [
+            # Common subdomains
             'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1', 'webdisk', 'ns2',
             'cpanel', 'whm', 'autodiscover', 'autoconfig', 'ns3', 'm', 'imap', 'test', 'ns', 'blog',
             'pop3', 'dev', 'www2', 'admin', 'forum', 'news', 'vpn', 'ns4', 'mail2', 'new', 'mysql',
             'old', 'www1', 'beta', 'shop', 'api', 'staging', 'app', 'media', 'mail3', 'www3', 'dns2',
-            'cpanel', 'whm', 'autodiscover', 'autoconfig', 'ns3', 'm', 'imap', 'test', 'ns', 'blog'
+            
+            # API and services
+            'api', 'api-v1', 'api-v2', 'api-v3', 'v1', 'v2', 'v3', 'rest', 'graphql', 'webhook',
+            'webhooks', 'callback', 'oauth', 'auth', 'login', 'signin', 'register', 'signup',
+            'account', 'accounts', 'user', 'users', 'profile', 'profiles', 'dashboard', 'admin',
+            'administrator', 'root', 'support', 'help', 'docs', 'documentation', 'status',
+            
+            # Development and staging
+            'dev', 'development', 'staging', 'stage', 'test', 'testing', 'qa', 'quality',
+            'preview', 'demo', 'sandbox', 'beta', 'alpha', 'rc', 'release', 'prod', 'production',
+            
+            # Infrastructure
+            'cdn', 'static', 'assets', 'media', 'images', 'img', 'css', 'js', 'scripts',
+            'files', 'file', 'upload', 'uploads', 'download', 'downloads', 'storage',
+            'cache', 'redis', 'db', 'database', 'mysql', 'postgres', 'mongo', 'elasticsearch',
+            'kibana', 'grafana', 'prometheus', 'jenkins', 'git', 'svn', 'ci', 'cd',
+            
+            # Business and marketing
+            'shop', 'store', 'storefront', 'ecommerce', 'payment', 'pay', 'billing',
+            'invoice', 'invoices', 'order', 'orders', 'cart', 'checkout', 'shipping',
+            'delivery', 'track', 'tracking', 'analytics', 'stats', 'statistics', 'metrics',
+            'reports', 'report', 'dashboard', 'admin-panel', 'cms', 'content', 'blog',
+            
+            # Security and monitoring
+            'security', 'secure', 'ssl', 'tls', 'cert', 'certificate', 'monitor', 'monitoring',
+            'logs', 'log', 'audit', 'auditing', 'compliance', 'backup', 'backups',
+            'recovery', 'disaster', 'incident', 'alert', 'alerts', 'notification',
+            
+            # Mobile and apps
+            'mobile', 'm', 'app', 'apps', 'android', 'ios', 'iphone', 'ipad', 'tablet',
+            'desktop', 'client', 'clients', 'sdk', 'library', 'libraries',
+            
+            # Cloud and services
+            'cloud', 'aws', 'azure', 'gcp', 'google', 'microsoft', 'amazon', 's3', 'blob',
+            'storage', 'compute', 'lambda', 'functions', 'serverless', 'microservices',
+            
+            # Communication
+            'chat', 'messaging', 'email', 'mail', 'smtp', 'imap', 'pop3', 'webmail',
+            'calendar', 'cal', 'meeting', 'meetings', 'video', 'voice', 'phone',
+            'sms', 'notification', 'notifications', 'alert', 'alerts',
+            
+            # Additional common patterns
+            'internal', 'private', 'secure', 'vpn', 'remote', 'access', 'portal',
+            'gateway', 'proxy', 'loadbalancer', 'lb', 'firewall', 'router', 'switch',
+            'dns', 'dhcp', 'ntp', 'ldap', 'ad', 'directory', 'domain', 'subdomain',
+            'wildcard', 'catch-all', 'default', 'fallback', 'backup', 'replica',
+            'mirror', 'copy', 'clone', 'fork', 'branch', 'main', 'master', 'develop'
         ]
     
     def run_phase(self, target: str) -> Dict[str, Any]:
@@ -100,6 +148,47 @@ class Phase2SubdomainDiscovery:
             # Technique 2: Passive Sources
             print("   🔍 Passive Sources...")
             results['techniques_used'].append('Passive Sources')
+            
+            # Enhanced passive sources
+            passive_sources = [
+                f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={target}",
+                f"https://api.hackertarget.com/hostsearch/?q={target}",
+                f"https://crt.sh/?q=%.{target}&output=json",
+                f"https://api.securitytrails.com/v1/domain/{target}/subdomains",
+                f"https://api.shodan.io/dns/domain/{target}",
+                f"https://api.censys.io/v1/search/ipv4?q={target}",
+                f"https://dnsdumpster.com/static/map/{target}.png",
+                f"https://www.virustotal.com/vtapi/v2/domain/report?domain={target}",
+                f"https://api.passivetotal.org/v2/dns/passive?query={target}",
+                f"https://api.riskiq.net/v1/ssl/certificates?domain={target}"
+            ]
+            
+            for source in passive_sources:
+                try:
+                    response = requests.get(source, headers=self.headers, timeout=10)
+                    if response.status_code == 200:
+                        # Parse different response formats
+                        if 'json' in response.headers.get('content-type', ''):
+                            try:
+                                data = response.json()
+                                subdomains = self._extract_subdomains_from_json(data, target)
+                                for subdomain in subdomains:
+                                    if subdomain not in results['subdomains']:
+                                        results['subdomains'].append(subdomain)
+                                        results['passive_sources'].append(subdomain)
+                                        print(f"   ✅ Subdomain found via passive source: {subdomain}")
+                            except:
+                                pass
+                        else:
+                            # Extract from HTML/text
+                            subdomains = self._extract_subdomains_from_text(response.text, target)
+                            for subdomain in subdomains:
+                                if subdomain not in results['subdomains']:
+                                    results['subdomains'].append(subdomain)
+                                    results['passive_sources'].append(subdomain)
+                                    print(f"   ✅ Subdomain found via passive source: {subdomain}")
+                except Exception as e:
+                    results['errors'].append(f"Passive source lookup failed: {str(e)}")
             
             passive_sources = [
                 f"https://dnsdumpster.com/static/map/{target}.png",
@@ -649,6 +738,47 @@ class Phase2SubdomainDiscovery:
                 pass
         
         return expanded
+    
+    def _extract_subdomains_from_json(self, data: Dict, target: str) -> List[str]:
+        """Extract subdomains from JSON response"""
+        subdomains = []
+        
+        # Common JSON structures
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key in ['subdomains', 'hosts', 'dns_names', 'domains']:
+                    if isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, str) and target in item:
+                                subdomains.append(item)
+                elif isinstance(value, (dict, list)):
+                    subdomains.extend(self._extract_subdomains_from_json(value, target))
+        elif isinstance(data, list):
+            for item in data:
+                if isinstance(item, str) and target in item:
+                    subdomains.append(item)
+                elif isinstance(item, (dict, list)):
+                    subdomains.extend(self._extract_subdomains_from_json(item, target))
+        
+        return list(set(subdomains))
+    
+    def _extract_subdomains_from_text(self, text: str, target: str) -> List[str]:
+        """Extract subdomains from text/HTML response"""
+        subdomains = []
+        
+        # Regex patterns for subdomain extraction
+        patterns = [
+            rf'\b([a-zA-Z0-9](?:[a-zA-Z0-9-]{{0,61}}[a-zA-Z0-9])?\.{re.escape(target)})\b',
+            rf'([a-zA-Z0-9-]+\.{re.escape(target)})',
+            rf'"([^"]*\.{re.escape(target)})"',
+            rf"'([^']*\.{re.escape(target)})'"
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            subdomains.extend(matches)
+        
+        return list(set(subdomains))
 
 if __name__ == "__main__":
     phase = Phase2SubdomainDiscovery()

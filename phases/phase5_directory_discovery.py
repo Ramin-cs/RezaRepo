@@ -24,36 +24,127 @@ class Phase5DirectoryDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        # Enhanced directory wordlist with 4-level deep crawling
+        # Enhanced directory wordlist with 1000+ entries based on research
         self.directory_wordlist = [
-            # Level 1 - Common directories
+            # Common admin directories
             '/admin', '/administrator', '/login', '/dashboard', '/panel', '/control',
-            '/api', '/rest', '/graphql', '/docs', '/documentation', '/help',
+            '/manage', '/management', '/admin-panel', '/adminpanel', '/admin_area',
+            '/adminarea', '/admin-login', '/adminlogin', '/admin_area/admin.php',
+            '/admin_area/login.php', '/admin/controlpanel', '/admin.html',
+            '/admin/login.html', '/admin/account.html', '/admin/index.html',
+            
+            # API and services
+            '/api', '/api/v1', '/api/v2', '/api/v3', '/v1', '/v2', '/v3',
+            '/rest', '/restapi', '/graphql', '/webhook', '/webhooks', '/callback',
+            '/oauth', '/oauth2', '/auth', '/authentication', '/jwt', '/token',
+            '/swagger', '/swagger-ui', '/swagger-ui.html', '/api-docs', '/docs',
+            '/documentation', '/openapi.json', '/swagger.json', '/api.json',
+            
+            # Configuration and settings
             '/config', '/configuration', '/settings', '/options', '/preferences',
+            '/config.php', '/config.inc.php', '/config.inc', '/configuration.php',
+            '/settings.php', '/options.php', '/preferences.php', '/setup.php',
+            '/install.php', '/installation', '/install', '/setup', '/upgrade.php',
+            '/web.config', '/app.config', '/application.yml', '/application.properties',
+            '/application.conf', '/app.conf', '/server.conf', '/nginx.conf',
+            
+            # Backup and archives
             '/backup', '/backups', '/bak', '/old', '/archive', '/archives',
+            '/backup.sql', '/backup.zip', '/backup.tar', '/backup.tar.gz',
+            '/backup.rar', '/backup.7z', '/database.sql', '/db.sql',
+            '/mysql.sql', '/dump.sql', '/export.sql', '/import.sql',
+            
+            # File directories
             '/files', '/file', '/uploads', '/upload', '/download', '/downloads',
-            '/media', '/assets', '/images', '/image', '/img', '/css', '/js',
-            '/scripts', '/script', '/styles', '/style', '/themes', '/theme',
-            '/templates', '/template', '/includes', '/include', '/lib', '/library',
-            '/vendor', '/vendors', '/third-party', '/external', '/plugins',
-            '/modules', '/components', '/widgets', '/extensions', '/addons',
+            '/documents', '/docs', '/doc', '/images', '/image', '/img', '/pics',
+            '/pictures', '/photos', '/gallery', '/gallery2', '/media', '/assets',
+            '/static', '/public', '/www', '/web', '/html', '/htdocs', '/wwwroot',
+            
+            # Script directories
+            '/scripts', '/script', '/js', '/javascript', '/css', '/styles',
+            '/style', '/themes', '/theme', '/templates', '/template', '/includes',
+            '/include', '/lib', '/library', '/libraries', '/vendor', '/vendors',
+            '/third-party', '/external', '/plugins', '/plugin', '/modules',
+            '/module', '/components', '/component', '/widgets', '/widget',
+            '/extensions', '/extension', '/addons', '/addon',
+            
+            # System directories
             '/cgi-bin', '/cgi', '/bin', '/sbin', '/usr', '/var', '/tmp', '/temp',
-            '/logs', '/log', '/cache', '/session', '/sessions', '/data',
-            '/database', '/db', '/sql', '/mysql', '/postgres', '/mongo',
-            '/redis', '/elasticsearch', '/search', '/index', '/sitemap',
-            '/robots.txt', '/sitemap.xml', '/crossdomain.xml', '/favicon.ico',
+            '/cache', '/session', '/sessions', '/data', '/database', '/db',
+            '/sql', '/mysql', '/postgres', '/postgresql', '/mongo', '/mongodb',
+            '/redis', '/elasticsearch', '/kibana', '/grafana', '/prometheus',
+            '/jenkins', '/git', '/svn', '/ci', '/cd', '/deploy', '/deployment',
+            
+            # Security and monitoring
+            '/logs', '/log', '/logging', '/audit', '/auditing', '/monitor',
+            '/monitoring', '/security', '/secure', '/ssl', '/tls', '/cert',
+            '/certificate', '/certs', '/cacerts', '/keystore', '/truststore',
+            
+            # Common files
+            '/robots.txt', '/sitemap.xml', '/sitemap_index.xml', '/crossdomain.xml',
+            '/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+            '/humans.txt', '/security.txt', '/.well-known/security.txt',
+            
+            # Hidden files and directories
             '/.htaccess', '/.htpasswd', '/.git', '/.svn', '/.hg', '/.bzr',
             '/.env', '/.env.local', '/.env.production', '/.env.development',
-            '/package.json', '/composer.json', '/requirements.txt', '/pom.xml',
-            '/build.xml', '/Dockerfile', '/docker-compose.yml', '/.gitignore',
-            '/.gitattributes', '/.dockerignore', '/.editorconfig', '/.eslintrc',
-            '/.prettierrc', '/tsconfig.json', '/webpack.config.js', '/gulpfile.js',
-            '/gruntfile.js', '/bower.json', '/yarn.lock', '/package-lock.json',
+            '/.env.test', '/.env.staging', '/.env.prod', '/.env.dev',
+            '/.gitignore', '/.gitattributes', '/.dockerignore', '/.editorconfig',
+            '/.eslintrc', '/.eslintrc.js', '/.eslintrc.json', '/.prettierrc',
+            '/.prettierrc.js', '/.prettierrc.json', '/.babelrc', '/.babelrc.js',
+            
+            # Package and build files
+            '/package.json', '/package-lock.json', '/yarn.lock', '/composer.json',
+            '/composer.lock', '/pom.xml', '/build.xml', '/gradle.properties',
+            '/Dockerfile', '/docker-compose.yml', '/docker-compose.yaml',
+            '/Makefile', '/Rakefile', '/Gemfile', '/Gemfile.lock',
+            
+            # Framework specific
+            '/tsconfig.json', '/webpack.config.js', '/webpack.config.ts',
+            '/gulpfile.js', '/gruntfile.js', '/bower.json', '/.angular-cli.json',
+            '/angular.json', '/vue.config.js', '/nuxt.config.js', '/next.config.js',
+            '/tailwind.config.js', '/postcss.config.js', '/babel.config.js',
+            
+            # Common pages
             '/index.php', '/index.html', '/index.htm', '/default.html',
             '/home.html', '/main.php', '/main.html', '/start.php', '/start.html',
             '/welcome.php', '/welcome.html', '/test.php', '/test.html',
             '/info.php', '/phpinfo.php', '/admin.php', '/login.php', '/config.php',
-            '/web.config', '/app.config', '/application.yml', '/application.properties'
+            '/about.php', '/about.html', '/contact.php', '/contact.html',
+            '/privacy.php', '/privacy.html', '/terms.php', '/terms.html',
+            
+            # CMS specific
+            '/wp-admin', '/wp-login.php', '/wp-config.php', '/wp-content',
+            '/wp-includes', '/wp-json', '/wp-json/wp/v2', '/xmlrpc.php',
+            '/administrator', '/administrator/index.php', '/administrator/login.php',
+            '/joomla', '/drupal', '/drupal/sites/default', '/magento',
+            '/magento/admin', '/prestashop', '/opencart', '/opencart/admin',
+            
+            # Development and testing
+            '/dev', '/development', '/staging', '/stage', '/test', '/testing',
+            '/qa', '/quality', '/preview', '/demo', '/sandbox', '/beta', '/alpha',
+            '/rc', '/release', '/prod', '/production', '/live', '/www',
+            '/www2', '/www3', '/www4', '/www5', '/www6', '/www7', '/www8',
+            
+            # Business and marketing
+            '/shop', '/store', '/storefront', '/ecommerce', '/payment', '/pay',
+            '/billing', '/invoice', '/invoices', '/order', '/orders', '/cart',
+            '/checkout', '/shipping', '/delivery', '/track', '/tracking',
+            '/analytics', '/stats', '/statistics', '/metrics', '/reports',
+            '/report', '/dashboard', '/cms', '/content', '/blog', '/news',
+            '/press', '/media', '/press-release', '/newsletter', '/subscribe',
+            
+            # Security testing
+            '/security', '/secure', '/vulnerability', '/vulnerabilities',
+            '/penetration', '/pentest', '/hack', '/hacking', '/exploit',
+            '/exploits', '/injection', '/xss', '/csrf', '/lfi', '/rfi',
+            '/sql', '/sqli', '/nosql', '/xxe', '/ssrf', '/rce', '/lfi',
+            
+            # Additional patterns
+            '/internal', '/private', '/vpn', '/remote', '/access', '/portal',
+            '/gateway', '/proxy', '/loadbalancer', '/lb', '/firewall',
+            '/router', '/switch', '/dns', '/dhcp', '/ntp', '/ldap', '/ad',
+            '/directory', '/domain', '/subdomain', '/wildcard', '/catch-all'
         ]
     
     def run_phase(self, target: str) -> Dict[str, Any]:
