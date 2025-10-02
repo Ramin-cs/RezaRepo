@@ -403,9 +403,17 @@
                 showAlert('Reconnaissance completed successfully! Redirecting to report...', 'success');
                 
                 // Store results in localStorage for report page
-                if (data.results) {
-                    localStorage.setItem('lastReconResults', JSON.stringify(data.results));
-                }
+                const reportData = {
+                    target: data.target,
+                    task_id: data.task_id,
+                    summary: data.summary,
+                    results: data.results || {},
+                    phaseResults: phaseResults,
+                    timestamp: new Date().toISOString()
+                };
+                
+                localStorage.setItem('lastReconResults', JSON.stringify(reportData));
+                console.log('💾 Stored results in localStorage:', reportData);
                 
                 // Redirect to report page after delay
                 setTimeout(() => {

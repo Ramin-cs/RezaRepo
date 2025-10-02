@@ -168,27 +168,53 @@
             const storedResults = localStorage.getItem('lastReconResults');
             if (storedResults) {
                 try {
-                    reportData = JSON.parse(storedResults);
-                    displayReport(reportData);
+                    const parsedData = JSON.parse(storedResults);
+                    console.log('📊 Loaded data from localStorage:', parsedData);
+                    
+                    // Use the stored data
+                    reportData = parsedData;
+                    
+                    // Display the report
+                    if (parsedData.results || parsedData.phaseResults) {
+                        displayReport(parsedData);
+                    } else {
+                        showNoDataMessage();
+                    }
                 } catch (e) {
                     console.error('Error parsing stored results:', e);
+                    showNoDataMessage();
                 }
+            } else {
+                console.log('No stored results found in localStorage');
+                showNoDataMessage();
             }
             
-            // If we have taskId, try to fetch from API
+            // If we have taskId, try to fetch from API as backup
             if (taskId) {
                 fetch(`/api/results/${taskId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
+                            console.log('📊 Loaded data from API:', data.results);
                             reportData = data.results;
-                            displayReport(reportData);
+                            displayReport(data.results);
                         }
                     })
                     .catch(error => {
-                        console.error('Error fetching results:', error);
+                        console.error('Error fetching results from API:', error);
                     });
             }
+        }
+        
+        function showNoDataMessage() {
+            const container = document.getElementById('phase-results-container');
+            container.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No reconnaissance data found. Please run a scan first.
+                    <br><small>Go to <a href="/phases">Phases page</a> to start reconnaissance.</small>
+                </div>
+            `;
         }
 
         // Display report
@@ -198,33 +224,55 @@
             const container = document.getElementById('phase-results-container');
             container.innerHTML = '';
             
+            // Extract data from different possible structures
+            let phaseData = {};
+            let totalFindings = 0;
+            let phaseCount = 0;
+            
+            // Check if data has results property
+            if (data.results) {
+                phaseData = data.results;
+            } else if (data.phaseResults) {
+                phaseData = data.phaseResults;
+            } else {
+                phaseData = data;
+            }
+            
             // Calculate statistics
-            const phases = Object.keys(data).filter(key => key.startsWith('phase_'));
-            const totalFindings = phases.reduce((total, phase) => {
-                const phaseData = data[phase];
-                if (phaseData && phaseData.findings) {
-                    return total + phaseData.findings.length;
+            const phases = Object.keys(phaseData).filter(key => key.startsWith('phase_') || key.match(/^\d+$/));
+            
+            phases.forEach(phaseKey => {
+                const phase = phaseData[phaseKey];
+                if (phase && phase.findings) {
+                    totalFindings += phase.findings.length;
+                    phaseCount++;
+                } else if (phase && Array.isArray(phase)) {
+                    totalFindings += phase.length;
+                    phaseCount++;
                 }
-                return total;
-            }, 0);
+            });
             
             // Update statistics
-            document.getElementById('stat-phases').textContent = phases.length;
+            document.getElementById('stat-phases').textContent = phaseCount || phases.length;
             document.getElementById('stat-findings').textContent = totalFindings;
             document.getElementById('stat-duration').textContent = data.duration || 'N/A';
             
             // Update summary
             document.getElementById('report-summary').textContent = 
-                `Completed ${phases.length} phases with ${totalFindings} total findings`;
+                `Completed ${phaseCount || phases.length} phases with ${totalFindings} total findings`;
             
             // Display each phase
-            phases.forEach(phaseKey => {
-                const phaseData = data[phaseKey];
-                if (phaseData) {
-                    const phaseDiv = createPhaseCard(phaseKey, phaseData);
-                    container.appendChild(phaseDiv);
-                }
-            });
+            if (phases.length > 0) {
+                phases.forEach(phaseKey => {
+                    const phase = phaseData[phaseKey];
+                    if (phase) {
+                        const phaseDiv = createPhaseCard(phaseKey, phase);
+                        container.appendChild(phaseDiv);
+                    }
+                });
+            } else {
+                showNoDataMessage();
+            }
         }
 
         // Create phase card
@@ -244,8 +292,31 @@
             };
             
             const phaseName = phaseNames[phaseNumber] || `Phase ${phaseNumber}`;
-            const findings = phaseData.findings || [];
-            const status = phaseData.status || 'completed';
+            let findings = [];
+            let status = 'completed';
+            
+            // Extract findings from different possible structures
+            if (phaseData.findings) {
+                findings = phaseData.findings;
+            } else if (Array.isArray(phaseData)) {
+                findings = phaseData;
+            } else if (phaseData.real_ips) {
+                findings = phaseData.real_ips.map(ip => ({ type: 'ip', value: ip }));
+            } else if (phaseData.subdomains) {
+                findings = phaseData.subdomains.map(sub => ({ type: 'subdomain', value: sub }));
+            } else if (phaseData.open_ports) {
+                findings = phaseData.open_ports.map(port => ({ type: 'port', value: port }));
+            } else if (phaseData.technologies) {
+                findings = phaseData.technologies.map(tech => ({ type: 'technology', value: tech }));
+            } else if (phaseData.directories) {
+                findings = phaseData.directories.map(dir => ({ type: 'directory', value: dir }));
+            } else if (phaseData.parameters) {
+                findings = phaseData.parameters.map(param => ({ type: 'parameter', value: param }));
+            }
+            
+            if (phaseData.status) {
+                status = phaseData.status;
+            }
             
             const cardDiv = document.createElement('div');
             cardDiv.className = `finding-card finding-${status === 'completed' ? 'success' : 'warning'}`;
@@ -261,7 +332,7 @@
                     </span>
                 </div>
                 <div class="phase-findings">
-                    ${formatPhaseFindings(phaseData)}
+                    ${formatPhaseFindings({ findings: findings, ...phaseData })}
                 </div>
             `;
             
@@ -274,7 +345,32 @@
             const findings = phaseData.findings || [];
             
             if (findings.length === 0) {
-                return '<div class="text-muted">No specific findings to display</div>';
+                // Check for direct properties
+                const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories', 'parameters'];
+                let hasDirectData = false;
+                
+                directProps.forEach(prop => {
+                    if (phaseData[prop] && phaseData[prop].length > 0) {
+                        hasDirectData = true;
+                        html += `<div class="finding-category mb-2">
+                            <strong class="text-info">${prop.replace('_', ' ').charAt(0).toUpperCase() + prop.replace('_', ' ').slice(1)}:</strong>
+                        </div>`;
+                        
+                        phaseData[prop].slice(0, 10).forEach(item => {
+                            html += `<div class="finding-item">${item}</div>`;
+                        });
+                        
+                        if (phaseData[prop].length > 10) {
+                            html += `<div class="finding-item text-muted">... and ${phaseData[prop].length - 10} more</div>`;
+                        }
+                    }
+                });
+                
+                if (!hasDirectData) {
+                    return '<div class="text-muted">No specific findings to display</div>';
+                }
+                
+                return html;
             }
             
             // Group findings by type
