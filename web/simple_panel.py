@@ -14,6 +14,16 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import threading
 import uuid
 
+# Import live output manager
+try:
+    from utils.live_output_manager import init_live_output_manager, get_live_output_manager
+except ImportError:
+    # Fallback if module not available
+    def init_live_output_manager(socketio):
+        pass
+    def get_live_output_manager():
+        return None
+
 class SimpleWebPanel:
     """Simple ARAT web panel without database"""
     
@@ -26,6 +36,9 @@ class SimpleWebPanel:
         
         # SocketIO for real-time updates
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        
+        # Initialize live output manager
+        init_live_output_manager(self.socketio)
         
         # Simple data storage
         self.targets = []
@@ -378,26 +391,16 @@ class SimpleWebPanel:
                         # Add delay to make phases more realistic
                         print(f"   ⏳ Running Phase {phase_num} for {target}...")
                         
-                        # Send phase start update
-                        phase_names = {
-                            1: 'Real IP Extraction',
-                            2: 'Subdomain Discovery', 
-                            3: 'Port Scanning',
-                            4: 'Technology Detection',
-                            5: 'Directory Discovery',
-                            6: 'Parameter Discovery',
-                            7: 'Endpoint Discovery',
-                            8: 'Cloud Analysis',
-                            9: 'OSINT Analysis',
-                            10: 'Vulnerability Assessment'
-                        }
+                        # Get live output manager
+                        live_manager = get_live_output_manager()
                         
-                        self.socketio.emit('phase_started', {
-                            'task_id': task_id,
-                            'phase': phase_num,
-                            'name': phase_names.get(phase_num, f'Phase {phase_num}'),
-                            'message': f'Starting Phase {phase_num}: {phase_names.get(phase_num, f"Phase {phase_num}")}...'
-                        }, room=f'task_{task_id}')
+                        # Emit phase start
+                        if live_manager:
+                            live_manager.emit_phase_start(task_id, phase_num, target)
+                        
+                        # Start live output capture
+                        if live_manager:
+                            live_manager.start_capture(task_id, phase_num)
                         
                         time.sleep(2)  # Add realistic delay
                         
@@ -408,24 +411,18 @@ class SimpleWebPanel:
                         
                         result = recon.run_phase(phase_num, target)
                         
-                        # Send phase output updates
-                        if isinstance(result, dict):
-                            # Send summary output
-                            if 'summary' in result:
-                                self.socketio.emit('phase_output', {
-                                    'task_id': task_id,
-                                    'phase': phase_num,
-                                    'output': f"📊 {result['summary']}"
-                                }, room=f'task_{task_id}')
-                            
-                            # Send findings
+                        # Stop live output capture
+                        if live_manager:
+                            live_manager.stop_capture(task_id, phase_num)
+                        
+                        # Send phase completion
+                        if live_manager and isinstance(result, dict):
+                            findings = []
                             if 'findings' in result and result['findings']:
-                                for finding in result['findings'][:5]:  # Send first 5 findings
-                                    self.socketio.emit('phase_output', {
-                                        'task_id': task_id,
-                                        'phase': phase_num,
-                                        'output': f"✅ {finding}"
-                                    }, room=f'task_{task_id}')
+                                findings = result['findings'][:10]  # First 10 findings
+                            
+                            summary = result.get('summary', f'Phase {phase_num} completed')
+                            live_manager.emit_phase_completion(task_id, phase_num, summary, findings)
                         
                         # Ensure result has proper structure
                         if not isinstance(result, dict):
