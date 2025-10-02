@@ -28,6 +28,7 @@ class Phase1RealIPExtraction:
             'phase': 1,
             'start_time': datetime.now().isoformat(),
             'real_ips': [],
+            'ip_mapping': {},  # Detailed IP mapping with source and domain info
             'cdn_detected': False,
             'cdn_provider': None,
             'techniques_used': [],
@@ -61,7 +62,18 @@ class Phase1RealIPExtraction:
                         ip = str(answer)
                         if not self._is_private_ip(ip) and ip not in results['real_ips']:
                             results['real_ips'].append(ip)
+                            # Get reverse DNS for this IP
+                            reverse_dns = self._get_reverse_dns(ip)
+                            results['ip_mapping'][ip] = {
+                                'domain': target,
+                                'resolver': resolver,
+                                'source': 'DNS Resolution',
+                                'reverse_dns': reverse_dns,
+                                'technique': 'Multiple DNS Resolvers'
+                            }
                             print(f"   ✅ Real IP found via {resolver}: {ip}")
+                            if reverse_dns:
+                                print(f"      🔄 Reverse DNS: {reverse_dns}")
                 except Exception as e:
                     results['errors'].append(f"DNS resolution failed for {resolver}: {str(e)}")
             
@@ -85,7 +97,17 @@ class Phase1RealIPExtraction:
                         for ip in ips:
                             if not self._is_private_ip(ip) and ip not in results['real_ips']:
                                 results['real_ips'].append(ip)
+                                reverse_dns = self._get_reverse_dns(ip)
+                                results['ip_mapping'][ip] = {
+                                    'domain': target,
+                                    'source': 'Historical DNS',
+                                    'source_url': source,
+                                    'reverse_dns': reverse_dns,
+                                    'technique': 'Historical DNS Records'
+                                }
                                 print(f"   ✅ Historical IP found: {ip}")
+                                if reverse_dns:
+                                    print(f"      🔄 Reverse DNS: {reverse_dns}")
                 except Exception as e:
                     results['errors'].append(f"Historical DNS lookup failed: {str(e)}")
             
@@ -203,6 +225,14 @@ class Phase1RealIPExtraction:
                 '172.30.', '172.31.', '192.168.'
             ]
             return any(ip.startswith(range_prefix) for range_prefix in private_ranges)
+    
+    def _get_reverse_dns(self, ip: str) -> str:
+        """Get reverse DNS for IP address"""
+        try:
+            reverse_dns = socket.gethostbyaddr(ip)[0]
+            return reverse_dns
+        except:
+            return None
 
 if __name__ == "__main__":
     phase = Phase1RealIPExtraction()

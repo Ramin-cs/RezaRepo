@@ -26,6 +26,11 @@ class Phase7EndpointDiscovery:
             'target': target,
             'start_time': datetime.now().isoformat(),
             'endpoints_found': [],
+            'swagger_endpoints': [],  # Swagger/OpenAPI endpoints
+            'js_endpoints': [],  # Endpoints found in JavaScript
+            'api_docs': [],  # API documentation pages
+            'graphql_endpoints': [],  # GraphQL endpoints
+            'rest_endpoints': [],  # REST API endpoints
             'techniques_used': [],
             'errors': [],
             'status': 'running'
@@ -48,6 +53,16 @@ class Phase7EndpointDiscovery:
             print("   📋 OpenAPI Specification Discovery...")
             results['techniques_used'].append('OpenAPI Specification Discovery')
             
+            # Discover Swagger/OpenAPI endpoints
+            swagger_endpoints = self._discover_swagger_endpoints(target)
+            results['swagger_endpoints'] = swagger_endpoints
+            results['endpoints_found'].extend(swagger_endpoints)
+            
+            # Discover endpoints from JavaScript files
+            js_endpoints = self._discover_js_endpoints(target)
+            results['js_endpoints'] = js_endpoints
+            results['endpoints_found'].extend(js_endpoints)
+            
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
             results['summary'] = f"Found {len(results['endpoints_found'])} endpoints using {len(results['techniques_used'])} advanced techniques"
@@ -60,6 +75,120 @@ class Phase7EndpointDiscovery:
             results['errors'].append(str(e))
             print(f"   ❌ Phase 7 failed: {str(e)}")
             return results
+    
+    def _discover_swagger_endpoints(self, target: str) -> List[str]:
+        """Discover Swagger/OpenAPI endpoints"""
+        swagger_paths = [
+            '/swagger', '/swagger-ui', '/swagger-ui.html', '/swagger-ui/index.html',
+            '/api-docs', '/api/docs', '/docs', '/documentation',
+            '/openapi.json', '/swagger.json', '/api.json',
+            '/v1/swagger', '/v2/swagger', '/v3/swagger',
+            '/api/v1/swagger', '/api/v2/swagger', '/api/v3/swagger',
+            '/swagger/v1', '/swagger/v2', '/swagger/v3'
+        ]
+        
+        found_endpoints = []
+        
+        for path in swagger_paths:
+            try:
+                url = f"https://{target}{path}"
+                response = requests.get(url, headers=self.headers, timeout=10)
+                
+                if response.status_code == 200:
+                    # Check if it's actually a Swagger/OpenAPI page
+                    content = response.text.lower()
+                    if any(keyword in content for keyword in ['swagger', 'openapi', 'api documentation']):
+                        found_endpoints.append({
+                            'url': url,
+                            'type': 'swagger',
+                            'status_code': response.status_code,
+                            'title': self._extract_title(response.text)
+                        })
+                        print(f"      ✅ Swagger endpoint found: {url}")
+                        
+            except Exception as e:
+                pass
+        
+        return found_endpoints
+    
+    def _discover_js_endpoints(self, target: str) -> List[str]:
+        """Discover endpoints from JavaScript files"""
+        js_endpoints = []
+        
+        try:
+            # Get main page
+            response = requests.get(f"https://{target}", headers=self.headers, timeout=10)
+            if response.status_code == 200:
+                content = response.text
+                
+                # Extract JavaScript file URLs
+                js_files = re.findall(r'<script[^>]*src=["\']([^"\']*\.js[^"\']*)["\']', content, re.IGNORECASE)
+                
+                for js_file in js_files:
+                    if not js_file.startswith('http'):
+                        if js_file.startswith('/'):
+                            js_url = f"https://{target}{js_file}"
+                        else:
+                            js_url = f"https://{target}/{js_file}"
+                    else:
+                        js_url = js_file
+                    
+                    # Analyze JavaScript file for endpoints
+                    try:
+                        js_response = requests.get(js_url, headers=self.headers, timeout=10)
+                        if js_response.status_code == 200:
+                            endpoints = self._extract_endpoints_from_js(js_response.text, target)
+                            js_endpoints.extend(endpoints)
+                    except:
+                        pass
+                        
+        except Exception as e:
+            pass
+        
+        return js_endpoints
+    
+    def _extract_endpoints_from_js(self, js_content: str, target: str) -> List[Dict[str, Any]]:
+        """Extract API endpoints from JavaScript content"""
+        endpoints = []
+        
+        # Common API endpoint patterns
+        patterns = [
+            r'["\']([^"\']*\/api\/[^"\']*)["\']',  # /api/ endpoints
+            r'["\']([^"\']*\/v\d+\/[^"\']*)["\']',  # Versioned endpoints
+            r'["\']([^"\']*\/graphql[^"\']*)["\']',  # GraphQL endpoints
+            r'["\']([^"\']*\/rest\/[^"\']*)["\']',  # REST endpoints
+            r'["\']([^"\']*\/endpoint[^"\']*)["\']',  # Generic endpoints
+            r'fetch\(["\']([^"\']+)["\']',  # Fetch API calls
+            r'axios\.[^(]+\(["\']([^"\']+)["\']',  # Axios calls
+            r'\.get\(["\']([^"\']+)["\']',  # GET requests
+            r'\.post\(["\']([^"\']+)["\']',  # POST requests
+            r'\.put\(["\']([^"\']+)["\']',  # PUT requests
+            r'\.delete\(["\']([^"\']+)["\']',  # DELETE requests
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                if match.startswith('/'):
+                    endpoint_url = f"https://{target}{match}"
+                elif match.startswith('http'):
+                    endpoint_url = match
+                else:
+                    continue
+                
+                endpoints.append({
+                    'url': endpoint_url,
+                    'type': 'javascript_discovered',
+                    'source': 'JavaScript Analysis',
+                    'pattern': pattern
+                })
+        
+        return endpoints
+    
+    def _extract_title(self, html_content: str) -> str:
+        """Extract title from HTML content"""
+        title_match = re.search(r'<title[^>]*>([^<]+)</title>', html_content, re.IGNORECASE)
+        return title_match.group(1).strip() if title_match else 'No title found'
 
 if __name__ == "__main__":
     phase = Phase7EndpointDiscovery()

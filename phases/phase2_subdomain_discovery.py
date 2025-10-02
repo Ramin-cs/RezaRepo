@@ -48,6 +48,9 @@ class Phase2SubdomainDiscovery:
             'start_time': datetime.now().isoformat(),
             'subdomains': [],
             'valid_subdomains': [],
+            'subdomain_details': {},  # Detailed subdomain info with status codes and sources
+            'wildcard_subdomains': [],  # Wildcard subdomains found
+            'wildcard_expansions': {},  # Expanded wildcard subdomains
             'certificate_transparency': [],
             'passive_sources': [],
             'http_validation': [],
@@ -611,6 +614,41 @@ class Phase2SubdomainDiscovery:
             }
         except Exception as e:
             return {'success': False, 'error': str(e), 'tool': 'httpx'}
+    
+    def _expand_wildcard_subdomain(self, wildcard_subdomain: str, target: str) -> List[str]:
+        """Expand wildcard subdomain to find actual subdomains"""
+        expanded = []
+        wildcard_base = wildcard_subdomain.replace('*.', '')
+        
+        # Common subdomain patterns to try
+        expansion_wordlist = [
+            'www', 'api', 'app', 'admin', 'test', 'dev', 'staging', 'beta', 'alpha',
+            'mail', 'ftp', 'blog', 'shop', 'store', 'cdn', 'static', 'assets',
+            'images', 'img', 'video', 'media', 'files', 'docs', 'help', 'support',
+            'portal', 'dashboard', 'panel', 'console', 'monitor', 'status', 'health',
+            'metrics', 'analytics', 'logs', 'backup', 'backups', 'archive', 'temp',
+            'tmp', 'cache', 'redis', 'db', 'database', 'mysql', 'postgres', 'mongo',
+            'elasticsearch', 'kibana', 'grafana', 'prometheus', 'jenkins', 'git',
+            'svn', 'ci', 'cd', 'deploy', 'production', 'prod', 'live', 'demo',
+            'sandbox', 'qa', 'quality', 'security', 'auth', 'login', 'sso',
+            'oauth', 'jwt', 'token', 'session', 'user', 'users', 'profile', 'account',
+            'accounts', 'billing', 'payment', 'pay', 'invoice', 'invoices', 'order',
+            'orders', 'cart', 'checkout', 'shipping', 'delivery', 'track', 'tracking'
+        ]
+        
+        print(f"   🔍 Expanding wildcard subdomain: {wildcard_subdomain}")
+        
+        for word in expansion_wordlist:
+            test_subdomain = f"{word}.{wildcard_base}"
+            try:
+                # Try to resolve the subdomain
+                socket.gethostbyname(test_subdomain)
+                expanded.append(test_subdomain)
+                print(f"      ✅ Found expanded subdomain: {test_subdomain}")
+            except:
+                pass
+        
+        return expanded
 
 if __name__ == "__main__":
     phase = Phase2SubdomainDiscovery()

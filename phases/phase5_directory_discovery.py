@@ -24,7 +24,9 @@ class Phase5DirectoryDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        # Enhanced directory wordlist with 4-level deep crawling
         self.directory_wordlist = [
+            # Level 1 - Common directories
             '/admin', '/administrator', '/login', '/dashboard', '/panel', '/control',
             '/api', '/rest', '/graphql', '/docs', '/documentation', '/help',
             '/config', '/configuration', '/settings', '/options', '/preferences',
@@ -445,6 +447,50 @@ class Phase5DirectoryDiscovery:
         except:
             pass
         return None
+
+    def _deep_crawl_directory(self, target: str, base_path: str, level: int = 1, max_level: int = 4) -> List[Dict[str, Any]]:
+        """Deep crawl directory structure up to specified levels"""
+        if level > max_level:
+            return []
+        
+        found_paths = []
+        print(f"   🔍 Deep crawling level {level}: {base_path}")
+        
+        # Common subdirectories to try at each level
+        subdirs = [
+            'admin', 'api', 'app', 'assets', 'backup', 'bin', 'cache', 'config',
+            'data', 'db', 'docs', 'files', 'images', 'js', 'lib', 'logs',
+            'media', 'modules', 'plugins', 'scripts', 'static', 'styles',
+            'temp', 'test', 'uploads', 'vendor', 'views', 'web', 'www'
+        ]
+        
+        for subdir in subdirs:
+            test_path = f"{base_path}/{subdir}" if base_path != '/' else f"/{subdir}"
+            
+            try:
+                url = f"https://{target}{test_path}"
+                response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
+                
+                if response.status_code in [200, 301, 302, 403, 401]:
+                    found_paths.append({
+                        'path': test_path,
+                        'url': url,
+                        'status_code': response.status_code,
+                        'content_length': len(response.content) if response.content else 0,
+                        'server': response.headers.get('Server', 'Unknown'),
+                        'level': level,
+                        'source': 'Deep Crawling'
+                    })
+                    
+                    # If this is a directory (status 200 or 403), crawl deeper
+                    if response.status_code in [200, 403] and level < max_level:
+                        deeper_paths = self._deep_crawl_directory(target, test_path, level + 1, max_level)
+                        found_paths.extend(deeper_paths)
+                        
+            except Exception as e:
+                pass
+        
+        return found_paths
 
 if __name__ == "__main__":
     phase = Phase5DirectoryDiscovery()

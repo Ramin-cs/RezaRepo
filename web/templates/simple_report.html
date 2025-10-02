@@ -312,6 +312,44 @@
                 findings = phaseData.directories.map(dir => ({ type: 'directory', value: dir }));
             } else if (phaseData.parameters) {
                 findings = phaseData.parameters.map(param => ({ type: 'parameter', value: param }));
+            } else if (phaseData.ip_mapping) {
+                // Phase 1: IP mapping with detailed info
+                findings = Object.keys(phaseData.ip_mapping).map(ip => ({
+                    type: 'ip_mapping',
+                    value: ip,
+                    details: phaseData.ip_mapping[ip]
+                }));
+            } else if (phaseData.subdomain_details) {
+                // Phase 2: Subdomain details with status codes
+                findings = Object.keys(phaseData.subdomain_details).map(sub => ({
+                    type: 'subdomain_detail',
+                    value: sub,
+                    details: phaseData.subdomain_details[sub]
+                }));
+            } else if (phaseData.swagger_endpoints || phaseData.js_endpoints) {
+                // Phase 7: Endpoint discoveries
+                findings = [];
+                if (phaseData.swagger_endpoints) {
+                    findings = findings.concat(phaseData.swagger_endpoints.map(endpoint => ({
+                        type: 'swagger_endpoint',
+                        value: endpoint.url || endpoint,
+                        details: endpoint
+                    })));
+                }
+                if (phaseData.js_endpoints) {
+                    findings = findings.concat(phaseData.js_endpoints.map(endpoint => ({
+                        type: 'js_endpoint',
+                        value: endpoint.url || endpoint,
+                        details: endpoint
+                    })));
+                }
+            } else if (phaseData.account_takeover_vulns) {
+                // Phase 10: Account takeover vulnerabilities
+                findings = phaseData.account_takeover_vulns.map(vuln => ({
+                    type: 'account_takeover',
+                    value: vuln.type || vuln,
+                    details: vuln
+                }));
             }
             
             if (phaseData.status) {
@@ -391,7 +429,38 @@
                 </div>`;
                 
                 groupFindings.slice(0, 10).forEach(finding => {
-                    html += `<div class="finding-item">${finding.value || finding}</div>`;
+                    let displayText = finding.value || finding;
+                    
+                    // Enhanced display for different types
+                    if (finding.type === 'ip_mapping' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.reverse_dns) {
+                            displayText += ` (${finding.details.reverse_dns})`;
+                        }
+                        if (finding.details.source) {
+                            displayText += ` [${finding.details.source}]`;
+                        }
+                    } else if (finding.type === 'subdomain_detail' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.status_code) {
+                            displayText += ` [${finding.details.status_code}]`;
+                        }
+                        if (finding.details.source) {
+                            displayText += ` (${finding.details.source})`;
+                        }
+                    } else if (finding.type === 'swagger_endpoint' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.title) {
+                            displayText += ` - ${finding.details.title}`;
+                        }
+                    } else if (finding.type === 'account_takeover' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.severity) {
+                            displayText += ` [${finding.details.severity}]`;
+                        }
+                    }
+                    
+                    html += `<div class="finding-item">${displayText}</div>`;
                 });
                 
                 if (groupFindings.length > 10) {
