@@ -300,56 +300,190 @@
                 findings = phaseData.findings;
             } else if (Array.isArray(phaseData)) {
                 findings = phaseData;
-            } else if (phaseData.real_ips) {
-                findings = phaseData.real_ips.map(ip => ({ type: 'ip', value: ip }));
-            } else if (phaseData.subdomains) {
-                findings = phaseData.subdomains.map(sub => ({ type: 'subdomain', value: sub }));
-            } else if (phaseData.open_ports) {
-                findings = phaseData.open_ports.map(port => ({ type: 'port', value: port }));
-            } else if (phaseData.technologies) {
-                findings = phaseData.technologies.map(tech => ({ type: 'technology', value: tech }));
-            } else if (phaseData.directories) {
-                findings = phaseData.directories.map(dir => ({ type: 'directory', value: dir }));
-            } else if (phaseData.parameters) {
-                findings = phaseData.parameters.map(param => ({ type: 'parameter', value: param }));
-            } else if (phaseData.ip_mapping) {
-                // Phase 1: IP mapping with detailed info
-                findings = Object.keys(phaseData.ip_mapping).map(ip => ({
-                    type: 'ip_mapping',
-                    value: ip,
-                    details: phaseData.ip_mapping[ip]
-                }));
-            } else if (phaseData.subdomain_details) {
-                // Phase 2: Subdomain details with status codes
-                findings = Object.keys(phaseData.subdomain_details).map(sub => ({
-                    type: 'subdomain_detail',
-                    value: sub,
-                    details: phaseData.subdomain_details[sub]
-                }));
-            } else if (phaseData.swagger_endpoints || phaseData.js_endpoints) {
-                // Phase 7: Endpoint discoveries
-                findings = [];
-                if (phaseData.swagger_endpoints) {
-                    findings = findings.concat(phaseData.swagger_endpoints.map(endpoint => ({
-                        type: 'swagger_endpoint',
-                        value: endpoint.url || endpoint,
-                        details: endpoint
-                    })));
+            } else {
+                // Extract findings from direct properties based on phase
+                switch(phaseNumber) {
+                    case '1':
+                        // Phase 1: Real IPs and IP mapping
+                        if (phaseData.real_ips && Array.isArray(phaseData.real_ips)) {
+                            findings = phaseData.real_ips.map(ip => ({ type: 'ip', value: ip }));
+                        }
+                        if (phaseData.ip_mapping) {
+                            findings = findings.concat(Object.keys(phaseData.ip_mapping).map(ip => ({
+                                type: 'ip_mapping',
+                                value: ip,
+                                details: phaseData.ip_mapping[ip]
+                            })));
+                        }
+                        break;
+                        
+                    case '2':
+                        // Phase 2: Subdomains and subdomain details
+                        if (phaseData.subdomains && Array.isArray(phaseData.subdomains)) {
+                            findings = findings.concat(phaseData.subdomains.map(sub => ({ type: 'subdomain', value: sub })));
+                        }
+                        if (phaseData.subdomain_details) {
+                            findings = findings.concat(Object.keys(phaseData.subdomain_details).map(sub => ({
+                                type: 'subdomain_detail',
+                                value: sub,
+                                details: phaseData.subdomain_details[sub]
+                            })));
+                        }
+                        if (phaseData.valid_subdomains && Array.isArray(phaseData.valid_subdomains)) {
+                            findings = findings.concat(phaseData.valid_subdomains.map(sub => ({ type: 'valid_subdomain', value: sub })));
+                        }
+                        break;
+                        
+                    case '3':
+                        // Phase 3: Open ports
+                        if (phaseData.open_ports && Array.isArray(phaseData.open_ports)) {
+                            findings = phaseData.open_ports.map(port => ({ type: 'port', value: port }));
+                        }
+                        break;
+                        
+                    case '4':
+                        // Phase 4: Technologies
+                        if (phaseData.technologies && Array.isArray(phaseData.technologies)) {
+                            findings = phaseData.technologies.map(tech => ({ type: 'technology', value: tech }));
+                        }
+                        break;
+                        
+                    case '5':
+                        // Phase 5: Directories and files
+                        if (phaseData.directories && Array.isArray(phaseData.directories)) {
+                            findings = findings.concat(phaseData.directories.map(dir => ({ type: 'directory', value: dir })));
+                        }
+                        if (phaseData.files && Array.isArray(phaseData.files)) {
+                            findings = findings.concat(phaseData.files.map(file => ({ type: 'file', value: file })));
+                        }
+                        if (phaseData.http_methods && Array.isArray(phaseData.http_methods)) {
+                            findings = findings.concat(phaseData.http_methods.map(method => ({ type: 'http_method', value: method })));
+                        }
+                        break;
+                        
+                    case '6':
+                        // Phase 6: Parameters and endpoints
+                        if (phaseData.parameters && Array.isArray(phaseData.parameters)) {
+                            findings = findings.concat(phaseData.parameters.map(param => ({ type: 'parameter', value: param })));
+                        }
+                        if (phaseData.endpoints && Array.isArray(phaseData.endpoints)) {
+                            findings = findings.concat(phaseData.endpoints.map(endpoint => ({ type: 'endpoint', value: endpoint })));
+                        }
+                        if (phaseData.secrets && Array.isArray(phaseData.secrets)) {
+                            findings = findings.concat(phaseData.secrets.map(secret => ({ type: 'secret', value: secret })));
+                        }
+                        if (phaseData.form_parameters && Array.isArray(phaseData.form_parameters)) {
+                            findings = findings.concat(phaseData.form_parameters.map(param => ({ type: 'form_parameter', value: param })));
+                        }
+                        if (phaseData.js_variables && Array.isArray(phaseData.js_variables)) {
+                            findings = findings.concat(phaseData.js_variables.map(var => ({ type: 'js_variable', value: var })));
+                        }
+                        if (phaseData.http_headers && Array.isArray(phaseData.http_headers)) {
+                            findings = findings.concat(phaseData.http_headers.map(header => ({ type: 'http_header', value: header })));
+                        }
+                        if (phaseData.meta_tags && Array.isArray(phaseData.meta_tags)) {
+                            findings = findings.concat(phaseData.meta_tags.map(tag => ({ type: 'meta_tag', value: tag })));
+                        }
+                        if (phaseData.cookie_parameters && Array.isArray(phaseData.cookie_parameters)) {
+                            findings = findings.concat(phaseData.cookie_parameters.map(cookie => ({ type: 'cookie_parameter', value: cookie })));
+                        }
+                        break;
+                        
+                    case '7':
+                        // Phase 7: Endpoints (REST, GraphQL, API docs)
+                        if (phaseData.rest_endpoints && Array.isArray(phaseData.rest_endpoints)) {
+                            findings = findings.concat(phaseData.rest_endpoints.map(endpoint => ({ type: 'rest_endpoint', value: endpoint })));
+                        }
+                        if (phaseData.graphql_endpoints && Array.isArray(phaseData.graphql_endpoints)) {
+                            findings = findings.concat(phaseData.graphql_endpoints.map(endpoint => ({ type: 'graphql_endpoint', value: endpoint })));
+                        }
+                        if (phaseData.api_docs && Array.isArray(phaseData.api_docs)) {
+                            findings = findings.concat(phaseData.api_docs.map(doc => ({ type: 'api_doc', value: doc })));
+                        }
+                        if (phaseData.openapi_specs && Array.isArray(phaseData.openapi_specs)) {
+                            findings = findings.concat(phaseData.openapi_specs.map(spec => ({ type: 'openapi_spec', value: spec })));
+                        }
+                        if (phaseData.swagger_endpoints && Array.isArray(phaseData.swagger_endpoints)) {
+                            findings = findings.concat(phaseData.swagger_endpoints.map(endpoint => ({
+                                type: 'swagger_endpoint',
+                                value: endpoint.url || endpoint,
+                                details: endpoint
+                            })));
+                        }
+                        if (phaseData.js_endpoints && Array.isArray(phaseData.js_endpoints)) {
+                            findings = findings.concat(phaseData.js_endpoints.map(endpoint => ({
+                                type: 'js_endpoint',
+                                value: endpoint.url || endpoint,
+                                details: endpoint
+                            })));
+                        }
+                        break;
+                        
+                    case '8':
+                        // Phase 8: Cloud resources
+                        if (phaseData.aws_buckets && Array.isArray(phaseData.aws_buckets)) {
+                            findings = findings.concat(phaseData.aws_buckets.map(bucket => ({ type: 'aws_bucket', value: bucket })));
+                        }
+                        if (phaseData.azure_blobs && Array.isArray(phaseData.azure_blobs)) {
+                            findings = findings.concat(phaseData.azure_blobs.map(blob => ({ type: 'azure_blob', value: blob })));
+                        }
+                        if (phaseData.gcp_buckets && Array.isArray(phaseData.gcp_buckets)) {
+                            findings = findings.concat(phaseData.gcp_buckets.map(bucket => ({ type: 'gcp_bucket', value: bucket })));
+                        }
+                        if (phaseData.cloudflare_resources && Array.isArray(phaseData.cloudflare_resources)) {
+                            findings = findings.concat(phaseData.cloudflare_resources.map(resource => ({ type: 'cloudflare_resource', value: resource })));
+                        }
+                        break;
+                        
+                    case '9':
+                        // Phase 9: OSINT data
+                        if (phaseData.whois_info) {
+                            findings = findings.concat([{ type: 'whois_info', value: 'WHOIS information collected', details: phaseData.whois_info }]);
+                        }
+                        if (phaseData.dns_history && Array.isArray(phaseData.dns_history)) {
+                            findings = findings.concat(phaseData.dns_history.map(record => ({ type: 'dns_history', value: record })));
+                        }
+                        if (phaseData.certificate_transparency && Array.isArray(phaseData.certificate_transparency)) {
+                            findings = findings.concat(phaseData.certificate_transparency.map(cert => ({ type: 'certificate_transparency', value: cert })));
+                        }
+                        if (phaseData.social_media && Array.isArray(phaseData.social_media)) {
+                            findings = findings.concat(phaseData.social_media.map(profile => ({ type: 'social_media', value: profile })));
+                        }
+                        if (phaseData.breach_data && Array.isArray(phaseData.breach_data)) {
+                            findings = findings.concat(phaseData.breach_data.map(breach => ({ type: 'breach_data', value: breach })));
+                        }
+                        break;
+                        
+                    case '10':
+                        // Phase 10: Vulnerabilities
+                        if (phaseData.security_headers && Array.isArray(phaseData.security_headers)) {
+                            findings = findings.concat(phaseData.security_headers.map(header => ({ type: 'security_header', value: header })));
+                        }
+                        if (phaseData.http_methods && Array.isArray(phaseData.http_methods)) {
+                            findings = findings.concat(phaseData.http_methods.map(method => ({ type: 'http_method', value: method })));
+                        }
+                        if (phaseData.cors_issues && Array.isArray(phaseData.cors_issues)) {
+                            findings = findings.concat(phaseData.cors_issues.map(issue => ({ type: 'cors_issue', value: issue })));
+                        }
+                        if (phaseData.csp_issues && Array.isArray(phaseData.csp_issues)) {
+                            findings = findings.concat(phaseData.csp_issues.map(issue => ({ type: 'csp_issue', value: issue })));
+                        }
+                        if (phaseData.account_takeover_vulns && Array.isArray(phaseData.account_takeover_vulns)) {
+                            findings = findings.concat(phaseData.account_takeover_vulns.map(vuln => ({
+                                type: 'account_takeover',
+                                value: vuln.type || vuln,
+                                details: vuln
+                            })));
+                        }
+                        if (phaseData.subdomain_takeover_vulns && Array.isArray(phaseData.subdomain_takeover_vulns)) {
+                            findings = findings.concat(phaseData.subdomain_takeover_vulns.map(vuln => ({
+                                type: 'subdomain_takeover',
+                                value: vuln.subdomain || vuln,
+                                details: vuln
+                            })));
+                        }
+                        break;
                 }
-                if (phaseData.js_endpoints) {
-                    findings = findings.concat(phaseData.js_endpoints.map(endpoint => ({
-                        type: 'js_endpoint',
-                        value: endpoint.url || endpoint,
-                        details: endpoint
-                    })));
-                }
-            } else if (phaseData.account_takeover_vulns) {
-                // Phase 10: Account takeover vulnerabilities
-                findings = phaseData.account_takeover_vulns.map(vuln => ({
-                    type: 'account_takeover',
-                    value: vuln.type || vuln,
-                    details: vuln
-                }));
             }
             
             if (phaseData.status) {
@@ -384,7 +518,7 @@
             
             if (findings.length === 0) {
                 // Check for direct properties
-                const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories', 'parameters'];
+                const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories', 'parameters', 'endpoints', 'secrets', 'form_parameters', 'js_variables', 'http_headers', 'meta_tags', 'cookie_parameters', 'rest_endpoints', 'graphql_endpoints', 'api_docs', 'openapi_specs', 'aws_buckets', 'azure_blobs', 'gcp_buckets', 'cloudflare_resources', 'dns_history', 'certificate_transparency', 'social_media', 'breach_data', 'security_headers', 'http_methods', 'cors_issues', 'csp_issues', 'account_takeover_vulns', 'subdomain_takeover_vulns'];
                 let hasDirectData = false;
                 
                 directProps.forEach(prop => {
@@ -403,6 +537,15 @@
                         }
                     }
                 });
+                
+                // Check for WHOIS info (special case)
+                if (phaseData.whois_info) {
+                    hasDirectData = true;
+                    html += `<div class="finding-category mb-2">
+                        <strong class="text-info">WHOIS Information:</strong>
+                    </div>`;
+                    html += `<div class="finding-item">WHOIS information collected</div>`;
+                }
                 
                 if (!hasDirectData) {
                     return '<div class="text-muted">No specific findings to display</div>';
@@ -425,7 +568,7 @@
             Object.keys(groupedFindings).forEach(type => {
                 const groupFindings = groupedFindings[type];
                 html += `<div class="finding-category mb-2">
-                    <strong class="text-info">${type.charAt(0).toUpperCase() + type.slice(1)}:</strong>
+                    <strong class="text-info">${type.replace('_', ' ').charAt(0).toUpperCase() + type.replace('_', ' ').slice(1)}:</strong>
                 </div>`;
                 
                 groupFindings.slice(0, 10).forEach(finding => {
@@ -448,19 +591,8 @@
                         if (finding.details.source) {
                             displayText += ` (${finding.details.source})`;
                         }
-                    } else if (finding.type === 'swagger_endpoint' && finding.details) {
-                        displayText = `${finding.value}`;
-                        if (finding.details.title) {
-                            displayText += ` - ${finding.details.title}`;
-                        }
-                    } else if (finding.type === 'account_takeover' && finding.details) {
-                        displayText = `${finding.value}`;
-                        if (finding.details.severity) {
-                            displayText += ` [${finding.details.severity}]`;
-                        }
-                        if (finding.details.url) {
-                            displayText += ` - ${finding.details.url}`;
-                        }
+                    } else if (finding.type === 'valid_subdomain') {
+                        displayText = `${finding.value} (Valid)`;
                     } else if (finding.type === 'swagger_endpoint' && finding.details) {
                         displayText = `${finding.value}`;
                         if (finding.details.title) {
@@ -473,6 +605,22 @@
                         displayText = `${finding.value}`;
                         if (finding.details.source) {
                             displayText += ` (${finding.details.source})`;
+                        }
+                    } else if (finding.type === 'account_takeover' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.severity) {
+                            displayText += ` [${finding.details.severity}]`;
+                        }
+                        if (finding.details.url) {
+                            displayText += ` - ${finding.details.url}`;
+                        }
+                    } else if (finding.type === 'subdomain_takeover' && finding.details) {
+                        displayText = `${finding.value}`;
+                        if (finding.details.severity) {
+                            displayText += ` [${finding.details.severity}]`;
+                        }
+                        if (finding.details.service) {
+                            displayText += ` (${finding.details.service})`;
                         }
                     } else if (finding.type === 'directory' && finding.details) {
                         displayText = `${finding.value}`;
@@ -490,6 +638,48 @@
                         if (finding.details.source) {
                             displayText += ` (${finding.details.source})`;
                         }
+                    } else if (finding.type === 'form_parameter') {
+                        displayText = `${finding.value} (Form)`;
+                    } else if (finding.type === 'js_variable') {
+                        displayText = `${finding.value} (JS Variable)`;
+                    } else if (finding.type === 'http_header') {
+                        displayText = `${finding.value} (HTTP Header)`;
+                    } else if (finding.type === 'meta_tag') {
+                        displayText = `${finding.value} (Meta Tag)`;
+                    } else if (finding.type === 'cookie_parameter') {
+                        displayText = `${finding.value} (Cookie)`;
+                    } else if (finding.type === 'rest_endpoint') {
+                        displayText = `${finding.value} (REST)`;
+                    } else if (finding.type === 'graphql_endpoint') {
+                        displayText = `${finding.value} (GraphQL)`;
+                    } else if (finding.type === 'api_doc') {
+                        displayText = `${finding.value} (API Doc)`;
+                    } else if (finding.type === 'openapi_spec') {
+                        displayText = `${finding.value} (OpenAPI)`;
+                    } else if (finding.type === 'aws_bucket') {
+                        displayText = `${finding.value} (AWS S3)`;
+                    } else if (finding.type === 'azure_blob') {
+                        displayText = `${finding.value} (Azure Blob)`;
+                    } else if (finding.type === 'gcp_bucket') {
+                        displayText = `${finding.value} (GCP Storage)`;
+                    } else if (finding.type === 'cloudflare_resource') {
+                        displayText = `${finding.value} (Cloudflare)`;
+                    } else if (finding.type === 'whois_info') {
+                        displayText = `${finding.value}`;
+                    } else if (finding.type === 'dns_history') {
+                        displayText = `${finding.value} (DNS History)`;
+                    } else if (finding.type === 'certificate_transparency') {
+                        displayText = `${finding.value} (CT Log)`;
+                    } else if (finding.type === 'social_media') {
+                        displayText = `${finding.value} (Social Media)`;
+                    } else if (finding.type === 'breach_data') {
+                        displayText = `${finding.value} (Breach Data)`;
+                    } else if (finding.type === 'security_header') {
+                        displayText = `${finding.value} (Security Header)`;
+                    } else if (finding.type === 'cors_issue') {
+                        displayText = `${finding.value} (CORS Issue)`;
+                    } else if (finding.type === 'csp_issue') {
+                        displayText = `${finding.value} (CSP Issue)`;
                     }
                     
                     html += `<div class="finding-item">${displayText}</div>`;
