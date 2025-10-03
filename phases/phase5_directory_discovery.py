@@ -224,6 +224,7 @@ class Phase5DirectoryDiscovery:
                     response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
                     
                     # Only consider responses that indicate actual content
+                    # 200: Success with content, 403/401: Access denied (meaningful), 301/302: Redirect with content
                     if response.status_code in [200, 403, 401] or (response.status_code in [301, 302] and len(response.content) > 0):
                         result = {
                             'path': path,
@@ -236,8 +237,17 @@ class Phase5DirectoryDiscovery:
                             'location': response.headers.get('Location', '') if response.status_code in [301, 302] else ''
                         }
                         
-                        # Only add if there's actual content or it's a meaningful response
-                        if len(response.content) > 0 or response.status_code in [403, 401]:
+                        # Only add meaningful responses:
+                        # - 200: Success with any content
+                        # - 403/401: Access denied (always meaningful)
+                        # - 301/302: Redirect only if it has content (not 0-byte redirects)
+                        is_meaningful = (
+                            response.status_code == 200 or 
+                            response.status_code in [403, 401] or 
+                            (response.status_code in [301, 302] and len(response.content) > 0)
+                        )
+                        
+                        if is_meaningful:
                             if path.endswith('/'):
                                 results['directories_found'].append(result)
                             else:
@@ -249,32 +259,30 @@ class Phase5DirectoryDiscovery:
                         # Config files
                         if any(keyword in path_lower for keyword in ['config', 'setting', 'env', 'conf', 'ini', 'xml', 'yml', 'yaml', 'properties', 'json']):
                             results['config_files'].append(result)
-                        
                         # Backup files
                         elif any(keyword in path_lower for keyword in ['backup', 'bak', 'old', 'archive', 'copy', 'duplicate', '.git', '.svn']):
                             results['backup_files'].append(result)
-                        
                         # Admin panels
                         elif any(keyword in path_lower for keyword in ['admin', 'panel', 'login', 'dashboard', 'control', 'manage', 'wp-admin', 'administrator']):
                             results['admin_panels'].append(result)
-                        
                         # API endpoints
                         elif any(keyword in path_lower for keyword in ['api', 'rest', 'graphql', 'swagger', 'docs', 'documentation', 'openapi']):
                             results['api_endpoints'].append(result)
-                        
                         # Development files
                         elif any(keyword in path_lower for keyword in ['dev', 'test', 'debug', 'log', 'tmp', 'temp', 'cache', 'session']):
                             results['development_files'].append(result)
-                        
                         # Sensitive files
                         elif any(keyword in path_lower for keyword in ['passwd', 'shadow', 'htpasswd', 'key', 'cert', 'secret', 'password', 'credential']):
                             results['sensitive_files'].append(result)
                         
                         print(f"   ✅ Found: {path} ({response.status_code}) - {result['content_length']} bytes")
                         return result
+                        
+                except requests.exceptions.RequestException as e:
+                    return  # Skip on request errors
                 except Exception as e:
                     results['errors'].append(f"Path {path} scan failed: {str(e)}")
-                return None
+                    return None
             
             # Use ThreadPoolExecutor for faster scanning
             with ThreadPoolExecutor(max_workers=30) as executor:
@@ -409,8 +417,8 @@ class Phase5DirectoryDiscovery:
                     break
             
             if wordlist:
-                cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', wordlist, '-t', '50', '-q', '-o', '/tmp/gobuster_output.txt']
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
+                cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', wordlist, '-t', '50', '-q']
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')
                 
                 directories = []
                 # Parse gobuster output
@@ -459,7 +467,7 @@ class Phase5DirectoryDiscovery:
         """Run dirsearch if available"""
         try:
             cmd = ['dirsearch', '-u', f"https://{target}", '-t', '50', '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')
             
             if result.returncode == 0:
                 return {
@@ -483,7 +491,7 @@ class Phase5DirectoryDiscovery:
         """Run feroxbuster if available"""
         try:
             cmd = ['feroxbuster', '-u', f"https://{target}", '-t', '50', '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')
             
             if result.returncode == 0:
                 return {
@@ -507,7 +515,7 @@ class Phase5DirectoryDiscovery:
         """Run katana if available"""
         try:
             cmd = ['katana', '-u', f"https://{target}", '-d', '3', '-j', '50', '-q']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')
             
             if result.returncode == 0:
                 return {
@@ -531,7 +539,7 @@ class Phase5DirectoryDiscovery:
         """Run gospider if available"""
         try:
             cmd = ['gospider', '-s', f"https://{target}", '-d', '3', '-t', '50', '-q']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='replace')
             
             if result.returncode == 0:
                 return {
