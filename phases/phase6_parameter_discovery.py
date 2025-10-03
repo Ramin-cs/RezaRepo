@@ -402,20 +402,23 @@ class Phase6ParameterDiscovery:
                 for param in test_params:
                     for value in test_values:
                         try:
-                            url = f"https://{target}/?{param}={value}"
-                            test_response = requests.get(url, headers=self.headers, timeout=3, allow_redirects=False)
+                            full_url = f"https://{target}/?{param}={value}"
+                            test_response = requests.get(full_url, headers=self.headers, timeout=3, allow_redirects=False)
                             
                             if test_response.status_code not in [404, 400]:  # Not a standard error
                                 results['url_parameters'].append({
                                     'parameter': param,
                                     'test_value': value,
+                                    'full_url': full_url,
                                     'response_code': test_response.status_code,
                                     'content_length': len(test_response.content),
                                     'source': 'parameter_testing',
                                     'type': 'query_string',
-                                    'risk_level': self._assess_parameter_risk(param)
+                                    'risk_level': self._assess_parameter_risk(param),
+                                    'title': self._extract_title(test_response.text),
+                                    'server': test_response.headers.get('Server', 'Unknown')
                                 })
-                                print(f"   ✅ Parameter test: {param}={value} -> {test_response.status_code}")
+                                print(f"   ✅ Parameter test: {full_url} -> {test_response.status_code}")
                         except:
                             pass
                             
@@ -657,6 +660,16 @@ class Phase6ParameterDiscovery:
         except:
             pass
         return None
+    
+    def _extract_title(self, html_content: str) -> str:
+        """Extract page title from HTML content"""
+        try:
+            title_match = re.search(r'<title[^>]*>(.*?)</title>', html_content, re.IGNORECASE | re.DOTALL)
+            if title_match:
+                return title_match.group(1).strip()
+        except:
+            pass
+        return 'No title found'
 
 if __name__ == "__main__":
     phase = Phase6ParameterDiscovery()

@@ -223,7 +223,8 @@ class Phase5DirectoryDiscovery:
                     url = f"https://{target}{path}"
                     response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
                     
-                    if response.status_code in [200, 301, 302, 403, 401]:
+                    # Only consider responses that indicate actual content
+                    if response.status_code in [200, 403, 401] or (response.status_code in [301, 302] and len(response.content) > 0):
                         result = {
                             'path': path,
                             'url': url,
@@ -231,13 +232,16 @@ class Phase5DirectoryDiscovery:
                             'title': self._extract_title(response.text),
                             'content_length': len(response.content),
                             'server': response.headers.get('Server', 'Unknown'),
-                            'content_type': response.headers.get('Content-Type', 'Unknown')
+                            'content_type': response.headers.get('Content-Type', 'Unknown'),
+                            'location': response.headers.get('Location', '') if response.status_code in [301, 302] else ''
                         }
                         
-                        if path.endswith('/'):
-                            results['directories_found'].append(result)
-                        else:
-                            results['files_found'].append(result)
+                        # Only add if there's actual content or it's a meaningful response
+                        if len(response.content) > 0 or response.status_code in [403, 401]:
+                            if path.endswith('/'):
+                                results['directories_found'].append(result)
+                            else:
+                                results['files_found'].append(result)
                         
                         # Advanced categorization
                         path_lower = path.lower()
@@ -406,7 +410,7 @@ class Phase5DirectoryDiscovery:
             
             if wordlist:
                 cmd = ['gobuster', 'dir', '-u', f"https://{target}", '-w', wordlist, '-t', '50', '-q', '-o', '/tmp/gobuster_output.txt']
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
                 
                 directories = []
                 # Parse gobuster output
@@ -455,7 +459,7 @@ class Phase5DirectoryDiscovery:
         """Run dirsearch if available"""
         try:
             cmd = ['dirsearch', '-u', f"https://{target}", '-t', '50', '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
             
             if result.returncode == 0:
                 return {
@@ -479,7 +483,7 @@ class Phase5DirectoryDiscovery:
         """Run feroxbuster if available"""
         try:
             cmd = ['feroxbuster', '-u', f"https://{target}", '-t', '50', '--quiet']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
             
             if result.returncode == 0:
                 return {
@@ -503,7 +507,7 @@ class Phase5DirectoryDiscovery:
         """Run katana if available"""
         try:
             cmd = ['katana', '-u', f"https://{target}", '-d', '3', '-j', '50', '-q']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
             
             if result.returncode == 0:
                 return {
@@ -527,7 +531,7 @@ class Phase5DirectoryDiscovery:
         """Run gospider if available"""
         try:
             cmd = ['gospider', '-s', f"https://{target}", '-d', '3', '-t', '50', '-q']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, encoding='utf-8', errors='ignore')
             
             if result.returncode == 0:
                 return {

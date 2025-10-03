@@ -363,20 +363,35 @@
                         
                     case '6':
                         // Phase 6: Parameters and endpoints
-                        if (phaseData.parameters && Array.isArray(phaseData.parameters)) {
-                            findings = findings.concat(phaseData.parameters.map(param => ({ type: 'parameter', value: param })));
+                        if (phaseData.parameters_found && Array.isArray(phaseData.parameters_found)) {
+                            findings = findings.concat(phaseData.parameters_found.map(param => ({ 
+                                type: 'parameter', 
+                                value: typeof param === 'string' ? param : param.parameter || param,
+                                details: typeof param === 'object' ? param : null
+                            })));
                         }
-                        if (phaseData.endpoints && Array.isArray(phaseData.endpoints)) {
-                            findings = findings.concat(phaseData.endpoints.map(endpoint => ({ type: 'endpoint', value: endpoint })));
+                        if (phaseData.endpoints_found && Array.isArray(phaseData.endpoints_found)) {
+                            findings = findings.concat(phaseData.endpoints_found.map(endpoint => ({ type: 'endpoint', value: endpoint })));
                         }
                         if (phaseData.secrets && Array.isArray(phaseData.secrets)) {
                             findings = findings.concat(phaseData.secrets.map(secret => ({ type: 'secret', value: secret })));
                         }
                         if (phaseData.form_parameters && Array.isArray(phaseData.form_parameters)) {
-                            findings = findings.concat(phaseData.form_parameters.map(param => ({ type: 'form_parameter', value: param })));
+                            findings = findings.concat(phaseData.form_parameters.map(param => ({ 
+                                type: 'form_parameter', 
+                                value: typeof param === 'string' ? param : param.parameter || param,
+                                details: typeof param === 'object' ? param : null
+                            })));
                         }
-                        if (phaseData.js_variables && Array.isArray(phaseData.js_variables)) {
-                            findings = findings.concat(phaseData.js_variables.map(var => ({ type: 'js_variable', value: var })));
+                        if (phaseData.url_parameters && Array.isArray(phaseData.url_parameters)) {
+                            findings = findings.concat(phaseData.url_parameters.map(param => ({ 
+                                type: 'url_parameter', 
+                                value: param.full_url || `${param.parameter}=${param.test_value}`,
+                                details: param
+                            })));
+                        }
+                        if (phaseData.javascript_variables && Array.isArray(phaseData.javascript_variables)) {
+                            findings = findings.concat(phaseData.javascript_variables.map(var => ({ type: 'js_variable', value: var })));
                         }
                         if (phaseData.http_headers && Array.isArray(phaseData.http_headers)) {
                             findings = findings.concat(phaseData.http_headers.map(header => ({ type: 'http_header', value: header })));
@@ -391,6 +406,9 @@
                         
                     case '7':
                         // Phase 7: Endpoints (REST, GraphQL, API docs)
+                        if (phaseData.endpoints_found && Array.isArray(phaseData.endpoints_found)) {
+                            findings = findings.concat(phaseData.endpoints_found.map(endpoint => ({ type: 'endpoint', value: endpoint })));
+                        }
                         if (phaseData.rest_endpoints && Array.isArray(phaseData.rest_endpoints)) {
                             findings = findings.concat(phaseData.rest_endpoints.map(endpoint => ({ type: 'rest_endpoint', value: endpoint })));
                         }
@@ -433,6 +451,9 @@
                         if (phaseData.cloudflare_resources && Array.isArray(phaseData.cloudflare_resources)) {
                             findings = findings.concat(phaseData.cloudflare_resources.map(resource => ({ type: 'cloudflare_resource', value: resource })));
                         }
+                        if (phaseData.cloud_services && Array.isArray(phaseData.cloud_services)) {
+                            findings = findings.concat(phaseData.cloud_services.map(service => ({ type: 'cloud_service', value: service })));
+                        }
                         break;
                         
                     case '9':
@@ -452,15 +473,26 @@
                         if (phaseData.breach_data && Array.isArray(phaseData.breach_data)) {
                             findings = findings.concat(phaseData.breach_data.map(breach => ({ type: 'breach_data', value: breach })));
                         }
+                        if (phaseData.osint_data && Array.isArray(phaseData.osint_data)) {
+                            findings = findings.concat(phaseData.osint_data.map(item => ({ type: 'osint_data', value: item })));
+                        }
                         break;
                         
                     case '10':
                         // Phase 10: Vulnerabilities
                         if (phaseData.security_headers && Array.isArray(phaseData.security_headers)) {
-                            findings = findings.concat(phaseData.security_headers.map(header => ({ type: 'security_header', value: header })));
+                            findings = findings.concat(phaseData.security_headers.map(header => ({ 
+                                type: 'security_header', 
+                                value: header.header || header,
+                                details: header
+                            })));
                         }
                         if (phaseData.http_methods && Array.isArray(phaseData.http_methods)) {
-                            findings = findings.concat(phaseData.http_methods.map(method => ({ type: 'http_method', value: method })));
+                            findings = findings.concat(phaseData.http_methods.map(method => ({ 
+                                type: 'http_method', 
+                                value: method.method || method,
+                                details: method
+                            })));
                         }
                         if (phaseData.cors_issues && Array.isArray(phaseData.cors_issues)) {
                             findings = findings.concat(phaseData.cors_issues.map(issue => ({ type: 'cors_issue', value: issue })));
@@ -468,17 +500,17 @@
                         if (phaseData.csp_issues && Array.isArray(phaseData.csp_issues)) {
                             findings = findings.concat(phaseData.csp_issues.map(issue => ({ type: 'csp_issue', value: issue })));
                         }
-                        if (phaseData.account_takeover_vulns && Array.isArray(phaseData.account_takeover_vulns)) {
-                            findings = findings.concat(phaseData.account_takeover_vulns.map(vuln => ({
-                                type: 'account_takeover',
-                                value: vuln.type || vuln,
-                                details: vuln
-                            })));
-                        }
                         if (phaseData.subdomain_takeover_vulns && Array.isArray(phaseData.subdomain_takeover_vulns)) {
                             findings = findings.concat(phaseData.subdomain_takeover_vulns.map(vuln => ({
                                 type: 'subdomain_takeover',
-                                value: vuln.subdomain || vuln,
+                                value: vuln.subdomain || vuln.type || vuln,
+                                details: vuln
+                            })));
+                        }
+                        if (phaseData.vulnerabilities && Array.isArray(phaseData.vulnerabilities)) {
+                            findings = findings.concat(phaseData.vulnerabilities.map(vuln => ({
+                                type: 'vulnerability',
+                                value: vuln.type || vuln,
                                 details: vuln
                             })));
                         }
@@ -518,7 +550,7 @@
             
             if (findings.length === 0) {
                 // Check for direct properties
-                const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories', 'parameters', 'endpoints', 'secrets', 'form_parameters', 'js_variables', 'http_headers', 'meta_tags', 'cookie_parameters', 'rest_endpoints', 'graphql_endpoints', 'api_docs', 'openapi_specs', 'aws_buckets', 'azure_blobs', 'gcp_buckets', 'cloudflare_resources', 'dns_history', 'certificate_transparency', 'social_media', 'breach_data', 'security_headers', 'http_methods', 'cors_issues', 'csp_issues', 'account_takeover_vulns', 'subdomain_takeover_vulns'];
+                const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories_found', 'files_found', 'parameters_found', 'endpoints_found', 'secrets', 'form_parameters', 'url_parameters', 'javascript_variables', 'http_headers', 'meta_tags', 'cookie_parameters', 'rest_endpoints', 'graphql_endpoints', 'api_docs', 'openapi_specs', 'aws_buckets', 'azure_blobs', 'gcp_buckets', 'cloudflare_resources', 'cloud_services', 'dns_history', 'certificate_transparency', 'social_media', 'breach_data', 'osint_data', 'security_headers', 'http_methods', 'cors_issues', 'csp_issues', 'subdomain_takeover_vulns', 'vulnerabilities'];
                 let hasDirectData = false;
                 
                 directProps.forEach(prop => {
