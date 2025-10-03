@@ -84,6 +84,10 @@
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <p class="mt-3">Loading reconnaissance results...</p>
+                <div class="progress mt-3" style="height: 20px;">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%">0%</div>
+                </div>
             </div>
         </div>
 
@@ -219,64 +223,170 @@
 
         // Display report
         function displayReport(data) {
-            console.log('Displaying report:', data);
+            console.log('Displaying report with optimized rendering...');
             
             const container = document.getElementById('phase-results-container');
             container.innerHTML = '';
             
-            // Extract data from different possible structures
-            let phaseData = {};
-            let totalFindings = 0;
-            let phaseCount = 0;
-            
-            // Check if data has results property
-            if (data.results) {
-                phaseData = data.results;
-            } else if (data.phaseResults) {
-                phaseData = data.phaseResults;
-            } else {
-                phaseData = data;
-            }
-            
-            // Calculate statistics
-            const phases = Object.keys(phaseData).filter(key => key.startsWith('phase_') || key.match(/^\d+$/));
-            
-            phases.forEach(phaseKey => {
-                const phase = phaseData[phaseKey];
-                if (phase && phase.findings) {
-                    totalFindings += phase.findings.length;
-                    phaseCount++;
-                } else if (phase && Array.isArray(phase)) {
-                    totalFindings += phase.length;
-                    phaseCount++;
+            try {
+                // Extract data from different possible structures
+                let phaseData = {};
+                let totalFindings = 0;
+                let phaseCount = 0;
+                
+                // Check if data has results property
+                if (data.results) {
+                    phaseData = data.results;
+                } else if (data.phaseResults) {
+                    phaseData = data.phaseResults;
+                } else {
+                    phaseData = data;
                 }
-            });
+                
+                // Calculate statistics efficiently
+                const phases = Object.keys(phaseData).filter(key => key.startsWith('phase_') || key.match(/^\d+$/));
+                
+                // Process phases in batches to avoid blocking the UI
+                let currentPhaseIndex = 0;
+                const batchSize = 2; // Process 2 phases at a time
+                
+                function processNextBatch() {
+                    const endIndex = Math.min(currentPhaseIndex + batchSize, phases.length);
+                    
+                    for (let i = currentPhaseIndex; i < endIndex; i++) {
+                        const phaseKey = phases[i];
+                        const phase = phaseData[phaseKey];
+                        
+                        if (phase) {
+                            // Count findings efficiently
+                            const findings = extractFindingsFromPhase(phase, phaseKey);
+                            totalFindings += findings.length;
+                            phaseCount++;
+                            
+                            // Create and append phase card
+                            const phaseDiv = createPhaseCard(phaseKey, phase, findings);
+                            container.appendChild(phaseDiv);
+                        }
+                    }
+                    
+                    currentPhaseIndex = endIndex;
+                    
+                    // Update progress
+                    const progress = Math.round((currentPhaseIndex / phases.length) * 100);
+                    updateProgress(progress);
+                    
+                    // Continue processing if there are more phases
+                    if (currentPhaseIndex < phases.length) {
+                        setTimeout(processNextBatch, 10); // Small delay to keep UI responsive
+                    } else {
+                        // All phases processed, update final statistics
+                        updateFinalStatistics(phaseCount, totalFindings, data);
+                    }
+                }
+                
+                // Start processing
+                if (phases.length > 0) {
+                    processNextBatch();
+                } else {
+                    showNoDataMessage();
+                }
+                
+            } catch (error) {
+                console.error('Error displaying report:', error);
+                showErrorMessage('Error displaying report: ' + error.message);
+            }
+        }
+        
+        function extractFindingsFromPhase(phase, phaseKey) {
+            const phaseNumber = phaseKey.replace('phase_', '');
+            let findings = [];
             
-            // Update statistics
-            document.getElementById('stat-phases').textContent = phaseCount || phases.length;
+            try {
+                // Extract findings based on phase structure
+                if (phase.findings && Array.isArray(phase.findings)) {
+                    findings = phase.findings;
+                } else {
+                    // Extract from direct properties
+                    switch(phaseNumber) {
+                        case '1':
+                            if (phase.real_ips) findings = findings.concat(phase.real_ips);
+                            if (phase.ip_mapping) findings = findings.concat(Object.keys(phase.ip_mapping));
+                            break;
+                        case '2':
+                            if (phase.subdomains) findings = findings.concat(phase.subdomains);
+                            if (phase.valid_subdomains) findings = findings.concat(phase.valid_subdomains);
+                            break;
+                        case '3':
+                            if (phase.open_ports) findings = findings.concat(phase.open_ports);
+                            break;
+                        case '4':
+                            if (phase.technologies) findings = findings.concat(phase.technologies);
+                            break;
+                        case '5':
+                            if (phase.directories_found) findings = findings.concat(phase.directories_found);
+                            if (phase.files_found) findings = findings.concat(phase.files_found);
+                            break;
+                        case '6':
+                            if (phase.parameters_found) findings = findings.concat(phase.parameters_found);
+                            if (phase.endpoints_found) findings = findings.concat(phase.endpoints_found);
+                            break;
+                        case '7':
+                            if (phase.endpoints_found) findings = findings.concat(phase.endpoints_found);
+                            break;
+                        case '8':
+                            if (phase.aws_buckets) findings = findings.concat(phase.aws_buckets);
+                            if (phase.azure_blobs) findings = findings.concat(phase.azure_blobs);
+                            if (phase.gcp_buckets) findings = findings.concat(phase.gcp_buckets);
+                            break;
+                        case '9':
+                            if (phase.whois_info) findings.push('WHOIS Data');
+                            if (phase.dns_history) findings = findings.concat(phase.dns_history);
+                            break;
+                        case '10':
+                            if (phase.vulnerabilities) findings = findings.concat(phase.vulnerabilities);
+                            if (phase.subdomain_takeover_vulns) findings = findings.concat(phase.subdomain_takeover_vulns);
+                            break;
+                    }
+                }
+                
+                // Limit findings to prevent UI overload
+                return findings.slice(0, 100);
+                
+            } catch (error) {
+                console.error(`Error extracting findings from phase ${phaseKey}:`, error);
+                return [];
+            }
+        }
+        
+        function updateProgress(progress) {
+            const progressElement = document.getElementById('progress-bar');
+            if (progressElement) {
+                progressElement.style.width = progress + '%';
+                progressElement.textContent = progress + '%';
+            }
+        }
+        
+        function updateFinalStatistics(phaseCount, totalFindings, data) {
+            document.getElementById('stat-phases').textContent = phaseCount;
             document.getElementById('stat-findings').textContent = totalFindings;
             document.getElementById('stat-duration').textContent = data.duration || 'N/A';
             
-            // Update summary
             document.getElementById('report-summary').textContent = 
-                `Completed ${phaseCount || phases.length} phases with ${totalFindings} total findings`;
-            
-            // Display each phase
-            if (phases.length > 0) {
-                phases.forEach(phaseKey => {
-                    const phase = phaseData[phaseKey];
-                    if (phase) {
-                        const phaseDiv = createPhaseCard(phaseKey, phase);
-                        container.appendChild(phaseDiv);
-                    }
-                });
-            } else {
-                showNoDataMessage();
-            }
+                `Completed ${phaseCount} phases with ${totalFindings} total findings`;
+        }
+        
+        function showErrorMessage(message) {
+            const container = document.getElementById('phase-results-container');
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${message}
+                </div>
+            `;
         }
 
         // Create phase card
-        function createPhaseCard(phaseKey, phaseData) {
+        function createPhaseCard(phaseKey, phaseData, findings = []) {
             const phaseNumber = phaseKey.replace('phase_', '');
             const phaseNames = {
                 '1': 'Real IP Extraction',
@@ -292,231 +402,16 @@
             };
             
             const phaseName = phaseNames[phaseNumber] || `Phase ${phaseNumber}`;
-            let findings = [];
-            let status = 'completed';
+            let status = phaseData.status || 'completed';
             
-            // Extract findings from different possible structures
-            if (phaseData.findings) {
-                findings = phaseData.findings;
-            } else if (Array.isArray(phaseData)) {
-                findings = phaseData;
-            } else {
-                // Extract findings from direct properties based on phase
-                switch(phaseNumber) {
-                    case '1':
-                        // Phase 1: Real IPs and IP mapping
-                        if (phaseData.real_ips && Array.isArray(phaseData.real_ips)) {
-                            findings = phaseData.real_ips.map(ip => ({ type: 'ip', value: ip }));
-                        }
-                        if (phaseData.ip_mapping) {
-                            findings = findings.concat(Object.keys(phaseData.ip_mapping).map(ip => ({
-                                type: 'ip_mapping',
-                                value: ip,
-                                details: phaseData.ip_mapping[ip]
-                            })));
-                        }
-                        break;
-                        
-                    case '2':
-                        // Phase 2: Subdomains and subdomain details
-                        if (phaseData.subdomains && Array.isArray(phaseData.subdomains)) {
-                            findings = findings.concat(phaseData.subdomains.map(sub => ({ type: 'subdomain', value: sub })));
-                        }
-                        if (phaseData.subdomain_details) {
-                            findings = findings.concat(Object.keys(phaseData.subdomain_details).map(sub => ({
-                                type: 'subdomain_detail',
-                                value: sub,
-                                details: phaseData.subdomain_details[sub]
-                            })));
-                        }
-                        if (phaseData.valid_subdomains && Array.isArray(phaseData.valid_subdomains)) {
-                            findings = findings.concat(phaseData.valid_subdomains.map(sub => ({ type: 'valid_subdomain', value: sub })));
-                        }
-                        break;
-                        
-                    case '3':
-                        // Phase 3: Open ports
-                        if (phaseData.open_ports && Array.isArray(phaseData.open_ports)) {
-                            findings = phaseData.open_ports.map(port => ({ type: 'port', value: port }));
-                        }
-                        break;
-                        
-                    case '4':
-                        // Phase 4: Technologies
-                        if (phaseData.technologies && Array.isArray(phaseData.technologies)) {
-                            findings = phaseData.technologies.map(tech => ({ type: 'technology', value: tech }));
-                        }
-                        break;
-                        
-                    case '5':
-                        // Phase 5: Directories and files
-                        if (phaseData.directories && Array.isArray(phaseData.directories)) {
-                            findings = findings.concat(phaseData.directories.map(dir => ({ type: 'directory', value: dir })));
-                        }
-                        if (phaseData.files && Array.isArray(phaseData.files)) {
-                            findings = findings.concat(phaseData.files.map(file => ({ type: 'file', value: file })));
-                        }
-                        if (phaseData.http_methods && Array.isArray(phaseData.http_methods)) {
-                            findings = findings.concat(phaseData.http_methods.map(method => ({ type: 'http_method', value: method })));
-                        }
-                        break;
-                        
-                    case '6':
-                        // Phase 6: Parameters and endpoints
-                        if (phaseData.parameters_found && Array.isArray(phaseData.parameters_found)) {
-                            findings = findings.concat(phaseData.parameters_found.map(param => ({ 
-                                type: 'parameter', 
-                                value: typeof param === 'string' ? param : param.parameter || param,
-                                details: typeof param === 'object' ? param : null
-                            })));
-                        }
-                        if (phaseData.endpoints_found && Array.isArray(phaseData.endpoints_found)) {
-                            findings = findings.concat(phaseData.endpoints_found.map(endpoint => ({ type: 'endpoint', value: endpoint })));
-                        }
-                        if (phaseData.secrets && Array.isArray(phaseData.secrets)) {
-                            findings = findings.concat(phaseData.secrets.map(secret => ({ type: 'secret', value: secret })));
-                        }
-                        if (phaseData.form_parameters && Array.isArray(phaseData.form_parameters)) {
-                            findings = findings.concat(phaseData.form_parameters.map(param => ({ 
-                                type: 'form_parameter', 
-                                value: typeof param === 'string' ? param : param.parameter || param,
-                                details: typeof param === 'object' ? param : null
-                            })));
-                        }
-                        if (phaseData.url_parameters && Array.isArray(phaseData.url_parameters)) {
-                            findings = findings.concat(phaseData.url_parameters.map(param => ({ 
-                                type: 'url_parameter', 
-                                value: param.full_url || `${param.parameter}=${param.test_value}`,
-                                details: param
-                            })));
-                        }
-                        if (phaseData.javascript_variables && Array.isArray(phaseData.javascript_variables)) {
-                            findings = findings.concat(phaseData.javascript_variables.map(var => ({ type: 'js_variable', value: var })));
-                        }
-                        if (phaseData.http_headers && Array.isArray(phaseData.http_headers)) {
-                            findings = findings.concat(phaseData.http_headers.map(header => ({ type: 'http_header', value: header })));
-                        }
-                        if (phaseData.meta_tags && Array.isArray(phaseData.meta_tags)) {
-                            findings = findings.concat(phaseData.meta_tags.map(tag => ({ type: 'meta_tag', value: tag })));
-                        }
-                        if (phaseData.cookie_parameters && Array.isArray(phaseData.cookie_parameters)) {
-                            findings = findings.concat(phaseData.cookie_parameters.map(cookie => ({ type: 'cookie_parameter', value: cookie })));
-                        }
-                        break;
-                        
-                    case '7':
-                        // Phase 7: Endpoints (REST, GraphQL, API docs)
-                        if (phaseData.endpoints_found && Array.isArray(phaseData.endpoints_found)) {
-                            findings = findings.concat(phaseData.endpoints_found.map(endpoint => ({ type: 'endpoint', value: endpoint })));
-                        }
-                        if (phaseData.rest_endpoints && Array.isArray(phaseData.rest_endpoints)) {
-                            findings = findings.concat(phaseData.rest_endpoints.map(endpoint => ({ type: 'rest_endpoint', value: endpoint })));
-                        }
-                        if (phaseData.graphql_endpoints && Array.isArray(phaseData.graphql_endpoints)) {
-                            findings = findings.concat(phaseData.graphql_endpoints.map(endpoint => ({ type: 'graphql_endpoint', value: endpoint })));
-                        }
-                        if (phaseData.api_docs && Array.isArray(phaseData.api_docs)) {
-                            findings = findings.concat(phaseData.api_docs.map(doc => ({ type: 'api_doc', value: doc })));
-                        }
-                        if (phaseData.openapi_specs && Array.isArray(phaseData.openapi_specs)) {
-                            findings = findings.concat(phaseData.openapi_specs.map(spec => ({ type: 'openapi_spec', value: spec })));
-                        }
-                        if (phaseData.swagger_endpoints && Array.isArray(phaseData.swagger_endpoints)) {
-                            findings = findings.concat(phaseData.swagger_endpoints.map(endpoint => ({
-                                type: 'swagger_endpoint',
-                                value: endpoint.url || endpoint,
-                                details: endpoint
-                            })));
-                        }
-                        if (phaseData.js_endpoints && Array.isArray(phaseData.js_endpoints)) {
-                            findings = findings.concat(phaseData.js_endpoints.map(endpoint => ({
-                                type: 'js_endpoint',
-                                value: endpoint.url || endpoint,
-                                details: endpoint
-                            })));
-                        }
-                        break;
-                        
-                    case '8':
-                        // Phase 8: Cloud resources
-                        if (phaseData.aws_buckets && Array.isArray(phaseData.aws_buckets)) {
-                            findings = findings.concat(phaseData.aws_buckets.map(bucket => ({ type: 'aws_bucket', value: bucket })));
-                        }
-                        if (phaseData.azure_blobs && Array.isArray(phaseData.azure_blobs)) {
-                            findings = findings.concat(phaseData.azure_blobs.map(blob => ({ type: 'azure_blob', value: blob })));
-                        }
-                        if (phaseData.gcp_buckets && Array.isArray(phaseData.gcp_buckets)) {
-                            findings = findings.concat(phaseData.gcp_buckets.map(bucket => ({ type: 'gcp_bucket', value: bucket })));
-                        }
-                        if (phaseData.cloudflare_resources && Array.isArray(phaseData.cloudflare_resources)) {
-                            findings = findings.concat(phaseData.cloudflare_resources.map(resource => ({ type: 'cloudflare_resource', value: resource })));
-                        }
-                        if (phaseData.cloud_services && Array.isArray(phaseData.cloud_services)) {
-                            findings = findings.concat(phaseData.cloud_services.map(service => ({ type: 'cloud_service', value: service })));
-                        }
-                        break;
-                        
-                    case '9':
-                        // Phase 9: OSINT data
-                        if (phaseData.whois_info) {
-                            findings = findings.concat([{ type: 'whois_info', value: 'WHOIS information collected', details: phaseData.whois_info }]);
-                        }
-                        if (phaseData.dns_history && Array.isArray(phaseData.dns_history)) {
-                            findings = findings.concat(phaseData.dns_history.map(record => ({ type: 'dns_history', value: record })));
-                        }
-                        if (phaseData.certificate_transparency && Array.isArray(phaseData.certificate_transparency)) {
-                            findings = findings.concat(phaseData.certificate_transparency.map(cert => ({ type: 'certificate_transparency', value: cert })));
-                        }
-                        if (phaseData.social_media && Array.isArray(phaseData.social_media)) {
-                            findings = findings.concat(phaseData.social_media.map(profile => ({ type: 'social_media', value: profile })));
-                        }
-                        if (phaseData.breach_data && Array.isArray(phaseData.breach_data)) {
-                            findings = findings.concat(phaseData.breach_data.map(breach => ({ type: 'breach_data', value: breach })));
-                        }
-                        if (phaseData.osint_data && Array.isArray(phaseData.osint_data)) {
-                            findings = findings.concat(phaseData.osint_data.map(item => ({ type: 'osint_data', value: item })));
-                        }
-                        break;
-                        
-                    case '10':
-                        // Phase 10: Vulnerabilities
-                        if (phaseData.security_headers && Array.isArray(phaseData.security_headers)) {
-                            findings = findings.concat(phaseData.security_headers.map(header => ({ 
-                                type: 'security_header', 
-                                value: header.header || header,
-                                details: header
-                            })));
-                        }
-                        if (phaseData.http_methods && Array.isArray(phaseData.http_methods)) {
-                            findings = findings.concat(phaseData.http_methods.map(method => ({ 
-                                type: 'http_method', 
-                                value: method.method || method,
-                                details: method
-                            })));
-                        }
-                        if (phaseData.cors_issues && Array.isArray(phaseData.cors_issues)) {
-                            findings = findings.concat(phaseData.cors_issues.map(issue => ({ type: 'cors_issue', value: issue })));
-                        }
-                        if (phaseData.csp_issues && Array.isArray(phaseData.csp_issues)) {
-                            findings = findings.concat(phaseData.csp_issues.map(issue => ({ type: 'csp_issue', value: issue })));
-                        }
-                        if (phaseData.subdomain_takeover_vulns && Array.isArray(phaseData.subdomain_takeover_vulns)) {
-                            findings = findings.concat(phaseData.subdomain_takeover_vulns.map(vuln => ({
-                                type: 'subdomain_takeover',
-                                value: vuln.subdomain || vuln.type || vuln,
-                                details: vuln
-                            })));
-                        }
-                        if (phaseData.vulnerabilities && Array.isArray(phaseData.vulnerabilities)) {
-                            findings = findings.concat(phaseData.vulnerabilities.map(vuln => ({
-                                type: 'vulnerability',
-                                value: vuln.type || vuln,
-                                details: vuln
-                            })));
-                        }
-                        break;
-                }
+            // Use provided findings or extract from phase data
+            if (!findings || findings.length === 0) {
+                findings = extractFindingsFromPhase(phaseData, phaseKey);
             }
+            
+            // Limit findings display to prevent UI overload
+            const displayFindings = findings.slice(0, 50);
+            const hasMoreFindings = findings.length > 50;
             
             if (phaseData.status) {
                 status = phaseData.status;

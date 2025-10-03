@@ -36,10 +36,11 @@ class Phase1RealIPExtraction:
         }
         
         try:
-            # Technique 1: Multiple DNS Resolvers
+            # Technique 1: Advanced DNS Resolution with Multiple Resolvers
             print("   📡 Advanced DNS Resolution...")
-            results['techniques_used'].append('Multiple DNS Resolvers')
+            results['techniques_used'].append('Advanced DNS Resolution')
             
+            # 2025 Enhanced DNS Resolvers
             dns_resolvers = [
                 '8.8.8.8',      # Google DNS
                 '1.1.1.1',      # Cloudflare DNS
@@ -50,7 +51,17 @@ class Phase1RealIPExtraction:
                 '1.0.0.1',      # Cloudflare DNS Secondary
                 '208.67.220.220', # OpenDNS Secondary
                 '9.9.9.10',     # Quad9 Secondary
-                '76.76.2.22'    # Alternate DNS Secondary
+                '76.76.2.22',   # Alternate DNS Secondary
+                '94.140.14.14', # AdGuard DNS
+                '185.228.168.168', # CleanBrowsing
+                '1.1.1.3',      # Cloudflare Family DNS
+                '8.26.56.26',   # Comodo Secure DNS
+                '84.200.69.80', # DNS.WATCH
+                '8.8.8.8',      # Google DNS (IPv4)
+                '2001:4860:4860::8888', # Google DNS (IPv6)
+                '2606:4700:4700::1111', # Cloudflare DNS (IPv6)
+                '2620:0:ccc::2', # OpenDNS (IPv6)
+                '2620:fe::fe'   # Quad9 (IPv6)
             ]
             
             for resolver in dns_resolvers:
@@ -197,6 +208,111 @@ class Phase1RealIPExtraction:
                         print(f"   ✅ SSL Certificate analyzed")
             except Exception as e:
                 results['errors'].append(f"SSL analysis failed: {str(e)}")
+            
+            # Technique 7: IPv6 Discovery (2025 Enhancement)
+            print("   🌐 IPv6 Discovery...")
+            results['techniques_used'].append('IPv6 Discovery')
+            
+            try:
+                # Try to resolve IPv6 addresses
+                ipv6_addresses = socket.getaddrinfo(target, None, socket.AF_INET6)
+                for addr_info in ipv6_addresses:
+                    ipv6 = addr_info[4][0]
+                    if ipv6 not in results['real_ips']:
+                        results['real_ips'].append(ipv6)
+                        results['ip_mapping'][ipv6] = {
+                            'domain': target,
+                            'source': 'IPv6 Resolution',
+                            'reverse_dns': None,
+                            'technique': 'IPv6 Discovery'
+                        }
+                        print(f"   ✅ IPv6 found: {ipv6}")
+            except Exception as e:
+                results['errors'].append(f"IPv6 discovery failed: {str(e)}")
+            
+            # Technique 8: DNS Cache Poisoning Detection (2025 Enhancement)
+            print("   🕵️ DNS Cache Poisoning Detection...")
+            results['techniques_used'].append('DNS Cache Poisoning Detection')
+            
+            try:
+                # Check for DNS cache poisoning indicators
+                for resolver in ['8.8.8.8', '1.1.1.1', '9.9.9.9']:
+                    try:
+                        resolver_obj = dns.resolver.Resolver()
+                        resolver_obj.nameservers = [resolver]
+                        answers = resolver_obj.resolve(target, 'A')
+                        
+                        # Check for unusual TTL values that might indicate cache poisoning
+                        for answer in answers:
+                            if hasattr(answer, 'ttl') and answer.ttl < 60:
+                                print(f"   ⚠️ Low TTL detected: {answer.ttl}s (possible cache poisoning)")
+                    except Exception as e:
+                        results['errors'].append(f"DNS cache poisoning check failed for {resolver}: {str(e)}")
+            except Exception as e:
+                results['errors'].append(f"DNS cache poisoning detection failed: {str(e)}")
+            
+            # Technique 9: ASN (Autonomous System Number) Analysis (2025 Enhancement)
+            print("   🏢 ASN Analysis...")
+            results['techniques_used'].append('ASN Analysis')
+            
+            try:
+                import ipwhois
+                for ip in results['real_ips'][:5]:  # Limit to first 5 IPs to avoid rate limiting
+                    try:
+                        if not self._is_private_ip(ip):
+                            obj = ipwhois.IPWhois(ip)
+                            results_whois = obj.lookup_rdap()
+                            if 'asn' in results_whois:
+                                asn_info = results_whois['asn']
+                                print(f"   ✅ ASN for {ip}: {asn_info}")
+                                # Store ASN info in ip_mapping
+                                if ip in results['ip_mapping']:
+                                    results['ip_mapping'][ip]['asn'] = asn_info
+                    except Exception as e:
+                        results['errors'].append(f"ASN lookup failed for {ip}: {str(e)}")
+            except ImportError:
+                results['errors'].append("ipwhois module not available for ASN analysis")
+            except Exception as e:
+                results['errors'].append(f"ASN analysis failed: {str(e)}")
+            
+            # Technique 10: DNS-over-HTTPS (DoH) Resolution (2025 Enhancement)
+            print("   🔒 DNS-over-HTTPS Resolution...")
+            results['techniques_used'].append('DNS-over-HTTPS Resolution')
+            
+            doh_providers = [
+                'https://dns.google/dns-query',
+                'https://cloudflare-dns.com/dns-query',
+                'https://dns.quad9.net/dns-query',
+                'https://dns.adguard.com/dns-query'
+            ]
+            
+            for doh_url in doh_providers:
+                try:
+                    # Simple DoH query (simplified implementation)
+                    params = {
+                        'name': target,
+                        'type': 'A'
+                    }
+                    headers = {'Accept': 'application/dns-json'}
+                    response = requests.get(doh_url, params=params, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if 'Answer' in data:
+                            for answer in data['Answer']:
+                                if answer['type'] == 1:  # A record
+                                    ip = answer['data']
+                                    if not self._is_private_ip(ip) and ip not in results['real_ips']:
+                                        results['real_ips'].append(ip)
+                                        results['ip_mapping'][ip] = {
+                                            'domain': target,
+                                            'source': 'DoH',
+                                            'doh_provider': doh_url,
+                                            'reverse_dns': None,
+                                            'technique': 'DNS-over-HTTPS'
+                                        }
+                                        print(f"   ✅ DoH IP found: {ip}")
+                except Exception as e:
+                    results['errors'].append(f"DoH resolution failed for {doh_url}: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'

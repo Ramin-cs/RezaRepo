@@ -103,6 +103,7 @@ class Phase2SubdomainDiscovery:
             'passive_sources': [],
             'http_validation': [],
             'techniques_used': [],
+            'tool_results': {},  # External tool results
             'errors': []
         }
         
@@ -373,12 +374,8 @@ class Phase2SubdomainDiscovery:
                             # Extract subdomains from tool results
                             if 'subdomains' in tool_results and tool_results['subdomains']:
                                 for subdomain in tool_results['subdomains']:
-                                    if subdomain not in [s['subdomain'] for s in results['subdomains']]:
-                                        results['subdomains'].append({
-                                            'subdomain': subdomain,
-                                            'source': tool_name.lower(),
-                                            'validated': False
-                                        })
+                                    if subdomain not in results['subdomains']:
+                                        results['subdomains'].append(subdomain)
                                         print(f"   ✅ {tool_name} found: {subdomain}")
                             
                             print(f"   ✅ {tool_name} completed successfully")
@@ -413,6 +410,193 @@ class Phase2SubdomainDiscovery:
                         pass
                 except:
                     pass
+            
+            # Technique 6: DNS Zone Transfer (2025 Enhancement)
+            print("   🔄 DNS Zone Transfer Attempt...")
+            results['techniques_used'].append('DNS Zone Transfer')
+            
+            try:
+                # Try DNS zone transfer with common nameservers
+                ns_records = []
+                try:
+                    answers = dns.resolver.resolve(target, 'NS')
+                    for answer in answers:
+                        ns_records.append(str(answer).rstrip('.'))
+                except:
+                    pass
+                
+                # Add common nameservers
+                common_ns = [f'ns1.{target}', f'ns2.{target}', f'dns1.{target}', f'dns2.{target}']
+                ns_records.extend(common_ns)
+                
+                for ns in ns_records:
+                    try:
+                        # Attempt zone transfer
+                        zone_transfer = dns.query.xfr(ns, target)
+                        for record in zone_transfer:
+                            if hasattr(record, 'name') and str(record.name).endswith(f'.{target}'):
+                                subdomain = str(record.name).rstrip(f'.{target}').rstrip('.')
+                                if subdomain and subdomain not in results['subdomains']:
+                                    results['subdomains'].append(subdomain)
+                                    print(f"   ✅ Zone transfer subdomain: {subdomain}")
+                    except Exception as e:
+                        results['errors'].append(f"Zone transfer failed for {ns}: {str(e)}")
+            except Exception as e:
+                results['errors'].append(f"DNS zone transfer failed: {str(e)}")
+            
+            # Technique 7: DNS CNAME Enumeration (2025 Enhancement)
+            print("   🔗 DNS CNAME Enumeration...")
+            results['techniques_used'].append('DNS CNAME Enumeration')
+            
+            try:
+                # Check for CNAME records that might reveal subdomains
+                cname_queries = [
+                    'www', 'mail', 'ftp', 'admin', 'api', 'app', 'dev', 'test', 'staging',
+                    'cdn', 'static', 'assets', 'files', 'images', 'videos', 'docs'
+                ]
+                
+                for sub in cname_queries:
+                    try:
+                        subdomain = f"{sub}.{target}"
+                        answers = dns.resolver.resolve(subdomain, 'CNAME')
+                        for answer in answers:
+                            cname_target = str(answer).rstrip('.')
+                            print(f"   ✅ CNAME found: {subdomain} -> {cname_target}")
+                            # Extract potential subdomain from CNAME target
+                            if target in cname_target:
+                                extracted_sub = cname_target.replace(f'.{target}', '')
+                                if extracted_sub and extracted_sub not in results['subdomains']:
+                                    results['subdomains'].append(extracted_sub)
+                                    print(f"   ✅ CNAME-derived subdomain: {extracted_sub}")
+                    except:
+                        pass
+            except Exception as e:
+                results['errors'].append(f"CNAME enumeration failed: {str(e)}")
+            
+            # Technique 8: Certificate Transparency Logs Enhanced (2025 Enhancement)
+            print("   🔐 Enhanced Certificate Transparency Analysis...")
+            results['techniques_used'].append('Enhanced CT Logs')
+            
+            try:
+                # Enhanced CT log sources
+                ct_sources = [
+                    f"https://crt.sh/?q={target}&output=json",
+                    f"https://crt.sh/?q=%.{target}&output=json",
+                    f"https://crt.sh/?q=*.{target}&output=json",
+                    f"https://api.certspotter.com/v1/issuances?domain={target}&expand=dns_names",
+                    f"https://censys.io/api/v1/search/certificates?q={target}",
+                    f"https://transparencyreport.google.com/https/certificates?domain={target}"
+                ]
+                
+                for source in ct_sources:
+                    try:
+                        response = requests.get(source, headers=self.headers, timeout=15)
+                        if response.status_code == 200:
+                            try:
+                                data = response.json()
+                                if isinstance(data, list):
+                                    for item in data:
+                                        # Extract from common_name
+                                        if 'common_name' in item:
+                                            cn = item['common_name']
+                                            if target in cn and cn not in results['subdomains']:
+                                                results['subdomains'].append(cn)
+                                                print(f"   ✅ CT subdomain: {cn}")
+                                        
+                                        # Extract from dns_names
+                                        if 'dns_names' in item:
+                                            for dns_name in item['dns_names']:
+                                                if target in dns_name and dns_name not in results['subdomains']:
+                                                    results['subdomains'].append(dns_name)
+                                                    print(f"   ✅ CT DNS name: {dns_name}")
+                            except json.JSONDecodeError:
+                                # Handle non-JSON responses
+                                subdomain_pattern = rf'\b[a-zA-Z0-9][a-zA-Z0-9\-]*\.{re.escape(target)}\b'
+                                matches = re.findall(subdomain_pattern, response.text)
+                                for match in matches:
+                                    if match not in results['subdomains']:
+                                        results['subdomains'].append(match)
+                                        print(f"   ✅ CT text subdomain: {match}")
+                    except Exception as e:
+                        results['errors'].append(f"CT source failed {source}: {str(e)}")
+            except Exception as e:
+                results['errors'].append(f"Enhanced CT analysis failed: {str(e)}")
+            
+            # Technique 9: DNS Brute Force with Permutations (2025 Enhancement)
+            print("   🧬 DNS Permutation Brute Force...")
+            results['techniques_used'].append('DNS Permutation Brute Force')
+            
+            try:
+                # Generate permutations of common subdomain patterns
+                base_words = ['www', 'api', 'app', 'admin', 'dev', 'test', 'mail', 'ftp']
+                separators = ['', '-', '_', '.']
+                numbers = ['', '1', '2', '3', '01', '02', '03']
+                
+                permutation_list = []
+                for base in base_words:
+                    for sep in separators:
+                        for num in numbers:
+                            permutation = f"{base}{sep}{num}".rstrip('-_')
+                            if permutation and permutation not in permutation_list:
+                                permutation_list.append(permutation)
+                
+                # Limit to reasonable number for performance
+                permutation_list = permutation_list[:100]
+                
+                def check_permutation(sub):
+                    try:
+                        subdomain = f"{sub}.{target}"
+                        socket.gethostbyname(subdomain)
+                        return subdomain
+                    except:
+                        return None
+                
+                # Use threading for faster resolution
+                with ThreadPoolExecutor(max_workers=20) as executor:
+                    future_to_sub = {executor.submit(check_permutation, sub): sub for sub in permutation_list}
+                    for future in as_completed(future_to_sub):
+                        try:
+                            result = future.result()
+                            if result and result not in results['subdomains']:
+                                results['subdomains'].append(result)
+                                print(f"   ✅ Permutation subdomain: {result}")
+                        except Exception as e:
+                            results['errors'].append(f"Permutation check failed: {str(e)}")
+            except Exception as e:
+                results['errors'].append(f"DNS permutation brute force failed: {str(e)}")
+            
+            # Technique 10: Subdomain Takeover Detection (2025 Enhancement)
+            print("   🎯 Subdomain Takeover Detection...")
+            results['techniques_used'].append('Subdomain Takeover Detection')
+            
+            try:
+                # Check for common takeover indicators
+                takeover_indicators = [
+                    'github.io', 'herokuapp.com', 'netlify.com', 'vercel.app',
+                    'firebase.app', 's3.amazonaws.com', 'cloudfront.net',
+                    'azurewebsites.net', 'wordpress.com', 'tumblr.com'
+                ]
+                
+                for subdomain in results['subdomains'][:50]:  # Limit for performance
+                    try:
+                        response = requests.get(f"https://{subdomain}", headers=self.headers, timeout=10, verify=False)
+                        content = response.text.lower()
+                        
+                        for indicator in takeover_indicators:
+                            if indicator in content:
+                                print(f"   ⚠️ Potential takeover indicator for {subdomain}: {indicator}")
+                                # Store takeover potential
+                                if 'takeover_indicators' not in results:
+                                    results['takeover_indicators'] = []
+                                results['takeover_indicators'].append({
+                                    'subdomain': subdomain,
+                                    'indicator': indicator,
+                                    'confidence': 'medium'
+                                })
+                    except:
+                        pass
+            except Exception as e:
+                results['errors'].append(f"Subdomain takeover detection failed: {str(e)}")
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
