@@ -101,14 +101,15 @@ python simple_router_tester.py -t "targets.txt" --visible
 5. **مدیریت Popup های لاگین** (مثل "Only one device...")
 6. **انتظار برای navigation**
 7. **تجزیه و تحلیل صفحه مدیریت**
-8. **تصمیم‌گیری نهایی**
+8. **ذخیره نتیجه موفق** در فایل `successful_logins.txt` 🆕
+9. **تصمیم‌گیری نهایی**
 
 ### چندین هدف (Bulk):
 1. **خواندن فایل اهداف**
 2. **تست هر هدف** با جریان بالا
-3. **ذخیره نتایج موفق** در فایل `successful_logins.txt` 🆕
+3. **ذخیره هر نتیجه موفق** در فایل `successful_logins.txt` 🆕
 4. **جمع‌آوری نتایج**
-5. **ذخیره خلاصه کلی** در فایل `bulk_summary.txt` 🆕
+5. **ذخیره خلاصه کلی** در فایل `bulk_summary.txt` (اختیاری)
 6. **نمایش خلاصه کلی**
 
 ## 📊 مثال خروجی موفق:
@@ -121,6 +122,7 @@ Password: JAMES1
 Confidence: 721
 Time: 45.2s
 Details: Management panel detected (score: 721)
+💾 Result saved to: successful_logins.txt
 ```
 
 ### چندین هدف:
@@ -147,37 +149,31 @@ Success rate: 40.0%
 📊 Summary saved to: bulk_summary.txt
 ```
 
-## 📁 فایل‌های خروجی:
+## 📁 فایل خروجی اصلی:
 
-### `successful_logins.txt`:
+### `successful_logins.txt` (همه نتایج موفق):
 ```
 # Successful Router Login Results
 # Format: Timestamp | Target | Password | Score | Time
 # ======================================================================
 2024-10-04 17:30:15 | http://212.81.63.106:8085/ | JAMES1 | Score: 721 | Time: 45.2s
-2024-10-04 17:35:22 | 192.168.1.1 | admin | Score: 650 | Time: 32.1s
-2024-10-04 17:40:18 | 10.0.0.1 | admin1 | Score: 580 | Time: 28.5s
+2024-10-04 17:32:10 | 192.168.1.1 | admin | Score: 650 | Time: 32.1s
+2024-10-04 17:35:45 | 10.0.0.1 | admin1 | Score: 580 | Time: 28.5s
+2024-10-04 17:38:20 | 172.16.1.1 | JAMES1 | Score: 695 | Time: 41.3s
 ```
 
-### `bulk_summary.txt`:
+**نکته:** این فایل برای تک هدف و bulk یکسان است - همه نتایج موفق در اینجا ذخیره می‌شوند.
+
+### `bulk_summary.txt` (فقط برای آمار bulk):
 ```
-# Bulk Testing Summary
+# Bulk Testing Summary - Optional detailed statistics
 # Generated: 2024-10-04 17:45:30
 # ======================================================================
 
-Total targets tested: 5
-Successful logins: 3
-Failed attempts: 2
-Success rate: 60.0%
-
-======================================================================
-SUCCESSFUL TARGETS:
-======================================================================
-Target: http://212.81.63.106:8085/
-Password: JAMES1
-Confidence: 721
-Time: 45.2s
-----------------------------------------
+Total targets tested: 10
+Successful logins: 4
+Failed attempts: 6
+Success rate: 40.0%
 ```
 
 ## 🛠️ تنظیمات Chrome:

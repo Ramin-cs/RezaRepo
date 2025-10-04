@@ -609,7 +609,7 @@ class SimpleRouterTester:
         if len(targets) > 0:
             print(f"Success rate: {len(successful_targets)/len(targets)*100:.1f}%")
         
-        # Save bulk summary
+        # Save bulk summary (optional - only for detailed statistics)
         if len(targets) > 1:  # Only for bulk testing
             self.save_bulk_summary(successful_targets, len(targets))
         
@@ -665,6 +665,10 @@ def main():
                 print(f"Confidence: {result.confidence_score}")
                 print(f"Time: {result.response_time:.1f}s")
                 print(f"Details: {result.details}")
+                
+                # Save single target result to same file as bulk results
+                # (Already saved in test_target function, just showing confirmation)
+                
             else:
                 print("❌ No working password found")
                 print("💡 All passwords failed verification")
