@@ -29,6 +29,7 @@ class Phase1RealIPExtraction:
             'start_time': datetime.now().isoformat(),
             'real_ips': [],
             'ip_mapping': {},  # Detailed IP mapping with source and domain info
+            'ip_to_subdomain': {},  # Mapping IP to subdomains that use it
             'cdn_detected': False,
             'cdn_provider': None,
             'techniques_used': [],
@@ -198,6 +199,45 @@ class Phase1RealIPExtraction:
             # Technique 6: SSL Certificate Analysis
             print("   🔒 SSL Certificate Analysis...")
             results['techniques_used'].append('SSL Certificate Analysis')
+            
+            # Technique 7: IP to Subdomain Mapping Analysis
+            print("   🔗 IP to Subdomain Mapping Analysis...")
+            results['techniques_used'].append('IP to Subdomain Mapping Analysis')
+            
+            # Common subdomains to check for IP mapping
+            common_subdomains = [
+                'www', 'mail', 'ftp', 'webmail', 'smtp', 'pop', 'ns1', 'webdisk', 'ns2',
+                'cpanel', 'whm', 'autodiscover', 'autoconfig', 'ns3', 'm', 'imap', 'test', 'ns', 'blog',
+                'pop3', 'dev', 'www2', 'admin', 'forum', 'news', 'vpn', 'ns4', 'mail2', 'new', 'mysql',
+                'old', 'www1', 'beta', 'shop', 'api', 'staging', 'app', 'media', 'mail3', 'www3', 'dns2',
+                'api', 'v1', 'v2', 'v3', 'rest', 'graphql', 'webhook', 'oauth', 'auth', 'login',
+                'dashboard', 'panel', 'admin', 'manage', 'config', 'backup', 'database', 'db'
+            ]
+            
+            # Create IP to subdomain mapping
+            for ip in results['real_ips']:
+                if ip not in results['ip_to_subdomain']:
+                    results['ip_to_subdomain'][ip] = []
+                
+                # Check common subdomains for this IP
+                for subdomain in common_subdomains:
+                    test_domain = f"{subdomain}.{target}"
+                    try:
+                        resolved_ip = socket.gethostbyname(test_domain)
+                        if resolved_ip == ip and test_domain not in results['ip_to_subdomain'][ip]:
+                            results['ip_to_subdomain'][ip].append(test_domain)
+                            print(f"   🔗 IP {ip} -> {test_domain}")
+                    except:
+                        pass
+                
+                # Also add main domain if it resolves to this IP
+                try:
+                    main_ip = socket.gethostbyname(target)
+                    if main_ip == ip and target not in results['ip_to_subdomain'][ip]:
+                        results['ip_to_subdomain'][ip].append(target)
+                        print(f"   🔗 IP {ip} -> {target}")
+                except:
+                    pass
             
             try:
                 import ssl

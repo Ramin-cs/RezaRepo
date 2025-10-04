@@ -96,6 +96,7 @@ class Phase2SubdomainDiscovery:
             'start_time': datetime.now().isoformat(),
             'subdomains': [],
             'valid_subdomains': [],
+            'resolved_subdomains': [],  # Subdomains with resolved IP addresses
             'subdomain_details': {},  # Detailed subdomain info with status codes and sources
             'wildcard_subdomains': [],  # Wildcard subdomains found
             'wildcard_expansions': {},  # Expanded wildcard subdomains
@@ -566,6 +567,87 @@ class Phase2SubdomainDiscovery:
                 results['errors'].append(f"DNS permutation brute force failed: {str(e)}")
             
             # Technique 10: Subdomain Takeover Detection (2025 Enhancement)
+            # Technique 11: Subdomain Validation and Deduplication
+            print("   🧹 Subdomain Validation and Deduplication...")
+            results['techniques_used'].append('Subdomain Validation and Deduplication')
+            
+            # Remove duplicates and validate subdomains
+            unique_subdomains = list(set(results['subdomains']))
+            print(f"   📊 Found {len(results['subdomains'])} total subdomains, {len(unique_subdomains)} unique")
+            
+            resolved_subdomains = []
+            valid_subdomains = []
+            
+            for subdomain in unique_subdomains:
+                try:
+                    # Check if subdomain resolves to an IP
+                    ip_address = socket.gethostbyname(subdomain)
+                    
+                    # Add to resolved subdomains
+                    resolved_subdomains.append({
+                        'subdomain': subdomain,
+                        'ip': ip_address,
+                        'status': 'resolved'
+                    })
+                    
+                    # Test HTTP/HTTPS connectivity
+                    try:
+                        # Test HTTPS first
+                        https_url = f"https://{subdomain}"
+                        https_response = requests.get(https_url, headers=self.headers, timeout=5, allow_redirects=False)
+                        
+                        if https_response.status_code in [200, 301, 302, 403, 401]:
+                            valid_subdomains.append({
+                                'subdomain': subdomain,
+                                'ip': ip_address,
+                                'url': https_url,
+                                'status_code': https_response.status_code,
+                                'protocol': 'https',
+                                'title': self._extract_title(https_response.text),
+                                'content_length': len(https_response.content),
+                                'server': https_response.headers.get('Server', 'Unknown')
+                            })
+                            print(f"   ✅ Valid: {subdomain} ({ip_address}) - HTTPS {https_response.status_code}")
+                            continue
+                    except:
+                        pass
+                    
+                    try:
+                        # Test HTTP if HTTPS failed
+                        http_url = f"http://{subdomain}"
+                        http_response = requests.get(http_url, headers=self.headers, timeout=5, allow_redirects=False)
+                        
+                        if http_response.status_code in [200, 301, 302, 403, 401]:
+                            valid_subdomains.append({
+                                'subdomain': subdomain,
+                                'ip': ip_address,
+                                'url': http_url,
+                                'status_code': http_response.status_code,
+                                'protocol': 'http',
+                                'title': self._extract_title(http_response.text),
+                                'content_length': len(http_response.content),
+                                'server': http_response.headers.get('Server', 'Unknown')
+                            })
+                            print(f"   ✅ Valid: {subdomain} ({ip_address}) - HTTP {http_response.status_code}")
+                    except:
+                        pass
+                        
+                except socket.gaierror:
+                    # Subdomain doesn't resolve to an IP
+                    print(f"   ❌ Invalid: {subdomain} (No IP resolution)")
+                    continue
+                except Exception as e:
+                    print(f"   ⚠️ Error checking {subdomain}: {str(e)}")
+                    continue
+            
+            # Update results with cleaned data
+            results['resolved_subdomains'] = resolved_subdomains
+            results['valid_subdomains'] = valid_subdomains
+            results['subdomains'] = [sub['subdomain'] for sub in valid_subdomains]  # Only keep valid subdomains
+            
+            print(f"   📊 Final Results: {len(valid_subdomains)} valid subdomains with IP addresses")
+            
+            # Technique 12: Subdomain Takeover Detection
             print("   🎯 Subdomain Takeover Detection...")
             results['techniques_used'].append('Subdomain Takeover Detection')
             
@@ -600,7 +682,7 @@ class Phase2SubdomainDiscovery:
             
             results['end_time'] = datetime.now().isoformat()
             results['status'] = 'completed'
-            results['summary'] = f"Found {len(results['subdomains'])} subdomains using {len(results['techniques_used'])} advanced techniques"
+            results['summary'] = f"Found {len(results['valid_subdomains'])} valid subdomains using {len(results['techniques_used'])} advanced techniques"
             
             print(f"   ✅ Phase 2 completed: {results['summary']}")
             return results

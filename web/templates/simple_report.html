@@ -311,6 +311,17 @@
                         case '1':
                             if (phase.real_ips) findings = findings.concat(phase.real_ips);
                             if (phase.ip_mapping) findings = findings.concat(Object.keys(phase.ip_mapping));
+                            if (phase.ip_to_subdomain) {
+                                // Add IP to subdomain mapping as special finding
+                                Object.entries(phase.ip_to_subdomain).forEach(([ip, subdomains]) => {
+                                    findings.push({
+                                        type: 'ip_subdomain_mapping',
+                                        ip: ip,
+                                        subdomains: subdomains,
+                                        display: `${ip} → ${subdomains.join(', ')}`
+                                    });
+                                });
+                            }
                             break;
                         case '2':
                             if (phase.subdomains) findings = findings.concat(phase.subdomains);
@@ -448,16 +459,52 @@
                 const directProps = ['real_ips', 'subdomains', 'open_ports', 'technologies', 'directories_found', 'files_found', 'parameters_found', 'endpoints_found', 'secrets', 'form_parameters', 'url_parameters', 'javascript_variables', 'http_headers', 'meta_tags', 'cookie_parameters', 'rest_endpoints', 'graphql_endpoints', 'api_docs', 'openapi_specs', 'aws_buckets', 'azure_blobs', 'gcp_buckets', 'cloudflare_resources', 'cloud_services', 'dns_history', 'certificate_transparency', 'social_media', 'breach_data', 'osint_data', 'security_headers', 'http_methods', 'cors_issues', 'csp_issues', 'subdomain_takeover_vulns', 'vulnerabilities'];
                 let hasDirectData = false;
                 
+                // Special handling for IP to Subdomain mapping
+                if (phaseData.ip_to_subdomain) {
+                    hasDirectData = true;
+                    html += `<div class="finding-category mb-2">
+                        <strong class="text-info">🔗 IP to Subdomain Mapping:</strong>
+                    </div>`;
+                    
+                    Object.entries(phaseData.ip_to_subdomain).forEach(([ip, subdomains]) => {
+                        html += `<div class="finding-item">
+                            <strong class="text-primary">${ip}</strong> → 
+                            <span class="text-success">${subdomains.join(', ')}</span>
+                        </div>`;
+                    });
+                }
+                
                 directProps.forEach(prop => {
                     if (phaseData[prop] && phaseData[prop].length > 0) {
                         hasDirectData = true;
-                        html += `<div class="finding-category mb-2">
-                            <strong class="text-info">${prop.replace('_', ' ').charAt(0).toUpperCase() + prop.replace('_', ' ').slice(1)}:</strong>
-                        </div>`;
                         
-                        phaseData[prop].slice(0, 10).forEach(item => {
-                            html += `<div class="finding-item">${item}</div>`;
-                        });
+                        // Special handling for valid_subdomains
+                        if (prop === 'valid_subdomains') {
+                            html += `<div class="finding-category mb-2">
+                                <strong class="text-info">✅ Valid Subdomains (with IP addresses):</strong>
+                            </div>`;
+                            
+                            phaseData[prop].slice(0, 10).forEach(item => {
+                                if (typeof item === 'object' && item.subdomain && item.ip) {
+                                    html += `<div class="finding-item">
+                                        <strong class="text-success">${item.subdomain}</strong> 
+                                        <span class="text-muted">(${item.ip})</span> 
+                                        <span class="badge bg-${item.protocol === 'https' ? 'success' : 'warning'}">${item.protocol}</span>
+                                        <span class="badge bg-info">${item.status_code}</span>
+                                    </div>`;
+                                } else {
+                                    html += `<div class="finding-item">${item}</div>`;
+                                }
+                            });
+                        } else {
+                            html += `<div class="finding-category mb-2">
+                                <strong class="text-info">${prop.replace('_', ' ').charAt(0).toUpperCase() + prop.replace('_', ' ').slice(1)}:</strong>
+                            </div>`;
+                            
+                            phaseData[prop].slice(0, 10).forEach(item => {
+                                html += `<div class="finding-item">${item}</div>`;
+                            });
+                        }
                         
                         if (phaseData[prop].length > 10) {
                             html += `<div class="finding-item text-muted">... and ${phaseData[prop].length - 10} more</div>`;
