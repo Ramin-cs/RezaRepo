@@ -70,13 +70,22 @@ python router_password_tester.py -t "http://192.168.1.1" --mode chrome
 python router_password_tester.py -t "http://192.168.1.1" --visible
 ```
 
-#### نسخه ساده (بدون timeout):
+#### نسخه ساده (بهبود یافته):
 ```bash
-# نسخه ساده (توصیه می‌شود)
+# نسخه ساده با timeout های بهتر
 python simple_router_tester.py -t "http://192.168.1.1"
 
 # نمایش Chrome برای مشاهده عملکرد
 python simple_router_tester.py -t "http://192.168.1.1" --visible
+```
+
+#### نسخه صبور (برای سایت‌های خیلی کند):
+```bash
+# نسخه فوق‌العاده صبور (120 ثانیه timeout)
+python patient_router_tester.py -t "http://192.168.1.1"
+
+# نمایش Chrome برای مشاهده کامل عملکرد
+python patient_router_tester.py -t "http://192.168.1.1" --visible
 ```
 
 ### پسوردهای تست شده:

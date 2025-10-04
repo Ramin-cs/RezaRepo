@@ -69,8 +69,8 @@ class SimpleRouterTester:
             chrome_options.add_experimental_option('useAutomationExtension', False)
             
             self.driver = webdriver.Chrome(options=chrome_options)
-            self.driver.set_page_load_timeout(25)
-            self.driver.implicitly_wait(5)
+            self.driver.set_page_load_timeout(60)  # Increased for slow sites
+            self.driver.implicitly_wait(10)  # Increased wait time
             
             print("✅ Chrome driver ready")
             
@@ -140,27 +140,52 @@ class SimpleRouterTester:
         
         return handled
     
-    def wait_for_page_load(self, timeout=20):
-        """Simple page load waiting"""
+    def wait_for_page_load(self, timeout=45):
+        """Smart page load waiting with multiple checks"""
         try:
+            print(f"⏳ Waiting for page to load (up to {timeout}s)...")
+            
+            # Wait for document ready
             WebDriverWait(self.driver, timeout).until(
                 lambda driver: driver.execute_script("return document.readyState") == "complete"
             )
-            time.sleep(2)
-            return True
+            print("   ✅ Document ready")
+            
+            # Additional wait for dynamic content
+            time.sleep(5)
+            
+            # Check if page is still loading (look for loading indicators)
+            loading_indicators = ['loading', 'spinner', 'wait', 'please wait']
+            page_source = self.driver.page_source.lower()
+            
+            if any(indicator in page_source for indicator in loading_indicators):
+                print("   ⏳ Page still loading, waiting more...")
+                time.sleep(10)
+            
+            # Final check
+            try:
+                self.driver.execute_script("return document.readyState")
+                print("   ✅ Page fully loaded")
+                return True
+            except:
+                print("   ⚠️ Page load check failed, continuing...")
+                return True
+                
         except TimeoutException:
-            print("⚠️ Page load timeout")
+            print(f"   ⚠️ Page load timeout after {timeout}s, continuing...")
             return False
         except Exception as e:
-            print(f"⚠️ Page load error: {e}")
+            print(f"   ⚠️ Page load error: {e}, continuing...")
             return False
     
-    def find_login_elements(self):
-        """Find password field and login button"""
+    def find_login_elements(self, timeout=30):
+        """Smart element detection with waiting"""
         password_field = None
         login_button = None
         
-        # Find password field
+        print("🔍 Looking for login elements...")
+        
+        # Wait for password field to appear
         password_selectors = [
             "input[type='password']",
             "input[name='password']", "input[name='pass']", "input[name='pwd']"
@@ -168,30 +193,57 @@ class SimpleRouterTester:
         
         for selector in password_selectors:
             try:
-                element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                print(f"   Waiting for password field: {selector}")
+                element = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                )
                 if element.is_displayed() and element.is_enabled():
                     password_field = element
+                    print(f"   ✅ Password field found: {selector}")
                     break
-            except:
+            except TimeoutException:
+                print(f"   ⏳ Timeout waiting for: {selector}")
+                continue
+            except Exception as e:
+                print(f"   ⚠️ Error with {selector}: {e}")
                 continue
         
-        # Find login button
-        button_selectors = [
-            "input[type='submit']", "button[type='submit']",
-            "input[value*='login']", "button:contains('Login')"
-        ]
-        
-        for selector in button_selectors:
-            try:
-                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        login_button = element
+        # If password field found, look for login button
+        if password_field:
+            button_selectors = [
+                "input[type='submit']", "button[type='submit']",
+                "input[value*='login']", "input[value*='Login']", "input[value*='log in']",
+                "button", "input[type='button']"
+            ]
+            
+            for selector in button_selectors:
+                try:
+                    print(f"   Looking for button: {selector}")
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        if element.is_displayed() and element.is_enabled():
+                            # Check button text/value
+                            text = element.text.lower() if element.text else ""
+                            value = element.get_attribute('value')
+                            if value:
+                                value = value.lower()
+                            
+                            if (selector in ["input[type='submit']", "button[type='submit']"] or
+                                'login' in text or 'log in' in text or
+                                (value and ('login' in value or 'log in' in value))):
+                                login_button = element
+                                print(f"   ✅ Login button found: {text or value or selector}")
+                                break
+                    if login_button:
                         break
-                if login_button:
-                    break
-            except:
-                continue
+                except Exception as e:
+                    print(f"   ⚠️ Error finding button {selector}: {e}")
+                    continue
+        
+        if not password_field:
+            print("   ❌ No password field found")
+        if not login_button:
+            print("   ⚠️ No login button found (will use Enter key)")
         
         return password_field, login_button
     
@@ -324,18 +376,23 @@ class SimpleRouterTester:
                 verification_steps.append("Form submitted with Enter")
                 print("   Form submitted with Enter")
             
-            # Wait and handle popup
-            print("⏳ Waiting for response...")
-            time.sleep(4)
+            # Smart waiting for response
+            print("⏳ Waiting for login response...")
+            time.sleep(6)  # Initial wait for server response
             
-            popup_handled = self.handle_login_popup()
-            if popup_handled:
-                print("✅ Login popup handled")
-                time.sleep(4)
+            # Check for popup multiple times
+            for i in range(3):
+                popup_handled = self.handle_login_popup()
+                if popup_handled:
+                    print(f"✅ Login popup handled (attempt {i+1})")
+                    time.sleep(5)  # Wait for navigation after popup
+                    break
+                time.sleep(2)
             
-            # Wait for page to stabilize
-            self.wait_for_page_load(timeout=15)
-            time.sleep(2)
+            # Wait for page to stabilize after login
+            print("⏳ Waiting for page to stabilize...")
+            self.wait_for_page_load(timeout=30)
+            time.sleep(3)  # Additional wait for dynamic content
             
             # Check result
             is_management, reason, confidence = self.check_management_panel(original_url)
