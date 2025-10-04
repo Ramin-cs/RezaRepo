@@ -70,7 +70,7 @@ class SimpleRouterTester:
             
             self.driver = webdriver.Chrome(options=chrome_options)
             self.driver.set_page_load_timeout(60)  # Increased for slow sites
-            self.driver.implicitly_wait(10)  # Increased wait time
+            self.driver.implicitly_wait(5)  # Reduced from 10 to 5 for faster element search
             
             print("✅ Chrome driver ready")
             
@@ -182,8 +182,8 @@ class SimpleRouterTester:
             print(f"   ⚠️ Page load error: {e}, continuing...")
             return False
     
-    def find_login_elements(self, timeout=30):
-        """Optimized element detection - stops when found"""
+    def find_login_elements(self, timeout=15):
+        """Fast element detection - reduced timeout"""
         password_field = None
         login_button = None
         
@@ -209,7 +209,7 @@ class SimpleRouterTester:
             except Exception:
                 continue
         
-        # If password field found, look for login button
+        # If password field found, quickly look for login button
         if password_field:
             button_selectors = [
                 "input[type='submit']", "button[type='submit']",
@@ -222,7 +222,7 @@ class SimpleRouterTester:
                     elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for element in elements:
                         if element.is_displayed() and element.is_enabled():
-                            # Check button text/value
+                            # Quick check button text/value
                             text = element.text.lower() if element.text else ""
                             value = element.get_attribute('value')
                             if value:
@@ -359,7 +359,7 @@ class SimpleRouterTester:
                     confidence_score=0
                 )
             
-            # Enter password
+            # Enter password immediately
             print("🔐 Entering password...")
             password_field.clear()
             password_field.send_keys(password)
