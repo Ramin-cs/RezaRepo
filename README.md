@@ -57,6 +57,8 @@ else:
 ## 🚀 نحوه استفاده:
 
 ### دستورات اصلی:
+
+#### نسخه کامل (پیشرفته):
 ```bash
 # تست کامل (HTTP + Chrome)
 python router_password_tester.py -t "http://192.168.1.1" --mode both
@@ -64,11 +66,17 @@ python router_password_tester.py -t "http://192.168.1.1" --mode both
 # فقط Chrome (دقیق‌تر)
 python router_password_tester.py -t "http://192.168.1.1" --mode chrome
 
-# فقط HTTP (سریع‌تر)
-python router_password_tester.py -t "http://192.168.1.1" --mode http
-
 # نمایش Chrome (برای دیباگ)
 python router_password_tester.py -t "http://192.168.1.1" --visible
+```
+
+#### نسخه ساده (بدون timeout):
+```bash
+# نسخه ساده (توصیه می‌شود)
+python simple_router_tester.py -t "http://192.168.1.1"
+
+# نمایش Chrome برای مشاهده عملکرد
+python simple_router_tester.py -t "http://192.168.1.1" --visible
 ```
 
 ### پسوردهای تست شده:

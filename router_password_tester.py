@@ -83,34 +83,50 @@ class RouterPasswordTester:
             self.driver = None
     
     def clear_session(self, target_url: str):
-        """Clear all cookies and session data for fresh start"""
+        """Simple and safe session clearing"""
         try:
             print("🧹 Clearing session data...")
             
-            # Navigate to target first to set domain
+            # Navigate to target first to set domain (with shorter timeout)
             if not target_url.startswith(('http://', 'https://')):
                 url = f"http://{target_url}"
             else:
                 url = target_url
             
-            self.driver.get(url)
-            time.sleep(2)
+            # Set shorter timeout for this operation
+            original_timeout = self.driver.get_timeouts()['pageLoad']
+            self.driver.set_page_load_timeout(10)
             
-            # Clear all cookies
-            self.driver.delete_all_cookies()
-            
-            # Clear local storage and session storage
-            self.driver.execute_script("window.localStorage.clear();")
-            self.driver.execute_script("window.sessionStorage.clear();")
-            
-            # Clear cache (if possible)
-            self.driver.execute_script("window.location.reload(true);")
-            
-            time.sleep(2)
-            print("✅ Session cleared")
+            try:
+                self.driver.get(url)
+                time.sleep(1)  # Reduced wait time
+                
+                # Clear cookies only (safest operation)
+                self.driver.delete_all_cookies()
+                
+                # Try to clear storage (but don't fail if it doesn't work)
+                try:
+                    self.driver.execute_script("try { window.localStorage.clear(); } catch(e) {}")
+                    self.driver.execute_script("try { window.sessionStorage.clear(); } catch(e) {}")
+                except:
+                    pass  # Ignore storage clear errors
+                
+                print("✅ Session cleared")
+                
+            except Exception as nav_error:
+                print(f"⚠️ Navigation error during clear, continuing: {nav_error}")
+                # Still try to clear cookies if possible
+                try:
+                    self.driver.delete_all_cookies()
+                except:
+                    pass
+            finally:
+                # Restore original timeout
+                self.driver.set_page_load_timeout(original_timeout)
             
         except Exception as e:
-            print(f"⚠️ Session clear error: {e}")
+            print(f"⚠️ Session clear error (continuing): {e}")
+            # Don't let session clear errors stop the test
     
     def check_session_cookies(self) -> Tuple[bool, List[str]]:
         """Check for session cookies that indicate successful login"""
@@ -555,13 +571,18 @@ class RouterPasswordTester:
         try:
             print(f"🔑 Testing password: {password}")
             
-            # Step 1: Clear session for fresh start
+            # Step 1: Prepare URL
             if not target.startswith(('http://', 'https://')):
                 url = f"http://{target}"
             else:
                 url = target
             
-            self.clear_session(url)
+            # Step 1.5: Optional session clear (skip if causing problems)
+            try:
+                self.clear_session(url)
+            except Exception as clear_error:
+                print(f"⚠️ Skipping session clear due to error: {clear_error}")
+                # Continue without clearing session
             
             # Step 2: Load login page
             self.driver.get(url)
