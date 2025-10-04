@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARAT - Phase Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/hacker_theme.css" rel="stylesheet">
+    <style>
+        .live-output {
+            height: 400px;
+            overflow-y: scroll;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            background: #1a1a1a;
+            color: #00ff00;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .text-muted {
+            color: #6c757d !important;
+        }
+        .form-check-label small {
+            color: #adb5bd !important;
+        }
+        .alert-info {
+            color: #0c5460 !important;
+        }
+        .phase-result {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .phase-success {
+            border-left: 4px solid #28a745;
+        }
+        .phase-error {
+            border-left: 4px solid #dc3545;
+        }
+        .finding-item {
+            background: #333;
+            padding: 8px;
+            margin: 3px 0;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-crosshairs me-2"></i>ARAT
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link" href="/targets">Targets</a>
+                <a class="nav-link active" href="/phases">Phases</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-check me-2"></i>
+                            Available Phases
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="phases-container">
+                            <!-- Phases will be loaded here -->
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="phase_1" name="phases">
+                                    <label class="form-check-label" for="phase_1">
+                                        <strong>Phase 1:</strong> Real IP Extraction
+                                        <br><small class="text-muted">Extract real IP address and CDN bypass</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="2" id="phase_2" name="phases">
+                                    <label class="form-check-label" for="phase_2">
+                                        <strong>Phase 2:</strong> Subdomain Discovery
+                                        <br><small class="text-muted">Discover subdomains (active/passive)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="3" id="phase_3" name="phases">
+                                    <label class="form-check-label" for="phase_3">
+                                        <strong>Phase 3:</strong> Port Scanning
+                                        <br><small class="text-muted">Scan ports and detect services</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="4" id="phase_4" name="phases">
+                                    <label class="form-check-label" for="phase_4">
+                                        <strong>Phase 4:</strong> Technology Detection
+                                        <br><small class="text-muted">Detect web technologies</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="5" id="phase_5" name="phases">
+                                    <label class="form-check-label" for="phase_5">
+                                        <strong>Phase 5:</strong> Directory Discovery
+                                        <br><small class="text-muted">Find directories and files</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="6" id="phase_6" name="phases">
+                                    <label class="form-check-label" for="phase_6">
+                                        <strong>Phase 6:</strong> Parameter Discovery
+                                        <br><small class="text-muted">Extract parameters and JS analysis</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="7" id="phase_7" name="phases">
+                                    <label class="form-check-label" for="phase_7">
+                                        <strong>Phase 7:</strong> Endpoint Discovery
+                                        <br><small class="text-muted">Extract endpoints (REST/GraphQL)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="8" id="phase_8" name="phases">
+                                    <label class="form-check-label" for="phase_8">
+                                        <strong>Phase 8:</strong> Cloud Analysis
+                                        <br><small class="text-muted">Analyze cloud resources</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="9" id="phase_9" name="phases">
+                                    <label class="form-check-label" for="phase_9">
+                                        <strong>Phase 9:</strong> OSINT Analysis
+                                        <br><small class="text-muted">Open source intelligence gathering</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="10" id="phase_10" name="phases">
+                                    <label class="form-check-label" for="phase_10">
+                                        <strong>Phase 10:</strong> Vulnerability Assessment
+                                        <br><small class="text-muted">Recon-based vulnerability assessment</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 mt-3">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="selectAllPhases()">
+                                    <i class="fas fa-check-square"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNoPhases()">
+                                    <i class="fas fa-square"></i> Select None
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-play me-2"></i>
+                            Start Reconnaissance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="recon-form">
+                            <div class="mb-3">
+                                <label for="target" class="form-label">Target</label>
+                                <input type="text" class="form-control" id="target" name="target" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-rocket me-2"></i>Start Reconnaissance
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-terminal me-2"></i>
+                            Live Output
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="live-output" class="live-output">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Ready to start reconnaissance...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Current Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="current-status" class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Ready to start
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Phase Results Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search me-2"></i>
+                            Phase Results
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="phase-results">
+                            <div class="text-center text-muted">
+                                <i class="fas fa-clock me-2"></i>
+                                No results yet. Start reconnaissance to see findings...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Running Modal -->
+    <div class="modal fade" id="runningModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Reconnaissance Running
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <strong>Target:</strong> <span id="progress-target">-</span>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Current Phase:</strong> <span id="progress-phase">Starting...</span>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div id="modal-live-output" class="live-output" style="height: 300px;">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="stopReconnaissance()">
+                        <i class="fas fa-stop me-2"></i>Stop Reconnaissance
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/socket.io.min.js"></script>
+    <script>
+        // Global variables
+        let currentTaskId = null;
+        let socket = null;
+        let phaseResults = {};
+
+        // Initialize Socket.IO
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('✅ Connected to server');
+                addToOutput('✅ Connected to ARAT server', 'success');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('❌ Disconnected from server');
+                addToOutput('❌ Disconnected from server', 'error');
+            });
+            
+            socket.on('phase_started', function(data) {
+                console.log('🚀 Phase started:', data);
+                document.getElementById('progress-phase').textContent = `Phase ${data.phase}: ${data.name || data.message}`;
+                
+                addToOutput(`🚀 Starting Phase ${data.phase}: ${data.name || data.message}`, 'info');
+                addToModalOutput(`🚀 Starting Phase ${data.phase}: ${data.name || data.message}`, 'info');
+            });
+            
+            socket.on('phase_output', function(data) {
+                console.log('📝 Phase output:', data);
+                
+                // Clean and format output
+                let cleanOutput = data.output;
+                if (cleanOutput && cleanOutput.trim()) {
+                    // Remove extra whitespace and format
+                    cleanOutput = cleanOutput.trim();
+                    
+                    // Add timestamp if not present
+                    if (!cleanOutput.includes('[')) {
+                        const timestamp = new Date().toLocaleTimeString();
+                        cleanOutput = `[${timestamp}] ${cleanOutput}`;
+                    }
+                    
+                    addToOutput(cleanOutput, 'output');
+                    addToModalOutput(cleanOutput, 'output');
+                }
+            });
+            
+            socket.on('phase_completed', function(data) {
+                console.log('✅ Phase completed:', data);
+                
+                // Store phase results
+                phaseResults[data.phase] = data;
+                
+                addToOutput(`✅ Phase ${data.phase} completed: ${data.summary}`, 'success');
+                addToModalOutput(`✅ Phase ${data.phase} completed: ${data.summary}`, 'success');
+                
+                // Update progress bar
+                const progress = ((data.phase / 10) * 100);
+                document.querySelector('.progress-bar').style.width = progress + '%';
+                
+                // Display phase results
+                displayPhaseResults(data);
+            });
+            
+            socket.on('task_completed', function(data) {
+                console.log('🎉 Task completed:', data);
+                
+                // Hide running modal
+                const runningModal = bootstrap.Modal.getInstance(document.getElementById('runningModal'));
+                if (runningModal) {
+                    runningModal.hide();
+                }
+                
+                // Update status
+                document.getElementById('current-status').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>Reconnaissance completed!
+                        <br><small>Found ${data.summary?.total_findings || Object.keys(phaseResults).length} findings in ${data.summary?.total_phases || 10} phases</small>
+                    </div>
+                `;
+                
+                // Clear phase results section
+                document.getElementById('phase-results').innerHTML = `
+                    <div class="text-center">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Reconnaissance completed! All phases finished successfully.
+                        <br><small>Found ${data.summary?.total_findings || Object.keys(phaseResults).length} total findings</small>
+                    </div>
+                `;
+                
+                addToOutput(`🎉 Reconnaissance completed! Found ${data.summary?.total_findings || Object.keys(phaseResults).length} findings`, 'success');
+                
+                // Redirect to report page after 2 seconds
+                setTimeout(function() {
+                    window.location.href = `/report?target=${encodeURIComponent(data.target)}`;
+                }, 2000);
+                
+                // Reset current task
+                currentTaskId = null;
+                
+                // Show completion alert
+                showAlert('Reconnaissance completed successfully! Redirecting to report...', 'success');
+                
+                // Store results in localStorage for report page
+                const reportData = {
+                    target: data.target,
+                    task_id: data.task_id,
+                    summary: data.summary,
+                    results: data.results || {},
+                    phaseResults: phaseResults,
+                    timestamp: new Date().toISOString()
+                };
+                
+                localStorage.setItem('lastReconResults', JSON.stringify(reportData));
+                console.log('💾 Stored results in localStorage:', reportData);
+                
+                // Redirect to report page after delay
+                setTimeout(() => {
+                    if (data.target && data.task_id) {
+                        window.location.href = `/report?target=${encodeURIComponent(data.target)}&task_id=${data.task_id}`;
+                    } else if (data.target) {
+                        window.location.href = `/report?target=${encodeURIComponent(data.target)}`;
+                    } else {
+                        showAlert('Report page not available', 'warning');
+                    }
+                }, 3000);
+            });
+            
+            socket.on('task_error', function(data) {
+                console.log('❌ Task error:', data);
+                
+                // Hide running modal
+                const runningModal = bootstrap.Modal.getInstance(document.getElementById('runningModal'));
+                if (runningModal) {
+                    runningModal.hide();
+                }
+                
+                // Update status
+                document.getElementById('current-status').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Error: ${data.error}
+                    </div>
+                `;
+                
+                addToOutput(`❌ Error: ${data.error}`, 'error');
+                currentTaskId = null;
+            });
+        }
+
+        // Output functions
+        function addToOutput(message, type = 'output') {
+            const output = document.getElementById('live-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'success': '#28a745',
+                'error': '#dc3545',
+                'info': '#17a2b8',
+                'warning': '#ffc107',
+                'output': '#00ff00'
+            };
+            
+            const color = colors[type] || '#00ff00';
+            
+            // Clean message
+            let cleanMessage = message;
+            if (cleanMessage && typeof cleanMessage === 'string') {
+                // Remove extra whitespace
+                cleanMessage = cleanMessage.trim();
+                
+                // Add timestamp if not present
+                if (!cleanMessage.includes('[')) {
+                    cleanMessage = `[${timestamp}] ${cleanMessage}`;
+                }
+                
+                // Add to output
+                output.innerHTML += `<div style="color: ${color}; margin: 2px 0; font-size: 12px; line-height: 1.3;">${cleanMessage}</div>`;
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        
+        function addToModalOutput(message, type = 'output') {
+            const output = document.getElementById('modal-live-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                'success': '#28a745',
+                'error': '#dc3545',
+                'info': '#17a2b8',
+                'warning': '#ffc107',
+                'output': '#00ff00'
+            };
+            
+            const color = colors[type] || '#00ff00';
+            
+            output.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Display phase results
+        function displayPhaseResults(phaseData) {
+            const resultsContainer = document.getElementById('phase-results');
+            
+            if (Object.keys(phaseResults).length === 1) {
+                resultsContainer.innerHTML = '';
+            }
+            
+            const phaseDiv = document.createElement('div');
+            phaseDiv.className = 'phase-result phase-success';
+            phaseDiv.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Phase ${phaseData.phase}: ${phaseData.name || 'Completed'}
+                    </h6>
+                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                </div>
+                <div class="phase-findings">
+                    ${formatPhaseFindings(phaseData)}
+                </div>
+            `;
+            
+            resultsContainer.appendChild(phaseDiv);
+        }
+
+        // Format phase findings
+        function formatPhaseFindings(phaseData) {
+            let html = '';
+            
+            // Real IPs (Phase 1)
+            if (phaseData.real_ips && phaseData.real_ips.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Real IPs Found:</strong>
+                </div>`;
+                phaseData.real_ips.forEach(ip => {
+                    html += `<div class="finding-item">${ip}</div>`;
+                });
+            }
+            
+            // Subdomains (Phase 2)
+            if (phaseData.subdomains && phaseData.subdomains.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Subdomains Found:</strong>
+                </div>`;
+                phaseData.subdomains.slice(0, 10).forEach(sub => {
+                    html += `<div class="finding-item">${sub}</div>`;
+                });
+                if (phaseData.subdomains.length > 10) {
+                    html += `<div class="finding-item text-muted">... and ${phaseData.subdomains.length - 10} more</div>`;
+                }
+            }
+            
+            // Open Ports (Phase 3)
+            if (phaseData.open_ports && phaseData.open_ports.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Open Ports:</strong>
+                </div>`;
+                phaseData.open_ports.forEach(port => {
+                    html += `<div class="finding-item">${port}</div>`;
+                });
+            }
+            
+            // Technologies (Phase 4)
+            if (phaseData.technologies && phaseData.technologies.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Technologies Detected:</strong>
+                </div>`;
+                phaseData.technologies.forEach(tech => {
+                    html += `<div class="finding-item">${tech}</div>`;
+                });
+            }
+            
+            // Directories (Phase 5)
+            if (phaseData.directories && phaseData.directories.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Directories Found:</strong>
+                </div>`;
+                phaseData.directories.slice(0, 5).forEach(dir => {
+                    html += `<div class="finding-item">${dir}</div>`;
+                });
+                if (phaseData.directories.length > 5) {
+                    html += `<div class="finding-item text-muted">... and ${phaseData.directories.length - 5} more</div>`;
+                }
+            }
+            
+            // Parameters (Phase 6)
+            if (phaseData.parameters && phaseData.parameters.length > 0) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-info">Parameters Found:</strong>
+                </div>`;
+                phaseData.parameters.slice(0, 10).forEach(param => {
+                    html += `<div class="finding-item">${param}</div>`;
+                });
+                if (phaseData.parameters.length > 10) {
+                    html += `<div class="finding-item text-muted">... and ${phaseData.parameters.length - 10} more</div>`;
+                }
+            }
+            
+            // Summary
+            if (phaseData.summary) {
+                html += `<div class="finding-category mb-2">
+                    <strong class="text-success">Summary:</strong> ${phaseData.summary}
+                </div>`;
+            }
+            
+            return html || '<div class="text-muted">No specific findings to display</div>';
+        }
+
+        // Phase selection functions
+        function selectAllPhases() {
+            console.log('🔧 Select All clicked');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            console.log(`✅ ${checkboxes.length} phases selected`);
+            addToOutput(`✅ All ${checkboxes.length} phases selected`, 'info');
+        }
+        
+        function selectNoPhases() {
+            console.log('🔧 Select None clicked');
+            const checkboxes = document.querySelectorAll('input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            console.log(`✅ ${checkboxes.length} phases unselected`);
+            addToOutput(`✅ All phases unselected`, 'info');
+        }
+
+        // Form submission
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const target = document.getElementById('target').value.trim();
+            const selectedPhases = Array.from(document.querySelectorAll('input[name="phases"]:checked'))
+                .map(cb => parseInt(cb.value));
+            
+            console.log('🚀 Form submitted:', { target, phases: selectedPhases });
+            
+            if (!target) {
+                showAlert('Please enter a target', 'warning');
+                return;
+            }
+            
+            if (selectedPhases.length === 0) {
+                showAlert('Please select at least one phase', 'warning');
+                return;
+            }
+            
+            startReconnaissance(target, selectedPhases);
+        }
+
+        // Start reconnaissance
+        function startReconnaissance(target, phases) {
+            console.log('🚀 Starting reconnaissance:', { target, phases });
+            
+            // Clear previous results
+            phaseResults = {};
+            document.getElementById('phase-results').innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="fas fa-spinner fa-spin me-2"></i>
+                    Starting reconnaissance...
+                </div>
+            `;
+            
+            // Clear output
+            document.getElementById('live-output').innerHTML = '';
+            document.getElementById('modal-live-output').innerHTML = '';
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+            submitBtn.disabled = true;
+            
+            // Send API request
+            fetch('/api/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    target: target,
+                    phases: phases
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🚀 API Response:', data);
+                
+                if (data.success) {
+                    currentTaskId = data.task_id;
+                    
+                    // Show running modal
+                    const runningModal = new bootstrap.Modal(document.getElementById('runningModal'));
+                    runningModal.show();
+                    
+                    // Update modal content
+                    document.getElementById('progress-target').textContent = target;
+                    document.getElementById('progress-phase').textContent = 'Phase: Starting...';
+                    
+                    // Update status
+                    document.getElementById('current-status').innerHTML = `
+                        <div class="alert alert-info">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Reconnaissance running...
+                        </div>
+                    `;
+                    
+                    addToOutput(`🚀 Reconnaissance started for ${target}`, 'success');
+                    showAlert('Reconnaissance started successfully!', 'success');
+                } else {
+                    showAlert('Failed to start reconnaissance: ' + data.error, 'danger');
+                    addToOutput(`❌ Failed to start: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error:', error);
+                showAlert('Error starting reconnaissance: ' + error.message, 'danger');
+                addToOutput(`❌ Error: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        // Stop reconnaissance
+        function stopReconnaissance() {
+            if (!currentTaskId) {
+                console.log('⚠️ No active task to stop');
+                return;
+            }
+            
+            console.log('🛑 Stopping reconnaissance:', currentTaskId);
+            
+            fetch('/api/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    task_id: currentTaskId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🛑 Stop response:', data);
+                
+                // Hide modal
+                const runningModal = bootstrap.Modal.getInstance(document.getElementById('runningModal'));
+                if (runningModal) {
+                    runningModal.hide();
+                }
+                
+                // Update status
+                document.getElementById('current-status').innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-stop me-2"></i>Reconnaissance stopped
+                    </div>
+                `;
+                
+                addToOutput(`🛑 Reconnaissance stopped`, 'warning');
+                currentTaskId = null;
+                showAlert('Reconnaissance stopped', 'warning');
+            })
+            .catch(error => {
+                console.error('❌ Error stopping:', error);
+                showAlert('Error stopping reconnaissance: ' + error.message, 'danger');
+            });
+        }
+
+        // Utility functions
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 ARAT Phases Page Loaded');
+            
+            // Initialize Socket.IO
+            initializeSocket();
+            
+            // Add form submit handler
+            document.getElementById('recon-form').addEventListener('submit', handleFormSubmit);
+            
+            // Load target from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const target = urlParams.get('target');
+            if (target) {
+                document.getElementById('target').value = target;
+                console.log('🎯 Target loaded from URL:', target);
+            }
+            
+            console.log('✅ Page initialized successfully');
+            addToOutput('✅ ARAT Phases Page loaded successfully', 'success');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}ARAT - مدیریت اهداف{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-bullseye me-2"></i>
+                مدیریت اهداف
+            </h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTargetModal">
+                <i class="fas fa-plus me-2"></i>
+                اضافه کردن هدف جدید
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Targets Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    لیست اهداف
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="targets-table">
+                        <thead>
+                            <tr>
+                                <th>هدف</th>
+                                <th>توضیحات</th>
+                                <th>وضعیت</th>
+                                <th>فازهای تکمیل شده</th>
+                                <th>تاریخ ایجاد</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="targets-tbody">
+                            <!-- Targets will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Target Modal -->
+<div class="modal fade" id="addTargetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>
+                    اضافه کردن هدف جدید
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-target-form">
+                    <div class="mb-3">
+                        <label for="target-input" class="form-label">هدف</label>
+                        <input type="text" class="form-control" id="target-input" name="target" 
+                               placeholder="example.com یا 192.168.1.1" required>
+                        <div class="form-text">دامنه یا IP هدف را وارد کنید</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="target-description" class="form-label">توضیحات</label>
+                        <textarea class="form-control" id="target-description" name="description" 
+                                  rows="3" placeholder="توضیحات اختیاری درباره هدف..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="auto-start">
+                            <label class="form-check-label" for="auto-start">
+                                شروع خودکار reconnaissance
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">لغو</button>
+                <button type="button" class="btn btn-primary" id="add-target-btn">
+                    <i class="fas fa-plus me-2"></i>
+                    اضافه کردن
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Target Details Modal -->
+<div class="modal fade" id="targetDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    جزئیات هدف
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>اطلاعات اصلی</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>هدف:</strong></td>
+                                <td id="detail-target">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>توضیحات:</strong></td>
+                                <td id="detail-description">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>وضعیت:</strong></td>
+                                <td id="detail-status">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>تاریخ ایجاد:</strong></td>
+                                <td id="detail-created">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>آمار</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>فازهای تکمیل شده:</strong></td>
+                                <td id="detail-phases">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ساب‌دامین‌های پیدا شده:</strong></td>
+                                <td id="detail-subdomains">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>پورت‌های باز:</strong></td>
+                                <td id="detail-ports">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>آسیب‌پذیری‌ها:</strong></td>
+                                <td id="detail-vulnerabilities">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h6>نتایج فازها</h6>
+                    <div id="phase-results" class="border rounded p-3">
+                        <!-- Phase results will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="start-recon-btn">
+                    <i class="fas fa-play me-2"></i>
+                    شروع Reconnaissance
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/targets.js') }}"></script>
+{% endblock %}

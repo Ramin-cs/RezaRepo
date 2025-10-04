@@ -1,0 +1,51 @@
+# External Tools for ARAT
+# Install these tools for enhanced functionality
+
+# Subdomain Discovery Tools
+sublist3r==1.1
+amass
+findomain
+subfinder
+assetfinder
+
+# Directory Discovery Tools
+gobuster
+dirsearch
+feroxbuster
+katana
+gospider
+
+# Parameter Discovery Tools
+paramspider
+x8
+
+# JavaScript Analysis Tools
+xnLinkFinder
+
+# Technology Detection Tools
+wappalyzer
+whatweb
+
+# Port Scanning Tools
+nmap
+
+# Web Crawling Tools
+waybackurls
+gau
+
+# Additional Tools
+httpx
+nuclei
+ffuf
+gau
+hakrawler
+
+# Python packages for tool integration
+subprocess32
+psutil
+shutil
+pathlib
+
+# Cross-platform support
+pywin32; sys_platform == "win32"
+pyobjc; sys_platform == "darwin"

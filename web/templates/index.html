@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}ARAT - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white rounded p-5 mb-4">
+            <h1 class="display-4">
+                <i class="fas fa-shield-alt me-3"></i>
+                ARAT
+            </h1>
+            <p class="lead">Advanced Reconnaissance & Security Assessment Tool</p>
+            <hr class="my-4">
+            <p>A comprehensive and modular tool for penetration testing and reconnaissance with 10 complete phases</p>
+            <a class="btn btn-light btn-lg" href="{{ url_for('dashboard') }}" role="button">
+                <i class="fas fa-play me-2"></i>
+                Get Started
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-bullseye fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Target Management</h5>
+                <p class="card-text">Add and manage targets for reconnaissance</p>
+                <a href="{{ url_for('targets') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>
+                    Add Target
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-cogs fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Run Phases</h5>
+                <p class="card-text">Execute different reconnaissance phases</p>
+                <a href="{{ url_for('phases') }}" class="btn btn-success">
+                    <i class="fas fa-play me-2"></i>
+                    Start Phases
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Reports</h5>
+                <p class="card-text">View and analyze reconnaissance results</p>
+                <a href="{{ url_for('reports') }}" class="btn btn-info">
+                    <i class="fas fa-eye me-2"></i>
+                    View Reports
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card h-100 border-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-cog fa-3x text-warning mb-3"></i>
+                <h5 class="card-title">Settings</h5>
+                <p class="card-text">Configure API keys and tool settings</p>
+                <a href="{{ url_for('settings') }}" class="btn btn-warning">
+                    <i class="fas fa-wrench me-2"></i>
+                    Settings
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Key Features
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>10 Complete Phases:</strong> Real IP extraction, Subdomain discovery, Port scanning, Technology detection
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>15+ API Integration:</strong> Shodan, VirusTotal, Censys, SecurityTrails, GitHub
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>Parallel Processing:</strong> Concurrent phase execution for high speed
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>WAF Bypass:</strong> Advanced techniques to bypass WAF
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>Real-time Updates:</strong> Live progress updates
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>Visual Reports:</strong> Interactive charts and tables
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>Modern Web Panel:</strong> Responsive and beautiful UI
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check text-success me-2"></i>
+                                <strong>High Security:</strong> Encrypted API keys and secure management
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Security Notice:</strong> This tool is for authorized penetration testing only. 
+            Unauthorized use is prohibited and may result in legal action.
+        </div>
+    </div>
+</div>
+{% endblock %}

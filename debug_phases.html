@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Phases Loading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Debug Phases Loading</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Main Page Phases</h3>
+                <div id="phases-container">
+                    <div class="alert alert-info">Loading phases...</div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h3>Modal Phases</h3>
+                <div id="modal-phases-container">
+                    <div class="alert alert-info">Loading phases...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <button class="btn btn-primary" onclick="testAPI()">Test API</button>
+            <button class="btn btn-secondary" onclick="loadPhases()">Load Phases</button>
+        </div>
+        
+        <div class="mt-4">
+            <h4>Console Logs:</h4>
+            <div id="logs" class="bg-dark text-light p-3" style="height: 300px; overflow-y: scroll;"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `[${timestamp}] ${message}<br>`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+        
+        function testAPI() {
+            log('🧪 Testing API endpoint...');
+            
+            fetch('/api/phases')
+                .then(response => {
+                    log(`📡 Response status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    log(`📋 API Response: ${JSON.stringify(data).substring(0, 200)}...`);
+                    if (data.success) {
+                        log(`✅ API Success: ${data.phases.length} phases loaded`);
+                    } else {
+                        log(`❌ API Error: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Fetch Error: ${error.message}`);
+                });
+        }
+        
+        function loadPhases() {
+            log('📋 Loading phases...');
+            
+            fetch('/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    log('📋 Phases data received');
+                    
+                    if (data.success) {
+                        // Load phases for main page
+                        loadPhasesToContainer('phases-container', data.phases, true);
+                        
+                        // Load phases for modal
+                        loadPhasesToContainer('modal-phases-container', data.phases, false);
+                        
+                        log(`✅ ${data.phases.length} phases loaded successfully`);
+                    } else {
+                        log(`❌ Failed to load phases: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    log(`❌ Error loading phases: ${error.message}`);
+                });
+        }
+        
+        function loadPhasesToContainer(containerId, phases, showButtons = true) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                log(`📦 Loading phases to container: ${containerId}`);
+                container.innerHTML = '';
+                
+                phases.forEach(phase => {
+                    const phaseDiv = document.createElement('div');
+                    phaseDiv.className = 'form-check';
+                    phaseDiv.innerHTML = `
+                        <input class="form-check-input" type="checkbox" value="${phase.number}" id="${containerId}_phase_${phase.number}" name="phases">
+                        <label class="form-check-label" for="${containerId}_phase_${phase.number}">
+                            <strong>Phase ${phase.number}:</strong> ${phase.name}
+                            <br><small class="text-muted">${phase.description}</small>
+                        </label>
+                    `;
+                    container.appendChild(phaseDiv);
+                });
+                
+                log(`✅ ${phases.length} phases loaded to ${containerId}`);
+            } else {
+                log(`❌ Container not found: ${containerId}`);
+            }
+        }
+        
+        // Auto-load on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Page loaded, starting debug...');
+            setTimeout(() => {
+                testAPI();
+                loadPhases();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARAT - Settings</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-shield-alt me-2"></i>
+                ARAT
+            </a>
+            
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/targets">Targets</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/phases">Phases</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/reports">Reports</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/settings">Settings</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>
+                    <i class="fas fa-cog me-2"></i>
+                    Settings
+                </h2>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-key me-2"></i>
+                            API Keys
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="shodan-key" class="form-label">Shodan API Key</label>
+                            <input type="password" class="form-control" id="shodan-key" placeholder="Enter Shodan API key">
+                            <div class="form-text">Optional: For enhanced reconnaissance</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="virustotal-key" class="form-label">VirusTotal API Key</label>
+                            <input type="password" class="form-control" id="virustotal-key" placeholder="Enter VirusTotal API key">
+                            <div class="form-text">Optional: For threat intelligence</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="censys-key" class="form-label">Censys API Key</label>
+                            <input type="password" class="form-control" id="censys-key" placeholder="Enter Censys API key">
+                            <div class="form-text">Optional: For internet scanning data</div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="saveApiKeys()">
+                            <i class="fas fa-save me-2"></i>
+                            Save API Keys
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs me-2"></i>
+                            Phase Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="max-workers" class="form-label">Max Workers</label>
+                            <input type="number" class="form-control" id="max-workers" value="10" min="1" max="50">
+                            <div class="form-text">Maximum concurrent workers for parallel processing</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="timeout" class="form-label">Timeout (seconds)</label>
+                            <input type="number" class="form-control" id="timeout" value="30" min="5" max="300">
+                            <div class="form-text">Request timeout in seconds</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="parallel-execution" checked>
+                                <label class="form-check-label" for="parallel-execution">
+                                    Enable Parallel Execution
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="savePhaseSettings()">
+                            <i class="fas fa-save me-2"></i>
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Web Panel Settings -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-globe me-2"></i>
+                            Web Panel Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="panel-host" class="form-label">Host</label>
+                            <input type="text" class="form-control" id="panel-host" value="127.0.0.1">
+                            <div class="form-text">Web panel host address</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="panel-port" class="form-label">Port</label>
+                            <input type="number" class="form-control" id="panel-port" value="8080" min="1024" max="65535">
+                            <div class="form-text">Web panel port number</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="debug-mode">
+                                <label class="form-check-label" for="debug-mode">
+                                    Debug Mode
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="saveWebSettings()">
+                            <i class="fas fa-save me-2"></i>
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            System Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Version:</strong> 1.0.0
+                        </div>
+                        <div class="mb-3">
+                            <strong>Python:</strong> 3.8+
+                        </div>
+                        <div class="mb-3">
+                            <strong>Flask:</strong> 3.0.0
+                        </div>
+                        <div class="mb-3">
+                            <strong>SocketIO:</strong> 5.3.6
+                        </div>
+                        <div class="mb-3">
+                            <strong>Status:</strong> <span class="badge bg-success">Running</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Load settings
+        function loadSettings() {
+            fetch('/api/settings')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Load API keys
+                        if (data.settings.api_keys) {
+                            Object.entries(data.settings.api_keys).forEach(([key, value]) => {
+                                const input = document.getElementById(`${key}-key`);
+                                if (input) {
+                                    input.value = value;
+                                }
+                            });
+                        }
+                        
+                        // Load phase settings
+                        if (data.settings.phases) {
+                            document.getElementById('max-workers').value = data.settings.phases.max_workers || 10;
+                            document.getElementById('timeout').value = data.settings.phases.timeout || 30;
+                            document.getElementById('parallel-execution').checked = data.settings.phases.enable_parallel || false;
+                        }
+                        
+                        // Load web settings
+                        if (data.settings.web) {
+                            document.getElementById('panel-host').value = data.settings.web.host || '127.0.0.1';
+                            document.getElementById('panel-port').value = data.settings.web.port || 8080;
+                            document.getElementById('debug-mode').checked = data.settings.web.debug || false;
+                        }
+                    }
+                });
+        }
+
+        // Save API keys
+        function saveApiKeys() {
+            const settings = {
+                api_keys: {
+                    shodan: document.getElementById('shodan-key').value,
+                    virustotal: document.getElementById('virustotal-key').value,
+                    censys: document.getElementById('censys-key').value
+                }
+            };
+            
+            saveSettings(settings);
+        }
+
+        // Save phase settings
+        function savePhaseSettings() {
+            const settings = {
+                phases: {
+                    max_workers: parseInt(document.getElementById('max-workers').value),
+                    timeout: parseInt(document.getElementById('timeout').value),
+                    enable_parallel: document.getElementById('parallel-execution').checked
+                }
+            };
+            
+            saveSettings(settings);
+        }
+
+        // Save web settings
+        function saveWebSettings() {
+            const settings = {
+                web: {
+                    host: document.getElementById('panel-host').value,
+                    port: parseInt(document.getElementById('panel-port').value),
+                    debug: document.getElementById('debug-mode').checked
+                }
+            };
+            
+            saveSettings(settings);
+        }
+
+        // Save settings
+        function saveSettings(settings) {
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Settings saved successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving settings');
+            });
+        }
+
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>

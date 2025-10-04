@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Modal Phases</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Test Modal Phases</h1>
+        
+        <!-- Test Button -->
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#runModal">
+            Open Modal
+        </button>
+        
+        <!-- Test Modal -->
+        <div class="modal fade" id="runModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Start Reconnaissance</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="recon-form">
+                            <div class="mb-3">
+                                <label for="target" class="form-label">Target</label>
+                                <input type="text" class="form-control" id="target" name="target" placeholder="example.com" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Phases</label>
+                                <div id="modal-phases-container">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading phases...</span>
+                                        </div>
+                                        <p class="mt-2">Loading available phases...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="me-auto">
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="selectAllModalPhases()">
+                                Select All
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectNoModalPhases()">
+                                Select None
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" form="recon-form">Start</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadPhasesToContainer(containerId, phases, showButtons = false) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = '';
+                
+                phases.forEach(phase => {
+                    const phaseDiv = document.createElement('div');
+                    phaseDiv.className = 'form-check';
+                    phaseDiv.innerHTML = `
+                        <input class="form-check-input" type="checkbox" value="${phase.number}" id="${containerId}_phase_${phase.number}" name="phases">
+                        <label class="form-check-label" for="${containerId}_phase_${phase.number}">
+                            <strong>Phase ${phase.number}:</strong> ${phase.name}
+                            <br><small class="text-muted">${phase.description}</small>
+                        </label>
+                    `;
+                    container.appendChild(phaseDiv);
+                });
+            }
+        }
+        
+        function selectAllModalPhases() {
+            const checkboxes = document.querySelectorAll('#modal-phases-container input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            console.log('✅ All modal phases selected');
+        }
+        
+        function selectNoModalPhases() {
+            const checkboxes = document.querySelectorAll('#modal-phases-container input[name="phases"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            console.log('✅ No modal phases selected');
+        }
+        
+        // Load phases when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('http://localhost:8082/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadPhasesToContainer('modal-phases-container', data.phases, false);
+                        console.log('✅ Phases loaded successfully');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading phases:', error);
+                });
+        });
+    </script>
+</body>
+</html>

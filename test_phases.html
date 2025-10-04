@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Phases Loading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Test Phases Loading</h1>
+        <div id="phases-container">
+            <div class="alert alert-info">Loading phases...</div>
+        </div>
+    </div>
+
+    <script>
+        function loadAvailablePhases() {
+            console.log('📋 Loading available phases...');
+            
+            fetch('http://localhost:8082/api/phases')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📋 Phases loaded:', data);
+                    
+                    if (data.success) {
+                        const phasesContainer = document.getElementById('phases-container');
+                        if (phasesContainer) {
+                            phasesContainer.innerHTML = '';
+                            
+                            data.phases.forEach(phase => {
+                                const phaseDiv = document.createElement('div');
+                                phaseDiv.className = 'form-check mb-2';
+                                phaseDiv.innerHTML = `
+                                    <input class="form-check-input" type="checkbox" value="${phase.number}" id="phase_${phase.number}" name="phases">
+                                    <label class="form-check-label" for="phase_${phase.number}">
+                                        <strong>Phase ${phase.number}:</strong> ${phase.name}
+                                        <br><small class="text-muted">${phase.description}</small>
+                                        ${phase.dependencies.length > 0 ? `<br><small class="text-warning">Dependencies: ${phase.dependencies.join(', ')}</small>` : ''}
+                                    </label>
+                                `;
+                                phasesContainer.appendChild(phaseDiv);
+                            });
+                            
+                            console.log(`✅ ${data.phases.length} phases loaded successfully`);
+                        }
+                    } else {
+                        console.error('❌ Failed to load phases:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading phases:', error);
+                });
+        }
+        
+        // Load phases when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAvailablePhases();
+        });
+    </script>
+</body>
+</html>

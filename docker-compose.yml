@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  arat:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./output:/app/output
+      - ./config:/app/config
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+    restart: unless-stopped
+    networks:
+      - arat-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - arat-network
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: arat
+      POSTGRES_USER: arat
+      POSTGRES_PASSWORD: arat_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - arat-network
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  arat-network:
+    driver: bridge
