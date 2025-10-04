@@ -17,6 +17,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.keys import Keys
+import os
+from datetime import datetime
 
 @dataclass
 class TestResult:
@@ -448,14 +450,71 @@ class SimpleRouterTester:
     
     def load_targets(self, target_input: str) -> List[str]:
         """Load targets from input (single target or file)"""
-        import os
-        
         # Check if it's a file
         if os.path.exists(target_input):
             return self.load_targets_from_file(target_input)
         else:
             # Single target
             return [target_input]
+    
+    def save_successful_result(self, target: str, password: str, confidence: int, response_time: float, filename: str = "successful_logins.txt"):
+        """Save successful login to file"""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Create result line
+            result_line = f"{timestamp} | {target} | {password} | Score: {confidence} | Time: {response_time:.1f}s\n"
+            
+            # Check if file exists to add header
+            file_exists = os.path.exists(filename)
+            
+            with open(filename, 'a', encoding='utf-8') as f:
+                # Add header if file is new
+                if not file_exists:
+                    f.write("# Successful Router Login Results\n")
+                    f.write("# Format: Timestamp | Target | Password | Score | Time\n")
+                    f.write("# " + "="*70 + "\n")
+                
+                f.write(result_line)
+            
+            print(f"💾 Result saved to: {filename}")
+            
+        except Exception as e:
+            print(f"⚠️ Error saving result: {e}")
+    
+    def save_bulk_summary(self, successful_targets: List[dict], total_targets: int, filename: str = "bulk_summary.txt"):
+        """Save bulk testing summary"""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("# Bulk Testing Summary\n")
+                f.write(f"# Generated: {timestamp}\n")
+                f.write("# " + "="*70 + "\n\n")
+                
+                f.write(f"Total targets tested: {total_targets}\n")
+                f.write(f"Successful logins: {len(successful_targets)}\n")
+                f.write(f"Failed attempts: {total_targets - len(successful_targets)}\n")
+                if total_targets > 0:
+                    f.write(f"Success rate: {len(successful_targets)/total_targets*100:.1f}%\n")
+                f.write("\n" + "="*70 + "\n")
+                f.write("SUCCESSFUL TARGETS:\n")
+                f.write("="*70 + "\n")
+                
+                if successful_targets:
+                    for success in successful_targets:
+                        f.write(f"Target: {success['target']}\n")
+                        f.write(f"Password: {success['password']}\n")
+                        f.write(f"Confidence: {success['confidence']}\n")
+                        f.write(f"Time: {success.get('time', 'N/A')}\n")
+                        f.write("-" * 40 + "\n")
+                else:
+                    f.write("No successful logins found.\n")
+            
+            print(f"📊 Summary saved to: {filename}")
+            
+        except Exception as e:
+            print(f"⚠️ Error saving summary: {e}")
     
     async def test_target(self, target: str):
         """Test all passwords on single target"""
@@ -481,6 +540,10 @@ class SimpleRouterTester:
                 print(f"🎉 PASSWORD FOUND: {password}")
                 print(f"   Confidence: {result.confidence_score}")
                 print(f"   Details: {result.details}")
+                
+                # Save successful result to file
+                self.save_successful_result(target, password, result.confidence_score, result.response_time)
+                
                 print("🛑 STOPPING - Password found!")
                 break
             
@@ -517,7 +580,8 @@ class SimpleRouterTester:
                 successful_targets.append({
                     'target': target,
                     'password': successful[0].password,
-                    'confidence': successful[0].confidence_score
+                    'confidence': successful[0].confidence_score,
+                    'time': successful[0].response_time
                 })
                 print(f"✅ SUCCESS: {target} | Password: {successful[0].password}")
             else:
@@ -544,6 +608,10 @@ class SimpleRouterTester:
         print(f"Failed: {len(targets) - len(successful_targets)}")
         if len(targets) > 0:
             print(f"Success rate: {len(successful_targets)/len(targets)*100:.1f}%")
+        
+        # Save bulk summary
+        if len(targets) > 1:  # Only for bulk testing
+            self.save_bulk_summary(successful_targets, len(targets))
         
         return all_results
 
