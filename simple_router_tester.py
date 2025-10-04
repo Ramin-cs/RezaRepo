@@ -88,7 +88,7 @@ class SimpleRouterTester:
                 pass
     
     def handle_login_popup(self):
-        """Handle login confirmation popup"""
+        """Handle login confirmation popup - no duplicate messages"""
         handled = False
         
         try:
@@ -96,7 +96,9 @@ class SimpleRouterTester:
             page_source = self.driver.page_source.lower()
             
             if "only one device can log in at a time" in page_source:
-                print("🔍 Login confirmation popup detected!")
+                if not hasattr(self, '_popup_detected'):
+                    print("🔍 Login confirmation popup detected!")
+                    self._popup_detected = True
                 
                 # Look for buttons with "log in" text
                 buttons = self.driver.find_elements(By.TAG_NAME, "button")
@@ -116,7 +118,9 @@ class SimpleRouterTester:
                                 (value and 'log in' in value) or
                                 'continue' in text or
                                 'force' in text):
-                                print(f"✅ Clicking login confirmation: {text or value}")
+                                if not hasattr(self, '_popup_clicked'):
+                                    print(f"✅ Clicking login confirmation")
+                                    self._popup_clicked = True
                                 element.click()
                                 time.sleep(3)
                                 handled = True
@@ -128,7 +132,7 @@ class SimpleRouterTester:
             try:
                 WebDriverWait(self.driver, 2).until(EC.alert_is_present())
                 alert = self.driver.switch_to.alert
-                print(f"🚨 Alert: {alert.text[:30]}...")
+                print(f"🚨 Alert detected")
                 alert.accept()
                 time.sleep(1)
                 handled = True
@@ -179,7 +183,7 @@ class SimpleRouterTester:
             return False
     
     def find_login_elements(self, timeout=30):
-        """Smart element detection with waiting"""
+        """Optimized element detection - stops when found"""
         password_field = None
         login_button = None
         
@@ -193,19 +197,16 @@ class SimpleRouterTester:
         
         for selector in password_selectors:
             try:
-                print(f"   Waiting for password field: {selector}")
                 element = WebDriverWait(self.driver, timeout).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
                 )
                 if element.is_displayed() and element.is_enabled():
                     password_field = element
-                    print(f"   ✅ Password field found: {selector}")
+                    print(f"   ✅ Password field found")
                     break
             except TimeoutException:
-                print(f"   ⏳ Timeout waiting for: {selector}")
                 continue
-            except Exception as e:
-                print(f"   ⚠️ Error with {selector}: {e}")
+            except Exception:
                 continue
         
         # If password field found, look for login button
@@ -218,7 +219,6 @@ class SimpleRouterTester:
             
             for selector in button_selectors:
                 try:
-                    print(f"   Looking for button: {selector}")
                     elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for element in elements:
                         if element.is_displayed() and element.is_enabled():
@@ -232,12 +232,11 @@ class SimpleRouterTester:
                                 'login' in text or 'log in' in text or
                                 (value and ('login' in value or 'log in' in value))):
                                 login_button = element
-                                print(f"   ✅ Login button found: {text or value or selector}")
+                                print(f"   ✅ Login button found")
                                 break
                     if login_button:
                         break
-                except Exception as e:
-                    print(f"   ⚠️ Error finding button {selector}: {e}")
+                except Exception:
                     continue
         
         if not password_field:
@@ -432,11 +431,43 @@ class SimpleRouterTester:
                 confidence_score=0
             )
     
+    def load_targets_from_file(self, file_path: str) -> List[str]:
+        """Load targets from file"""
+        targets = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        targets.append(line)
+            print(f"📁 Loaded {len(targets)} targets from file")
+            return targets
+        except Exception as e:
+            print(f"❌ Error reading file {file_path}: {e}")
+            return []
+    
+    def load_targets(self, target_input: str) -> List[str]:
+        """Load targets from input (single target or file)"""
+        import os
+        
+        # Check if it's a file
+        if os.path.exists(target_input):
+            return self.load_targets_from_file(target_input)
+        else:
+            # Single target
+            return [target_input]
+    
     async def test_target(self, target: str):
-        """Test all passwords on target"""
+        """Test all passwords on single target"""
         print(f"\n🎯 Testing target: {target}")
-        print(f"🔐 Passwords to test: {self.password_list}")
+        print(f"🔐 Passwords: {self.password_list}")
         print("-" * 50)
+        
+        # Reset popup flags for each target
+        if hasattr(self, '_popup_detected'):
+            delattr(self, '_popup_detected')
+        if hasattr(self, '_popup_clicked'):
+            delattr(self, '_popup_clicked')
         
         results = []
         
@@ -459,21 +490,76 @@ class SimpleRouterTester:
             await asyncio.sleep(1)
         
         return results
+    
+    async def test_multiple_targets(self, targets: List[str]):
+        """Test multiple targets"""
+        if not targets:
+            print("❌ No targets to test")
+            return []
+        
+        print(f"\n🚀 BULK TESTING")
+        print(f"📊 Total targets: {len(targets)}")
+        print(f"🔐 Passwords per target: {len(self.password_list)}")
+        print("=" * 60)
+        
+        all_results = []
+        successful_targets = []
+        
+        for i, target in enumerate(targets, 1):
+            print(f"\n📋 TARGET {i}/{len(targets)}: {target}")
+            
+            target_results = await self.test_target(target)
+            all_results.extend(target_results)
+            
+            # Check if any password worked for this target
+            successful = [r for r in target_results if r.success]
+            if successful:
+                successful_targets.append({
+                    'target': target,
+                    'password': successful[0].password,
+                    'confidence': successful[0].confidence_score
+                })
+                print(f"✅ SUCCESS: {target} | Password: {successful[0].password}")
+            else:
+                print(f"❌ FAILED: {target} | No working password")
+            
+            # Brief pause between targets
+            if i < len(targets):
+                await asyncio.sleep(2)
+        
+        # Summary
+        print(f"\n" + "=" * 60)
+        print("BULK TESTING SUMMARY")
+        print("=" * 60)
+        
+        if successful_targets:
+            print(f"🎉 SUCCESSFUL TARGETS: {len(successful_targets)}")
+            for success in successful_targets:
+                print(f"   {success['target']} | {success['password']} | Score: {success['confidence']}")
+        else:
+            print("❌ No successful targets found")
+        
+        print(f"\nTotal targets tested: {len(targets)}")
+        print(f"Successful: {len(successful_targets)}")
+        print(f"Failed: {len(targets) - len(successful_targets)}")
+        if len(targets) > 0:
+            print(f"Success rate: {len(successful_targets)/len(targets)*100:.1f}%")
+        
+        return all_results
 
 def main():
     print("🚀 SIMPLE ROUTER PASSWORD TESTER")
     print("=" * 50)
-    print("Simplified version - No timeout issues")
+    print("Supports single targets and bulk file testing")
     print("=" * 50)
     
     parser = argparse.ArgumentParser(description='Simple Router Password Tester')
-    parser.add_argument('--target', '-t', required=True, help='Target IP or URL')
-    parser.add_argument('--visible', '-v', action='store_true', help='Show Chrome browser')
+    parser.add_argument('--target', '-t', required=True, 
+                       help='Target IP/URL or path to file with targets')
+    parser.add_argument('--visible', '-v', action='store_true', 
+                       help='Show Chrome browser')
     
     args = parser.parse_args()
-    
-    print(f"🎯 Target: {args.target}")
-    print(f"👁️ Visible: {args.visible}")
     
     tester = SimpleRouterTester(headless=not args.visible)
     
@@ -482,28 +568,43 @@ def main():
         return
     
     try:
-        results = asyncio.run(tester.test_target(args.target))
+        # Load targets (single or from file)
+        targets = tester.load_targets(args.target)
         
-        # Show final results
-        print("\n" + "=" * 50)
-        print("FINAL RESULTS")
-        print("=" * 50)
+        if not targets:
+            print("❌ No valid targets found")
+            return
         
-        successful = [r for r in results if r.success]
+        print(f"🎯 Targets: {len(targets)}")
+        print(f"👁️ Visible: {args.visible}")
         
-        if successful:
-            result = successful[0]
-            print(f"🎉 SUCCESS!")
-            print(f"Target: {result.target}")
-            print(f"Password: {result.password}")
-            print(f"Confidence: {result.confidence_score}")
-            print(f"Time: {result.response_time:.1f}s")
-            print(f"Details: {result.details}")
+        if len(targets) == 1:
+            # Single target
+            results = asyncio.run(tester.test_target(targets[0]))
+            
+            # Show final results
+            print("\n" + "=" * 50)
+            print("FINAL RESULTS")
+            print("=" * 50)
+            
+            successful = [r for r in results if r.success]
+            
+            if successful:
+                result = successful[0]
+                print(f"🎉 SUCCESS!")
+                print(f"Target: {result.target}")
+                print(f"Password: {result.password}")
+                print(f"Confidence: {result.confidence_score}")
+                print(f"Time: {result.response_time:.1f}s")
+                print(f"Details: {result.details}")
+            else:
+                print("❌ No working password found")
+                print("💡 All passwords failed verification")
+            
+            print(f"\nTotal tests: {len(results)}")
         else:
-            print("❌ No working password found")
-            print("💡 All passwords failed verification")
-        
-        print(f"\nTotal tests: {len(results)}")
+            # Multiple targets
+            results = asyncio.run(tester.test_multiple_targets(targets))
         
     except KeyboardInterrupt:
         print("\n⚠️ Testing interrupted by user")

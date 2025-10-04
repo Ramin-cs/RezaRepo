@@ -70,22 +70,19 @@ python router_password_tester.py -t "http://192.168.1.1" --mode chrome
 python router_password_tester.py -t "http://192.168.1.1" --visible
 ```
 
-#### نسخه ساده (بهبود یافته):
+#### نسخه نهایی (توصیه می‌شود):
 ```bash
-# نسخه ساده با timeout های بهتر
+# تست تک هدف
 python simple_router_tester.py -t "http://192.168.1.1"
+
+# تست چندین هدف از فایل
+python simple_router_tester.py -t "targets.txt"
 
 # نمایش Chrome برای مشاهده عملکرد
 python simple_router_tester.py -t "http://192.168.1.1" --visible
-```
 
-#### نسخه صبور (برای سایت‌های خیلی کند):
-```bash
-# نسخه فوق‌العاده صبور (120 ثانیه timeout)
-python patient_router_tester.py -t "http://192.168.1.1"
-
-# نمایش Chrome برای مشاهده کامل عملکرد
-python patient_router_tester.py -t "http://192.168.1.1" --visible
+# تست bulk با نمایش Chrome
+python simple_router_tester.py -t "targets.txt" --visible
 ```
 
 ### پسوردهای تست شده:
@@ -94,42 +91,55 @@ python patient_router_tester.py -t "http://192.168.1.1" --visible
 - `admin1`
 - `user`
 
-## 🔍 جریان کار (Flow) بهبود یافته:
+## 🔍 جریان کار (Flow) بهینه شده:
 
-1. **پاک کردن Session** قبلی برای شروع تازه 🆕
-2. **بارگذاری صفحه لاگین**
-3. **یافتن فیلد پسورد** (بدون یوزرنیم)
-4. **وارد کردن پسورد**
-5. **ارسال فرم**
-6. **مدیریت Popup های لاگین** (مثل "Only one device...") 🆕
-7. **انتظار برای پاسخ و navigation**
-8. **تشخیص Session Cookie** 🆕
-9. **تجزیه و تحلیل دقیق صفحه**
-10. **محاسبه امتیاز اطمینان**
-11. **تصمیم‌گیری نهایی**
+### تک هدف:
+1. **بارگذاری صفحه لاگین** با انتظار هوشمند
+2. **یافتن عناصر ورود** (فیلد پسورد + دکمه)
+3. **وارد کردن پسورد** (بدون یوزرنیم)
+4. **ارسال فرم**
+5. **مدیریت Popup های لاگین** (مثل "Only one device...")
+6. **انتظار برای navigation**
+7. **تجزیه و تحلیل صفحه مدیریت**
+8. **تصمیم‌گیری نهایی**
+
+### چندین هدف (Bulk):
+1. **خواندن فایل اهداف**
+2. **تست هر هدف** با جریان بالا
+3. **جمع‌آوری نتایج**
+4. **نمایش خلاصه کلی**
 
 ## 📊 مثال خروجی موفق:
 
+### تک هدف:
 ```
 🎉 SUCCESS!
 Target: http://192.168.1.1
-Password: admin
-Method: chrome
-Confidence: 85
-Time: 8.2s
-Details: HIGH CONFIDENCE management panel (score: 85)
+Password: JAMES1
+Confidence: 721
+Time: 45.2s
+Details: Management panel detected (score: 721)
 ```
 
-## 📊 مثال خروجی ناموفق:
-
+### چندین هدف:
 ```
-❌ No working password found
-💡 Make sure:
-   - Target is accessible
-   - Target has a web login interface
-   - One of the 4 passwords is correct
+🚀 BULK TESTING
+📊 Total targets: 5
+🔐 Passwords per target: 4
 
-Total tests: 8
+✅ SUCCESS: 192.168.1.1 | Password: admin
+❌ FAILED: 192.168.1.254 | No working password
+✅ SUCCESS: 10.0.0.1 | Password: JAMES1
+
+BULK TESTING SUMMARY
+🎉 SUCCESSFUL TARGETS: 2
+   192.168.1.1 | admin | Score: 650
+   10.0.0.1 | JAMES1 | Score: 721
+
+Total targets tested: 5
+Successful: 2
+Failed: 3
+Success rate: 40.0%
 ```
 
 ## 🛠️ تنظیمات Chrome:
