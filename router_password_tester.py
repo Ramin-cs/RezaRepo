@@ -65,6 +65,10 @@ class RouterPasswordTester:
             chrome_options.add_argument('--disable-features=TranslateUI')
             chrome_options.add_argument('--disable-ipc-flooding-protection')
             
+            # Clear session data for fresh start
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            
             self.driver = webdriver.Chrome(options=chrome_options)
             self.driver.set_page_load_timeout(20)
             self.driver.implicitly_wait(3)
@@ -78,6 +82,74 @@ class RouterPasswordTester:
             print(f"❌ Chrome error: {e}")
             self.driver = None
     
+    def clear_session(self, target_url: str):
+        """Clear all cookies and session data for fresh start"""
+        try:
+            print("🧹 Clearing session data...")
+            
+            # Navigate to target first to set domain
+            if not target_url.startswith(('http://', 'https://')):
+                url = f"http://{target_url}"
+            else:
+                url = target_url
+            
+            self.driver.get(url)
+            time.sleep(2)
+            
+            # Clear all cookies
+            self.driver.delete_all_cookies()
+            
+            # Clear local storage and session storage
+            self.driver.execute_script("window.localStorage.clear();")
+            self.driver.execute_script("window.sessionStorage.clear();")
+            
+            # Clear cache (if possible)
+            self.driver.execute_script("window.location.reload(true);")
+            
+            time.sleep(2)
+            print("✅ Session cleared")
+            
+        except Exception as e:
+            print(f"⚠️ Session clear error: {e}")
+    
+    def check_session_cookies(self) -> Tuple[bool, List[str]]:
+        """Check for session cookies that indicate successful login"""
+        session_indicators = []
+        has_session = False
+        
+        try:
+            cookies = self.driver.get_cookies()
+            
+            # Look for common session cookie names
+            session_cookie_names = [
+                'sessionid', 'session', 'sid', 'jsessionid',
+                'phpsessid', 'aspsessionid', 'auth', 'token',
+                'login', 'user', 'admin', 'authenticated'
+            ]
+            
+            for cookie in cookies:
+                cookie_name = cookie.get('name', '').lower()
+                cookie_value = cookie.get('value', '')
+                
+                # Check for session cookie names
+                for session_name in session_cookie_names:
+                    if session_name in cookie_name and cookie_value:
+                        has_session = True
+                        session_indicators.append(f"Session cookie: {cookie['name']}={cookie_value[:20]}...")
+                        break
+                
+                # Check for non-empty valuable cookies
+                if len(cookie_value) > 10 and not cookie_value.startswith('deleted'):
+                    session_indicators.append(f"Cookie: {cookie['name']}={cookie_value[:15]}...")
+            
+            if has_session:
+                print(f"✅ Session cookies detected: {len([c for c in cookies if c.get('value')])}")
+            
+        except Exception as e:
+            session_indicators.append(f"Cookie check error: {e}")
+        
+        return has_session, session_indicators
+    
     def close_chrome(self):
         """Close Chrome driver"""
         if self.driver:
@@ -88,39 +160,123 @@ class RouterPasswordTester:
                 pass
     
     def handle_alerts_and_popups(self):
-        """Handle any alerts or popups"""
+        """Enhanced popup handling including login confirmation popup"""
+        handled = False
+        
         try:
-            # Handle JavaScript alerts
+            # Handle JavaScript alerts first
             try:
-                WebDriverWait(self.driver, 2).until(EC.alert_is_present())
+                WebDriverWait(self.driver, 3).until(EC.alert_is_present())
                 alert = self.driver.switch_to.alert
+                alert_text = alert.text.lower()
+                print(f"🚨 Alert detected: {alert_text[:50]}...")
                 alert.accept()
                 time.sleep(1)
-                return True
+                handled = True
             except TimeoutException:
                 pass
             
-            # Handle modal dialogs
-            popup_selectors = [
-                "button[onclick*='ok']", "button[onclick*='confirm']",
-                "input[type='button'][value*='ok']", ".modal button", ".popup button"
+            # Handle specific login confirmation popup
+            login_popup_texts = [
+                "only one device can log in at a time",
+                "do you want to continue and force",
+                "force the other device to log out"
             ]
             
-            for selector in popup_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for element in elements:
-                        if element.is_displayed() and element.is_enabled():
-                            element.click()
-                            time.sleep(0.5)
-                            return True
-                except:
-                    continue
-                    
+            page_source = self.driver.page_source.lower()
+            popup_detected = any(text in page_source for text in login_popup_texts)
+            
+            if popup_detected:
+                print("🔍 Login confirmation popup detected!")
+                
+                # Look for "Log in" button specifically
+                login_button_selectors = [
+                    "button:contains('Log in')",
+                    "input[value*='Log in']",
+                    "button[onclick*='login']",
+                    "input[type='button'][value*='Log in']",
+                    ".btn:contains('Log in')",
+                    "[onclick*='forceLogin']",
+                    "[onclick*='force']"
+                ]
+                
+                for selector in login_button_selectors:
+                    try:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        for element in elements:
+                            if element.is_displayed() and element.is_enabled():
+                                element_text = element.text.lower()
+                                element_value = element.get_attribute('value')
+                                if element_value:
+                                    element_value = element_value.lower()
+                                
+                                if ('log in' in element_text or 
+                                    (element_value and 'log in' in element_value) or
+                                    'continue' in element_text or
+                                    'force' in element_text):
+                                    print(f"✅ Clicking login confirmation button: {element_text or element_value}")
+                                    element.click()
+                                    time.sleep(2)
+                                    handled = True
+                                    break
+                        if handled:
+                            break
+                    except Exception as e:
+                        continue
+                
+                # Fallback: look for any button with "Log in" text
+                if not handled:
+                    try:
+                        buttons = self.driver.find_elements(By.TAG_NAME, "button")
+                        inputs = self.driver.find_elements(By.CSS_SELECTOR, "input[type='button'], input[type='submit']")
+                        
+                        all_elements = buttons + inputs
+                        
+                        for element in all_elements:
+                            if element.is_displayed() and element.is_enabled():
+                                text = element.text.lower()
+                                value = element.get_attribute('value')
+                                if value:
+                                    value = value.lower()
+                                
+                                if ('log in' in text or 
+                                    (value and 'log in' in value) or
+                                    'continue' in text or
+                                    'force' in text):
+                                    print(f"✅ Clicking fallback login button: {text or value}")
+                                    element.click()
+                                    time.sleep(2)
+                                    handled = True
+                                    break
+                    except Exception as e:
+                        print(f"⚠️ Fallback button search error: {e}")
+            
+            # Handle other modal dialogs
+            if not handled:
+                popup_selectors = [
+                    "button[onclick*='ok']", "button[onclick*='confirm']",
+                    "input[type='button'][value*='ok']", "input[type='button'][value*='confirm']",
+                    ".modal button", ".popup button", ".dialog button"
+                ]
+                
+                for selector in popup_selectors:
+                    try:
+                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                        for element in elements:
+                            if element.is_displayed() and element.is_enabled():
+                                element.click()
+                                time.sleep(0.5)
+                                handled = True
+                                break
+                        if handled:
+                            break
+                    except:
+                        continue
+                        
         except Exception as e:
             print(f"⚠️ Popup handling error: {e}")
         
-        return False
+        return handled
     
     def wait_for_page_load(self, timeout=15):
         """Wait for page to fully load"""
@@ -211,6 +367,17 @@ class RouterPasswordTester:
             print(f"   Original: {original_url}")
             print(f"   Current: {current_url}")
             print(f"   Title: {current_title[:50]}...")
+            
+            # CRITICAL CHECK 0: Session cookies (Very Important)
+            has_session, session_info = self.check_session_cookies()
+            if has_session:
+                confidence_score += 40  # Big bonus for session
+                verification_steps.append("✅ CRITICAL: Session cookies detected")
+                verification_steps.extend(session_info[:3])  # Add first 3 cookie info
+                print("   ✅ CRITICAL: Session cookies detected")
+            else:
+                verification_steps.append("⚠️ No session cookies found")
+                print("   ⚠️ No session cookies found")
             
             # CRITICAL CHECK 1: Password field should be GONE (Most Important)
             password_field_present = False
@@ -344,17 +511,21 @@ class RouterPasswordTester:
             print(f"   📊 Final confidence score: {confidence_score}")
             print(f"   📊 Strong: {strong_score}, Medium: {medium_score}, Negative: {negative_score}")
             
-            # DECISION LOGIC - Very strict criteria
-            if password_field_present:
-                return False, f"LOGIN FAILED - Password field still present (score: {confidence_score})", confidence_score, verification_steps
-            elif confidence_score >= 80:
+            # DECISION LOGIC - Enhanced with session detection
+            if password_field_present and not has_session:
+                return False, f"LOGIN FAILED - Password field still present, no session (score: {confidence_score})", confidence_score, verification_steps
+            elif has_session and confidence_score >= 60:
+                return True, f"SESSION CONFIRMED - Management panel access (score: {confidence_score})", confidence_score, verification_steps
+            elif confidence_score >= 100:
                 return True, f"HIGH CONFIDENCE management panel (score: {confidence_score})", confidence_score, verification_steps
-            elif confidence_score >= 60 and strong_score >= 25:
+            elif confidence_score >= 80 and strong_score >= 30:
                 return True, f"GOOD CONFIDENCE with strong indicators (score: {confidence_score})", confidence_score, verification_steps
-            elif confidence_score >= 45 and url_changed and strong_score >= 20:
+            elif confidence_score >= 60 and url_changed and strong_score >= 25:
                 return True, f"MODERATE CONFIDENCE with navigation (score: {confidence_score})", confidence_score, verification_steps
-            elif confidence_score >= 35 and strong_score >= 40 and negative_score <= 20:
-                return True, f"ACCEPTABLE with strong indicators (score: {confidence_score})", confidence_score, verification_steps
+            elif has_session and confidence_score >= 40 and strong_score >= 20:
+                return True, f"SESSION DETECTED with management indicators (score: {confidence_score})", confidence_score, verification_steps
+            elif confidence_score >= 50 and strong_score >= 50 and negative_score <= 30:
+                return True, f"STRONG INDICATORS with minimal negatives (score: {confidence_score})", confidence_score, verification_steps
             else:
                 return False, f"INSUFFICIENT CONFIDENCE - Likely still on login page (score: {confidence_score})", confidence_score, verification_steps
             
@@ -384,12 +555,15 @@ class RouterPasswordTester:
         try:
             print(f"🔑 Testing password: {password}")
             
-            # Step 1: Load login page
+            # Step 1: Clear session for fresh start
             if not target.startswith(('http://', 'https://')):
                 url = f"http://{target}"
             else:
                 url = target
             
+            self.clear_session(url)
+            
+            # Step 2: Load login page
             self.driver.get(url)
             self.wait_for_page_load()
             
@@ -397,7 +571,7 @@ class RouterPasswordTester:
             original_title = self.driver.title
             verification_steps.append(f"Loaded login page: {original_url}")
             
-            # Step 2: Handle initial popups
+            # Step 3: Handle initial popups
             self.handle_alerts_and_popups()
             
             # Step 3: Find login elements
@@ -432,15 +606,25 @@ class RouterPasswordTester:
                 verification_steps.append("Form submitted with Enter")
                 print("   Form submitted with Enter")
             
-            # Step 6: Wait for response (CRITICAL)
-            time.sleep(5)  # Increased wait time
+            # Step 6: Wait for response and handle popups (CRITICAL)
+            print("⏳ Waiting for login response...")
+            time.sleep(3)  # Initial wait
             
-            # Handle post-login popups
+            # Handle immediate popups (like login confirmation)
+            popup_handled = self.handle_alerts_and_popups()
+            if popup_handled:
+                print("✅ Login popup handled, waiting for navigation...")
+                time.sleep(4)  # Wait for navigation after popup
+            
+            # Additional popup check
             self.handle_alerts_and_popups()
             
             # Wait for page to stabilize
-            self.wait_for_page_load(timeout=12)
-            time.sleep(3)  # Additional wait for dynamic content
+            self.wait_for_page_load(timeout=15)
+            time.sleep(2)  # Final wait for dynamic content
+            
+            # One more popup check after page load
+            self.handle_alerts_and_popups()
             
             # Step 7: PRECISE VERIFICATION
             is_management, reason, confidence, verify_steps = self.analyze_management_panel(original_url, original_title)

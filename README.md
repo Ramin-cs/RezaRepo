@@ -4,6 +4,9 @@
 
 ### ✅ مشکلات حل شده:
 - **تشخیص دقیق صفحه مدیریت** با سیستم امتیازبندی پیشرفته
+- **مدیریت popup های لاگین** - تشخیص و کلیک روی "Log in" 
+- **تشخیص Session Cookie** - نشانه قوی از ورود موفق
+- **پاک کردن Session** قبل از هر تست برای شروع تازه
 - **فقط تست پسورد** (بدون یوزرنیم)
 - **توقف فوری** پس از پیدا کردن پسورد درست
 - **وریفیکیشن دوگانه** با HTTP و Chrome
@@ -28,22 +31,25 @@
 - `invalid password`: **-20 امتیاز**
 
 #### بونوس امتیازها:
+- **تشخیص Session Cookie**: **+40 امتیاز** 🆕
 - **حذف فیلد پسورد**: **+30 امتیاز**
 - **تغییر URL**: **+20 امتیاز**
 - **تغییر عنوان صفحه**: **+15 امتیاز**
 - **عناصر مدیریتی**: **+15 امتیاز**
 
-### 🎯 معیارهای تصمیم‌گیری:
+### 🎯 معیارهای تصمیم‌گیری (بهبود یافته):
 
 ```python
-if password_field_present:
+if password_field_present and not has_session:
     return False  # حتماً ناموفق
-elif confidence_score >= 80:
+elif has_session and confidence_score >= 60:
+    return True   # Session تأیید شده 🆕
+elif confidence_score >= 100:
+    return True   # اطمینان خیلی بالا
+elif confidence_score >= 80 and strong_score >= 30:
     return True   # اطمینان بالا
-elif confidence_score >= 60 and strong_score >= 25:
-    return True   # اطمینان خوب
-elif confidence_score >= 45 and url_changed and strong_score >= 20:
-    return True   # اطمینان متوسط
+elif has_session and confidence_score >= 40:
+    return True   # Session با نشانه‌های متوسط 🆕
 else:
     return False  # ناکافی
 ```
@@ -71,16 +77,19 @@ python router_password_tester.py -t "http://192.168.1.1" --visible
 - `admin1`
 - `user`
 
-## 🔍 جریان کار (Flow):
+## 🔍 جریان کار (Flow) بهبود یافته:
 
-1. **بارگذاری صفحه لاگین**
-2. **یافتن فیلد پسورد** (بدون یوزرنیم)
-3. **وارد کردن پسورد**
-4. **ارسال فرم**
-5. **انتظار برای پاسخ** (5 ثانیه)
-6. **تجزیه و تحلیل دقیق صفحه**
-7. **محاسبه امتیاز اطمینان**
-8. **تصمیم‌گیری نهایی**
+1. **پاک کردن Session** قبلی برای شروع تازه 🆕
+2. **بارگذاری صفحه لاگین**
+3. **یافتن فیلد پسورد** (بدون یوزرنیم)
+4. **وارد کردن پسورد**
+5. **ارسال فرم**
+6. **مدیریت Popup های لاگین** (مثل "Only one device...") 🆕
+7. **انتظار برای پاسخ و navigation**
+8. **تشخیص Session Cookie** 🆕
+9. **تجزیه و تحلیل دقیق صفحه**
+10. **محاسبه امتیاز اطمینان**
+11. **تصمیم‌گیری نهایی**
 
 ## 📊 مثال خروجی موفق:
 
