@@ -43,6 +43,7 @@ class SimpleWebPanel:
         # Simple data storage
         self.targets = []
         self.active_tasks = {}
+        self.completed_tasks = {}  # Store completed tasks for report access
         
         # Setup routes
         self._setup_routes()
@@ -231,8 +232,16 @@ class SimpleWebPanel:
         def api_results(task_id):
             """Get reconnaissance results"""
             try:
+                # Check active tasks first
                 if task_id in self.active_tasks:
                     task = self.active_tasks[task_id]
+                    return jsonify({
+                        'success': True,
+                        'task': task
+                    })
+                # Check completed tasks
+                elif task_id in self.completed_tasks:
+                    task = self.completed_tasks[task_id]
                     return jsonify({
                         'success': True,
                         'task': task
@@ -245,23 +254,31 @@ class SimpleWebPanel:
         
         @self.app.route('/api/results-by-target/<target>', methods=['GET'])
         def api_results_by_target(target):
-            """Get results"""
+            """Get results by target"""
             try:
-                # Simple results
-                results = {
-                    'target': target,
-                    'phases': {
-                        'phase_1': {'status': 'completed', 'results': {'ips_found': 1}},
-                        'phase_2': {'status': 'completed', 'results': {'subdomains_found': 5}}
-                    },
-                    'summary': {
-                        'total_phases': 2,
-                        'completed_phases': 2,
-                        'subdomains_found': 5,
-                        'vulnerabilities_found': 0
-                    }
-                }
-                return jsonify({'success': True, 'results': results})
+                # Find the most recent completed task for this target
+                latest_task = None
+                latest_time = None
+                
+                # Check completed tasks first
+                for task_id, task in self.completed_tasks.items():
+                    if task['target'] == target:
+                        if latest_time is None or task['start_time'] > latest_time:
+                            latest_task = task
+                            latest_time = task['start_time']
+                
+                # Check active tasks if no completed task found
+                if latest_task is None:
+                    for task_id, task in self.active_tasks.items():
+                        if task['target'] == target:
+                            if latest_time is None or task['start_time'] > latest_time:
+                                latest_task = task
+                                latest_time = task['start_time']
+                
+                if latest_task:
+                    return jsonify({'success': True, 'results': latest_task})
+                else:
+                    return jsonify({'success': False, 'error': 'No results found for this target'})
             except Exception as e:
                 return jsonify({'success': False, 'error': str(e)})
         
@@ -506,10 +523,11 @@ class SimpleWebPanel:
             print(f"✅ Task {task_id} completed for {target}")
             print(f"📊 Summary: {len(phases)} phases, {self._count_total_findings(self.active_tasks[task_id]['results'])} total findings")
             
-            # Remove completed task from active tasks
+            # Store completed task for report access
             if task_id in self.active_tasks:
+                self.completed_tasks[task_id] = self.active_tasks[task_id]
                 del self.active_tasks[task_id]
-                print(f"🗑️ Task {task_id} removed from active tasks")
+                print(f"🗑️ Task {task_id} moved to completed tasks")
             
         except Exception as e:
             error_msg = f"Error in task {task_id}: {str(e)}"

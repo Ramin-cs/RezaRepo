@@ -30,16 +30,32 @@ class Phase6ParameterDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        # Enhanced parameter wordlist with 500+ entries based on research
+        # Enhanced parameter wordlist with 1000+ entries based on bug bounty research
         self.parameter_wordlist = [
-            # User and authentication
-            'id', 'user_id', 'userid', 'username', 'user_name', 'user-name', 'user',
-            'email', 'mail', 'phone', 'mobile', 'name', 'firstname', 'lastname', 'fullname',
-            'password', 'pass', 'pwd', 'confirm_password', 'confirm-password', 'new_password',
-            'old_password', 'current_password', 'token', 'access_token', 'refresh_token',
-            'api_key', 'apikey', 'api-key', 'secret', 'key', 'session_id', 'sessionid',
-            'session', 'auth', 'authentication', 'login', 'logout', 'signin', 'signout',
-            'register', 'registration', 'signup', 'verification', 'verification_code',
+            # Critical authentication parameters (High Priority for Bug Bounty)
+            'id', 'user_id', 'userid', 'userId', 'user-id', 'username', 'user_name', 'user-name', 'user',
+            'email', 'mail', 'e-mail', 'email_address', 'email-address', 'phone', 'mobile', 'phone_number',
+            'name', 'firstname', 'first_name', 'first-name', 'lastname', 'last_name', 'last-name', 'fullname',
+            'password', 'pass', 'pwd', 'passwd', 'confirm_password', 'confirm-password', 'confirmPassword',
+            'new_password', 'new-password', 'newPassword', 'old_password', 'old-password', 'oldPassword',
+            'current_password', 'current-password', 'currentPassword', 'token', 'access_token', 'access-token',
+            'accessToken', 'refresh_token', 'refresh-token', 'refreshToken', 'api_key', 'apikey', 'api-key',
+            'apiKey', 'secret', 'key', 'secret_key', 'secret-key', 'secretKey', 'session_id', 'sessionid',
+            'session-id', 'sessionId', 'session', 'auth', 'authentication', 'login', 'logout', 'signin',
+            'signout', 'sign_in', 'sign-out', 'register', 'registration', 'signup', 'sign_up', 'verification',
+            'verification_code', 'verification-code', 'verificationCode', 'otp', 'two_factor', '2fa',
+            
+            # Critical injection parameters (High Priority for Bug Bounty)
+            'query', 'search', 'filter', 'where', 'select', 'insert', 'update', 'delete', 'union',
+            'order', 'orderby', 'order_by', 'order-by', 'sort', 'group', 'having', 'limit', 'offset',
+            'table', 'column', 'field', 'value', 'data', 'input', 'output', 'result', 'response',
+            'request', 'method', 'action', 'operation', 'function', 'procedure', 'callback',
+            
+            # File upload and path traversal parameters (Critical for Bug Bounty)
+            'file', 'filename', 'file_name', 'file-name', 'filepath', 'file_path', 'file-path',
+            'path', 'dir', 'directory', 'folder', 'upload', 'download', 'save', 'load', 'import',
+            'export', 'backup', 'restore', 'copy', 'move', 'delete', 'remove', 'rename',
+            'url', 'uri', 'link', 'href', 'src', 'source', 'destination', 'target', 'destination',
             
             # Pagination and filtering
             'page', 'p', 'offset', 'limit', 'size', 'count', 'per_page', 'per-page',
@@ -111,7 +127,42 @@ class Phase6ParameterDiscovery:
         }
         
         try:
-            # Technique 1: JavaScript Analysis
+            # Technique 1: Critical Parameter Discovery (High Priority for Bug Bounty)
+            print("   🎯 Critical Parameter Discovery...")
+            results['techniques_used'].append('Critical Parameter Discovery')
+            
+            critical_parameters = [
+                'id', 'user_id', 'username', 'email', 'password', 'token', 'api_key', 'secret',
+                'query', 'search', 'filter', 'file', 'filename', 'path', 'url', 'callback',
+                'debug', 'test', 'admin', 'config', 'env', 'backup', 'database', 'sql'
+            ]
+            
+            critical_param_findings = []
+            for param in critical_parameters:
+                for value in ['1', 'test', 'admin', 'debug', 'true', 'false', 'null', 'undefined']:
+                    try:
+                        full_url = f"https://{target}/?{param}={value}"
+                        response = requests.get(full_url, headers=self.headers, timeout=5, allow_redirects=False)
+                        
+                        if response.status_code not in [404, 400]:
+                            critical_param_findings.append({
+                                'parameter': param,
+                                'value': value,
+                                'url': full_url,
+                                'status_code': response.status_code,
+                                'title': self._extract_title(response.text),
+                                'content_length': len(response.content),
+                                'server': response.headers.get('Server', 'Unknown'),
+                                'priority': 'HIGH' if response.status_code in [200, 403, 401] else 'MEDIUM'
+                            })
+                            print(f"   🔥 Critical Param: {param}={value} ({response.status_code}) - {len(response.content)} bytes")
+                            break  # Found one working value for this parameter
+                    except:
+                        pass
+            
+            results['critical_parameters'] = critical_param_findings
+            
+            # Technique 2: JavaScript Analysis
             print("   📜 JavaScript Analysis...")
             results['techniques_used'].append('JavaScript Analysis')
             
@@ -375,6 +426,47 @@ class Phase6ParameterDiscovery:
                 results['errors'].append(f"Wayback Machine scan failed: {str(e)}")
             
             # Technique 6: URL Parameters Analysis
+            print("   🔗 Advanced Parameter Fuzzing...")
+            results['techniques_used'].append('Advanced Parameter Fuzzing')
+            
+            # Common injection payloads for parameter testing
+            injection_payloads = [
+                "'", '"', '`', '\\', '/', ';', '|', '&', '&&', '||', '`', '$(', '${', '{{',
+                '<script>', 'javascript:', 'vbscript:', 'data:', 'file:', 'ftp:', 'ldap:',
+                'UNION SELECT', 'OR 1=1', 'AND 1=1', 'OR 1=1--', 'AND 1=1--',
+                '../../../../etc/passwd', '..\\..\\..\\..\\windows\\system32\\drivers\\etc\\hosts',
+                '{{7*7}}', '${7*7}', '<%=7*7%>', '#{7*7}', '{{config}}', '${config}',
+                'test', 'admin', 'root', 'user', 'guest', 'anonymous', 'null', 'undefined',
+                'true', 'false', '1', '0', '-1', '999999', '999999999', '0x1', '0x0'
+            ]
+            
+            fuzzing_results = []
+            for param in ['id', 'user_id', 'username', 'email', 'query', 'search', 'filter', 'file', 'path']:
+                for payload in injection_payloads[:10]:  # Test first 10 payloads per parameter
+                    try:
+                        full_url = f"https://{target}/?{param}={payload}"
+                        response = requests.get(full_url, headers=self.headers, timeout=5, allow_redirects=False)
+                        
+                        # Check for interesting responses
+                        if (response.status_code not in [404, 400] or 
+                            len(response.content) != 0 or 
+                            any(keyword in response.text.lower() for keyword in ['error', 'warning', 'exception', 'sql', 'mysql', 'database'])):
+                            
+                            fuzzing_results.append({
+                                'parameter': param,
+                                'payload': payload,
+                                'url': full_url,
+                                'status_code': response.status_code,
+                                'content_length': len(response.content),
+                                'server': response.headers.get('Server', 'Unknown'),
+                                'interesting': any(keyword in response.text.lower() for keyword in ['error', 'warning', 'exception', 'sql', 'mysql', 'database'])
+                            })
+                            print(f"   🎯 Fuzzing: {param}={payload} ({response.status_code}) - {len(response.content)} bytes")
+                    except:
+                        pass
+            
+            results['parameter_fuzzing'] = fuzzing_results
+            
             print("   🔗 URL Parameters Analysis...")
             results['techniques_used'].append('URL Parameters Analysis')
             

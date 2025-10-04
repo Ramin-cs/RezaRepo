@@ -24,19 +24,71 @@ class Phase5DirectoryDiscovery:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
-        # Enhanced directory wordlist with 1000+ entries based on research
+        # Enhanced directory wordlist with 2000+ entries based on bug bounty research
         self.directory_wordlist = [
-            # Common admin directories
-            '/admin', '/administrator', '/login', '/dashboard', '/panel', '/control',
-            '/manage', '/management', '/admin-panel', '/adminpanel', '/admin_area',
-            '/adminarea', '/admin-login', '/adminlogin', '/admin_area/admin.php',
-            '/admin_area/login.php', '/admin/controlpanel', '/admin.html',
-            '/admin/login.html', '/admin/account.html', '/admin/index.html',
+            # Critical admin directories (High Priority for Bug Bounty)
+            '/admin', '/administrator', '/admin.php', '/admin.html', '/admin/', '/admin/login',
+            '/admin/login.php', '/admin/dashboard', '/admin/panel', '/admin/control',
+            '/admin/manage', '/admin/management', '/admin/index.php', '/admin/index.html',
+            '/administrator/', '/administrator/login', '/administrator/dashboard',
+            '/administrator/index.php', '/administrator/index.html', '/administrator/admin',
             
-            # API and services
-            '/api', '/api/v1', '/api/v2', '/api/v3', '/v1', '/v2', '/v3',
-            '/rest', '/restapi', '/graphql', '/webhook', '/webhooks', '/callback',
-            '/oauth', '/oauth2', '/auth', '/authentication', '/jwt', '/token',
+            # Login and authentication pages
+            '/login', '/login.php', '/login.html', '/signin', '/signin.php', '/signin.html',
+            '/auth', '/auth/login', '/auth/signin', '/authentication', '/authenticate',
+            '/user/login', '/user/signin', '/account/login', '/account/signin',
+            '/panel/login', '/panel/signin', '/dashboard/login', '/dashboard/signin',
+            '/portal/login', '/portal/signin', '/system/login', '/system/signin',
+            
+            # Dashboard and control panels
+            '/dashboard', '/dashboard/', '/dashboard.php', '/dashboard.html',
+            '/panel', '/panel/', '/panel.php', '/panel.html', '/control-panel',
+            '/control-panel/', '/control-panel.php', '/control-panel.html',
+            '/control', '/control/', '/control.php', '/control.html', '/controlpanel',
+            '/controlpanel/', '/controlpanel.php', '/controlpanel.html',
+            
+            # Management interfaces
+            '/manage', '/manage/', '/manage.php', '/manage.html', '/management',
+            '/management/', '/management.php', '/management.html', '/manager',
+            '/manager/', '/manager.php', '/manager.html', '/admin-panel',
+            '/admin-panel/', '/admin-panel.php', '/admin-panel.html', '/adminpanel',
+            '/adminpanel/', '/adminpanel.php', '/adminpanel.html', '/admin_area',
+            '/admin_area/', '/admin_area/admin.php', '/admin_area/login.php',
+            
+            # API endpoints (Critical for Bug Bounty)
+            '/api', '/api/', '/api/v1', '/api/v2', '/api/v3', '/api/v4', '/api/version',
+            '/api/docs', '/api/documentation', '/api/swagger', '/api/openapi',
+            '/api/health', '/api/status', '/api/info', '/api/version', '/api/test',
+            '/v1', '/v1/', '/v2', '/v2/', '/v3', '/v3/', '/rest', '/rest/',
+            '/restapi', '/restapi/', '/graphql', '/graphql/', '/graphiql',
+            '/webhook', '/webhook/', '/webhooks', '/webhooks/', '/callback',
+            '/callback/', '/callbacks', '/callbacks/', '/oauth', '/oauth/',
+            '/oauth2', '/oauth2/', '/auth', '/auth/', '/authentication',
+            '/authentication/', '/jwt', '/jwt/', '/token', '/token/',
+            '/tokens', '/tokens/', '/refresh', '/refresh/', '/revoke',
+            
+            # Critical configuration files (High Priority)
+            '/config', '/config/', '/config.php', '/config.inc.php', '/config.inc',
+            '/configuration', '/configuration/', '/configuration.php', '/settings',
+            '/settings/', '/settings.php', '/options', '/options/', '/options.php',
+            '/preferences', '/preferences/', '/preferences.php', '/setup',
+            '/setup/', '/setup.php', '/install', '/install/', '/install.php',
+            '/installation', '/installation/', '/installation.php', '/upgrade',
+            '/upgrade/', '/upgrade.php', '/update', '/update/', '/update.php',
+            '/web.config', '/app.config', '/application.yml', '/application.properties',
+            '/application.conf', '/app.conf', '/server.conf', '/nginx.conf',
+            '/apache.conf', '/httpd.conf', '/.htaccess', '/.htpasswd',
+            
+            # Database and backup files (Critical for Bug Bounty)
+            '/backup', '/backup/', '/backups', '/backups/', '/bak', '/bak/',
+            '/old', '/old/', '/archive', '/archive/', '/archives', '/archives/',
+            '/backup.sql', '/backup.zip', '/backup.tar', '/backup.tar.gz',
+            '/backup.rar', '/backup.7z', '/database.sql', '/db.sql', '/mysql.sql',
+            '/dump.sql', '/export.sql', '/import.sql', '/data.sql', '/sql',
+            '/sql/', '/sql/dump', '/sql/backup', '/database', '/database/',
+            '/db', '/db/', '/mysql', '/mysql/', '/postgres', '/postgres/',
+            '/postgresql', '/postgresql/', '/mongo', '/mongo/', '/mongodb',
+            '/mongodb/', '/redis', '/redis/', '/elasticsearch', '/elasticsearch/',
             '/swagger', '/swagger-ui', '/swagger-ui.html', '/api-docs', '/docs',
             '/documentation', '/openapi.json', '/swagger.json', '/api.json',
             
@@ -168,9 +220,44 @@ class Phase5DirectoryDiscovery:
         }
         
         try:
-            # Technique 1: Comprehensive Directory Discovery
+            # Technique 1: Comprehensive Directory Discovery with Bug Bounty Focus
             print("   📁 Comprehensive Directory Discovery...")
             results['techniques_used'].append('Comprehensive Directory Discovery')
+            
+            # Technique 1.1: Critical Path Discovery (High Priority for Bug Bounty)
+            print("   🎯 Critical Path Discovery...")
+            results['techniques_used'].append('Critical Path Discovery')
+            critical_paths = [
+                '/admin', '/administrator', '/login', '/dashboard', '/panel', '/manage',
+                '/api', '/api/v1', '/api/v2', '/config', '/backup', '/database',
+                '/.env', '/.git', '/.svn', '/robots.txt', '/sitemap.xml',
+                '/wp-admin', '/wp-login.php', '/wp-config.php', '/administrator',
+                '/phpmyadmin', '/adminer', '/pma', '/mysql', '/phpinfo.php'
+            ]
+            
+            critical_findings = []
+            for path in critical_paths:
+                try:
+                    url = f"https://{target}{path}"
+                    response = requests.get(url, headers=self.headers, timeout=5, allow_redirects=False)
+                    
+                    if response.status_code in [200, 301, 302, 403, 401]:
+                        critical_findings.append({
+                            'path': path,
+                            'url': url,
+                            'status_code': response.status_code,
+                            'title': self._extract_title(response.text),
+                            'content_length': len(response.content),
+                            'server': response.headers.get('Server', 'Unknown'),
+                            'content_type': response.headers.get('Content-Type', 'Unknown'),
+                            'location': response.headers.get('Location', '') if response.status_code in [301, 302] else '',
+                            'priority': 'HIGH' if response.status_code in [200, 403, 401] else 'MEDIUM'
+                        })
+                        print(f"   🔥 Critical: {path} ({response.status_code}) - {len(response.content)} bytes")
+                except:
+                    pass
+            
+            results['critical_paths'] = critical_findings
             
             # Extended directory wordlist
             extended_directories = self.directory_wordlist + [

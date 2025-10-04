@@ -396,6 +396,11 @@
                 
                 addToOutput(`🎉 Reconnaissance completed! Found ${data.summary?.total_findings || Object.keys(phaseResults).length} findings`, 'success');
                 
+                // Redirect to report page after 2 seconds
+                setTimeout(function() {
+                    window.location.href = `/report?target=${encodeURIComponent(data.target)}`;
+                }, 2000);
+                
                 // Reset current task
                 currentTaskId = null;
                 
