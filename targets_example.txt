@@ -1,0 +1,12 @@
+# Example targets file
+# Lines starting with # are comments and will be ignored
+# Each line should contain one target (IP or URL)
+
+192.168.1.1
+192.168.1.254
+192.168.0.1
+10.0.0.1
+http://192.168.1.1:8080
+https://router.local
+172.16.1.1
+192.168.2.1
