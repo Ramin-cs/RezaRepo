@@ -122,7 +122,7 @@ class SimpleRouterTester:
                                     print(f"✅ Clicking login confirmation")
                                     self._popup_clicked = True
                                 element.click()
-                                time.sleep(3)
+                                time.sleep(1)  # Reduced from 3 to 1 second
                                 handled = True
                                 break
                     except Exception:
@@ -365,33 +365,33 @@ class SimpleRouterTester:
             password_field.send_keys(password)
             verification_steps.append("Password entered")
             
-            # Submit form
+            # Submit form quickly
             if login_button:
+                print("   Login button clicked")
                 login_button.click()
                 verification_steps.append("Login button clicked")
-                print("   Login button clicked")
             else:
+                print("   Form submitted with Enter")
                 password_field.send_keys(Keys.RETURN)
                 verification_steps.append("Form submitted with Enter")
-                print("   Form submitted with Enter")
             
             # Smart waiting for response
             print("⏳ Waiting for login response...")
-            time.sleep(6)  # Initial wait for server response
+            time.sleep(4)  # Reduced initial wait from 6 to 4 seconds
             
             # Check for popup multiple times
             for i in range(3):
                 popup_handled = self.handle_login_popup()
                 if popup_handled:
                     print(f"✅ Login popup handled (attempt {i+1})")
-                    time.sleep(5)  # Wait for navigation after popup
+                    time.sleep(3)  # Reduced from 5 to 3 seconds
                     break
-                time.sleep(2)
+                time.sleep(1)  # Reduced from 2 to 1 second
             
             # Wait for page to stabilize after login
             print("⏳ Waiting for page to stabilize...")
             self.wait_for_page_load(timeout=30)
-            time.sleep(3)  # Additional wait for dynamic content
+            time.sleep(2)  # Reduced from 3 to 2 seconds
             
             # Check result
             is_management, reason, confidence = self.check_management_panel(original_url)
