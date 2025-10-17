@@ -291,7 +291,7 @@ class SubdomainHunter:
             for protocol in protocols:
                 try:
                     url = f"{protocol}://{subdomain}"
-                    response = self.session.get(url, timeout=10, verify=False, allow_redirects=True)
+                    response = self.session.get(url, timeout=5, verify=False, allow_redirects=True)
                     status_code = response.status_code
                     
                     # Categorize by status code
@@ -324,8 +324,8 @@ class SubdomainHunter:
                     continue
             return None
         
-        # Check all found subdomains
-        with ThreadPoolExecutor(max_workers=20) as executor:
+        # Check all found subdomains with faster timeout and more threads
+        with ThreadPoolExecutor(max_workers=30) as executor:
             futures = [executor.submit(check_subdomain_status, sub) for sub in self.found_subdomains]
             for future in as_completed(futures):
                 future.result()
@@ -724,7 +724,7 @@ class ProfessionalRecon:
                 for category, subdomains in sorted(categories.items()):
                     f.write(f"\n{category}:\n")
                     for subdomain, info in sorted(subdomains):
-                        f.write(f"  {info['url']} [{info['status_code']}]\n")
+                        f.write(f"  {info['url']}\n")
                 
                 # Parameters section with full URLs
                 f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
@@ -740,9 +740,9 @@ class ProfessionalRecon:
             Logger.success(f"Results saved to {filename}.txt")
 
 def print_banner():
-    """Print professional banner"""
+    """Print professional hacker-style banner"""
     banner = f"""
-{Colors.CYAN}
+{Colors.GREEN}
  ██████╗ ██████╗  ██████╗ ███████╗███████╗███████╗██╗ ██████╗ ███╗   ██╗ █████╗ ██╗     
  ██╔══██╗██╔══██╗██╔═══██╗██╔════╝██╔════╝██╔════╝██║██╔═══██╗████╗  ██║██╔══██╗██║     
  ██████╔╝██████╔╝██║   ██║█████╗  █████╗  ███████╗██║██║   ██║██╔██╗ ██║███████║██║     
@@ -757,8 +757,8 @@ def print_banner():
  ██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║       ██║   ╚██████╔╝╚██████╔╝███████╗    
  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝    
 {Colors.END}
-{Colors.BOLD}Professional Bug Bounty Reconnaissance Tool{Colors.END}
-{Colors.YELLOW}Advanced Subdomain & Parameter Discovery{Colors.END}
+{Colors.BOLD}{Colors.GREEN}Professional Bug Bounty Reconnaissance Tool{Colors.END}
+{Colors.GREEN}Advanced Subdomain & Parameter Discovery{Colors.END}
 {Colors.GREEN}Cross-Platform | Multi-Threaded | Modular Architecture{Colors.END}
 """
     print(banner)
@@ -827,7 +827,7 @@ Examples:
             for category, subs in sorted(categories.items()):
                 print(f"\n{Colors.YELLOW}{category}:{Colors.END}")
                 for subdomain, info in sorted(subs):
-                    print(f"  • {info['url']} [{info['status_code']}]")
+                    print(f"  • {info['url']}")
         
         # Run parameter discovery phase
         if run_parameters:
@@ -849,7 +849,14 @@ Examples:
                     print(f"    URL: {urls[0]}")
         
         # Save results if requested (always save as txt for better readability)
-        output_file = args.output if args.output else f"recon_results_{int(time.time())}"
+        if args.output:
+            output_file = args.output
+        else:
+            # Extract domain/hostname from target for filename
+            parsed_target = TargetParser.parse_target(args.target)
+            domain_name = parsed_target['domain'].replace('.', '_')
+            output_file = f"recon_{domain_name}_{int(time.time())}"
+        
         recon.save_results(output_file, 'txt')
         
         # Final summary
