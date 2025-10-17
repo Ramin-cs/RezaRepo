@@ -1,6 +1,6 @@
 {
+  "target": "httpbin.org",
   "subdomains": [
-    "*.httpbin.org",
     "beta.httpbin.org",
     "eu.httpbin.org",
     "httpbin.org",
@@ -10,6 +10,8 @@
     "www.httpbin.org"
   ],
   "parameters": [],
-  "timestamp": "2025-10-17 19:29:57",
-  "target": "httpbin.org"
+  "timestamp": "2025-10-17 20:26:23",
+  "statistics": {
+    "subdomains_found": 7
+  }
 }
