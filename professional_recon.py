@@ -280,6 +280,58 @@ class SubdomainHunter:
                     filtered.add(subdomain)
             self.found_subdomains = filtered
     
+    def verify_live_subdomains(self):
+        """Verify which subdomains are live and categorize by status code"""
+        Logger.info(f"Verifying live subdomains for {self.domain}")
+        
+        live_subdomains = {}
+        
+        def check_subdomain_status(subdomain):
+            protocols = ['https', 'http']
+            for protocol in protocols:
+                try:
+                    url = f"{protocol}://{subdomain}"
+                    response = self.session.get(url, timeout=10, verify=False, allow_redirects=True)
+                    status_code = response.status_code
+                    
+                    # Categorize by status code
+                    if status_code == 200:
+                        category = "Live (200 OK)"
+                    elif status_code in [301, 302, 303, 307, 308]:
+                        category = f"Redirect ({status_code})"
+                    elif status_code == 403:
+                        category = "Forbidden (403)"
+                    elif status_code == 404:
+                        category = "Not Found (404)"
+                    elif status_code in range(400, 500):
+                        category = f"Client Error ({status_code})"
+                    elif status_code in range(500, 600):
+                        category = f"Server Error ({status_code})"
+                    else:
+                        category = f"Other ({status_code})"
+                    
+                    live_subdomains[subdomain] = {
+                        'url': url,
+                        'status_code': status_code,
+                        'category': category,
+                        'protocol': protocol
+                    }
+                    
+                    Logger.found(f"Live: {url} [{status_code}]")
+                    return subdomain
+                    
+                except Exception:
+                    continue
+            return None
+        
+        # Check all found subdomains
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = [executor.submit(check_subdomain_status, sub) for sub in self.found_subdomains]
+            for future in as_completed(futures):
+                future.result()
+        
+        return live_subdomains
+    
     def run_discovery(self):
         """Execute all subdomain discovery techniques"""
         Logger.phase(f"SUBDOMAIN DISCOVERY - {self.domain}")
@@ -299,9 +351,11 @@ class SubdomainHunter:
         # Always run wildcard detection last
         self.wildcard_detection_and_filter()
         
-        results = sorted(list(self.found_subdomains))
-        Logger.success(f"Subdomain discovery completed: {len(results)} subdomains found")
-        return results
+        # Verify live subdomains
+        live_subdomains = self.verify_live_subdomains()
+        
+        Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} live subdomains found")
+        return live_subdomains
 
 class ParameterHunter:
     """Professional parameter discovery module"""
@@ -311,6 +365,7 @@ class ParameterHunter:
         self.threads = threads
         self.timeout = timeout
         self.found_parameters = set()
+        self.parameter_details = {}
         self.session = self._create_session()
         self.wordlist = self._load_wordlist(wordlist_size)
         self.baseline_response = None
@@ -377,6 +432,7 @@ class ParameterHunter:
         
         def test_parameter(param):
             found_methods = []
+            working_urls = []
             
             for value in test_values:
                 try:
@@ -389,6 +445,7 @@ class ParameterHunter:
                     # Check for differences from baseline
                     if self._is_different_response(response, param, value):
                         found_methods.append('GET')
+                        working_urls.append(test_url)
                     
                     # Test POST parameters
                     post_data = {param: value}
@@ -396,6 +453,7 @@ class ParameterHunter:
                     
                     if self._is_different_response(response, param, value):
                         found_methods.append('POST')
+                        working_urls.append(f"{self.target_url} (POST: {param}=test)")
                     
                     if found_methods:
                         break
@@ -405,15 +463,28 @@ class ParameterHunter:
             
             if found_methods:
                 methods_str = '/'.join(set(found_methods))
+                param_info = {
+                    'name': param,
+                    'methods': found_methods,
+                    'urls': working_urls
+                }
                 self.found_parameters.add(param)
-                Logger.found(f"Parameter: {param} ({methods_str})")
-                return param
+                
+                # Log with full URL
+                if working_urls:
+                    Logger.found(f"Parameter: {param} ({methods_str}) -> {working_urls[0]}")
+                else:
+                    Logger.found(f"Parameter: {param} ({methods_str})")
+                return param_info
             return None
         
+        self.parameter_details = {}
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             futures = [executor.submit(test_parameter, param) for param in self.wordlist]
             for future in as_completed(futures):
-                future.result()
+                result = future.result()
+                if result:
+                    self.parameter_details[result['name']] = result
     
     def _is_different_response(self, response, param, value):
         """Check if response is significantly different from baseline"""
@@ -573,7 +644,7 @@ class ParameterHunter:
         
         results = sorted(list(self.found_parameters))
         Logger.success(f"Parameter discovery completed: {len(results)} parameters found")
-        return results
+        return self.parameter_details
 
 class ProfessionalRecon:
     """Main reconnaissance orchestrator"""
@@ -581,8 +652,8 @@ class ProfessionalRecon:
     def __init__(self):
         self.results = {
             'target': None,
-            'subdomains': [],
-            'parameters': [],
+            'subdomains': {},
+            'parameters': {},
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
             'statistics': {}
         }
@@ -636,17 +707,35 @@ class ProfessionalRecon:
                 f.write(f"Professional Reconnaissance Report\n")
                 f.write(f"Target: {self.results['target']}\n")
                 f.write(f"Timestamp: {self.results['timestamp']}\n")
-                f.write("=" * 60 + "\n\n")
+                f.write("=" * 80 + "\n\n")
                 
-                f.write(f"SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
-                f.write("-" * 30 + "\n")
-                for subdomain in self.results['subdomains']:
-                    f.write(f"{subdomain}\n")
+                # Subdomains section with categorization
+                f.write(f"LIVE SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
+                f.write("-" * 50 + "\n")
                 
-                f.write(f"\nPARAMETERS ({len(self.results['parameters'])} found):\n")
-                f.write("-" * 30 + "\n")
-                for param in self.results['parameters']:
-                    f.write(f"{param}\n")
+                # Group by status category
+                categories = {}
+                for subdomain, info in self.results['subdomains'].items():
+                    category = info['category']
+                    if category not in categories:
+                        categories[category] = []
+                    categories[category].append((subdomain, info))
+                
+                for category, subdomains in sorted(categories.items()):
+                    f.write(f"\n{category}:\n")
+                    for subdomain, info in sorted(subdomains):
+                        f.write(f"  {info['url']} [{info['status_code']}]\n")
+                
+                # Parameters section with full URLs
+                f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
+                f.write("-" * 50 + "\n")
+                
+                for param_name, param_info in sorted(self.results['parameters'].items()):
+                    f.write(f"\nParameter: {param_name}\n")
+                    f.write(f"Methods: {', '.join(param_info.get('methods', []))}\n")
+                    f.write(f"Test URLs:\n")
+                    for url in param_info.get('urls', []):
+                        f.write(f"  {url}\n")
             
             Logger.success(f"Results saved to {filename}.txt")
 
@@ -724,10 +813,21 @@ Examples:
                 wordlist_size=args.wordlist
             )
             
-            print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}")
-            print(f"Found {len(subdomains)} subdomains:")
-            for subdomain in subdomains:
-                print(f"  • {subdomain}")
+            print(f"\n{Colors.GREEN}[LIVE SUBDOMAIN RESULTS]{Colors.END}")
+            print(f"Found {len(subdomains)} live subdomains:")
+            
+            # Group by status category for display
+            categories = {}
+            for subdomain, info in subdomains.items():
+                category = info['category']
+                if category not in categories:
+                    categories[category] = []
+                categories[category].append((subdomain, info))
+            
+            for category, subs in sorted(categories.items()):
+                print(f"\n{Colors.YELLOW}{category}:{Colors.END}")
+                for subdomain, info in sorted(subs):
+                    print(f"  • {info['url']} [{info['status_code']}]")
         
         # Run parameter discovery phase
         if run_parameters:
@@ -740,20 +840,26 @@ Examples:
             
             print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
             print(f"Found {len(parameters)} parameters:")
-            for param in parameters:
-                print(f"  • {param}")
+            
+            for param_name, param_info in sorted(parameters.items()):
+                methods = ', '.join(param_info.get('methods', []))
+                urls = param_info.get('urls', [])
+                print(f"  • {param_name} ({methods})")
+                if urls:
+                    print(f"    URL: {urls[0]}")
         
-        # Save results if requested
-        if args.output:
-            recon.save_results(args.output, args.format)
+        # Save results if requested (always save as txt for better readability)
+        output_file = args.output if args.output else f"recon_results_{int(time.time())}"
+        recon.save_results(output_file, 'txt')
         
         # Final summary
         Logger.phase("RECONNAISSANCE COMPLETED")
-        total_subdomains = len(recon.results.get('subdomains', []))
-        total_parameters = len(recon.results.get('parameters', []))
-        print(f"{Colors.GREEN}Total Subdomains: {total_subdomains}{Colors.END}")
+        total_subdomains = len(recon.results.get('subdomains', {}))
+        total_parameters = len(recon.results.get('parameters', {}))
+        print(f"{Colors.GREEN}Total Live Subdomains: {total_subdomains}{Colors.END}")
         print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
         print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
+        print(f"{Colors.CYAN}Results saved to: {output_file}.txt{Colors.END}")
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")
