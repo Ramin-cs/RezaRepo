@@ -1,0 +1,15 @@
+{
+  "subdomains": [
+    "*.httpbin.org",
+    "beta.httpbin.org",
+    "eu.httpbin.org",
+    "httpbin.org",
+    "now.httpbin.org",
+    "staging.httpbin.org",
+    "test.httpbin.org",
+    "www.httpbin.org"
+  ],
+  "parameters": [],
+  "timestamp": "2025-10-17 19:29:57",
+  "target": "httpbin.org"
+}
