@@ -1,0 +1,701 @@
+Parameter Discovery Report
+Domain: httpbin.org
+Timestamp: 2025-10-18 18:33:17
+Execution Time: 3.98 seconds
+============================================================
+
+DISCOVERED PARAMETERS (334):
+----------------------------------------
+• A
+• Access-Control-Allow-Origin
+• AlexaHash
+• Animal
+• Cache-Control
+• Chrome
+• Condition
+• Content-Type
+• Enabled
+• ID
+• Key
+• Lives
+• Location
+• Mozilla
+• Param1
+• Param2
+• QueryParam1
+• Server
+• Server-Timing
+• Set-Cookie
+• X-Frame-Options
+• X-Rel
+• X-Test
+• _
+• a
+• aaaa
+• aasdfdfa
+• abc
+• abcd
+• abcpi
+• accc
+• accessToken
+• access_token\\
+• ad_reward_received_at
+• admin
+• age
+• aid
+• alfa
+• alpha
+• amp
+• amp;age
+• amp;b
+• amp;bar
+• amp;baz
+• amp;c
+• amp;chunk_size
+• amp;duration
+• amp;fiddle
+• amp;foo
+• amp;foo[a]
+• amp;key1
+• amp;key2
+• amp;network
+• amp;sa
+• animal
+• anonymous_block_producers
+• another
+• answer
+• anything
+• apikey
+• arc
+• arg1
+• arg2
+• argument
+• arr
+• assignment
+• author
+• autoparse
+• b
+• bamboleyyo
+• bar
+• base64
+• baz
+• best_api
+• bo_table
+• body
+• books
+• bytes
+• c
+• cache
+• call
+• camera
+• cat
+• cate
+• ch
+• cheese
+• chocolate
+• chunk_size
+• chunter
+• city
+• ck
+• click
+• client_id
+• cn
+• code
+• code_db
+• code_type
+• color
+• comments
+• cookie
+• coolparam
+• count
+• country
+• country_code
+• course
+• custemail
+• data
+• dbp
+• debug
+• delay
+• desc
+• detail
+• device_type
+• dog
+• domain
+• dos
+• dur
+• duration
+• elite
+• email
+• enddate
+• error
+• etag
+• event1
+• event2
+• event3
+• family
+• fiddle
+• file
+• filter
+• first
+• firstname
+• firtname
+• fnv
+• foo
+• foo[]
+• foo[a]
+• foobar
+• format
+• freeform
+• g
+• get
+• goto
+• gv
+• h2g2
+• hardcoded_param
+• hello
+• hoge
+• host
+• htdf87
+• htdf8v7
+• i
+• id
+• id[]
+• init
+• ip
+• iss
+• issues
+• javase
+• jfdksf
+• js
+• json
+• k1
+• k2
+• keep_headers
+• key
+• key1
+• key2
+• key2[]
+• keyword
+• label
+• lang
+• language
+• last
+• last_response_at
+• lastname
+• libs
+• links
+• locate
+• location
+• mark
+• math
+• mc_eid
+• message
+• message_id
+• method
+• metric
+• mod
+• mode
+• more_to_say
+• mouse
+• msg
+• myFirstParam
+• mySecondParam
+• myrizzity
+• n
+• name
+• network
+• nom
+• noredirect
+• nu
+• num
+• number
+• numbytes
+• oak
+• oauth_consumer_key
+• oauth_nonce
+• oauth_signature
+• oauth_signature_method
+• oauth_timestamp
+• oauth_version
+• ordering
+• orders
+• original_url
+• p
+• p1
+• page
+• page_id
+• page_url
+• param1
+• param2
+• param3
+• param4
+• parameter
+• part
+• partnerId
+• pass
+• password
+• path
+• post
+• pp
+• premium
+• prenom
+• q
+• query
+• queryParam
+• questions
+• quot
+• qwe
+• r
+• rainbow
+• rand
+• range
+• rdbms
+• recent_products_last_at
+• redirect
+• ref
+• refusedcookie
+• relative_redirect
+• render
+• requestVar
+• request_id
+• rnd
+• rurl
+• s
+• s4onLsu7
+• sads
+• salary
+• searchphrase
+• searchword
+• second
+• secret
+• select-multiple
+• send
+• session_id
+• session_number
+• sessioncookie
+• sessionid
+• set-cookie
+• show_env
+• sid
+• sil
+• site
+• some
+• somethingElse
+• sort
+• source
+• spanm
+• spm
+• srsltid
+• start
+• startdate
+• state
+• status
+• status_code
+• stream
+• stuff
+• t
+• tdf87
+• temperatureSensor
+• templateInURL
+• test
+• test2
+• timestamp
+• title
+• token
+• trk
+• ts
+• twenty
+• type
+• u
+• uid
+• ulikoehler
+• unique
+• uno
+• url
+• urlparamwskey2
+• us
+• user
+• username
+• usernane
+• usg
+• ust
+• utm_campaign
+• utm_content
+• utm_medium
+• utm_source
+• v
+• value
+• verb
+• version
+• view
+• vsys
+• website
+• what
+• wr_id
+• x
+• xxx
+• y
+• y ear
+• year
+• z
+• zaloopa
+• zone
+
+
+URLS WITH PARAMETERS (346):
+----------------------------------------
+http://eu.httpbin.org/drip?numbytes=FUZZ&duration=FUZZ&delay=FUZZ
+http://eu.httpbin.org/get?foo=FUZZ
+http://eu.httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ
+http://eu.httpbin.org/response-headers?Content-Type=FUZZ&Server=FUZZ
+http://eu.httpbin.org/response-headers?Set-Cookie=FUZZ
+http://eu.httpbin.org:80/cookies/set?k1=FUZZ&k2=FUZZ
+http://eu.httpbin.org:80/drip?numbytes=FUZZ&duration=FUZZ
+http://eu.httpbin.org:80/drip?numbytes=FUZZ&duration=FUZZ&code=FUZZ
+http://eu.httpbin.org:80/redirect-to?url=FUZZ
+http://eu.httpbin.org:80/response-headers?Content-Type=FUZZ&Server=FUZZ
+http://httpbin.org/?foo=FUZZ
+http://httpbin.org/?trk=FUZZ
+http://httpbin.org/?utm_content=FUZZ&utm_medium=FUZZ&utm_source=FUZZ&utm_campaign=FUZZ
+http://httpbin.org/KW-to?status_code=FUZZ&url=FUZZ
+http://httpbin.org/anything?arg2=FUZZ&arg1=FUZZ
+http://httpbin.org/anything?code=FUZZ
+http://httpbin.org/anything?foo=FUZZ
+http://httpbin.org/anything?hello=FUZZ
+http://httpbin.org/anything?id=FUZZ&ts=FUZZ
+http://httpbin.org/ap2/local/?nu=FUZZ&page_id=FUZZ&code_db=FUZZ&code_type=FUZZ
+http://httpbin.org/base64/0?myrizzity=FUZZ
+http://httpbin.org/cookies/set?A=FUZZ
+http://httpbin.org/cookies/set?enddate=FUZZ&startdate=FUZZ
+http://httpbin.org/cookies/set?foo=FUZZ
+http://httpbin.org/cookies/set?foo=FUZZ&amp%3Bbar=FUZZ
+http://httpbin.org/cookies/set?foo=FUZZ&bar=FUZZ
+http://httpbin.org/cookies/set?foobar=FUZZ
+http://httpbin.org/cookies/set?freeform=FUZZ
+http://httpbin.org/cookies/set?k1=FUZZ&k2=FUZZ
+http://httpbin.org/cookies/set?key=FUZZ
+http://httpbin.org/cookies/set?number=FUZZ
+http://httpbin.org/cookies/set?secret=FUZZ
+http://httpbin.org/cookies/set?some=FUZZ
+http://httpbin.org/cookies/set?tdf87=FUZZ
+http://httpbin.org/cookies/set?xxx=FUZZ&abc=FUZZ
+http://httpbin.org/cookies?ref=FUZZ
+http://httpbin.org/drip?duration=FUZZ
+http://httpbin.org/drip?numbytes=FUZZ&amp%3Bduration=FUZZ
+http://httpbin.org/drip?numbytes=FUZZ&duration=FUZZ
+http://httpbin.org/drip?numbytes=FUZZ&duration=FUZZ&delay=FUZZ
+http://httpbin.org/get?A=FUZZ
+http://httpbin.org/get?a=FUZZ
+http://httpbin.org/get?a=FUZZ&amp%3Bb=FUZZ&amp%3Bc=FUZZ
+http://httpbin.org/get?a=FUZZ&b=FUZZ
+http://httpbin.org/get?a=FUZZ&b=FUZZ&c=FUZZ
+http://httpbin.org/get?abcpi=FUZZ
+http://httpbin.org/get?accc=FUZZ
+http://httpbin.org/get?age=FUZZ&name=FUZZ
+http://httpbin.org/get?alpha=FUZZ
+http://httpbin.org/get?answer=FUZZ
+http://httpbin.org/get?bamboleyyo=FUZZ
+http://httpbin.org/get?bar=FUZZ
+http://httpbin.org/get?baz=FUZZ
+http://httpbin.org/get?ch=FUZZ&js=FUZZ&sid=FUZZ
+http://httpbin.org/get?ck=FUZZ
+http://httpbin.org/get?course=FUZZ&assignment=FUZZ
+http://httpbin.org/get?firstname=FUZZ&lastname=FUZZ
+http://httpbin.org/get?foo=FUZZ
+http://httpbin.org/get?foo=FUZZ&baz=FUZZ
+http://httpbin.org/get?foo=FUZZ&what=FUZZ
+http://httpbin.org/get?hello=FUZZ
+http://httpbin.org/get?host=FUZZ
+http://httpbin.org/get?id=FUZZ
+http://httpbin.org/get?key1=FUZZ
+http://httpbin.org/get?key1=FUZZ&key2%5B%5D=FUZZ
+http://httpbin.org/get?key1=FUZZ&key2=FUZZ
+http://httpbin.org/get?key2=FUZZ&key1=FUZZ
+http://httpbin.org/get?key=FUZZ&city=FUZZ
+http://httpbin.org/get?lang=FUZZ&q=FUZZ
+http://httpbin.org/get?name=FUZZ
+http://httpbin.org/get?name=FUZZ&ID=FUZZ
+http://httpbin.org/get?name=FUZZ&age=FUZZ
+http://httpbin.org/get?name=FUZZ&amp%3Bage=FUZZ
+http://httpbin.org/get?name=FUZZ&n=FUZZ
+http://httpbin.org/get?num=FUZZ
+http://httpbin.org/get?page=FUZZ
+http://httpbin.org/get?param1=FUZZ
+http://httpbin.org/get?param1=FUZZ&param2=FUZZ
+http://httpbin.org/get?queryParam=FUZZ&QueryParam1=FUZZ
+http://httpbin.org/get?site=FUZZ&amp%3Bnetwork=FUZZ
+http://httpbin.org/get?site=FUZZ&network=FUZZ
+http://httpbin.org/get?sort=FUZZ&key=FUZZ
+http://httpbin.org/get?status=FUZZ
+http://httpbin.org/get?status=FUZZ&request_id=FUZZ
+http://httpbin.org/get?t=FUZZ
+http://httpbin.org/get?test=FUZZ
+http://httpbin.org/get?user=FUZZ
+http://httpbin.org/get?user=FUZZ&password=FUZZ
+http://httpbin.org/get?usernane=FUZZ
+http://httpbin.org/get?verb=FUZZ
+http://httpbin.org/get?x=FUZZ
+http://httpbin.org/get?year=FUZZ
+http://httpbin.org/headers?test=FUZZ
+http://httpbin.org/ip?rnd=FUZZ
+http://httpbin.org/ip?spm=FUZZ
+http://httpbin.org/json?arg1=FUZZ&foo=FUZZ&baz=FUZZ
+http://httpbin.org/orders?version=FUZZ
+http://httpbin.org/post?foo=FUZZ
+http://httpbin.org/post?key1=FUZZ
+http://httpbin.org/post?name=FUZZ
+http://httpbin.org/post?partnerId=FUZZ
+http://httpbin.org/range/102400?duration=FUZZ
+http://httpbin.org/range/2048?duration=FUZZ&amp%3Bchunk_size=FUZZ
+http://httpbin.org/range/2048?duration=FUZZ&chunk_size=FUZZ
+http://httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ
+http://httpbin.org/redirect-to?url=FUZZ
+http://httpbin.org/redirect-to?url=FUZZ&goto=FUZZ
+http://httpbin.org/redirect-to?url=FUZZ&status_code=FUZZ
+http://httpbin.org/redirect-to?url=FUZZ&uid=FUZZ
+http://httpbin.org/response-headers?Content-Type=FUZZ&Server=FUZZ
+http://httpbin.org/response-headers?Location=FUZZ
+http://httpbin.org/response-headers?Server-Timing=FUZZ
+http://httpbin.org/response-headers?Set-Cookie=FUZZ
+http://httpbin.org/response-headers?key=FUZZ
+http://httpbin.org/sitemap?mode=FUZZ
+http://httpbin.org/status/200?code=FUZZ
+http://httpbin.org/status/200http://editor.swagger.io/?url=FUZZ
+http://httpbin.org/user-agent?ref=FUZZ
+http://httpbin.org/v2/orders?version=FUZZ
+http://httpbin.org:80/component/search/?searchphrase=FUZZ&searchword=FUZZ
+http://httpbin.org:80/drip?numbytes=FUZZ&duration=FUZZ
+http://httpbin.org:80/drip?numbytes=FUZZ&duration=FUZZ&code=FUZZ
+http://httpbin.org:80/get?a=FUZZ&b=FUZZ
+http://httpbin.org:80/get?a=FUZZ&c=FUZZ
+http://httpbin.org:80/get?foo=FUZZ&bar=FUZZ
+http://httpbin.org:80/get?key1=FUZZ&key2=FUZZ
+http://httpbin.org:80/get?key2=FUZZ&key1=FUZZ
+http://httpbin.org:80/get?key=FUZZ
+http://httpbin.org:80/get?name=FUZZ&language=FUZZ&math=FUZZ
+http://httpbin.org:80/get?site=FUZZ&network=FUZZ
+http://httpbin.org:80/ip?sil=FUZZ
+http://httpbin.org:80/redirect-to?url=FUZZ&status_code=FUZZ
+http://httpbin.org:80/response-headers?Cache-Control=FUZZ&Access-Control-Allow-Origin=FUZZ
+http://httpbin.org:80/response-headers?Cache-Control=FUZZ&Access-Control-Allow-Origin=FUZZ&X-Rel=FUZZ
+http://httpbin.org:80/response-headers?Content-Type=FUZZ&Server=FUZZ
+http://httpbin.org:80/response-headers?key=FUZZ
+http://www.httpbin.org/drip?duration=FUZZ&numbytes=FUZZ&code=FUZZ
+http://www.httpbin.org/get?q=FUZZ
+http://www.httpbin.org/get?requestVar=FUZZ
+http://www.httpbin.org/get?y+ear=FUZZ
+http://www.httpbin.org/get?year=FUZZ
+http://www.httpbin.org/redirect-to?url=FUZZ
+https://Httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ
+https://eu.httpbin.org/post?a=FUZZ
+https://httpbin.org/?aid=FUZZ&sid=FUZZ&dbp=FUZZ&gv=FUZZ&method=FUZZ&spanm=FUZZ&oak=FUZZ&ip=FUZZ
+https://httpbin.org/?locate=FUZZ
+https://httpbin.org/?name=FUZZ&ID=FUZZ
+https://httpbin.org/?page=FUZZ&count=FUZZ
+https://httpbin.org/?ref=FUZZ
+https://httpbin.org/?s=FUZZ
+https://httpbin.org/?source=FUZZ
+https://httpbin.org/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://httpbin.org/?value=FUZZ
+https://httpbin.org/anything/multiple/anythingextra/moreparts?foo=FUZZ&baz=FUZZ
+https://httpbin.org/anything/params?name=FUZZ&salary=FUZZ
+https://httpbin.org/anything?Animal=FUZZ&Lives=FUZZ
+https://httpbin.org/anything?a=FUZZ&b=FUZZ&c=FUZZ
+https://httpbin.org/anything?anonymous_block_producers=FUZZ&more_to_say=FUZZ
+https://httpbin.org/anything?camera=FUZZ
+https://httpbin.org/anything?camera=FUZZ&label=FUZZ&zone=FUZZ
+https://httpbin.org/anything?code=FUZZ&iss=FUZZ&client_id=FUZZ
+https://httpbin.org/anything?code=FUZZ&state=FUZZ
+https://httpbin.org/anything?data=FUZZ
+https://httpbin.org/anything?error=FUZZ&state=FUZZ
+https://httpbin.org/anything?first=FUZZ&second=FUZZ
+https://httpbin.org/anything?keyword=FUZZ
+https://httpbin.org/anything?name=FUZZ&id=FUZZ
+https://httpbin.org/anything?q=FUZZ
+https://httpbin.org/anything?query=FUZZ
+https://httpbin.org/anything?state=FUZZ&code=FUZZ
+https://httpbin.org/anything?templateInURL=FUZZ
+https://httpbin.org/anything?test2=FUZZ
+https://httpbin.org/anything?z=FUZZ
+https://httpbin.org/anythinghttps://docs.microsoft.com/en-us/aspnet/core/security/data-protection/configuration/overview?view=FUZZ
+https://httpbin.org/base64/U01JTEUgVjI=?original_url=FUZZ
+https://httpbin.org/cgi-bin/messages/message_view_record.php?message_id=FUZZ&page_url=FUZZ
+https://httpbin.org/cookies/set?chocolate=FUZZ
+https://httpbin.org/cookies/set?cookie=FUZZ
+https://httpbin.org/cookies/set?domain=FUZZ
+https://httpbin.org/cookies/set?freeform=FUZZ
+https://httpbin.org/cookies/set?hello=FUZZ
+https://httpbin.org/cookies/set?k2=FUZZ
+https://httpbin.org/cookies/set?session_id=FUZZ
+https://httpbin.org/cookies/set?sessionid=FUZZ
+https://httpbin.org/cookies?a=FUZZ
+https://httpbin.org/cookies?q=FUZZ
+https://httpbin.org/delay/1?unique=FUZZ
+https://httpbin.org/delay/2?n=FUZZ
+https://httpbin.org/delay/3?call=FUZZ
+https://httpbin.org/delete?age=FUZZ&name=FUZZ
+https://httpbin.org/delete?id=FUZZ&type=FUZZ
+https://httpbin.org/delete?key1=FUZZ&key2=FUZZ
+https://httpbin.org/drip?duration=FUZZ&delay=FUZZ
+https://httpbin.org/drip?duration=FUZZ&numbytes=FUZZ&code=FUZZ&delay=FUZZ
+https://httpbin.org/drip?numbytes=FUZZ
+https://httpbin.org/drip?numbytes=FUZZ&duration=FUZZ
+https://httpbin.org/get/?url=FUZZ
+https://httpbin.org/get;a=mars&b=42?q=FUZZ&r=FUZZ
+https://httpbin.org/get?Param1=FUZZ&Param2=FUZZ
+https://httpbin.org/get?a=FUZZ
+https://httpbin.org/get?aaaa=FUZZ
+https://httpbin.org/get?aasdfdfa=FUZZ
+https://httpbin.org/get?abc=FUZZ
+https://httpbin.org/get?accessToken=FUZZ
+https://httpbin.org/get?age=FUZZ
+https://httpbin.org/get?age=FUZZ&name=FUZZ
+https://httpbin.org/get?amp%3Bsa=FUZZ&source=FUZZ&ust=FUZZ&usg=FUZZ
+https://httpbin.org/get?amp%3Bsa=FUZZ&ust=FUZZ&usg=FUZZ
+https://httpbin.org/get?animal=FUZZ
+https://httpbin.org/get?answer=FUZZ
+https://httpbin.org/get?apikey=FUZZ
+https://httpbin.org/get?arr=FUZZ
+https://httpbin.org/get?b=FUZZ
+https://httpbin.org/get?b=FUZZ&g=FUZZ&u=FUZZ&z=FUZZ
+https://httpbin.org/get?baz=FUZZ
+https://httpbin.org/get?best_api=FUZZ&website=FUZZ
+https://httpbin.org/get?cheese=FUZZ
+https://httpbin.org/get?click=FUZZ&country=FUZZ&source=FUZZ
+https://httpbin.org/get?cn=FUZZ&us=FUZZ
+https://httpbin.org/get?code=FUZZ&msg=FUZZ&author=FUZZ
+https://httpbin.org/get?color=FUZZ
+https://httpbin.org/get?coolparam=FUZZ
+https://httpbin.org/get?filter=FUZZ
+https://httpbin.org/get?firtname=FUZZ&lastname=FUZZ
+https://httpbin.org/get?foo%5B%5D=FUZZ
+https://httpbin.org/get?foo%5Ba%5D=FUZZ
+https://httpbin.org/get?foo%5Ba%5D=FUZZ&amp%3Bfoo%5Ba%5D=FUZZ
+https://httpbin.org/get?foo=FUZZ
+https://httpbin.org/get?foo=FUZZ&amp%3Bbaz=FUZZ
+https://httpbin.org/get?foo=FUZZ&amp%3Bfoo=FUZZ
+https://httpbin.org/get?foo=FUZZ&stuff=FUZZ
+https://httpbin.org/get?g=FUZZ
+https://httpbin.org/get?h2g2=FUZZ&elite=FUZZ
+https://httpbin.org/get?hardcoded_param=FUZZ
+https://httpbin.org/get?hello=FUZZ
+https://httpbin.org/get?hoge=FUZZ
+https://httpbin.org/get?i=FUZZ
+https://httpbin.org/get?id=FUZZ
+https://httpbin.org/get?id=FUZZ&type=FUZZ
+https://httpbin.org/get?key1=FUZZ&amp%3Bkey2=FUZZ
+https://httpbin.org/get?key1=FUZZ&key2=FUZZ
+https://httpbin.org/get?key2=FUZZ
+https://httpbin.org/get?key2=FUZZ&amp%3Bkey1=FUZZ
+https://httpbin.org/get?key2=FUZZ&key1=FUZZ
+https://httpbin.org/get?key=FUZZ
+https://httpbin.org/get?lang=FUZZ&country=FUZZ
+https://httpbin.org/get?lang=FUZZ&prenom=FUZZ&nom=FUZZ
+https://httpbin.org/get?mark=FUZZ
+https://httpbin.org/get?myFirstParam=FUZZ&mySecondParam=FUZZ
+https://httpbin.org/get?name=FUZZ
+https://httpbin.org/get?name=FUZZ&age=FUZZ
+https://httpbin.org/get?name=FUZZ&email=FUZZ
+https://httpbin.org/get?name=FUZZ&family=FUZZ
+https://httpbin.org/get?name=FUZZ&language=FUZZ&math=FUZZ
+https://httpbin.org/get?name=FUZZ&n=FUZZ
+https://httpbin.org/get?name=FUZZ&pass=FUZZ
+https://httpbin.org/get?num=FUZZ
+https://httpbin.org/get?number=FUZZ
+https://httpbin.org/get?p1=FUZZ
+https://httpbin.org/get?p=FUZZ&arc=FUZZ
+https://httpbin.org/get?page=FUZZ
+https://httpbin.org/get?param1=FUZZ
+https://httpbin.org/get?param1=FUZZ&param2=FUZZ&param3=FUZZ&param4=FUZZ
+https://httpbin.org/get?parameter=FUZZ
+https://httpbin.org/get?path=FUZZ
+https://httpbin.org/get?pp=FUZZ
+https://httpbin.org/get?q=FUZZ
+https://httpbin.org/get?q=FUZZ&alfa=FUZZ&dog=FUZZ&cat=FUZZ&last=FUZZ
+https://httpbin.org/get?q=FUZZ&argument=FUZZ
+https://httpbin.org/get?q=FUZZ&r=FUZZ
+https://httpbin.org/get?query=FUZZ
+https://httpbin.org/get?qwe=FUZZ
+https://httpbin.org/get?rainbow=FUZZ&twenty=FUZZ
+https://httpbin.org/get?ref=FUZZ
+https://httpbin.org/get?s=FUZZ&jfdksf=FUZZ
+https://httpbin.org/get?sads=FUZZ
+https://httpbin.org/get?select-multiple=FUZZ
+https://httpbin.org/get?show_env=FUZZ
+https://httpbin.org/get?some=FUZZ
+https://httpbin.org/get?stuff=FUZZ
+https://httpbin.org/get?t=FUZZ
+https://httpbin.org/get?test=FUZZ
+https://httpbin.org/get?test=FUZZ&another=FUZZ
+https://httpbin.org/get?test=FUZZ&source=FUZZ
+https://httpbin.org/get?title=FUZZ
+https://httpbin.org/get?type=FUZZ
+https://httpbin.org/get?uid=FUZZ
+https://httpbin.org/get?uno=FUZZ&dos=FUZZ
+https://httpbin.org/get?url=FUZZ
+https://httpbin.org/get?urlparamwskey2=FUZZ
+https://httpbin.org/get?user=FUZZ&password=FUZZ
+https://httpbin.org/get?username=FUZZ&password=FUZZ
+https://httpbin.org/get?v=FUZZ
+https://httpbin.org/get?value=FUZZ
+https://httpbin.org/get?vsys=FUZZ&somethingElse=FUZZ
+https://httpbin.org/get?x=FUZZ&y=FUZZ
+https://httpbin.org/get?zaloopa=FUZZ
+https://httpbin.org/gethttps://dbfiddle.uk/?rdbms=FUZZ&amp%3Bfiddle=FUZZ
+https://httpbin.org/gethttps://dbfiddle.uk/?rdbms=FUZZ&fiddle=FUZZ
+https://httpbin.org/gethttps://stackblitz.com/edit/angular-rjg2ja?file=FUZZ
+https://httpbin.org/headers?ref=FUZZ
+https://httpbin.org/headers?show_env=FUZZ
+https://httpbin.org/https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequesthttp://api.jquery.com/jquery.ajax/http://api.jquery.com/ajaxsend/https://www.w3.org/2003/01/dom2-javadoc/org/w3c/dom/html2/HTMLElement.htmlhttps://stackoverflow.com/questions/2703468/is-it-possible-to-run-javascript-before-any-image-loadshttps://unix.stackexchange.com/q/378301/167420https://play.google.com/store/apps/details?id=FUZZ
+https://httpbin.org/https://httpbin.org/anythinghttps://httpbin.org/iphttps://httpbin.org/user-agenthttps://httpbin.org/headershttps://httpbin.org/gethttps://httpbin.org/posthttps://httpbin.org/puthttps://httpbin.org/deletehttps://httpbin.org/gziphttps://httpbin.org/status/:codehttps://httpbin.org/response-headers?key=FUZZ
+https://httpbin.org/index.php?id=FUZZ
+https://httpbin.org/index.php?id=FUZZ&cate=FUZZ
+https://httpbin.org/ip?_=FUZZ
+https://httpbin.org/ip?format=FUZZ
+https://httpbin.org/ip?rand=FUZZ
+https://httpbin.org/ip?rnd=FUZZ
+https://httpbin.org/json?arg1=FUZZ
+https://httpbin.org/json?test=FUZZ
+https://httpbin.org/notification_api/deleteNotif?id%5B%5D=FUZZ
+https://httpbin.org/post?a=FUZZ
+https://httpbin.org/post?hardcoded_param=FUZZ
+https://httpbin.org/post?hello=FUZZ
+https://httpbin.org/post?init=FUZZ
+https://httpbin.org/post?key1=FUZZ&key2=FUZZ
+https://httpbin.org/post?name=FUZZ
+https://httpbin.org/post?name=FUZZ&last=FUZZ
+https://httpbin.org/post?param1=FUZZ
+https://httpbin.org/post?path=FUZZ
+https://httpbin.org/range/1024?duration=FUZZ
+https://httpbin.org/redirect-to?status_code=FUZZ
+https://httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ
+https://httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ&wr_id=FUZZ
+https://httpbin.org/redirect-to?url=FUZZ
+https://httpbin.org/redirect-to?url=FUZZ&c=FUZZ
+https://httpbin.org/redirect-to?url=FUZZ&c=FUZZ&mc_eid=FUZZ
+https://httpbin.org/redirect-to?url=FUZZ&status_code=FUZZ
+https://httpbin.org/response-headers?Content-Type=FUZZ
+https://httpbin.org/response-headers?Server=FUZZ
+https://httpbin.org/response-headers?Server=FUZZ&Content-Type=FUZZ
+https://httpbin.org/response-headers?Server=FUZZ&Content-Type=FUZZ&Server-Timing=FUZZ#1",fs;dur=600;desc="FileSystem",cache;dur=300;desc="Cache",other;dur=200;desc="Database Write",other;dur=110;desc="Database Read",cpu;dur=1230;desc="Total CPU"
+https://httpbin.org/response-headers?Set-Cookie=FUZZ
+https://httpbin.org/response-headers?X-Frame-Options=FUZZ&X-Test=FUZZ
+https://httpbin.org/response-headers?foo=FUZZ
+https://httpbin.org/response-headers?freeform=FUZZ
+https://httpbin.org/response-headers?set-cookie=FUZZ
+https://httpbin.org/response-headers\\?access_token%5C%5C=FUZZ
+https://httpbin.org/status/200?body=FUZZ
+https://httpbin.org/uuid?ref=FUZZ
+https://httpbin.org/uuid?t=FUZZ
+https://www.httpbin.org/cookies/set?refusedcookie=FUZZ
+https://www.httpbin.org/get?temperatureSensor=FUZZ&metric=FUZZ
+https://www.httpbin.org/redirect-to?status_code=FUZZ&url=FUZZ
+
+
+STATISTICS:
+----------------------------------------
+Total Parameters: 334
+Total Urls: 346
+Basic Params: 259
+Advanced Params: 289
+Execution Time: 3.984313488006592
