@@ -21,6 +21,7 @@ import os
 import platform
 import socket
 import ssl
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
 import urllib.request
@@ -843,6 +844,50 @@ def print_banner():
 """
     print(banner)
 
+def run_external_parameter_discovery(target, output_file=None):
+    """Run external parameter discovery tool"""
+    Logger.phase("EXTERNAL PARAMETER DISCOVERY")
+    
+    try:
+        # Check if parameter.py exists
+        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+        if not os.path.exists(param_tool_path):
+            Logger.error("parameter.py tool not found in current directory")
+            return {}
+        
+        Logger.info(f"Running external parameter discovery for {target}")
+        
+        # Prepare command
+        cmd = [sys.executable, param_tool_path, '-d', target, '-q']
+        if output_file:
+            cmd.extend(['-o', f"{output_file}_external_params"])
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            Logger.success("External parameter discovery completed successfully")
+            
+            # Try to parse results from output file
+            if output_file:
+                result_file = f"{output_file}_external_params.txt"
+                if os.path.exists(result_file):
+                    Logger.info(f"External parameter results saved to {result_file}")
+                    return {'status': 'success', 'output_file': result_file}
+            
+            return {'status': 'success', 'message': 'External parameter discovery completed'}
+        else:
+            Logger.error(f"External parameter discovery failed: {result.stderr}")
+            return {'status': 'error', 'message': result.stderr}
+            
+    except subprocess.TimeoutExpired:
+        Logger.error("External parameter discovery timed out (5 minutes)")
+        return {'status': 'timeout'}
+    except Exception as e:
+        Logger.error(f"Failed to run external parameter discovery: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
+
 def main():
     print_banner()
     
@@ -850,6 +895,7 @@ def main():
     parser.add_argument('-t', '--target', required=True, help='Target domain or URL')
     parser.add_argument('--subdomains-only', action='store_true', help='Run only subdomain discovery')
     parser.add_argument('--parameters-only', action='store_true', help='Run only parameter discovery')
+    parser.add_argument('--external-params', action='store_true', help='Run external parameter discovery tool')
     parser.add_argument('--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size')
@@ -861,8 +907,9 @@ def main():
     recon = ProfessionalRecon()
     
     try:
-        run_subdomains = not args.parameters_only
-        run_parameters = not args.subdomains_only
+        run_subdomains = not args.parameters_only and not args.external_params
+        run_parameters = not args.subdomains_only and not args.external_params
+        run_external_params = args.external_params or (not args.subdomains_only and not args.parameters_only)
         
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
@@ -905,6 +952,20 @@ def main():
                 if urls:
                     print(f"    URL: {urls[0]}")
         
+        # Run external parameter discovery if requested
+        if run_external_params and not args.parameters_only:
+            external_result = run_external_parameter_discovery(
+                args.target, 
+                args.output or f"recon_{TargetParser.parse_target(args.target)['domain'].replace('.', '_')}_{int(time.time())}"
+            )
+            
+            if external_result.get('status') == 'success':
+                Logger.success("External parameter discovery completed")
+                if external_result.get('output_file'):
+                    print(f"{Colors.CYAN}External parameter results: {external_result['output_file']}{Colors.END}")
+            else:
+                Logger.warning(f"External parameter discovery failed: {external_result.get('message', 'Unknown error')}")
+        
         # Save results
         if args.output:
             output_file = args.output
@@ -922,6 +983,9 @@ def main():
         print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
         print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
         print(f"{Colors.CYAN}Results saved to: {output_file}.{args.format}{Colors.END}")
+        
+        if run_external_params and not args.parameters_only:
+            print(f"{Colors.YELLOW}Note: External parameter discovery results are saved separately{Colors.END}")
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")
