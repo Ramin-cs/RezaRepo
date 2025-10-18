@@ -83,7 +83,7 @@ class SubdomainEnumerator:
         
     def print_found(self, subdomain: str, source: str):
         """Print found subdomain"""
-        if self.verbose and not self.silent:
+        if not self.silent and self.verbose:
             print(f"{C.RED}{source}: {C.WHITE}{subdomain}")
     
     def clean_domain(self, domain: str) -> str:
@@ -457,7 +457,7 @@ class Sublist3r:
             'wayback': WaybackEnumerator,
         }
         
-        if 'all' in self.engines:
+        if 'all' in self.engines or not self.engines:
             self.engines = list(self.available_engines.keys())
     
     def print_info(self, message: str):
@@ -537,8 +537,7 @@ class Sublist3r:
         """Main enumeration function"""
         if not self.silent:
             banner()
-        
-        self.print_info(f"Starting enumeration for {self.domain}")
+            self.print_info(f"Starting enumeration for {self.domain}")
         
         # Run different enumeration methods
         self.enumerate_sources()
@@ -557,6 +556,10 @@ class Sublist3r:
             if self.verbose:
                 for subdomain in sorted(self.subdomains):
                     print(f"{C.WHITE}{subdomain}")
+        else:
+            # In silent mode, just print the subdomains
+            for subdomain in sorted(self.subdomains):
+                print(subdomain)
         
         return self.subdomains
 
