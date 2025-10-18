@@ -899,11 +899,13 @@ def run_external_parameter_discovery(target, output_file=None):
     Logger.phase("EXTERNAL PARAMETER DISCOVERY")
     
     try:
-        # Check if parameter.py exists
-        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+        # Check if parameter tools exist (try simple version first)
+        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter_simple.py')
         if not os.path.exists(param_tool_path):
-            Logger.error("parameter.py tool not found in current directory")
-            return {}
+            param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+            if not os.path.exists(param_tool_path):
+                Logger.error("Parameter discovery tool not found in current directory")
+                return {}
         
         Logger.info(f"Running external parameter discovery for {target}")
         

@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Professional Parameter Discovery Tool
 Combines the best features from multiple ParamSpider implementations
 Advanced parameter mining from web archives with intelligent filtering
 """
+
+# Fix encoding for Windows
+import sys
+import os
+if os.name == 'nt':  # Windows
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
 #!/usr/bin/env python3
 # Core imports that work everywhere
@@ -504,7 +513,9 @@ class ParameterDiscovery:
 
 def print_banner():
     """Print tool banner"""
-    banner = f"""
+    try:
+        # Try Unicode banner first
+        banner = f"""
 {Colors.CYAN}
 ╔═══════════════════════════════════════════════════════════════╗
 ║                    PARAMETER DISCOVERY TOOL                   ║
@@ -515,7 +526,21 @@ def print_banner():
 {Colors.GREEN}Professional Parameter Discovery for Bug Bounty & Penetration Testing{Colors.END}
 {Colors.YELLOW}Combines multiple ParamSpider techniques with intelligent filtering{Colors.END}
 """
-    print(banner)
+        print(banner)
+    except UnicodeEncodeError:
+        # Fallback to ASCII banner for Windows
+        banner = f"""
+{Colors.CYAN}
+===============================================================
+                    PARAMETER DISCOVERY TOOL                   
+                   Advanced Parameter Mining                   
+                  Wayback Machine + Fuzzing                   
+===============================================================
+{Colors.END}
+{Colors.GREEN}Professional Parameter Discovery for Bug Bounty & Penetration Testing{Colors.END}
+{Colors.YELLOW}Combines multiple ParamSpider techniques with intelligent filtering{Colors.END}
+"""
+        print(banner)
 
 def main():
     print_banner()

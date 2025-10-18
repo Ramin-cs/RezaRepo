@@ -1,33 +1,19 @@
 Parameter Discovery Report
 Domain: sabzlearn.ir
-Timestamp: 2025-10-18 19:24:01
-Execution Time: 11.97 seconds
+Timestamp: 2025-10-18 19:47:26
+Execution Time: 3.51 seconds
 ============================================================
 
-DISCOVERED PARAMETERS (104):
+DISCOVERED PARAMETERS (44):
 ----------------------------------------
-• 744751be68d2ef174a9e1f66df9bd6a2
-• 83ebdf46c9db81eb1fe4eb5eba553c58
-• 98558d680c8ddd363d4b1c5465da5f21
-• Applied_projects_with_Python
-• Python_tricks
-• What_are_named_tuples_in_Python
 • _
 • __cf_chl_tk
 • _wpnonce
-• a8595c4c65d071699228c7a361aa7083
 • action
 • add_to_wishlist
 • after
 • ajax
 • back
-• blackjs
-• blackpy
-• blog
-• bootstrap5
-• burp
-• canvas
-• categories
 • category[49]
 • category[4]
 • category[50]
@@ -36,80 +22,34 @@ DISCOVERED PARAMETERS (104):
 • category[7]
 • category[8]
 • category[9]
-• ce01010101it
-• content
-• course
-• courses
-• css
-• css_grid
-• csspro
-• dir
-• dist
-• ecb958eda901d3f6a770a1aaee8fd209
-• electronjs
-• english_learning
-• expires
 • fbclid
 • format
-• frontrm
-• html
-• htmlpro
-• js
-• jspro
-• landing
 • lang
-• lazyload
-• lesson
-• livewire_master
 • login
-• logo
-• md5
-• min
-• mmonnet
-• npm
-• oembed
 • only_free
 • p
-• packages
 • page
 • paged
-• pages
 • post
 • post_type
-• posts
-• product
-• product_cat
-• reactjs
 • reauth
 • redirect_to
-• regex
 • remove_item
 • req_id
 • route
 • rp
 • s
-• scripts
-• session
-• smart_offers
 • sort
-• storm
-• tailwind
-• ticket_661
 • title
 • type
 • unique
-• uploads
 • url
 • utm_campaign
 • utm_content
 • utm_medium
 • utm_source
 • utm_term
-• ver
-• vscode
-• vuejs
 • wc-ajax
-• website
 
 
 URLS WITH PARAMETERS (211):
@@ -329,8 +269,6 @@ https://tech.sabzlearn.ir/?rp=FUZZ
 
 STATISTICS:
 ----------------------------------------
-Total Parameters: 104
+Total Parameters: 44
 Total Urls: 211
-Basic Params: 44
-Advanced Params: 93
-Execution Time: 11.973923683166504
+Execution Time: 3.5063605308532715
