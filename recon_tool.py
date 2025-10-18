@@ -150,7 +150,13 @@ class HTTPClient:
                         self.headers = dict(urllib_response.headers)
                         self.content = content
                         self.text = content.decode('utf-8', errors='ignore')
-                        self.elapsed = type('obj', (object,), {'total_seconds': lambda: elapsed})()
+                        # Fix elapsed time object
+                        class ElapsedTime:
+                            def __init__(self, elapsed_seconds):
+                                self._elapsed = elapsed_seconds
+                            def total_seconds(self):
+                                return self._elapsed
+                        self.elapsed = ElapsedTime(elapsed)
                 
                 return UrllibResponse(response, content, elapsed)
                 
@@ -162,7 +168,13 @@ class HTTPClient:
                     self.headers = {}
                     self.content = b''
                     self.text = ''
-                    self.elapsed = type('obj', (object,), {'total_seconds': lambda: 0})()
+                    # Fix elapsed time object
+                    class ElapsedTime:
+                        def __init__(self, elapsed_seconds):
+                            self._elapsed = elapsed_seconds
+                        def total_seconds(self):
+                            return self._elapsed
+                    self.elapsed = ElapsedTime(0)
             
             return ErrorResponse(e.code)
         except Exception as e:
@@ -195,7 +207,13 @@ class HTTPClient:
                         self.headers = dict(urllib_response.headers)
                         self.content = content
                         self.text = content.decode('utf-8', errors='ignore')
-                        self.elapsed = type('obj', (object,), {'total_seconds': lambda: elapsed})()
+                        # Fix elapsed time object
+                        class ElapsedTime:
+                            def __init__(self, elapsed_seconds):
+                                self._elapsed = elapsed_seconds
+                            def total_seconds(self):
+                                return self._elapsed
+                        self.elapsed = ElapsedTime(elapsed)
                 
                 return UrllibResponse(response, content, elapsed)
                 
@@ -385,22 +403,36 @@ class SubdomainHunter:
         """Certificate Transparency logs"""
         Logger.info(f"Mining Certificate Transparency logs for {self.domain}")
         
-        try:
-            url = f"https://crt.sh/?q=%.{self.domain}&output=json"
-            response = self.http_client.get(url)
-            
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                for cert in data:
-                    name_value = cert.get('name_value', '')
-                    for domain in name_value.split('\n'):
-                        domain = domain.strip().lower()
-                        if domain and self.domain in domain and '*' not in domain:
-                            if domain not in self.found_subdomains:
-                                self.found_subdomains.add(domain)
-                                Logger.found(f"CT: {domain}")
-        except Exception as e:
-            Logger.warning(f"CT search failed: {str(e)}")
+        # Multiple CT sources
+        ct_sources = [
+            f"https://crt.sh/?q=%.{self.domain}&output=json",
+            f"https://crt.sh/?q={self.domain}&output=json"
+        ]
+        
+        for ct_url in ct_sources:
+            try:
+                response = self.http_client.get(ct_url)
+                
+                if response.status_code == 200:
+                    data = json.loads(response.text)
+                    for cert in data:
+                        name_value = cert.get('name_value', '')
+                        for domain in name_value.split('\n'):
+                            domain = domain.strip().lower()
+                            # Better filtering
+                            if (domain and 
+                                self.domain in domain and 
+                                '*' not in domain and
+                                not domain.startswith('.') and
+                                domain.count('.') >= self.domain.count('.')):
+                                
+                                if domain not in self.found_subdomains:
+                                    self.found_subdomains.add(domain)
+                                    Logger.found(f"CT: {domain}")
+                break  # If first source works, don't try others
+            except Exception as e:
+                Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
+                continue
     
     def dns_zone_transfer(self):
         """DNS zone transfer attempt"""
@@ -565,12 +597,19 @@ class ParameterHunter:
             self.baseline_response = {
                 'status_code': response.status_code,
                 'content_length': len(response.content),
-                'response_time': response.elapsed.total_seconds(),
-                'headers': dict(response.headers)
+                'response_time': response.elapsed.total_seconds() if hasattr(response.elapsed, 'total_seconds') else 0,
+                'headers': dict(response.headers) if hasattr(response, 'headers') else {}
             }
             Logger.success(f"Baseline established: {response.status_code} ({len(response.content)} bytes)")
         except Exception as e:
-            Logger.error(f"Failed to get baseline: {str(e)}")
+            Logger.warning(f"Failed to get baseline: {str(e)}")
+            # Set default baseline
+            self.baseline_response = {
+                'status_code': 200,
+                'content_length': 0,
+                'response_time': 0,
+                'headers': {}
+            }
     
     def parameter_fuzzing(self):
         """Parameter fuzzing"""
@@ -893,9 +932,8 @@ def main():
     
     parser = argparse.ArgumentParser(description="Professional Reconnaissance Tool")
     parser.add_argument('-t', '--target', required=True, help='Target domain or URL')
-    parser.add_argument('--subdomains-only', action='store_true', help='Run only subdomain discovery')
-    parser.add_argument('--parameters-only', action='store_true', help='Run only parameter discovery')
-    parser.add_argument('--external-params', action='store_true', help='Run external parameter discovery tool')
+    parser.add_argument('--subdomains', action='store_true', help='Run only subdomain discovery')
+    parser.add_argument('--params', action='store_true', help='Run only parameter discovery (uses external tool)')
     parser.add_argument('--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size')
@@ -907,9 +945,13 @@ def main():
     recon = ProfessionalRecon()
     
     try:
-        run_subdomains = not args.parameters_only and not args.external_params
-        run_parameters = not args.subdomains_only and not args.external_params
-        run_external_params = args.external_params or (not args.subdomains_only and not args.parameters_only)
+        # Default behavior: run both subdomain and parameter discovery
+        # Use switches to run only specific modules
+        if args.subdomains and args.params:
+            parser.error("Please use either --subdomains or --params, not both. For both, run without switches.")
+        
+        run_subdomains = not args.params  # Run subdomains unless --params is specified
+        run_parameters = not args.subdomains  # Run parameters unless --subdomains is specified
         
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
@@ -935,36 +977,20 @@ def main():
                     print(f"  • {info['url']}")
         
         if run_parameters:
-            parameters = recon.run_parameter_phase(
-                target=args.target,
-                threads=min(args.threads, 30),
-                timeout=args.timeout,
-                wordlist_size=args.wordlist
-            )
-            
-            print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-            print(f"Found {len(parameters)} parameters:")
-            
-            for param_name, param_info in sorted(parameters.items()):
-                methods = ', '.join(param_info.get('methods', []))
-                urls = param_info.get('urls', [])
-                print(f"  • {param_name} ({methods})")
-                if urls:
-                    print(f"    URL: {urls[0]}")
-        
-        # Run external parameter discovery if requested
-        if run_external_params and not args.parameters_only:
+            # Use external parameter discovery tool
             external_result = run_external_parameter_discovery(
                 args.target, 
                 args.output or f"recon_{TargetParser.parse_target(args.target)['domain'].replace('.', '_')}_{int(time.time())}"
             )
             
             if external_result.get('status') == 'success':
-                Logger.success("External parameter discovery completed")
+                Logger.success("Parameter discovery completed")
                 if external_result.get('output_file'):
-                    print(f"{Colors.CYAN}External parameter results: {external_result['output_file']}{Colors.END}")
+                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                    print(f"Parameter discovery completed successfully!")
+                    print(f"{Colors.CYAN}Results saved to: {external_result['output_file']}{Colors.END}")
             else:
-                Logger.warning(f"External parameter discovery failed: {external_result.get('message', 'Unknown error')}")
+                Logger.warning(f"Parameter discovery failed: {external_result.get('message', 'Unknown error')}")
         
         # Save results
         if args.output:
@@ -977,15 +1003,18 @@ def main():
         recon.save_results(output_file, args.format)
         
         Logger.phase("RECONNAISSANCE COMPLETED")
-        total_subdomains = len(recon.results.get('subdomains', {}))
-        total_parameters = len(recon.results.get('parameters', {}))
-        print(f"{Colors.GREEN}Total Subdomains: {total_subdomains}{Colors.END}")
-        print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
-        print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
-        print(f"{Colors.CYAN}Results saved to: {output_file}.{args.format}{Colors.END}")
+        total_subdomains = len(recon.results.get('subdomains', {})) if run_subdomains else 0
         
-        if run_external_params and not args.parameters_only:
-            print(f"{Colors.YELLOW}Note: External parameter discovery results are saved separately{Colors.END}")
+        print(f"{Colors.GREEN}Target: {recon.results.get('target', args.target)}{Colors.END}")
+        if run_subdomains:
+            print(f"{Colors.GREEN}Total Subdomains Found: {total_subdomains}{Colors.END}")
+        if run_parameters:
+            print(f"{Colors.GREEN}Parameter Discovery: Completed (check separate file){Colors.END}")
+        
+        if run_subdomains:
+            print(f"{Colors.CYAN}Subdomain results saved to: {output_file}.{args.format}{Colors.END}")
+        if run_parameters:
+            print(f"{Colors.YELLOW}Parameter results saved separately by external tool{Colors.END}")
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")

@@ -1,0 +1,336 @@
+Parameter Discovery Report
+Domain: sabzlearn.ir
+Timestamp: 2025-10-18 19:03:48
+Execution Time: 3.07 seconds
+============================================================
+
+DISCOVERED PARAMETERS (104):
+----------------------------------------
+• 744751be68d2ef174a9e1f66df9bd6a2
+• 83ebdf46c9db81eb1fe4eb5eba553c58
+• 98558d680c8ddd363d4b1c5465da5f21
+• Applied_projects_with_Python
+• Python_tricks
+• What_are_named_tuples_in_Python
+• _
+• __cf_chl_tk
+• _wpnonce
+• a8595c4c65d071699228c7a361aa7083
+• action
+• add_to_wishlist
+• after
+• ajax
+• back
+• blackjs
+• blackpy
+• blog
+• bootstrap5
+• burp
+• canvas
+• categories
+• category[49]
+• category[4]
+• category[50]
+• category[56]
+• category[6]
+• category[7]
+• category[8]
+• category[9]
+• ce01010101it
+• content
+• course
+• courses
+• css
+• css_grid
+• csspro
+• dir
+• dist
+• ecb958eda901d3f6a770a1aaee8fd209
+• electronjs
+• english_learning
+• expires
+• fbclid
+• format
+• frontrm
+• html
+• htmlpro
+• js
+• jspro
+• landing
+• lang
+• lazyload
+• lesson
+• livewire_master
+• login
+• logo
+• md5
+• min
+• mmonnet
+• npm
+• oembed
+• only_free
+• p
+• packages
+• page
+• paged
+• pages
+• post
+• post_type
+• posts
+• product
+• product_cat
+• reactjs
+• reauth
+• redirect_to
+• regex
+• remove_item
+• req_id
+• route
+• rp
+• s
+• scripts
+• session
+• smart_offers
+• sort
+• storm
+• tailwind
+• ticket_661
+• title
+• type
+• unique
+• uploads
+• url
+• utm_campaign
+• utm_content
+• utm_medium
+• utm_source
+• utm_term
+• ver
+• vscode
+• vuejs
+• wc-ajax
+• website
+
+
+URLS WITH PARAMETERS (211):
+----------------------------------------
+http://sabzlearn.ir/lab/lang/skills/listening/?page=FUZZ&title=FUZZ
+https://chat.sabzlearn.ir/include/init.php?lang=FUZZ
+https://dl.sabzlearn.ir/podcast/html.m4a?_=FUZZ
+https://dl.sabzlearn.ir/podcast/kar.m4a?_=FUZZ
+https://erp.sabzlearn.ir/web/image/website/1/favicon?unique=FUZZ
+https://erp.sabzlearn.ir/web/image/website/1/logo/300x300?unique=FUZZ
+https://erp.sabzlearn.ir/web/image/website/1/logo/سبز لرن?unique=FUZZ
+https://erp.sabzlearn.ir/web/image/website/1/logo?unique=FUZZ
+https://files.sabzlearn.ir/?rp=FUZZ
+https://landing.sabzlearn.ir/?p=FUZZ
+https://landing.sabzlearn.ir/bahman-offer/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://landing.sabzlearn.ir/landing/bahar-off/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://landing.sabzlearn.ir/landing/black-friday/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://landing.sabzlearn.ir/wp-json/oembed/1.0/embed?url=FUZZ
+https://landing.sabzlearn.ir/wp-json/oembed/1.0/embed?url=FUZZ&format=FUZZ
+https://landing.sabzlearn.ir/wp-login.php?redirect_to=FUZZ&reauth=FUZZ
+https://sabzlearn.ir/?login=FUZZ&type=FUZZ
+https://sabzlearn.ir/?p=FUZZ
+https://sabzlearn.ir/?post_type=FUZZ&p=FUZZ
+https://sabzlearn.ir/?redirect_to=FUZZ
+https://sabzlearn.ir/?s=FUZZ
+https://sabzlearn.ir/?utm_medium=FUZZ&utm_source=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/?wc-ajax=FUZZ
+https://sabzlearn.ir/blog/arrays-in-javascript/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/blog/what-is-backend/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/blog/what-is-javascript/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/cart/?remove_item=FUZZ&_wpnonce=FUZZ
+https://sabzlearn.ir/category/سی-اس-اس/?redirect_to=FUZZ
+https://sabzlearn.ir/category/طراحی-سایت/?redirect_to=FUZZ
+https://sabzlearn.ir/category/پروژه-های-کاربردی/?redirect_to=FUZZ
+https://sabzlearn.ir/cdn-cgi/challenge-platform/h/b/cv/result?req_id=FUZZ
+https://sabzlearn.ir/course-cat/front-end/?paged=FUZZ&ajax=FUZZ
+https://sabzlearn.ir/course-cat/front-end/?paged=FUZZ&ajax=FUZZ&only_free=FUZZ
+https://sabzlearn.ir/course-cat/front-end/?paged=FUZZ&ajax=FUZZ&s=FUZZ
+https://sabzlearn.ir/course/algorithm/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/algorithm/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/applied-projects-with-python/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/applied-projects-with-python/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/black-network/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/black-py/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/bootstrap5/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/ceh-v11/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/data-visualization-with-python/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/django-ex/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/django-ex/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/git-github/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/html-tutorial/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/java-script-zero-to-hero/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/java-script-zero-to-hero/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_term=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/next-js/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/python/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/python/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_term=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/reactjs/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/course/reactjs/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/course/tailwind-css/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/courses/?category%5B4%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B49%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B49%5D=FUZZ&category%5B9%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B6%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B6%5D=FUZZ&category%5B7%5D=FUZZ&category%5B50%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B6%5D=FUZZ&category%5B7%5D=FUZZ&category%5B50%5D=FUZZ&category%5B56%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B8%5D=FUZZ
+https://sabzlearn.ir/courses/?category%5B9%5D=FUZZ
+https://sabzlearn.ir/courses/?only_free=FUZZ
+https://sabzlearn.ir/courses/?only_free=FUZZ&paged=FUZZ&ajax=FUZZ
+https://sabzlearn.ir/courses/?paged=FUZZ&ajax=FUZZ
+https://sabzlearn.ir/courses/?paged=FUZZ&ajax=FUZZ&category%5B56%5D=FUZZ
+https://sabzlearn.ir/courses/?paged=FUZZ&ajax=FUZZ&only_free=FUZZ
+https://sabzlearn.ir/courses/?paged=FUZZ&category%5B6%5D=FUZZ&ajax=FUZZ
+https://sabzlearn.ir/courses/?s=FUZZ
+https://sabzlearn.ir/courses/?sort=FUZZ
+https://sabzlearn.ir/courses/?utm_source=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ
+https://sabzlearn.ir/courses/black-js/lesson/اشنایی-با-bom-در-جاوااسکریپت-از-طریق-یک-دا-3/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-js/lesson/اشنایی-با-bom-در-جاوااسکریپت-از-طریق-یک-دا-4/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-js/lesson/اشنایی-با-کتابخانه-jquery/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-js/lesson/معرفی-دوره-5/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-js/lesson/کار-با-دیتا-تایپ-متود-ها-در-جاوااسکریپت/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-py/lesson/ایا-میتونیم-برای-key-هرنوع-داده-ای-درنظرب/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-py/lesson/بدست-اوردن-اطلاعات-ip-با-کتابخانه-ipapi-جهت-د/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-py/lesson/تغییر-آیتم-های-درون-یک-تاپل-یک-میانبر-ن/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/black-py/lesson/کار-با-نوع-داده-bool-و-تفهیم-اون-بر-محوریت-if-و-el/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/bootstrap5/lesson/dropdowns-در-بوت-استرپ/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/bootstrap5/lesson/gutters-در-بوت-استرپ/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/bootstrap5/lesson/images-در-بوت-استرپ/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/bootstrap5/lesson/پروژه-عملی-بخش-پنجم/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/bootstrap5/lesson/پروژه-عملی/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/creative-projects-with-html-css/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/creative-projects-with-js/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-basic-free/lesson/آموزش-تخصصی-مفهومی-padding/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-basic-free/lesson/کار-با-رنگ-ها-و-فرمت-های-فراخوانی-آنها-آ/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-education/lesson/ساخت-چندین-آلرت-زیبا-با-css-مینی-پروژه/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-education/lesson/ویژگی-overflow-در-زبان-css/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-grid/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/css-grid/lesson/بازی-با-css-grid/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/emmet/lesson/merge-lines-evaluate/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/emmet/lesson/nesting/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/flex-box/lesson/order/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/free-vuejs-training/lesson/event-modifier-ها-در-vue-js-قسمت-2/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/free-vuejs-training/lesson/استفاده-از-کامپوننت-های-تودرتو-nested-component/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/free-vuejs-training/lesson/معرفی-دوره-7/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/html-advance/lesson/آشنایی-با-زبان-html/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/html-advance/lesson/طراحی-یک-فرم-بسیار-حرفه-ای-و-کامل-مینی-پ/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/html-advance/lesson/فرم-ها-در-html-بخش-ششم/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/html-advance/lesson/معرفی-تگ-های-فرم-دهی-در-html-بخش-پنجم/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/html-basic-free/lesson/آموزش-جامع-و-مفصل-لیست-ایتم-ها-،-ul-،-li-،-ol-و-بر/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/استفاده-از-متد-های-classlist/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/تفاوت-بین-x-و-x/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/حل-تمرین-لاگین-به-صورت-case-insensitive/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/حل-تمرین-محاسبه-میانگین-با-حلقه-for/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/دسترسی-به-استایل-المنتها-و-تغییر-آن-ه/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/java-script-zero-to-hero/lesson/نحوه-کار-با-حلقه-تکرار-for/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/metasploit-framework-tutorial/lesson/nessus-scanning/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/الگوریتم-چیست؟-بخش-اول/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/برنامه-نویسی-به-دردم-میخوره؟/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/تو-رفتگی/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/زبان-برنامه-نویسی-سطح-بالا،-پایین-و-میا/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/شناسه/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/عملگرهای-عضویت/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/نصب-مفسر-پایتون-و-کار-با-idle/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/کار-با-مفسر-و-ترمینال-و-آشنایی-با-حالت-ت/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/lesson/کلمات-کلیدی/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/python/tutor_quiz/آزمون-جمع-بندی-فصل-سوم/?__cf_chl_tk=FUZZ
+https://sabzlearn.ir/courses/reactjs/lesson/مفاهیم-truthy-falsy-values/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/start-front-end/lesson/برسی-اصطلاحات-مربوط-به-فرانت-اند-بک-اند/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/vscode-tutorial/lesson/آپدیت-جدید-vscode/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/vscode-tutorial/lesson/کار-با-اکستنشن-emmet/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/vscode-tutorial/lesson/کار-با-اکستنشن-html-preview/?redirect_to=FUZZ
+https://sabzlearn.ir/courses/آموزش-npm-برای-جاوااسکریپت-کارها/lesson/نحوه-حذف-پکیج-های-دلخواه-با-npm/?redirect_to=FUZZ
+https://sabzlearn.ir/en-freelance-sites/?fbclid=FUZZ
+https://sabzlearn.ir/how-can-be-better-programer/?redirect_to=FUZZ
+https://sabzlearn.ir/how-to-become-a-web-designer/?redirect_to=FUZZ
+https://sabzlearn.ir/images-in-html/?redirect_to=FUZZ
+https://sabzlearn.ir/introducing-the-best-python-course/?redirect_to=FUZZ
+https://sabzlearn.ir/landing-ghorban/?redirect_to=FUZZ
+https://sabzlearn.ir/landing/daycamp/?redirect_to=FUZZ
+https://sabzlearn.ir/learning-to-buy-hosts-and-domains/?redirect_to=FUZZ
+https://sabzlearn.ir/list-of-css-libraries/?redirect_to=FUZZ
+https://sabzlearn.ir/login/?after=FUZZ
+https://sabzlearn.ir/login/?after=FUZZ&action=FUZZ
+https://sabzlearn.ir/login/?after=FUZZ&only_free=FUZZ
+https://sabzlearn.ir/login/?after=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/login/?after=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_term=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/login/email/?after=FUZZ
+https://sabzlearn.ir/login/email/?after=FUZZ&only_free=FUZZ
+https://sabzlearn.ir/login/email/?after=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/login/lost-password/?after=FUZZ
+https://sabzlearn.ir/login?after=FUZZ
+https://sabzlearn.ir/login?after=FUZZ&action=FUZZ
+https://sabzlearn.ir/my-account/?login=FUZZ&back=FUZZ&page=FUZZ
+https://sabzlearn.ir/my-account/lost-password/?login=FUZZ&back=FUZZ&page=FUZZ
+https://sabzlearn.ir/portfolio/?redirect_to=FUZZ
+https://sabzlearn.ir/product-category/security/?redirect_to=FUZZ
+https://sabzlearn.ir/product-category/soft-off/?redirect_to=FUZZ
+https://sabzlearn.ir/product/advance-template-design-with-html-css-flexbox/?redirect_to=FUZZ
+https://sabzlearn.ir/product/applied-projects-with-python/?redirect_to=FUZZ
+https://sabzlearn.ir/product/black-js/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/black-js/?redirect_to=FUZZ
+https://sabzlearn.ir/product/black-js/comment-page-10/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/black-js/comment-page-10/?redirect_to=FUZZ
+https://sabzlearn.ir/product/black-network/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/black-network/?redirect_to=FUZZ
+https://sabzlearn.ir/product/bootstrap5/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/bootstrap5/?redirect_to=FUZZ
+https://sabzlearn.ir/product/ceh-v11/?redirect_to=FUZZ
+https://sabzlearn.ir/product/css-education/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/css-education/?redirect_to=FUZZ
+https://sabzlearn.ir/product/css-education/comment-page-1/?redirect_to=FUZZ
+https://sabzlearn.ir/product/css-education/comment-page-4/?redirect_to=FUZZ
+https://sabzlearn.ir/product/css-grid/?redirect_to=FUZZ
+https://sabzlearn.ir/product/data-visualization-with-python/?redirect_to=FUZZ
+https://sabzlearn.ir/product/django-ex/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/django-ex/?redirect_to=FUZZ
+https://sabzlearn.ir/product/emmet/?redirect_to=FUZZ
+https://sabzlearn.ir/product/html-advance/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/html-advance/?redirect_to=FUZZ
+https://sabzlearn.ir/product/java-script-zero-to-hero/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/java-script-zero-to-hero/?redirect_to=FUZZ
+https://sabzlearn.ir/product/linux-for-hackers/?redirect_to=FUZZ
+https://sabzlearn.ir/product/npm-tutorial/?redirect_to=FUZZ
+https://sabzlearn.ir/product/pwk/?redirect_to=FUZZ
+https://sabzlearn.ir/product/python-tricks/?redirect_to=FUZZ
+https://sabzlearn.ir/product/python/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/python/?redirect_to=FUZZ
+https://sabzlearn.ir/product/python/comment-page-16/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/python/comment-page-16/?redirect_to=FUZZ
+https://sabzlearn.ir/product/reactjs/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/reactjs/?redirect_to=FUZZ
+https://sabzlearn.ir/product/team-experience/?add_to_wishlist=FUZZ
+https://sabzlearn.ir/product/team-experience/?redirect_to=FUZZ
+https://sabzlearn.ir/product/vscode-tutorial/?redirect_to=FUZZ
+https://sabzlearn.ir/signup/?after=FUZZ
+https://sabzlearn.ir/signup/?after=FUZZ&only_free=FUZZ
+https://sabzlearn.ir/signup/?after=FUZZ&utm_medium=FUZZ&utm_campaign=FUZZ&utm_content=FUZZ
+https://sabzlearn.ir/signup?after=FUZZ
+https://sabzlearn.ir/tag/یادگیری-برنامه-نویسی-قبل-از-کنکور/?redirect_to=FUZZ
+https://sabzlearn.ir/teacher/ce01010101it/?redirect_to=FUZZ
+https://sabzlearn.ir/teacher/mohammadbaharluo/?redirect_to=FUZZ
+https://sabzlearn.ir/teacher/rezadolati01/?redirect_to=FUZZ
+https://sabzlearn.ir/working-with-javascript/?redirect_to=FUZZ
+https://sabzlearn.ir/wp-admin/post.php?post=FUZZ&action=FUZZ
+https://sabzlearn.ir/wp-content/uploads/2022/08/what-is-python.mp3?_=FUZZ
+https://sabzlearn.ir/wp-json/oembed/1.0/embed?url=FUZZ
+https://sabzlearn.ir/wp-json/oembed/1.0/embed?url=FUZZ&format=FUZZ
+https://sabzlearn.ir/wp-login.php?redirect_to=FUZZ
+https://sabzlearn.ir/wp-login.php?redirect_to=FUZZ&reauth=FUZZ
+https://sabzlearn.ir/آموزش-closure-در-جاوا-اسکریپت/?redirect_to=FUZZ
+https://sabzlearn.ir/بررسی-بازار-کار-فرانت-اند-بازار-کار-ف/?redirect_to=FUZZ
+https://sabzlearn.ir/معرفی-بهترین-سایت-آموزش-جاوا-اسکریپت/?redirect_to=FUZZ
+https://status.sabzlearn.ir/?route=FUZZ
+https://tech.sabzlearn.ir/?rp=FUZZ
+
+
+STATISTICS:
+----------------------------------------
+Total Parameters: 104
+Total Urls: 211
+Basic Params: 44
+Advanced Params: 93
+Execution Time: 3.073105812072754
