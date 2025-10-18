@@ -1,12 +1,8 @@
 #!/usr/bin/env python3
 """
-Professional Reconnaissance Tool
-Advanced subdomain and parameter discovery for bug bounty hunters
-
-Based on research of top bug bounty tools like:
-- Subfinder, Amass, Assetfinder for subdomain discovery
-- Arjun, ParamSpider, GAP for parameter discovery
-- Nuclei, httpx for validation and probing
+Professional Reconnaissance Tool - Fixed Version
+Advanced subdomain and parameter discovery for security researchers and penetration testers
+Cross-platform compatible with fallback mechanisms
 """
 
 # Core imports that should always work
@@ -37,7 +33,7 @@ try:
     from requests.adapters import HTTPAdapter
     from urllib3.util.retry import Retry
     REQUESTS_AVAILABLE = True
-    warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
+    warnings.filterwarnings("ignore")
 except ImportError:
     REQUESTS_AVAILABLE = False
 
@@ -49,7 +45,7 @@ except ImportError:
     try:
         from simple_httpx import HTTPX, HTTPXResult
         HTTPX_AVAILABLE = True
-    except ImportError as e:
+    except ImportError:
         HTTPX_AVAILABLE = False
 
 class Colors:
@@ -102,10 +98,8 @@ class TargetParser:
     @staticmethod
     def parse_target(target):
         """Parse target and extract domain and URL components"""
-        # Remove common prefixes and clean the input
         target = target.strip()
         
-        # Handle different input formats
         if target.startswith(('http://', 'https://')):
             parsed = urlparse(target)
             domain = parsed.netloc
@@ -114,11 +108,9 @@ class TargetParser:
             domain = target
             base_url = f"https://{target}"
         else:
-            # Assume it's a domain
             domain = target
             base_url = f"https://{target}"
         
-        # Clean domain (remove port if present)
         if ':' in domain:
             domain = domain.split(':')[0]
         
@@ -128,6 +120,52 @@ class TargetParser:
             'original': target
         }
 
+class HTTPClient:
+    """Cross-platform HTTP client with fallback"""
+    
+    def __init__(self, timeout=10):
+        self.timeout = timeout
+        self.session = None
+        if REQUESTS_AVAILABLE:
+            try:
+                self.session = requests.Session()
+                self.session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                })
+            except:
+                self.session = None
+    
+    def get(self, url, **kwargs):
+        """Make HTTP GET request with fallback"""
+        if self.session and REQUESTS_AVAILABLE:
+            try:
+                return self.session.get(url, timeout=self.timeout, verify=False, **kwargs)
+            except:
+                pass
+        
+        # Fallback to urllib
+        try:
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+            
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            with urllib.request.urlopen(req, timeout=self.timeout, context=ssl_context) as response:
+                # Create a requests-like response object
+                class FallbackResponse:
+                    def __init__(self, urllib_response):
+                        self.status_code = urllib_response.getcode()
+                        self.headers = dict(urllib_response.headers)
+                        self.text = urllib_response.read().decode('utf-8', errors='ignore')
+                        self.content = self.text.encode('utf-8')
+                        self.elapsed = type('obj', (object,), {'total_seconds': lambda: 0})()
+                
+                return FallbackResponse(response)
+        except Exception as e:
+            raise Exception(f"HTTP request failed: {str(e)}")
+
 class SubdomainHunter:
     """Professional subdomain discovery module"""
     
@@ -136,16 +174,8 @@ class SubdomainHunter:
         self.threads = threads
         self.timeout = timeout
         self.found_subdomains = set()
-        self.session = self._create_session()
+        self.http_client = HTTPClient(timeout=timeout)
         self.wordlist = self._load_wordlist(wordlist_size)
-    
-    def _create_session(self):
-        """Create optimized HTTP session"""
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-        return session
     
     def _load_wordlist(self, size):
         """Load wordlist based on size preference"""
@@ -171,13 +201,10 @@ class SubdomainHunter:
                 'zabbix', 'cacti', 'munin', 'grafana', 'prometheus',
                 'kibana', 'logstash', 'splunk', 'elk', 'graylog',
                 'sonar', 'nexus', 'artifactory', 'registry', 'harbor',
-                'vault', 'consul', 'etcd', 'zookeeper', 'kafka',
-                'rabbitmq', 'activemq', 'redis-cluster', 'memcached',
-                'haproxy', 'nginx', 'apache', 'tomcat', 'jboss',
-                'websphere', 'weblogic', 'iis', 'lighttpd', 'caddy'
+                'vault', 'consul', 'etcd', 'zookeeper', 'kafka'
             ]
             return base_wordlist + extended
-        else:  # medium
+        else:
             return base_wordlist
     
     def dns_bruteforce(self):
@@ -194,7 +221,7 @@ class SubdomainHunter:
                 return full_domain
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
-            except Exception as e:
+            except Exception:
                 pass
             return None
         
@@ -208,49 +235,24 @@ class SubdomainHunter:
         Logger.info(f"Mining Certificate Transparency logs for {self.domain}")
         
         ct_sources = [
-            f"https://crt.sh/?q=%.{self.domain}&output=json",
-            f"https://api.certspotter.com/v1/issuances?domain={self.domain}&include_subdomains=true&expand=dns_names"
+            f"https://crt.sh/?q=%.{self.domain}&output=json"
         ]
         
         for source in ct_sources:
             try:
-                response = self.session.get(source, timeout=15)
+                response = self.http_client.get(source)
                 if response.status_code == 200:
-                    if 'crt.sh' in source:
-                        data = response.json()
-                        for cert in data:
-                            name_value = cert.get('name_value', '')
-                            for domain in name_value.split('\n'):
-                                domain = domain.strip().lower()
-                                if domain and self.domain in domain and '*' not in domain:
-                                    if domain not in self.found_subdomains:
-                                        self.found_subdomains.add(domain)
-                                        Logger.found(f"CT: {domain}")
-                    elif 'certspotter' in source:
-                        data = response.json()
-                        for cert in data:
-                            dns_names = cert.get('dns_names', [])
-                            for domain_name in dns_names:
-                                domain_name = domain_name.strip().lower()
-                                if domain_name and self.domain in domain_name and '*' not in domain_name:
-                                    if domain_name not in self.found_subdomains:
-                                        self.found_subdomains.add(domain_name)
-                                        Logger.found(f"CT: {domain_name}")
+                    data = json.loads(response.text)
+                    for cert in data:
+                        name_value = cert.get('name_value', '')
+                        for domain in name_value.split('\n'):
+                            domain = domain.strip().lower()
+                            if domain and self.domain in domain and '*' not in domain:
+                                if domain not in self.found_subdomains:
+                                    self.found_subdomains.add(domain)
+                                    Logger.found(f"CT: {domain}")
             except Exception as e:
                 Logger.warning(f"CT source failed: {str(e)}")
-    
-    def search_engine_recon(self):
-        """Search engine reconnaissance (passive)"""
-        Logger.info(f"Search engine reconnaissance for {self.domain}")
-        
-        # Google dorking simulation (would need API in real implementation)
-        search_patterns = [
-            f"site:*.{self.domain}",
-            f"site:{self.domain} -www",
-            f"inurl:{self.domain}"
-        ]
-        
-        Logger.info("Search engine dorking patterns prepared (API integration required)")
     
     def dns_zone_transfer(self):
         """Attempt DNS zone transfer"""
@@ -276,7 +278,6 @@ class SubdomainHunter:
         """Detect and filter wildcard responses"""
         Logger.info(f"Wildcard detection for {self.domain}")
         
-        # Test random subdomains
         random_tests = [''.join(random.choices('abcdefghijklmnopqrstuvwxyz', k=12)) for _ in range(3)]
         wildcard_ips = set()
         
@@ -290,7 +291,6 @@ class SubdomainHunter:
         
         if wildcard_ips:
             Logger.warning(f"Wildcard detected: {wildcard_ips}")
-            # Filter wildcards from results
             filtered = set()
             for subdomain in self.found_subdomains:
                 try:
@@ -302,89 +302,96 @@ class SubdomainHunter:
                     filtered.add(subdomain)
             self.found_subdomains = filtered
     
-    def verify_live_subdomains_fast(self):
-        """Verify live subdomains using HTTPX for maximum speed"""
-        Logger.info(f"Fast verification of live subdomains for {self.domain}")
+    def verify_live_subdomains_enhanced(self):
+        """Enhanced verification showing both internal and public subdomains"""
+        Logger.info(f"Enhanced verification of subdomains for {self.domain}")
         
-        # Filter out internal/private IP subdomains before probing
+        # Separate internal and public subdomains
         public_subdomains = []
         internal_subdomains = []
         
         for subdomain in self.found_subdomains:
             try:
-                # Check if subdomain resolves to internal IP
-                import socket
                 ip = socket.gethostbyname(subdomain)
-                
-                # Check if IP is internal/private
                 if (ip.startswith('10.') or 
                     ip.startswith('192.168.') or 
                     ip.startswith('172.') or 
                     ip.startswith('127.') or
                     ip == '0.0.0.0'):
-                    internal_subdomains.append(subdomain)
-                    Logger.warning(f"Internal IP detected: {subdomain} -> {ip}")
+                    internal_subdomains.append((subdomain, ip))
                 else:
                     public_subdomains.append(subdomain)
             except:
-                # If can't resolve, still try to probe
                 public_subdomains.append(subdomain)
         
-        Logger.info(f"Probing {len(public_subdomains)} public subdomains, skipping {len(internal_subdomains)} internal ones")
+        # Show internal subdomains (but don't probe them)
+        if internal_subdomains:
+            Logger.info(f"Found {len(internal_subdomains)} internal subdomains:")
+            for subdomain, ip in internal_subdomains:
+                Logger.warning(f"Internal: {subdomain} -> {ip}")
         
-        if not public_subdomains:
-            Logger.warning("No public subdomains found to probe")
-            return {}
-        
-        # Initialize HTTPX with optimized settings
-        if not HTTPX_AVAILABLE:
-            Logger.info("HTTPX not available, using fallback verification")
-            return self._fallback_verification(public_subdomains)
-        
-        try:
-            httpx_prober = HTTPX(
-                timeout=5,  # Slightly longer timeout for better results
-                threads=min(50, len(public_subdomains) * 2),  # Dynamic thread count
-                follow_redirects=True,
-                verify_ssl=False
-            )
-            
-            # Probe all public subdomains
-            results = httpx_prober.probe_subdomains(public_subdomains)
-            
-        except Exception as e:
-            Logger.error(f"HTTPX probing failed: {str(e)}")
-            Logger.info("Falling back to basic HTTP verification")
-            return self._fallback_verification(public_subdomains)
-        
-        # Convert HTTPX results to our format
+        # Probe public subdomains with HTTPX
         live_subdomains = {}
-        for result in results:
-            if result.is_alive:
-                parsed_url = urlparse(result.url)
-                subdomain = parsed_url.netloc
+        if public_subdomains:
+            Logger.info(f"Probing {len(public_subdomains)} public subdomains")
+            
+            if HTTPX_AVAILABLE:
+                try:
+                    httpx_prober = HTTPX(
+                        timeout=5,
+                        threads=min(50, len(public_subdomains) * 2),
+                        follow_redirects=True,
+                        verify_ssl=False
+                    )
+                    
+                    results = httpx_prober.probe_subdomains(public_subdomains)
+                    
+                    for result in results:
+                        if result.is_alive:
+                            parsed_url = urlparse(result.url)
+                            subdomain = parsed_url.netloc
+                            
+                            live_subdomains[subdomain] = {
+                                'url': result.url,
+                                'status_code': result.status_code,
+                                'category': result.category,
+                                'protocol': parsed_url.scheme,
+                                'title': getattr(result, 'title', None),
+                                'content_length': getattr(result, 'content_length', None),
+                                'response_time': getattr(result, 'response_time', None),
+                                'technologies': getattr(result, 'technologies', []),
+                                'server': getattr(result, 'server', 'Unknown')
+                            }
+                            
+                            tech_info = f" | Tech: {', '.join(result.technologies[:3])}" if hasattr(result, 'technologies') and result.technologies else ""
+                            title_info = f" | {result.title[:30]}..." if hasattr(result, 'title') and result.title else ""
+                            Logger.found(f"Live: {result.url} [{result.status_code}] [{result.response_time:.2f}s]{tech_info}{title_info}")
                 
-                live_subdomains[subdomain] = {
-                    'url': result.url,
-                    'status_code': result.status_code,
-                    'category': result.category,
-                    'protocol': parsed_url.scheme,
-                    'title': result.title,
-                    'content_length': result.content_length,
-                    'response_time': result.response_time,
-                    'technologies': result.technologies,
-                    'server': result.server
-                }
-                
-                # Enhanced logging with more details
-                tech_info = f" | Tech: {', '.join(result.technologies[:3])}" if result.technologies else ""
-                title_info = f" | {result.title[:30]}..." if result.title else ""
-                Logger.found(f"Live: {result.url} [{result.status_code}] [{result.response_time:.2f}s]{tech_info}{title_info}")
+                except Exception as e:
+                    Logger.error(f"HTTPX probing failed: {str(e)}")
+                    live_subdomains = self._fallback_verification(public_subdomains)
+            else:
+                Logger.info("HTTPX not available, using fallback verification")
+                live_subdomains = self._fallback_verification(public_subdomains)
+        
+        # Add internal subdomains to results (marked as internal)
+        for subdomain, ip in internal_subdomains:
+            live_subdomains[subdomain] = {
+                'url': f"http://{subdomain}",
+                'status_code': None,
+                'category': f"Internal ({ip})",
+                'protocol': 'internal',
+                'title': None,
+                'content_length': None,
+                'response_time': None,
+                'technologies': [],
+                'server': 'Internal Network'
+            }
         
         return live_subdomains
     
     def _fallback_verification(self, subdomains):
-        """Fallback verification method if HTTPX fails"""
+        """Fallback verification method"""
         Logger.info("Using fallback verification method")
         live_subdomains = {}
         
@@ -393,10 +400,9 @@ class SubdomainHunter:
             for protocol in protocols:
                 try:
                     url = f"{protocol}://{subdomain}"
-                    response = self.session.get(url, timeout=8, verify=False, allow_redirects=True)
+                    response = self.http_client.get(url)
                     
                     if response.status_code:
-                        # Categorize by status code
                         if response.status_code == 200:
                             category = "Live (200 OK)"
                         elif response.status_code in [301, 302, 303, 307, 308]:
@@ -418,10 +424,10 @@ class SubdomainHunter:
                             'category': category,
                             'protocol': protocol,
                             'title': None,
-                            'content_length': len(response.content),
-                            'response_time': response.elapsed.total_seconds(),
+                            'content_length': len(response.content) if hasattr(response, 'content') else 0,
+                            'response_time': response.elapsed.total_seconds() if hasattr(response, 'elapsed') else 0,
                             'technologies': [],
-                            'server': response.headers.get('Server', 'Unknown')
+                            'server': response.headers.get('Server', 'Unknown') if hasattr(response, 'headers') else 'Unknown'
                         }
                         
                         Logger.found(f"Live: {url} [{response.status_code}]")
@@ -453,13 +459,10 @@ class SubdomainHunter:
             except Exception as e:
                 Logger.error(f"{name} failed: {str(e)}")
         
-        # Always run wildcard detection last
         self.wildcard_detection_and_filter()
+        live_subdomains = self.verify_live_subdomains_enhanced()
         
-        # Verify live subdomains using fast HTTPX
-        live_subdomains = self.verify_live_subdomains_fast()
-        
-        Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} live subdomains found")
+        Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} subdomains found")
         return live_subdomains
 
 class ParameterHunter:
@@ -471,17 +474,9 @@ class ParameterHunter:
         self.timeout = timeout
         self.found_parameters = set()
         self.parameter_details = {}
-        self.session = self._create_session()
+        self.http_client = HTTPClient(timeout=timeout)
         self.wordlist = self._load_wordlist(wordlist_size)
         self.baseline_response = None
-    
-    def _create_session(self):
-        """Create optimized HTTP session"""
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-        return session
     
     def _load_wordlist(self, size):
         """Load parameter wordlist based on size"""
@@ -502,30 +497,24 @@ class ParameterHunter:
                 'access_token', 'refresh_token', 'client_id', 'client_secret',
                 'redirect_uri', 'response_type', 'grant_type', 'scope', 'state',
                 'code', 'error', 'error_description', 'error_uri', 'locale',
-                'language', 'lang', 'timezone', 'currency', 'country', 'region',
-                'lat', 'lng', 'latitude', 'longitude', 'address', 'city', 'zip',
-                'phone', 'mobile', 'fax', 'website', 'company', 'department',
-                'role', 'permission', 'group', 'team', 'project', 'task', 'issue',
-                'ticket', 'message', 'comment', 'note', 'description', 'summary',
-                'priority', 'severity', 'urgency', 'impact', 'category_id',
-                'subcategory', 'tag', 'tags', 'label', 'labels', 'metadata'
+                'language', 'lang', 'timezone', 'currency', 'country', 'region'
             ]
             return base_params + extended
-        else:  # medium
+        else:
             return base_params
     
     def get_baseline(self):
         """Get baseline response for comparison"""
         Logger.info(f"Getting baseline response from {self.target_url}")
         try:
-            response = self.session.get(self.target_url, timeout=self.timeout, verify=False)
+            response = self.http_client.get(self.target_url)
             self.baseline_response = {
                 'status_code': response.status_code,
-                'content_length': len(response.content),
-                'response_time': response.elapsed.total_seconds(),
-                'headers': dict(response.headers)
+                'content_length': len(response.content) if hasattr(response, 'content') else len(response.text),
+                'response_time': response.elapsed.total_seconds() if hasattr(response, 'elapsed') else 0,
+                'headers': dict(response.headers) if hasattr(response, 'headers') else {}
             }
-            Logger.success(f"Baseline established: {response.status_code} ({len(response.content)} bytes)")
+            Logger.success(f"Baseline established: {response.status_code} ({self.baseline_response['content_length']} bytes)")
         except Exception as e:
             Logger.error(f"Failed to get baseline: {str(e)}")
     
@@ -533,7 +522,7 @@ class ParameterHunter:
         """Advanced parameter fuzzing with multiple techniques"""
         Logger.info(f"Parameter fuzzing on {self.target_url} ({len(self.wordlist)} parameters)")
         
-        test_values = ['1', 'test', 'true', 'false', '0', '', 'admin', 'null', '[]', '{}']
+        test_values = ['1', 'test', 'true', 'false', '0', '', 'admin', 'null']
         
         def test_parameter(param):
             found_methods = []
@@ -545,29 +534,17 @@ class ParameterHunter:
                     parsed_url = urlparse(self.target_url)
                     test_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{param}={value}"
                     
-                    response = self.session.get(test_url, timeout=self.timeout, verify=False)
+                    response = self.http_client.get(test_url)
                     
-                    # Check for differences from baseline
                     if self._is_different_response(response, param, value):
                         found_methods.append('GET')
                         working_urls.append(test_url)
-                    
-                    # Test POST parameters
-                    post_data = {param: value}
-                    response = self.session.post(self.target_url, data=post_data, timeout=self.timeout, verify=False)
-                    
-                    if self._is_different_response(response, param, value):
-                        found_methods.append('POST')
-                        working_urls.append(f"{self.target_url} (POST: {param}=test)")
-                    
-                    if found_methods:
                         break
                         
                 except Exception:
                     continue
             
             if found_methods:
-                methods_str = '/'.join(set(found_methods))
                 param_info = {
                     'name': param,
                     'methods': found_methods,
@@ -575,11 +552,10 @@ class ParameterHunter:
                 }
                 self.found_parameters.add(param)
                 
-                # Log with full URL
                 if working_urls:
-                    Logger.found(f"Parameter: {param} ({methods_str}) -> {working_urls[0]}")
+                    Logger.found(f"Parameter: {param} ({'/'.join(found_methods)}) -> {working_urls[0]}")
                 else:
-                    Logger.found(f"Parameter: {param} ({methods_str})")
+                    Logger.found(f"Parameter: {param} ({'/'.join(found_methods)})")
                 return param_info
             return None
         
@@ -596,24 +572,24 @@ class ParameterHunter:
         if not self.baseline_response:
             return False
         
-        # Check status code changes
-        if response.status_code != self.baseline_response['status_code']:
-            return True
-        
-        # Check content length changes (significant difference)
-        length_diff = abs(len(response.content) - self.baseline_response['content_length'])
-        if length_diff > 50:  # Significant change
-            return True
-        
-        # Check for parameter reflection
-        response_text = response.text.lower()
-        if param.lower() in response_text or str(value).lower() in response_text:
-            return True
-        
-        # Check for error indicators
-        error_indicators = ['error', 'exception', 'warning', 'invalid', 'missing', 'required']
-        if any(indicator in response_text for indicator in error_indicators):
-            return True
+        try:
+            if response.status_code != self.baseline_response['status_code']:
+                return True
+            
+            content_length = len(response.content) if hasattr(response, 'content') else len(response.text)
+            length_diff = abs(content_length - self.baseline_response['content_length'])
+            if length_diff > 50:
+                return True
+            
+            response_text = response.text.lower()
+            if param.lower() in response_text or str(value).lower() in response_text:
+                return True
+            
+            error_indicators = ['error', 'exception', 'warning', 'invalid', 'missing', 'required']
+            if any(indicator in response_text for indicator in error_indicators):
+                return True
+        except:
+            pass
         
         return False
     
@@ -622,17 +598,12 @@ class ParameterHunter:
         Logger.info(f"JavaScript analysis for {self.target_url}")
         
         try:
-            response = self.session.get(self.target_url, timeout=self.timeout, verify=False)
-            
-            # Find JavaScript files
+            response = self.http_client.get(self.target_url)
             js_urls = re.findall(r'<script[^>]+src=["\']([^"\']+\.js[^"\']*)["\']', response.text, re.IGNORECASE)
-            
-            # Add inline JavaScript
             inline_js = re.findall(r'<script[^>]*>(.*?)</script>', response.text, re.DOTALL | re.IGNORECASE)
             all_js_content = '\n'.join(inline_js)
             
-            # Fetch external JS files
-            for js_url in js_urls[:10]:  # Limit to first 10 JS files
+            for js_url in js_urls[:10]:
                 try:
                     if js_url.startswith('//'):
                         js_url = 'https:' + js_url
@@ -642,19 +613,18 @@ class ParameterHunter:
                     elif not js_url.startswith('http'):
                         js_url = urljoin(self.target_url, js_url)
                     
-                    js_response = self.session.get(js_url, timeout=self.timeout, verify=False)
+                    js_response = self.http_client.get(js_url)
                     all_js_content += '\n' + js_response.text
                 except:
                     continue
             
-            # Extract parameters using regex patterns
             param_patterns = [
-                r'["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']:\s*["\']?[^,}]+',  # Object properties
-                r'\.([a-zA-Z_][a-zA-Z0-9_]{2,})\s*=',  # Property assignments
-                r'data\[["\'"]([^"\']+)["\'"]',  # Data array access
-                r'params\.([a-zA-Z_][a-zA-Z0-9_]{2,})',  # params.parameter
-                r'[?&]([a-zA-Z_][a-zA-Z0-9_]{2,})=',  # URL parameters
-                r'name=["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',  # Form field names
+                r'["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']:\s*["\']?[^,}]+',
+                r'\.([a-zA-Z_][a-zA-Z0-9_]{2,})\s*=',
+                r'data\[["\'"]([^"\']+)["\'"]',
+                r'params\.([a-zA-Z_][a-zA-Z0-9_]{2,})',
+                r'[?&]([a-zA-Z_][a-zA-Z0-9_]{2,})=',
+                r'name=["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',
             ]
             
             js_params = set()
@@ -664,7 +634,6 @@ class ParameterHunter:
                     if len(match) > 2 and match.lower() not in ['function', 'return', 'var', 'let', 'const']:
                         js_params.add(match)
             
-            # Add found parameters to main list
             for param in js_params:
                 if param not in self.found_parameters:
                     self.found_parameters.add(param)
@@ -685,8 +654,6 @@ class ParameterHunter:
             "{{7*7}}",
             "${7*7}",
             "<%=7*7%>",
-            "../../../windows/win.ini",
-            "<?php phpinfo(); ?>",
         ]
         
         common_error_params = ['id', 'user', 'file', 'page', 'search', 'data', 'input', 'name']
@@ -694,11 +661,10 @@ class ParameterHunter:
         def test_error_param(param):
             for payload in error_payloads:
                 try:
-                    # Test GET
                     parsed_url = urlparse(self.target_url)
                     test_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{param}={payload}"
                     
-                    response = self.session.get(test_url, timeout=self.timeout, verify=False)
+                    response = self.http_client.get(test_url)
                     
                     if self._has_error_indicators(response):
                         if param not in self.found_parameters:
@@ -721,8 +687,7 @@ class ParameterHunter:
             'mysql', 'postgresql', 'oracle', 'sqlite', 'mssql',
             'syntax error', 'parse error', 'fatal error', 'warning:',
             'undefined index', 'undefined variable', 'notice:',
-            'exception', 'stack trace', 'debug', 'traceback',
-            'error in', 'line', 'file not found', 'permission denied'
+            'exception', 'stack trace', 'debug', 'traceback'
         ]
         
         response_text = response.text.lower()
@@ -732,7 +697,6 @@ class ParameterHunter:
         """Execute all parameter discovery techniques"""
         Logger.phase(f"PARAMETER DISCOVERY - {self.target_url}")
         
-        # Get baseline first
         self.get_baseline()
         
         techniques = [
@@ -814,11 +778,10 @@ class ProfessionalRecon:
                 f.write(f"Timestamp: {self.results['timestamp']}\n")
                 f.write("=" * 80 + "\n\n")
                 
-                # Subdomains section with categorization
-                f.write(f"LIVE SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
+                f.write(f"SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
                 f.write("-" * 50 + "\n")
                 
-                # Group by status category
+                # Group by category
                 categories = {}
                 for subdomain, info in self.results['subdomains'].items():
                     category = info['category']
@@ -838,7 +801,6 @@ class ProfessionalRecon:
                             f.write(f" | Tech: {', '.join(info['technologies'][:3])}")
                         f.write(f"\n")
                 
-                # Parameters section with full URLs
                 f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
                 f.write("-" * 50 + "\n")
                 
@@ -883,17 +845,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Single target - both phases (default)
-  python professional_recon.py -t example.com
-  python professional_recon.py -t https://example.com
-  
-  # Specific phases
-  python professional_recon.py -t example.com --subdomains-only
-  python professional_recon.py -t https://example.com --parameters-only
-  
-  # Advanced options
-  python professional_recon.py -t example.com --threads 100 --wordlist large -o results
-  python professional_recon.py -t example.com --timeout 15 --format txt
+  python professional_recon_fixed.py -t example.com
+  python professional_recon_fixed.py -t example.com --subdomains-only
+  python professional_recon_fixed.py -t https://example.com --parameters-only
+  python professional_recon_fixed.py -t example.com --threads 100 --wordlist large -o results
         """
     )
     
@@ -904,19 +859,16 @@ Examples:
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size (default: medium)')
     parser.add_argument('-o', '--output', help='Output filename (without extension)')
-    parser.add_argument('--format', choices=['json', 'txt'], default='json', help='Output format (default: json)')
+    parser.add_argument('--format', choices=['json', 'txt'], default='txt', help='Output format (default: txt)')
     
     args = parser.parse_args()
     
-    # Initialize reconnaissance tool
     recon = ProfessionalRecon()
     
     try:
-        # Determine which phases to run
         run_subdomains = not args.parameters_only
         run_parameters = not args.subdomains_only
         
-        # Run subdomain discovery phase
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
                 target=args.target,
@@ -925,10 +877,10 @@ Examples:
                 wordlist_size=args.wordlist
             )
             
-            print(f"\n{Colors.GREEN}[LIVE SUBDOMAIN RESULTS]{Colors.END}")
-            print(f"Found {len(subdomains)} live subdomains:")
+            print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}")
+            print(f"Found {len(subdomains)} subdomains:")
             
-            # Group by status category for display
+            # Group by category for display
             categories = {}
             for subdomain, info in subdomains.items():
                 category = info['category']
@@ -941,11 +893,10 @@ Examples:
                 for subdomain, info in sorted(subs):
                     print(f"  • {info['url']}")
         
-        # Run parameter discovery phase
         if run_parameters:
             parameters = recon.run_parameter_phase(
                 target=args.target,
-                threads=min(args.threads, 30),  # Limit threads for parameters
+                threads=min(args.threads, 30),
                 timeout=args.timeout,
                 wordlist_size=args.wordlist
             )
@@ -960,25 +911,23 @@ Examples:
                 if urls:
                     print(f"    URL: {urls[0]}")
         
-        # Save results if requested (always save as txt for better readability)
+        # Save results
         if args.output:
             output_file = args.output
         else:
-            # Extract domain/hostname from target for filename
             parsed_target = TargetParser.parse_target(args.target)
             domain_name = parsed_target['domain'].replace('.', '_')
             output_file = f"recon_{domain_name}_{int(time.time())}"
         
-        recon.save_results(output_file, 'txt')
+        recon.save_results(output_file, args.format)
         
-        # Final summary
         Logger.phase("RECONNAISSANCE COMPLETED")
         total_subdomains = len(recon.results.get('subdomains', {}))
         total_parameters = len(recon.results.get('parameters', {}))
-        print(f"{Colors.GREEN}Total Live Subdomains: {total_subdomains}{Colors.END}")
+        print(f"{Colors.GREEN}Total Subdomains: {total_subdomains}{Colors.END}")
         print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
         print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
-        print(f"{Colors.CYAN}Results saved to: {output_file}.txt{Colors.END}")
+        print(f"{Colors.CYAN}Results saved to: {output_file}.{args.format}{Colors.END}")
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")
