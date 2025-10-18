@@ -851,8 +851,7 @@ class ProfessionalRecon:
                     f.write(f"\n{category}:\n")
                     for subdomain, info in sorted(subdomains):
                         f.write(f"  {info['url']}")
-                        if info.get('response_time'):
-                            f.write(f" [{info['response_time']:.2f}s]")
+                        # Remove timing info as requested
                         if info.get('title'):
                             f.write(f" - {info['title'][:50]}")
                         f.write(f"\n")
@@ -861,12 +860,13 @@ class ProfessionalRecon:
                 f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
                 f.write("-" * 50 + "\n")
                 
-                for param_name, param_info in sorted(self.results['parameters'].items()):
-                    f.write(f"\nParameter: {param_name}\n")
-                    f.write(f"Methods: {', '.join(param_info.get('methods', []))}\n")
-                    f.write(f"Test URLs:\n")
-                    for url in param_info.get('urls', []):
-                        f.write(f"  {url}\n")
+                if self.results['parameters']:
+                    # Simple parameter list
+                    param_names = sorted(self.results['parameters'].keys())
+                    for i, param_name in enumerate(param_names, 1):
+                        f.write(f"{i:3d}. {param_name}\n")
+                else:
+                    f.write("No parameters found.\n")
             
             Logger.success(f"Results saved to {filename}.txt")
 
@@ -1003,10 +1003,48 @@ def main():
             
             if external_result.get('status') == 'success':
                 Logger.success("Parameter discovery completed")
-                if external_result.get('output_file'):
-                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-                    print(f"Parameter discovery completed successfully!")
-                    print(f"{Colors.CYAN}Results saved to: {external_result['output_file']}{Colors.END}")
+                
+                # Read and display parameters live
+                param_file = external_result.get('output_file')
+                if param_file and os.path.exists(param_file):
+                    try:
+                        with open(param_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            
+                        # Extract parameters from file
+                        param_section = False
+                        parameters = []
+                        for line in content.split('\n'):
+                            if 'DISCOVERED PARAMETERS' in line:
+                                param_section = True
+                                param_count = re.search(r'\((\d+)\)', line)
+                                if param_count:
+                                    total_params = param_count.group(1)
+                                continue
+                            elif param_section and line.startswith('•'):
+                                param_name = line.replace('•', '').strip()
+                                if param_name:
+                                    parameters.append(param_name)
+                            elif param_section and line.strip() and not line.startswith('-') and not line.startswith('•'):
+                                # End of parameter section
+                                break
+                        
+                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                        print(f"Found {len(parameters)} parameters:")
+                        
+                        # Display parameters in groups of 10
+                        for i in range(0, len(parameters), 10):
+                            group = parameters[i:i+10]
+                            print(f"  • {', '.join(group)}")
+                        
+                        # Store parameters in recon results
+                        recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
+                        
+                    except Exception as e:
+                        Logger.warning(f"Could not read parameter file: {str(e)}")
+                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                        print(f"Parameter discovery completed successfully!")
+                        print(f"{Colors.CYAN}Results saved to: {external_result['output_file']}{Colors.END}")
             else:
                 Logger.warning(f"Parameter discovery failed: {external_result.get('message', 'Unknown error')}")
         
@@ -1027,12 +1065,18 @@ def main():
         if run_subdomains:
             print(f"{Colors.GREEN}Total Subdomains Found: {total_subdomains}{Colors.END}")
         if run_parameters:
-            print(f"{Colors.GREEN}Parameter Discovery: Completed (check separate file){Colors.END}")
+            total_parameters = len(recon.results.get('parameters', {}))
+            print(f"{Colors.GREEN}Total Parameters Found: {total_parameters}{Colors.END}")
         
-        if run_subdomains:
-            print(f"{Colors.CYAN}Subdomain results saved to: {output_file}.{args.format}{Colors.END}")
-        if run_parameters:
-            print(f"{Colors.YELLOW}Parameter results saved separately by external tool{Colors.END}")
+        print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
+        
+        # Clean up separate parameter file if it exists
+        if run_parameters and 'external_result' in locals() and external_result.get('output_file'):
+            try:
+                if os.path.exists(external_result['output_file']):
+                    os.remove(external_result['output_file'])
+            except:
+                pass
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")
