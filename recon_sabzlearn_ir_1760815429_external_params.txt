@@ -1,7 +1,7 @@
 Parameter Discovery Report
 Domain: sabzlearn.ir
-Timestamp: 2025-10-18 19:03:48
-Execution Time: 3.07 seconds
+Timestamp: 2025-10-18 19:24:01
+Execution Time: 11.97 seconds
 ============================================================
 
 DISCOVERED PARAMETERS (104):
@@ -333,4 +333,4 @@ Total Parameters: 104
 Total Urls: 211
 Basic Params: 44
 Advanced Params: 93
-Execution Time: 3.073105812072754
+Execution Time: 11.973923683166504

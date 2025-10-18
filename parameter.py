@@ -5,7 +5,8 @@ Combines the best features from multiple ParamSpider implementations
 Advanced parameter mining from web archives with intelligent filtering
 """
 
-import requests
+#!/usr/bin/env python3
+# Core imports that work everywhere
 import re
 import argparse
 import os
@@ -14,10 +15,20 @@ import time
 import json
 import random
 import threading
+import ssl
 from urllib.parse import urlparse, parse_qs, urlencode, unquote
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import urllib.request
+import urllib.error
 import warnings
 warnings.filterwarnings("ignore", category=SyntaxWarning)
+
+# Try to import requests with complete fallback
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 class Colors:
     """Cross-platform color support"""
@@ -54,6 +65,92 @@ class Logger:
     def found(message):
         print(f"{Colors.CYAN}[FOUND]{Colors.END} {message}")
 
+class HTTPClient:
+    """Universal HTTP client that works everywhere"""
+    
+    def __init__(self, timeout=10):
+        self.timeout = timeout
+        self.session = None
+        
+        # Try to use requests if available
+        if REQUESTS_AVAILABLE:
+            try:
+                self.session = requests.Session()
+                self.session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                })
+                Logger.info("Using requests library for HTTP")
+            except Exception as e:
+                Logger.warning(f"Requests failed, using urllib: {str(e)}")
+                self.session = None
+        else:
+            Logger.info("Using urllib for HTTP (requests not available)")
+    
+    def get(self, url, **kwargs):
+        """Make HTTP GET request with automatic fallback"""
+        if self.session and REQUESTS_AVAILABLE:
+            try:
+                return self.session.get(url, timeout=self.timeout, verify=False, **kwargs)
+            except Exception as e:
+                Logger.warning(f"Requests failed for {url}, using urllib fallback")
+                pass
+        
+        # Fallback to urllib
+        return self._urllib_get(url)
+    
+    def _urllib_get(self, url):
+        """GET request using urllib"""
+        try:
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+            
+            # Create SSL context that ignores certificates
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            start_time = time.time()
+            with urllib.request.urlopen(req, timeout=self.timeout, context=ssl_context) as response:
+                content = response.read()
+                elapsed = time.time() - start_time
+                
+                # Create requests-like response object
+                class UrllibResponse:
+                    def __init__(self, urllib_response, content, elapsed):
+                        self.status_code = urllib_response.getcode()
+                        self.headers = dict(urllib_response.headers)
+                        self.content = content
+                        self.text = content.decode('utf-8', errors='ignore')
+                        # Fix elapsed time object
+                        class ElapsedTime:
+                            def __init__(self, elapsed_seconds):
+                                self._elapsed = elapsed_seconds
+                            def total_seconds(self):
+                                return self._elapsed
+                        self.elapsed = ElapsedTime(elapsed)
+                
+                return UrllibResponse(response, content, elapsed)
+                
+        except urllib.error.HTTPError as e:
+            # Still return response for HTTP errors
+            class ErrorResponse:
+                def __init__(self, code):
+                    self.status_code = code
+                    self.headers = {}
+                    self.content = b''
+                    self.text = ''
+                    # Fix elapsed time object
+                    class ElapsedTime:
+                        def __init__(self, elapsed_seconds):
+                            self._elapsed = elapsed_seconds
+                        def total_seconds(self):
+                            return self._elapsed
+                    self.elapsed = ElapsedTime(0)
+            
+            return ErrorResponse(e.code)
+        except Exception as e:
+            raise Exception(f"HTTP request failed: {str(e)}")
+
 class ParameterDiscovery:
     """Advanced parameter discovery engine"""
     
@@ -66,7 +163,7 @@ class ParameterDiscovery:
         self.placeholder = placeholder
         self.found_parameters = set()
         self.found_urls = []
-        self.session = self.create_session()
+        self.http_client = HTTPClient(timeout=timeout)
         
         # File extensions to exclude
         self.blacklist_extensions = [
@@ -85,27 +182,6 @@ class ParameterDiscovery:
             domain = domain.split('/')[0]
         return domain
     
-    def create_session(self):
-        """Create HTTP session with proper headers"""
-        session = requests.Session()
-        
-        user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
-        ]
-        
-        session.headers.update({
-            'User-Agent': random.choice(user_agents),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
-        })
-        
-        return session
     
     def fetch_wayback_urls(self):
         """Fetch URLs from Wayback Machine"""
@@ -119,7 +195,7 @@ class ParameterDiscovery:
         retry_count = 0
         while retry_count <= self.retries:
             try:
-                response = self.session.get(wayback_url, timeout=self.timeout)
+                response = self.http_client.get(wayback_url)
                 response.raise_for_status()
                 
                 urls = response.text.strip().split('\n')
@@ -310,7 +386,8 @@ class ParameterDiscovery:
             try:
                 # Test GET parameter
                 test_url = f"{url}{'&' if '?' in url else '?'}{param}={self.placeholder}"
-                response = self.session.get(test_url, timeout=5)
+                client = HTTPClient(timeout=5)
+                response = client.get(test_url)
                 
                 # Simple heuristic: if response is different, parameter might be valid
                 if response.status_code == 200 and len(response.content) > 0:

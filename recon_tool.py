@@ -96,12 +96,18 @@ class HTTPClient:
                 self.session.headers.update({
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 })
-                Logger.info("Using requests library for HTTP")
+                # Only show this message once
+                if not hasattr(HTTPClient, '_requests_logged'):
+                    Logger.info("Using requests library for HTTP")
+                    HTTPClient._requests_logged = True
             except Exception as e:
                 Logger.warning(f"Requests failed, using urllib: {str(e)}")
                 self.session = None
         else:
-            Logger.info("Using urllib for HTTP (requests not available)")
+            # Only show this message once
+            if not hasattr(HTTPClient, '_urllib_logged'):
+                Logger.info("Using urllib for HTTP (requests not available)")
+                HTTPClient._urllib_logged = True
     
     def get(self, url, **kwargs):
         """Make HTTP GET request with automatic fallback"""
@@ -243,12 +249,13 @@ class FastHTTPX:
                     response_time = time.time() - start_time
                     
                     if response.status_code:
-                        # Extract title
+                        # Extract title (optimized)
                         title = None
                         try:
-                            title_match = re.search(r'<title[^>]*>([^<]+)</title>', response.text, re.IGNORECASE)
-                            if title_match:
-                                title = title_match.group(1).strip()
+                            if len(response.text) < 50000:  # Only extract title from small responses
+                                title_match = re.search(r'<title[^>]*>([^<]+)</title>', response.text[:5000], re.IGNORECASE)
+                                if title_match:
+                                    title = title_match.group(1).strip()[:50]  # Limit title length
                         except:
                             pass
                         
@@ -261,6 +268,8 @@ class FastHTTPX:
                             category = "Forbidden (403)"
                         elif response.status_code == 404:
                             category = "Not Found (404)"
+                        elif response.status_code == 401:
+                            category = "Client Error (401)"
                         elif 400 <= response.status_code < 500:
                             category = f"Client Error ({response.status_code})"
                         elif 500 <= response.status_code < 600:
@@ -274,8 +283,8 @@ class FastHTTPX:
                             'category': category,
                             'title': title,
                             'response_time': response_time,
-                            'server': response.headers.get('Server', 'Unknown'),
-                            'content_length': len(response.content)
+                            'server': response.headers.get('Server', 'Unknown') if hasattr(response, 'headers') else 'Unknown',
+                            'content_length': len(response.content) if hasattr(response, 'content') else 0
                         }
                         
                         results.append((subdomain, result))
@@ -524,7 +533,9 @@ class SubdomainHunter:
         # Probe public subdomains
         if public_subdomains:
             Logger.info(f"Probing {len(public_subdomains)} public subdomains")
-            httpx = FastHTTPX(timeout=5, threads=min(30, len(public_subdomains)))
+            # Optimize threads and timeout for better speed
+            max_threads = min(50, len(public_subdomains))
+            httpx = FastHTTPX(timeout=3, threads=max_threads)  # Reduced timeout
             public_results = httpx.probe_subdomains(public_subdomains)
             live_subdomains.update(public_results)
         
@@ -903,7 +914,12 @@ def run_external_parameter_discovery(target, output_file=None):
         
         # Run the external tool
         import subprocess
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        # Set environment to avoid dependency issues
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.path.dirname(__file__)
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
         
         if result.returncode == 0:
             Logger.success("External parameter discovery completed successfully")

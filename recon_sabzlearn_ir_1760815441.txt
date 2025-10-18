@@ -1,0 +1,45 @@
+Professional Reconnaissance Report
+Target: sabzlearn.ir
+Timestamp: 2025-10-18 19:23:33
+================================================================================
+
+SUBDOMAINS (27 found):
+--------------------------------------------------
+
+Forbidden (403):
+  https://chat.sabzlearn.ir [0.87s] - 403 Forbidden
+  https://ipprs.sabzlearn.ir [0.84s]
+  https://up.sabzlearn.ir [0.90s]
+
+Live (200 OK):
+  https://advisor.sabzlearn.ir [0.86s]
+  https://bkp.sabzlearn.ir [1.01s] - Akeeba Solo
+  https://console.sabzlearn.ir [0.86s] - MinIO Console
+  https://dl.sabzlearn.ir [0.95s]
+  https://edge.sabzlearn.ir [0.89s] - Hey, I'm imgproxy!
+  https://erp.sabzlearn.ir [1.15s] - خانه | 
+        سبز لرن
+  https://files.sabzlearn.ir [0.93s] - SabzLearn Files
+  https://hcp.sabzlearn.ir [0.92s] - Coming Soon
+  https://lms.stage.sabzlearn.ir [1.08s]
+  https://mail.sabzlearn.ir [0.93s] - Roundcube Webmail :: Welcome to Roundcube Webmail
+  https://my.sabzlearn.ir [0.66s]
+  https://n8n.sabzlearn.ir [0.81s] - n8n.io - Workflow Automation
+  https://sabzlearn.ir [2.23s]
+  https://statistics.sabzlearn.ir [1.04s]
+  https://storage.sabzlearn.ir [1.71s] - MinIO Console
+  https://tech.sabzlearn.ir [0.92s] - SabzLearn Videos
+  https://webmail.sabzlearn.ir [0.93s] - Roundcube Webmail :: Welcome to Roundcube Webmail
+  https://www.sabzlearn.ir [3.98s]
+
+Not Found (404):
+  https://advisor.stage.sabzlearn.ir [0.78s]
+  https://api.stage.sabzlearn.ir [0.94s] - Not Found
+  https://my.stage.sabzlearn.ir [0.79s]
+  https://pma.stage.sabzlearn.ir [1.09s]
+  https://proxy.stage.sabzlearn.ir [0.80s]
+  https://status.sabzlearn.ir [0.94s] - Suspended Domain
+
+
+PARAMETERS (0 found):
+--------------------------------------------------
