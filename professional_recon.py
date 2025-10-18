@@ -30,6 +30,9 @@ from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
 import warnings
 warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
+# Import our custom HTTPX module
+from httpx import HTTPX
+
 class Colors:
     """Cross-platform color support"""
     if platform.system() == "Windows":
@@ -280,55 +283,44 @@ class SubdomainHunter:
                     filtered.add(subdomain)
             self.found_subdomains = filtered
     
-    def verify_live_subdomains(self):
-        """Verify which subdomains are live and categorize by status code"""
-        Logger.info(f"Verifying live subdomains for {self.domain}")
+    def verify_live_subdomains_fast(self):
+        """Verify live subdomains using HTTPX for maximum speed"""
+        Logger.info(f"Fast verification of live subdomains for {self.domain}")
         
+        # Initialize HTTPX with optimized settings
+        httpx_prober = HTTPX(
+            timeout=3,  # Fast timeout
+            threads=min(100, len(self.found_subdomains) * 2),  # Dynamic thread count
+            follow_redirects=True,
+            verify_ssl=False
+        )
+        
+        # Probe all subdomains
+        results = httpx_prober.probe_subdomains(list(self.found_subdomains))
+        
+        # Convert HTTPX results to our format
         live_subdomains = {}
-        
-        def check_subdomain_status(subdomain):
-            protocols = ['https', 'http']
-            for protocol in protocols:
-                try:
-                    url = f"{protocol}://{subdomain}"
-                    response = self.session.get(url, timeout=5, verify=False, allow_redirects=True)
-                    status_code = response.status_code
-                    
-                    # Categorize by status code
-                    if status_code == 200:
-                        category = "Live (200 OK)"
-                    elif status_code in [301, 302, 303, 307, 308]:
-                        category = f"Redirect ({status_code})"
-                    elif status_code == 403:
-                        category = "Forbidden (403)"
-                    elif status_code == 404:
-                        category = "Not Found (404)"
-                    elif status_code in range(400, 500):
-                        category = f"Client Error ({status_code})"
-                    elif status_code in range(500, 600):
-                        category = f"Server Error ({status_code})"
-                    else:
-                        category = f"Other ({status_code})"
-                    
-                    live_subdomains[subdomain] = {
-                        'url': url,
-                        'status_code': status_code,
-                        'category': category,
-                        'protocol': protocol
-                    }
-                    
-                    Logger.found(f"Live: {url} [{status_code}]")
-                    return subdomain
-                    
-                except Exception:
-                    continue
-            return None
-        
-        # Check all found subdomains with faster timeout and more threads
-        with ThreadPoolExecutor(max_workers=30) as executor:
-            futures = [executor.submit(check_subdomain_status, sub) for sub in self.found_subdomains]
-            for future in as_completed(futures):
-                future.result()
+        for result in results:
+            if result.is_alive:
+                parsed_url = urlparse(result.url)
+                subdomain = parsed_url.netloc
+                
+                live_subdomains[subdomain] = {
+                    'url': result.url,
+                    'status_code': result.status_code,
+                    'category': result.category,
+                    'protocol': parsed_url.scheme,
+                    'title': result.title,
+                    'content_length': result.content_length,
+                    'response_time': result.response_time,
+                    'technologies': result.technologies,
+                    'server': result.server
+                }
+                
+                # Enhanced logging with more details
+                tech_info = f" | Tech: {', '.join(result.technologies[:3])}" if result.technologies else ""
+                title_info = f" | {result.title[:30]}..." if result.title else ""
+                Logger.found(f"Live: {result.url} [{result.status_code}] [{result.response_time:.2f}s]{tech_info}{title_info}")
         
         return live_subdomains
     
@@ -351,8 +343,8 @@ class SubdomainHunter:
         # Always run wildcard detection last
         self.wildcard_detection_and_filter()
         
-        # Verify live subdomains
-        live_subdomains = self.verify_live_subdomains()
+        # Verify live subdomains using fast HTTPX
+        live_subdomains = self.verify_live_subdomains_fast()
         
         Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} live subdomains found")
         return live_subdomains
@@ -724,7 +716,14 @@ class ProfessionalRecon:
                 for category, subdomains in sorted(categories.items()):
                     f.write(f"\n{category}:\n")
                     for subdomain, info in sorted(subdomains):
-                        f.write(f"  {info['url']}\n")
+                        f.write(f"  {info['url']}")
+                        if info.get('response_time'):
+                            f.write(f" [{info['response_time']:.2f}s]")
+                        if info.get('title'):
+                            f.write(f" - {info['title'][:50]}")
+                        if info.get('technologies'):
+                            f.write(f" | Tech: {', '.join(info['technologies'][:3])}")
+                        f.write(f"\n")
                 
                 # Parameters section with full URLs
                 f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
