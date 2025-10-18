@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
-Professional Reconnaissance Tool
-Advanced subdomain and parameter discovery for bug bounty hunters
-
-Based on research of top bug bounty tools like:
-- Subfinder, Amass, Assetfinder for subdomain discovery
-- Arjun, ParamSpider, GAP for parameter discovery
-- Nuclei, httpx for validation and probing
+Professional Reconnaissance Tool - Original Enhanced Version
+Advanced subdomain and parameter discovery with HTTPX integration for verification only
 """
 
-# Core imports that should always work
+import requests
 import dns.resolver
 import dns.zone
 import dns.query
@@ -27,19 +22,8 @@ import socket
 import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
-import urllib.request
-import urllib.error
 import warnings
-
-# Try to import requests with fallback
-try:
-    import requests
-    from requests.adapters import HTTPAdapter
-    from urllib3.util.retry import Retry
-    REQUESTS_AVAILABLE = True
-    warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
-except ImportError:
-    REQUESTS_AVAILABLE = False
+warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
 # Import our custom HTTPX module with error handling
 try:
@@ -49,7 +33,7 @@ except ImportError:
     try:
         from simple_httpx import HTTPX, HTTPXResult
         HTTPX_AVAILABLE = True
-    except ImportError as e:
+    except ImportError:
         HTTPX_AVAILABLE = False
 
 class Colors:
@@ -102,10 +86,8 @@ class TargetParser:
     @staticmethod
     def parse_target(target):
         """Parse target and extract domain and URL components"""
-        # Remove common prefixes and clean the input
         target = target.strip()
         
-        # Handle different input formats
         if target.startswith(('http://', 'https://')):
             parsed = urlparse(target)
             domain = parsed.netloc
@@ -114,11 +96,9 @@ class TargetParser:
             domain = target
             base_url = f"https://{target}"
         else:
-            # Assume it's a domain
             domain = target
             base_url = f"https://{target}"
         
-        # Clean domain (remove port if present)
         if ':' in domain:
             domain = domain.split(':')[0]
         
@@ -194,7 +174,7 @@ class SubdomainHunter:
                 return full_domain
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
                 pass
-            except Exception as e:
+            except Exception:
                 pass
             return None
         
@@ -239,19 +219,6 @@ class SubdomainHunter:
             except Exception as e:
                 Logger.warning(f"CT source failed: {str(e)}")
     
-    def search_engine_recon(self):
-        """Search engine reconnaissance (passive)"""
-        Logger.info(f"Search engine reconnaissance for {self.domain}")
-        
-        # Google dorking simulation (would need API in real implementation)
-        search_patterns = [
-            f"site:*.{self.domain}",
-            f"site:{self.domain} -www",
-            f"inurl:{self.domain}"
-        ]
-        
-        Logger.info("Search engine dorking patterns prepared (API integration required)")
-    
     def dns_zone_transfer(self):
         """Attempt DNS zone transfer"""
         Logger.info(f"Attempting DNS zone transfer for {self.domain}")
@@ -276,7 +243,6 @@ class SubdomainHunter:
         """Detect and filter wildcard responses"""
         Logger.info(f"Wildcard detection for {self.domain}")
         
-        # Test random subdomains
         random_tests = [''.join(random.choices('abcdefghijklmnopqrstuvwxyz', k=12)) for _ in range(3)]
         wildcard_ips = set()
         
@@ -290,7 +256,6 @@ class SubdomainHunter:
         
         if wildcard_ips:
             Logger.warning(f"Wildcard detected: {wildcard_ips}")
-            # Filter wildcards from results
             filtered = set()
             for subdomain in self.found_subdomains:
                 try:
@@ -466,7 +431,7 @@ class SubdomainHunter:
         # Verify live subdomains using enhanced method
         live_subdomains = self.verify_live_subdomains_enhanced()
         
-        Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} live subdomains found")
+        Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} subdomains found")
         return live_subdomains
 
 class ParameterHunter:
@@ -822,7 +787,7 @@ class ProfessionalRecon:
                 f.write("=" * 80 + "\n\n")
                 
                 # Subdomains section with categorization
-                f.write(f"LIVE SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
+                f.write(f"SUBDOMAINS ({len(self.results['subdomains'])} found):\n")
                 f.write("-" * 50 + "\n")
                 
                 # Group by status category
@@ -890,17 +855,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Single target - both phases (default)
-  python professional_recon.py -t example.com
-  python professional_recon.py -t https://example.com
-  
-  # Specific phases
-  python professional_recon.py -t example.com --subdomains-only
-  python professional_recon.py -t https://example.com --parameters-only
-  
-  # Advanced options
-  python professional_recon.py -t example.com --threads 100 --wordlist large -o results
-  python professional_recon.py -t example.com --timeout 15 --format txt
+  python professional_recon_original.py -t example.com
+  python professional_recon_original.py -t example.com --subdomains-only
+  python professional_recon_original.py -t https://example.com --parameters-only
+  python professional_recon_original.py -t example.com --threads 100 --wordlist large -o results
         """
     )
     
@@ -911,19 +869,16 @@ Examples:
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size (default: medium)')
     parser.add_argument('-o', '--output', help='Output filename (without extension)')
-    parser.add_argument('--format', choices=['json', 'txt'], default='json', help='Output format (default: json)')
+    parser.add_argument('--format', choices=['json', 'txt'], default='txt', help='Output format (default: txt)')
     
     args = parser.parse_args()
     
-    # Initialize reconnaissance tool
     recon = ProfessionalRecon()
     
     try:
-        # Determine which phases to run
         run_subdomains = not args.parameters_only
         run_parameters = not args.subdomains_only
         
-        # Run subdomain discovery phase
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
                 target=args.target,
@@ -932,10 +887,10 @@ Examples:
                 wordlist_size=args.wordlist
             )
             
-            print(f"\n{Colors.GREEN}[LIVE SUBDOMAIN RESULTS]{Colors.END}")
-            print(f"Found {len(subdomains)} live subdomains:")
+            print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}")
+            print(f"Found {len(subdomains)} subdomains:")
             
-            # Group by status category for display
+            # Group by category for display
             categories = {}
             for subdomain, info in subdomains.items():
                 category = info['category']
@@ -948,11 +903,10 @@ Examples:
                 for subdomain, info in sorted(subs):
                     print(f"  • {info['url']}")
         
-        # Run parameter discovery phase
         if run_parameters:
             parameters = recon.run_parameter_phase(
                 target=args.target,
-                threads=min(args.threads, 30),  # Limit threads for parameters
+                threads=min(args.threads, 30),
                 timeout=args.timeout,
                 wordlist_size=args.wordlist
             )
@@ -967,25 +921,23 @@ Examples:
                 if urls:
                     print(f"    URL: {urls[0]}")
         
-        # Save results if requested (always save as txt for better readability)
+        # Save results
         if args.output:
             output_file = args.output
         else:
-            # Extract domain/hostname from target for filename
             parsed_target = TargetParser.parse_target(args.target)
             domain_name = parsed_target['domain'].replace('.', '_')
             output_file = f"recon_{domain_name}_{int(time.time())}"
         
-        recon.save_results(output_file, 'txt')
+        recon.save_results(output_file, args.format)
         
-        # Final summary
         Logger.phase("RECONNAISSANCE COMPLETED")
         total_subdomains = len(recon.results.get('subdomains', {}))
         total_parameters = len(recon.results.get('parameters', {}))
-        print(f"{Colors.GREEN}Total Live Subdomains: {total_subdomains}{Colors.END}")
+        print(f"{Colors.GREEN}Total Subdomains: {total_subdomains}{Colors.END}")
         print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
         print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
-        print(f"{Colors.CYAN}Results saved to: {output_file}.txt{Colors.END}")
+        print(f"{Colors.CYAN}Results saved to: {output_file}.{args.format}{Colors.END}")
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")
