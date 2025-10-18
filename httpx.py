@@ -5,8 +5,6 @@ Python implementation inspired by projectdiscovery/httpx
 Optimized for speed and reliability in subdomain verification
 """
 
-import asyncio
-import aiohttp
 import socket
 import ssl
 import time
@@ -16,6 +14,22 @@ from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Try to import optional dependencies
+try:
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+try:
+    import asyncio
+    import aiohttp
+    ASYNC_AVAILABLE = True
+except ImportError:
+    ASYNC_AVAILABLE = False
 
 class Colors:
     """Color codes for output"""
@@ -131,11 +145,10 @@ class HTTPX:
     
     def _probe_single_url(self, url):
         """Probe a single URL synchronously"""
+        if not REQUESTS_AVAILABLE:
+            return HTTPXResult(url=url, error="requests library not available")
+        
         try:
-            import requests
-            from requests.adapters import HTTPAdapter
-            from urllib3.util.retry import Retry
-            
             session = requests.Session()
             
             # Configure retry strategy

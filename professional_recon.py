@@ -30,8 +30,16 @@ from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
 import warnings
 warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
-# Import our custom HTTPX module
-from httpx import HTTPX
+# Import our custom HTTPX module with error handling
+try:
+    from httpx import HTTPX, HTTPXResult
+    HTTPX_AVAILABLE = True
+except ImportError:
+    try:
+        from simple_httpx import HTTPX, HTTPXResult
+        HTTPX_AVAILABLE = True
+    except ImportError as e:
+        HTTPX_AVAILABLE = False
 
 class Colors:
     """Cross-platform color support"""
@@ -287,16 +295,56 @@ class SubdomainHunter:
         """Verify live subdomains using HTTPX for maximum speed"""
         Logger.info(f"Fast verification of live subdomains for {self.domain}")
         
-        # Initialize HTTPX with optimized settings
-        httpx_prober = HTTPX(
-            timeout=3,  # Fast timeout
-            threads=min(100, len(self.found_subdomains) * 2),  # Dynamic thread count
-            follow_redirects=True,
-            verify_ssl=False
-        )
+        # Filter out internal/private IP subdomains before probing
+        public_subdomains = []
+        internal_subdomains = []
         
-        # Probe all subdomains
-        results = httpx_prober.probe_subdomains(list(self.found_subdomains))
+        for subdomain in self.found_subdomains:
+            try:
+                # Check if subdomain resolves to internal IP
+                import socket
+                ip = socket.gethostbyname(subdomain)
+                
+                # Check if IP is internal/private
+                if (ip.startswith('10.') or 
+                    ip.startswith('192.168.') or 
+                    ip.startswith('172.') or 
+                    ip.startswith('127.') or
+                    ip == '0.0.0.0'):
+                    internal_subdomains.append(subdomain)
+                    Logger.warning(f"Internal IP detected: {subdomain} -> {ip}")
+                else:
+                    public_subdomains.append(subdomain)
+            except:
+                # If can't resolve, still try to probe
+                public_subdomains.append(subdomain)
+        
+        Logger.info(f"Probing {len(public_subdomains)} public subdomains, skipping {len(internal_subdomains)} internal ones")
+        
+        if not public_subdomains:
+            Logger.warning("No public subdomains found to probe")
+            return {}
+        
+        # Initialize HTTPX with optimized settings
+        if not HTTPX_AVAILABLE:
+            Logger.info("HTTPX not available, using fallback verification")
+            return self._fallback_verification(public_subdomains)
+        
+        try:
+            httpx_prober = HTTPX(
+                timeout=5,  # Slightly longer timeout for better results
+                threads=min(50, len(public_subdomains) * 2),  # Dynamic thread count
+                follow_redirects=True,
+                verify_ssl=False
+            )
+            
+            # Probe all public subdomains
+            results = httpx_prober.probe_subdomains(public_subdomains)
+            
+        except Exception as e:
+            Logger.error(f"HTTPX probing failed: {str(e)}")
+            Logger.info("Falling back to basic HTTP verification")
+            return self._fallback_verification(public_subdomains)
         
         # Convert HTTPX results to our format
         live_subdomains = {}
@@ -321,6 +369,60 @@ class SubdomainHunter:
                 tech_info = f" | Tech: {', '.join(result.technologies[:3])}" if result.technologies else ""
                 title_info = f" | {result.title[:30]}..." if result.title else ""
                 Logger.found(f"Live: {result.url} [{result.status_code}] [{result.response_time:.2f}s]{tech_info}{title_info}")
+        
+        return live_subdomains
+    
+    def _fallback_verification(self, subdomains):
+        """Fallback verification method if HTTPX fails"""
+        Logger.info("Using fallback verification method")
+        live_subdomains = {}
+        
+        def check_subdomain_simple(subdomain):
+            protocols = ['https', 'http']
+            for protocol in protocols:
+                try:
+                    url = f"{protocol}://{subdomain}"
+                    response = self.session.get(url, timeout=8, verify=False, allow_redirects=True)
+                    
+                    if response.status_code:
+                        # Categorize by status code
+                        if response.status_code == 200:
+                            category = "Live (200 OK)"
+                        elif response.status_code in [301, 302, 303, 307, 308]:
+                            category = f"Redirect ({response.status_code})"
+                        elif response.status_code == 403:
+                            category = "Forbidden (403)"
+                        elif response.status_code == 404:
+                            category = "Not Found (404)"
+                        elif 400 <= response.status_code < 500:
+                            category = f"Client Error ({response.status_code})"
+                        elif 500 <= response.status_code < 600:
+                            category = f"Server Error ({response.status_code})"
+                        else:
+                            category = f"Other ({response.status_code})"
+                        
+                        live_subdomains[subdomain] = {
+                            'url': url,
+                            'status_code': response.status_code,
+                            'category': category,
+                            'protocol': protocol,
+                            'title': None,
+                            'content_length': len(response.content),
+                            'response_time': response.elapsed.total_seconds(),
+                            'technologies': [],
+                            'server': response.headers.get('Server', 'Unknown')
+                        }
+                        
+                        Logger.found(f"Live: {url} [{response.status_code}]")
+                        return subdomain
+                except Exception:
+                    continue
+            return None
+        
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            futures = [executor.submit(check_subdomain_simple, sub) for sub in subdomains]
+            for future in as_completed(futures):
+                future.result()
         
         return live_subdomains
     
