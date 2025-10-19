@@ -31,9 +31,16 @@ import warnings
 # Try to import requests with complete fallback
 try:
     import requests
+    import urllib3
+    # Disable SSL warnings
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
+
+# Disable SSL warnings for urllib as well
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 class Colors:
     """Cross-platform color support"""
@@ -412,36 +419,71 @@ class SubdomainHunter:
         """Certificate Transparency logs"""
         Logger.info(f"Mining Certificate Transparency logs for {self.domain}")
         
-        # Multiple CT sources
+        # Multiple CT sources with shorter timeouts
         ct_sources = [
             f"https://crt.sh/?q=%.{self.domain}&output=json",
             f"https://crt.sh/?q={self.domain}&output=json"
         ]
         
+        found_count = 0
         for ct_url in ct_sources:
             try:
-                response = self.http_client.get(ct_url)
+                # Use shorter timeout for CT
+                response = self.http_client.get(ct_url, timeout=8)
                 
-                if response.status_code == 200:
-                    data = json.loads(response.text)
-                    for cert in data:
-                        name_value = cert.get('name_value', '')
-                        for domain in name_value.split('\n'):
-                            domain = domain.strip().lower()
-                            # Better filtering
-                            if (domain and 
-                                self.domain in domain and 
-                                '*' not in domain and
-                                not domain.startswith('.') and
-                                domain.count('.') >= self.domain.count('.')):
-                                
-                                if domain not in self.found_subdomains:
-                                    self.found_subdomains.add(domain)
-                                    Logger.found(f"CT: {domain}")
-                break  # If first source works, don't try others
+                if response and hasattr(response, 'status_code') and response.status_code == 200:
+                    try:
+                        data = json.loads(response.text)
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            for domain in name_value.split('\n'):
+                                domain = domain.strip().lower()
+                                # Better filtering
+                                if (domain and 
+                                    self.domain in domain and 
+                                    '*' not in domain and
+                                    not domain.startswith('.') and
+                                    domain.count('.') >= self.domain.count('.')):
+                                    
+                                    if domain not in self.found_subdomains:
+                                        self.found_subdomains.add(domain)
+                                        Logger.found(f"CT: {domain}")
+                                        found_count += 1
+                        break  # If first source works, don't try others
+                    except json.JSONDecodeError:
+                        Logger.warning(f"CT response not valid JSON: {ct_url}")
+                        continue
+                elif response and hasattr(response, 'content'):
+                    # Try with urllib response
+                    try:
+                        data = json.loads(response.content.decode('utf-8'))
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            for domain in name_value.split('\n'):
+                                domain = domain.strip().lower()
+                                if (domain and 
+                                    self.domain in domain and 
+                                    '*' not in domain and
+                                    not domain.startswith('.') and
+                                    domain.count('.') >= self.domain.count('.')):
+                                    
+                                    if domain not in self.found_subdomains:
+                                        self.found_subdomains.add(domain)
+                                        Logger.found(f"CT: {domain}")
+                                        found_count += 1
+                        break
+                    except:
+                        continue
             except Exception as e:
                 Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
                 continue
+        
+        if found_count > 0:
+            Logger.success(f"Certificate Transparency found {found_count} subdomains")
+        else:
+            Logger.warning("Certificate Transparency found no subdomains (timeout or error)")
+        
+        return found_count
     
     def dns_zone_transfer(self):
         """DNS zone transfer attempt"""
@@ -978,7 +1020,7 @@ def run_external_subfinder(target):
         
         # Run the external tool
         import subprocess
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         
         if result.returncode == 0:
             subdomains = set()
@@ -994,7 +1036,7 @@ def run_external_subfinder(target):
             return set()
             
     except subprocess.TimeoutExpired:
-        Logger.warning("Subfinder timed out (60 seconds)")
+        Logger.warning("Subfinder timed out (120 seconds)")
         return set()
     except Exception as e:
         Logger.warning(f"Failed to run subfinder: {str(e)}")
@@ -1016,7 +1058,7 @@ def run_external_assetfinder(target):
         
         # Run the external tool
         import subprocess
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
         
         if result.returncode == 0:
             subdomains = set()
@@ -1032,7 +1074,7 @@ def run_external_assetfinder(target):
             return set()
             
     except subprocess.TimeoutExpired:
-        Logger.warning("AssetFinder timed out (90 seconds)")
+        Logger.warning("AssetFinder timed out (150 seconds)")
         return set()
     except Exception as e:
         Logger.warning(f"Failed to run assetfinder: {str(e)}")
@@ -1196,13 +1238,26 @@ def main():
                 possible_files = [
                     f"{domain_safe}_parameters.txt",
                     f"sabzlearn_ir_parameters.txt",  # Default from parameter_simple.py
+                    f"dell_com_parameters.txt",     # For dell.com
                 ]
+                
+                # Also check for any *_parameters.txt files
+                import glob
+                param_files = glob.glob("*_parameters.txt")
+                possible_files.extend(param_files)
                 
                 for possible_file in possible_files:
                     if os.path.exists(possible_file):
                         param_file = possible_file
                         Logger.info(f"Found parameter results in {param_file}")
                         break
+                
+                # If still not found, check if any external_params file exists
+                if not param_file:
+                    external_files = glob.glob("*external_params*.txt")
+                    if external_files:
+                        param_file = external_files[0]
+                        Logger.info(f"Found external parameter results in {param_file}")
             
             if param_file and os.path.exists(param_file):
                 try:
