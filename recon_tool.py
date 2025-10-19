@@ -538,6 +538,8 @@ class SubdomainHunter:
             httpx = FastHTTPX(timeout=3, threads=max_threads)  # Reduced timeout
             public_results = httpx.probe_subdomains(public_subdomains)
             live_subdomains.update(public_results)
+        else:
+            Logger.warning("No public subdomains found to probe")
         
         return live_subdomains
     
@@ -578,6 +580,28 @@ class SubdomainHunter:
                     Logger.info("Subfinder found no new subdomains (all were duplicates)")
         except Exception as e:
             Logger.warning(f"External subfinder failed: {str(e)}")
+        
+        # Add external assetfinder
+        try:
+            Logger.info("Running external assetfinder for additional discovery")
+            assetfinder_results = run_external_assetfinder(self.domain)
+            if assetfinder_results:
+                # Add new subdomains found by assetfinder (with duplicate checking)
+                initial_count = len(self.found_subdomains)
+                for subdomain in assetfinder_results:
+                    # Clean and normalize subdomain
+                    cleaned_subdomain = subdomain.lower().strip()
+                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                        self.found_subdomains.add(cleaned_subdomain)
+                        Logger.found(f"AssetFinder: {cleaned_subdomain}")
+                
+                new_count = len(self.found_subdomains) - initial_count
+                if new_count > 0:
+                    Logger.success(f"AssetFinder added {new_count} new unique subdomains")
+                else:
+                    Logger.info("AssetFinder found no new subdomains (all were duplicates)")
+        except Exception as e:
+            Logger.warning(f"External assetfinder failed: {str(e)}")
         
         self.wildcard_detection()
         live_subdomains = self.verify_live_subdomains()
@@ -954,6 +978,44 @@ def run_external_subfinder(target):
         Logger.warning(f"Failed to run subfinder: {str(e)}")
         return set()
 
+def run_external_assetfinder(target):
+    """Run external assetfinder tool"""
+    Logger.info("Running external assetfinder for additional subdomain discovery")
+    
+    try:
+        # Check if assetfinder.py exists
+        assetfinder_tool_path = os.path.join(os.path.dirname(__file__), 'assetfinder.py')
+        if not os.path.exists(assetfinder_tool_path):
+            Logger.warning("assetfinder.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, assetfinder_tool_path, target, '--subs-only']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain:
+                    subdomains.add(subdomain)
+            
+            Logger.success(f"AssetFinder found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"AssetFinder failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("AssetFinder timed out (90 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run assetfinder: {str(e)}")
+        return set()
+
 def run_external_parameter_discovery(target, output_file=None):
     """Run external parameter discovery tool"""
     Logger.phase("EXTERNAL PARAMETER DISCOVERY")
@@ -1074,7 +1136,9 @@ def main():
                         # Extract parameters from file
                         param_section = False
                         parameters = []
-                        for line in content.split('\n'):
+                        lines = content.split('\n')
+                        
+                        for i, line in enumerate(lines):
                             if 'DISCOVERED PARAMETERS' in line:
                                 param_section = True
                                 param_count = re.search(r'\((\d+)\)', line)
@@ -1085,7 +1149,7 @@ def main():
                                 param_name = line.replace('•', '').strip()
                                 if param_name:
                                     parameters.append(param_name)
-                            elif param_section and line.strip() and not line.startswith('-') and not line.startswith('•'):
+                            elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line):
                                 # End of parameter section
                                 break
                         
