@@ -603,6 +603,28 @@ class SubdomainHunter:
         except Exception as e:
             Logger.warning(f"External assetfinder failed: {str(e)}")
         
+        # Add external amass
+        try:
+            Logger.info("Running external amass for comprehensive discovery")
+            amass_results = run_external_amass(self.domain)
+            if amass_results:
+                # Add new subdomains found by amass (with duplicate checking)
+                initial_count = len(self.found_subdomains)
+                for subdomain in amass_results:
+                    # Clean and normalize subdomain
+                    cleaned_subdomain = subdomain.lower().strip()
+                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                        self.found_subdomains.add(cleaned_subdomain)
+                        Logger.found(f"Amass: {cleaned_subdomain}")
+                
+                new_count = len(self.found_subdomains) - initial_count
+                if new_count > 0:
+                    Logger.success(f"Amass added {new_count} new unique subdomains")
+                else:
+                    Logger.info("Amass found no new subdomains (all were duplicates)")
+        except Exception as e:
+            Logger.warning(f"External amass failed: {str(e)}")
+        
         self.wildcard_detection()
         live_subdomains = self.verify_live_subdomains()
         
@@ -1014,6 +1036,44 @@ def run_external_assetfinder(target):
         return set()
     except Exception as e:
         Logger.warning(f"Failed to run assetfinder: {str(e)}")
+        return set()
+
+def run_external_amass(target):
+    """Run external amass tool"""
+    Logger.info("Running external amass for comprehensive subdomain discovery")
+    
+    try:
+        # Check if amass.py exists
+        amass_tool_path = os.path.join(os.path.dirname(__file__), 'amass.py')
+        if not os.path.exists(amass_tool_path):
+            Logger.warning("amass.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, amass_tool_path, 'enum', '-d', target, '--passive', '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain:
+                    subdomains.add(subdomain)
+            
+            Logger.success(f"Amass found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"Amass failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Amass timed out (120 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run amass: {str(e)}")
         return set()
 
 def run_external_parameter_discovery(target, output_file=None):

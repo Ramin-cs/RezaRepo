@@ -1,6 +1,6 @@
 Professional Reconnaissance Report
 Target: sabzlearn.ir
-Timestamp: 2025-10-19 11:01:29
+Timestamp: 2025-10-19 11:20:04
 ================================================================================
 
 SUBDOMAINS (27 found):
