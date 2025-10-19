@@ -1186,51 +1186,77 @@ def main():
             if external_result.get('status') == 'success':
                 Logger.success("Parameter discovery completed")
                 
-                # Read and display parameters live
-                param_file = external_result.get('output_file')
-                if param_file and os.path.exists(param_file):
+            # Read and display parameters live
+            param_file = external_result.get('output_file')
+            
+            # If no specific output file, try to find the default one
+            if not param_file or not os.path.exists(param_file):
+                # Try to find parameter files in current directory
+                domain_safe = args.target.replace('https://', '').replace('http://', '').replace('.', '_').replace('/', '_')
+                possible_files = [
+                    f"{domain_safe}_parameters.txt",
+                    f"sabzlearn_ir_parameters.txt",  # Default from parameter_simple.py
+                ]
+                
+                for possible_file in possible_files:
+                    if os.path.exists(possible_file):
+                        param_file = possible_file
+                        Logger.info(f"Found parameter results in {param_file}")
+                        break
+            
+            if param_file and os.path.exists(param_file):
+                try:
+                    with open(param_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        
+                    # Extract parameters from file
+                    param_section = False
+                    parameters = []
+                    lines = content.split('\n')
+                    
+                    for i, line in enumerate(lines):
+                        if 'DISCOVERED PARAMETERS' in line:
+                            param_section = True
+                            param_count = re.search(r'\((\d+)\)', line)
+                            if param_count:
+                                total_params = param_count.group(1)
+                            continue
+                        elif param_section and line.startswith('•'):
+                            param_name = line.replace('•', '').strip()
+                            if param_name:
+                                parameters.append(param_name)
+                        elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line):
+                            # End of parameter section
+                            break
+                    
+                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                    print(f"Found {len(parameters)} parameters:")
+                    
+                    # Display parameters in groups of 10
+                    for i in range(0, len(parameters), 10):
+                        group = parameters[i:i+10]
+                        print(f"  • {', '.join(group)}")
+                    
+                    # Store parameters in recon results
+                    recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
+                    
+                    # Clean up the external parameter file after reading
                     try:
-                        with open(param_file, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            
-                        # Extract parameters from file
-                        param_section = False
-                        parameters = []
-                        lines = content.split('\n')
-                        
-                        for i, line in enumerate(lines):
-                            if 'DISCOVERED PARAMETERS' in line:
-                                param_section = True
-                                param_count = re.search(r'\((\d+)\)', line)
-                                if param_count:
-                                    total_params = param_count.group(1)
-                                continue
-                            elif param_section and line.startswith('•'):
-                                param_name = line.replace('•', '').strip()
-                                if param_name:
-                                    parameters.append(param_name)
-                            elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line):
-                                # End of parameter section
-                                break
-                        
-                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-                        print(f"Found {len(parameters)} parameters:")
-                        
-                        # Display parameters in groups of 10
-                        for i in range(0, len(parameters), 10):
-                            group = parameters[i:i+10]
-                            print(f"  • {', '.join(group)}")
-                        
-                        # Store parameters in recon results
-                        recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
-                        
-                    except Exception as e:
-                        Logger.warning(f"Could not read parameter file: {str(e)}")
-                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-                        print(f"Parameter discovery completed successfully!")
-                        print(f"{Colors.CYAN}Results saved to: {external_result['output_file']}{Colors.END}")
+                        os.remove(param_file)
+                        Logger.verbose(f"Cleaned up temporary parameter file: {param_file}")
+                    except:
+                        pass
+                    
+                except Exception as e:
+                    Logger.warning(f"Could not read parameter file: {str(e)}")
+                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                    print(f"Parameter discovery completed successfully!")
+                    if param_file:
+                        print(f"{Colors.CYAN}Results saved to: {param_file}{Colors.END}")
             else:
-                Logger.warning(f"Parameter discovery failed: {external_result.get('message', 'Unknown error')}")
+                print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                print("Found 0 parameters:")
+                Logger.warning("No parameter results file found")
         
         # Save results
         if args.output:
