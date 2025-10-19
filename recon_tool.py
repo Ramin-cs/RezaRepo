@@ -557,6 +557,28 @@ class SubdomainHunter:
             except Exception as e:
                 Logger.error(f"{name} failed: {str(e)}")
         
+        # Add external subfinder
+        try:
+            Logger.info("Running external subfinder for additional discovery")
+            subfinder_results = run_external_subfinder(self.domain)
+            if subfinder_results:
+                # Add new subdomains found by subfinder (with duplicate checking)
+                initial_count = len(self.found_subdomains)
+                for subdomain in subfinder_results:
+                    # Clean and normalize subdomain
+                    cleaned_subdomain = subdomain.lower().strip()
+                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                        self.found_subdomains.add(cleaned_subdomain)
+                        Logger.found(f"Subfinder: {cleaned_subdomain}")
+                
+                new_count = len(self.found_subdomains) - initial_count
+                if new_count > 0:
+                    Logger.success(f"Subfinder added {new_count} new unique subdomains")
+                else:
+                    Logger.info("Subfinder found no new subdomains (all were duplicates)")
+        except Exception as e:
+            Logger.warning(f"External subfinder failed: {str(e)}")
+        
         self.wildcard_detection()
         live_subdomains = self.verify_live_subdomains()
         
@@ -893,6 +915,44 @@ def print_banner():
 {Colors.GREEN}Cross-Platform | Multi-Threaded | Zero Dependencies{Colors.END}
 """
     print(banner)
+
+def run_external_subfinder(target):
+    """Run external subfinder tool"""
+    Logger.info("Running external subfinder for additional subdomain discovery")
+    
+    try:
+        # Check if subfinder.py exists
+        subfinder_tool_path = os.path.join(os.path.dirname(__file__), 'subfinder.py')
+        if not os.path.exists(subfinder_tool_path):
+            Logger.warning("subfinder.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, subfinder_tool_path, target, '--fast', '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain:
+                    subdomains.add(subdomain)
+            
+            Logger.success(f"Subfinder found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"Subfinder failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Subfinder timed out (60 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run subfinder: {str(e)}")
+        return set()
 
 def run_external_parameter_discovery(target, output_file=None):
     """Run external parameter discovery tool"""
