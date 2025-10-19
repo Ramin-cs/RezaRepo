@@ -131,29 +131,42 @@ class HTMLLinkExtractor(HTMLParser):
         self.forms = []
         self.title = ""
         self.current_form = None
+        self._in_title = False
         
     def handle_starttag(self, tag, attrs):
         attrs_dict = dict(attrs)
         
+        # Handle title tag
+        if tag == 'title':
+            self._in_title = True
+        
         # Extract links
-        if tag == 'a' and 'href' in attrs_dict:
-            self.links.append(attrs_dict['href'])
+        elif tag == 'a' and 'href' in attrs_dict:
+            href = attrs_dict['href'].strip()
+            if href and not href.startswith(('#', 'javascript:', 'mailto:')):
+                self.links.append(href)
         
         # Extract JavaScript files
         elif tag == 'script' and 'src' in attrs_dict:
-            self.js_files.append(attrs_dict['src'])
+            src = attrs_dict['src'].strip()
+            if src:
+                self.js_files.append(src)
         
         # Extract CSS files
         elif tag == 'link' and 'href' in attrs_dict:
-            rel = attrs_dict.get('rel', '').lower()
-            if 'stylesheet' in rel:
-                self.css_files.append(attrs_dict['href'])
-            else:
-                self.links.append(attrs_dict['href'])
+            href = attrs_dict['href'].strip()
+            if href:
+                rel = attrs_dict.get('rel', '').lower()
+                if 'stylesheet' in rel:
+                    self.css_files.append(href)
+                else:
+                    self.links.append(href)
         
         # Extract images
         elif tag == 'img' and 'src' in attrs_dict:
-            self.images.append(attrs_dict['src'])
+            src = attrs_dict['src'].strip()
+            if src:
+                self.images.append(src)
         
         # Extract forms
         elif tag == 'form':
@@ -172,12 +185,14 @@ class HTMLLinkExtractor(HTMLParser):
             self.current_form['inputs'].append(input_data)
     
     def handle_endtag(self, tag):
-        if tag == 'form' and self.current_form:
+        if tag == 'title':
+            self._in_title = False
+        elif tag == 'form' and self.current_form:
             self.forms.append(self.current_form)
             self.current_form = None
     
     def handle_data(self, data):
-        if self.get_starttag_text() and 'title' in self.get_starttag_text().lower():
+        if self._in_title and data.strip():
             self.title = data.strip()
 
 
@@ -337,7 +352,6 @@ class KatanaCrawler:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
         }
@@ -518,6 +532,7 @@ class KatanaCrawler:
                 )
                 
                 # Parse HTML for links and resources
+                self.log_debug(f"Content type: {result.content_type}, Content length: {len(content_str)}")
                 if 'text/html' in result.content_type.lower():
                     parser = HTMLLinkExtractor()
                     try:
@@ -528,8 +543,19 @@ class KatanaCrawler:
                         result.images = parser.images
                         result.forms = parser.forms
                         result.title = parser.title
-                    except:
-                        pass
+                        self.log_debug(f"Parsed {len(result.links)} links, {len(result.js_files)} JS files from {url}")
+                    except Exception as e:
+                        self.log_debug(f"HTML parsing error for {url}: {e}")
+                        import traceback
+                        self.log_debug(f"Traceback: {traceback.format_exc()}")
+                        # Initialize empty lists if parsing fails
+                        result.links = []
+                        result.js_files = []
+                        result.css_files = []
+                        result.images = []
+                        result.forms = []
+                else:
+                    self.log_debug(f"Skipping non-HTML content: {result.content_type}")
                 
                 # Technology detection
                 if self.tech_detect:
@@ -701,32 +727,42 @@ class KatanaCrawler:
             all_urls.extend(result.js_files)
             # Also extract URLs from JS content
             for js_url in result.js_files:
-                js_result = self.fetch_url_standard(js_url)
+                normalized_js_url = self.normalize_url(js_url, url)
+                js_result = self.fetch_url_standard(normalized_js_url)
                 if js_result:
-                    js_urls = self.extract_urls_from_js(js_result.url, url)  # This should be content, but simplified
-                    all_urls.extend(js_urls)
+                    # We need to get the content, but fetch_url_standard doesn't return content
+                    # Let's skip JS content extraction for now and focus on HTML links
+                    pass
         
         # Normalize and queue new URLs
+        added_count = 0
         for discovered_url in all_urls:
             normalized = self.normalize_url(discovered_url, url)
             if normalized and normalized not in self.visited_urls:
                 self.crawl_queue.append((normalized, depth + 1))
+                added_count += 1
+        
+        if added_count > 0:
+            self.log_debug(f"Added {added_count} URLs to queue from {url}")
         
         return result
     
     def worker(self, base_domain: str):
         """Worker thread for crawling"""
-        while True:
+        empty_queue_count = 0
+        while empty_queue_count < 3:  # Wait for queue to be empty 3 times before stopping
             try:
                 url, depth = self.crawl_queue.popleft()
+                empty_queue_count = 0  # Reset counter when we get work
                 result = self.crawl_url(url, depth, base_domain)
                 if result:
                     with self.lock:
                         self.results.append(result)
                         self.output_result(result)
             except IndexError:
-                # Queue is empty
-                break
+                # Queue is empty, wait a bit
+                empty_queue_count += 1
+                time.sleep(0.1)
             except Exception as e:
                 self.log_debug(f"Worker error: {e}")
     
@@ -771,10 +807,6 @@ class KatanaCrawler:
         if not urls:
             return []
         
-        # Initialize queue with starting URLs
-        for url in urls:
-            self.crawl_queue.append((url, 0))
-        
         # Get base domain for scope control
         base_domain = urllib.parse.urlparse(urls[0]).netloc.lower()
         
@@ -782,23 +814,27 @@ class KatanaCrawler:
         self.log_info(f"Max depth: {self.max_depth}, Concurrency: {self.concurrency}")
         self.log_info(f"Mode: {'Headless' if self.headless else 'Standard'}")
         
-        # Start crawler workers
-        with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
-            futures = []
-            
-            # Start workers
-            for _ in range(self.concurrency):
-                future = executor.submit(self.worker, base_domain)
-                futures.append(future)
-            
-            # Monitor progress
-            processed = 0
-            while any(not f.done() for f in futures) or self.crawl_queue:
-                time.sleep(1)
-                current_processed = len(self.results)
-                if current_processed > processed:
-                    processed = current_processed
-                    self.log_verbose(f"Processed: {processed}, Queue: {len(self.crawl_queue)}")
+        # Process URLs sequentially for better control
+        for url in urls:
+            self.crawl_queue.append((url, 0))
+        
+        processed_count = 0
+        while self.crawl_queue:
+            try:
+                url, depth = self.crawl_queue.popleft()
+                result = self.crawl_url(url, depth, base_domain)
+                if result:
+                    self.results.append(result)
+                    self.output_result(result)
+                    processed_count += 1
+                    
+                    if processed_count % 10 == 0:
+                        self.log_verbose(f"Processed: {processed_count}, Queue: {len(self.crawl_queue)}")
+                        
+            except IndexError:
+                break
+            except Exception as e:
+                self.log_debug(f"Crawl error: {e}")
         
         # Save results
         self.save_results()
