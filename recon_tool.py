@@ -667,6 +667,28 @@ class SubdomainHunter:
         except Exception as e:
             Logger.warning(f"External amass failed: {str(e)}")
         
+        # Add external sublist3r
+        try:
+            Logger.info("Running external sublist3r for comprehensive discovery")
+            sublist3r_results = run_external_sublist3r(self.domain)
+            if sublist3r_results:
+                # Add new subdomains found by sublist3r (with duplicate checking)
+                initial_count = len(self.found_subdomains)
+                for subdomain in sublist3r_results:
+                    # Clean and normalize subdomain
+                    cleaned_subdomain = subdomain.lower().strip()
+                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                        self.found_subdomains.add(cleaned_subdomain)
+                        Logger.found(f"Sublist3r: {cleaned_subdomain}")
+                
+                new_count = len(self.found_subdomains) - initial_count
+                if new_count > 0:
+                    Logger.success(f"Sublist3r added {new_count} new unique subdomains")
+                else:
+                    Logger.info("Sublist3r found no new subdomains (all were duplicates)")
+        except Exception as e:
+            Logger.warning(f"External sublist3r failed: {str(e)}")
+        
         # Wildcard detection
         self.wildcard_detection()
         
@@ -1126,6 +1148,46 @@ def run_external_amass(target):
         Logger.warning(f"Failed to run amass: {str(e)}")
         return set()
 
+def run_external_sublist3r(target):
+    """Run external sublist3r tool"""
+    Logger.info("Running external sublist3r for comprehensive subdomain discovery")
+    
+    try:
+        # Check if sublist3r.py exists
+        sublist3r_tool_path = os.path.join(os.path.dirname(__file__), 'sublist3r.py')
+        if not os.path.exists(sublist3r_tool_path):
+            Logger.warning("sublist3r.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, sublist3r_tool_path, '-d', target, '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain and len(subdomain) > 3:
+                    # Validate subdomain format
+                    if not subdomain.startswith('.') and not subdomain.endswith('.'):
+                        subdomains.add(subdomain.lower())
+            
+            Logger.success(f"Sublist3r found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"Sublist3r failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Sublist3r timed out (150 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run sublist3r: {str(e)}")
+        return set()
+
 def run_external_parameter_discovery(target, output_file=None):
     """Run external parameter discovery tool"""
     Logger.phase("EXTERNAL PARAMETER DISCOVERY")
@@ -1234,9 +1296,13 @@ def main():
         
         if run_parameters:
             # Use external parameter discovery tool
+            # Extract domain from target for parameter discovery
+            parsed_target = TargetParser.parse_target(args.target)
+            target_domain = parsed_target['domain']
+            
             external_result = run_external_parameter_discovery(
-                args.target, 
-                args.output or f"recon_{TargetParser.parse_target(args.target)['domain'].replace('.', '_')}_{int(time.time())}"
+                target_domain, 
+                args.output or f"recon_{target_domain.replace('.', '_')}_{int(time.time())}"
             )
             
             if external_result.get('status') == 'success':
