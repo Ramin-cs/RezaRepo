@@ -1,0 +1,21 @@
+# Findomain Configuration File
+# Add your API keys here
+
+# VirusTotal API Key
+# virustotal_api_key=your_virustotal_api_key_here
+
+# SecurityTrails API Key  
+# securitytrails_api_key=your_securitytrails_api_key_here
+
+# Shodan API Key
+# shodan_api_key=your_shodan_api_key_here
+
+# Censys API Credentials
+# censys_api_id=your_censys_api_id_here
+# censys_api_secret=your_censys_api_secret_here
+
+# Facebook Access Token
+# facebook_access_token=your_facebook_token_here
+
+# Spyse API Key
+# spyse_api_key=your_spyse_api_key_here
