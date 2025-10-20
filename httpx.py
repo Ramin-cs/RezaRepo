@@ -57,8 +57,9 @@ class FastHTTPX:
         self.threads = threads
     
     def probe_subdomains(self, subdomains):
-        """Probe subdomains quickly"""
+        """Probe subdomains quickly with thread-safe results"""
         results = []
+        results_lock = threading.Lock()
         
         def probe_single(subdomain):
             protocols = ['https', 'http']
@@ -120,7 +121,8 @@ class FastHTTPX:
                             'content_length': len(content)
                         }
                         
-                        results.append((subdomain, result))
+                        with results_lock:
+                            results.append((subdomain, result))
                         Logger.found(f"Live: {url} [{status_code}] [{response_time:.2f}s]")
                         return result
                         
@@ -148,7 +150,8 @@ class FastHTTPX:
                             'content_length': 0
                         }
                         
-                        results.append((subdomain, result))
+                        with results_lock:
+                            results.append((subdomain, result))
                         Logger.found(f"Live: {url} [{e.code}] [{response_time:.2f}s]")
                         return result
                 except Exception:
@@ -171,8 +174,9 @@ class FastHTTPX:
             futures = [executor.submit(probe_single, sub) for sub in subdomains]
             for future in as_completed(futures):
                 result = future.result()
-                if result:  # Add all results, even "Not Responding" ones
-                    subdomain = result['url'].split('://', 1)[1]
+            if result:  # Add all results, even "Not Responding" ones
+                subdomain = result['url'].split('://', 1)[1]
+                with results_lock:
                     results.append((subdomain, result))
         
         # Return best result per subdomain (prefer HTTPS)

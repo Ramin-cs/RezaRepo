@@ -61,33 +61,42 @@ class Colors:
     END = '\033[0m'
 
 class Logger:
-    """Professional logging system"""
+    """Professional thread-safe logging system"""
+    
+    _lock = threading.Lock()
+    
+    @staticmethod
+    def _safe_print(message):
+        """Thread-safe print with lock"""
+        with Logger._lock:
+            print(message, flush=True)
     
     @staticmethod
     def info(message):
-        print(f"{Colors.BLUE}[INFO]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.BLUE}[INFO]{Colors.END} {message}")
     
     @staticmethod
     def success(message):
-        print(f"{Colors.GREEN}[SUCCESS]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.GREEN}[SUCCESS]{Colors.END} {message}")
     
     @staticmethod
     def warning(message):
-        print(f"{Colors.YELLOW}[WARNING]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.YELLOW}[WARNING]{Colors.END} {message}")
     
     @staticmethod
     def error(message):
-        print(f"{Colors.RED}[ERROR]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.RED}[ERROR]{Colors.END} {message}")
     
     @staticmethod
     def found(message):
-        print(f"{Colors.CYAN}[FOUND]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.CYAN}[FOUND]{Colors.END} {message}")
     
     @staticmethod
     def phase(message):
-        print(f"\n{Colors.PURPLE}{'='*60}{Colors.END}")
-        print(f"{Colors.PURPLE}[PHASE]{Colors.END} {Colors.BOLD}{message}{Colors.END}")
-        print(f"{Colors.PURPLE}{'='*60}{Colors.END}")
+        with Logger._lock:
+            print(f"\n{Colors.PURPLE}{'='*60}{Colors.END}", flush=True)
+            print(f"{Colors.PURPLE}[PHASE]{Colors.END} {Colors.BOLD}{message}{Colors.END}", flush=True)
+            print(f"{Colors.PURPLE}{'='*60}{Colors.END}", flush=True)
 
 class HTTPClient:
     """Universal HTTP client that works everywhere"""
@@ -601,93 +610,45 @@ class SubdomainHunter:
             except Exception as e:
                 Logger.error(f"{name} failed: {str(e)}")
         
-        # Add external subfinder
-        try:
-            Logger.info("Running external subfinder for additional discovery")
-            subfinder_results = run_external_subfinder(self.domain)
-            if subfinder_results:
-                # Add new subdomains found by subfinder (with duplicate checking)
-                initial_count = len(self.found_subdomains)
-                for subdomain in subfinder_results:
-                    # Clean and normalize subdomain
-                    cleaned_subdomain = subdomain.lower().strip()
-                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
-                        self.found_subdomains.add(cleaned_subdomain)
-                        Logger.found(f"Subfinder: {cleaned_subdomain}")
-                
-                new_count = len(self.found_subdomains) - initial_count
-                if new_count > 0:
-                    Logger.success(f"Subfinder added {new_count} new unique subdomains")
-                else:
-                    Logger.info("Subfinder found no new subdomains (all were duplicates)")
-        except Exception as e:
-            Logger.warning(f"External subfinder failed: {str(e)}")
+        # Run external tools sequentially to avoid output mixing
+        external_tools = [
+            ("Subfinder", run_external_subfinder, "subfinder"),
+            ("AssetFinder", run_external_assetfinder, "assetfinder"), 
+            ("Amass", run_external_amass, "amass"),
+            ("Sublist3r", run_external_sublist3r, "sublist3r")
+        ]
         
-        # Add external assetfinder
-        try:
-            Logger.info("Running external assetfinder for additional discovery")
-            assetfinder_results = run_external_assetfinder(self.domain)
-            if assetfinder_results:
-                # Add new subdomains found by assetfinder (with duplicate checking)
-                initial_count = len(self.found_subdomains)
-                for subdomain in assetfinder_results:
-                    # Clean and normalize subdomain
-                    cleaned_subdomain = subdomain.lower().strip()
-                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
-                        self.found_subdomains.add(cleaned_subdomain)
-                        Logger.found(f"AssetFinder: {cleaned_subdomain}")
+        for tool_name, tool_func, tool_prefix in external_tools:
+            try:
+                Logger.info(f"Running external {tool_name.lower()} for additional discovery")
+                tool_results = tool_func(self.domain)
                 
-                new_count = len(self.found_subdomains) - initial_count
-                if new_count > 0:
-                    Logger.success(f"AssetFinder added {new_count} new unique subdomains")
+                if tool_results:
+                    # Add new subdomains found by tool (with duplicate checking)
+                    initial_count = len(self.found_subdomains)
+                    new_subdomains = []
+                    
+                    for subdomain in tool_results:
+                        # Clean and normalize subdomain
+                        cleaned_subdomain = subdomain.lower().strip()
+                        if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                            self.found_subdomains.add(cleaned_subdomain)
+                            new_subdomains.append(cleaned_subdomain)
+                    
+                    # Display new subdomains found by this tool
+                    for subdomain in new_subdomains:
+                        Logger.found(f"{tool_name}: {subdomain}")
+                    
+                    new_count = len(new_subdomains)
+                    if new_count > 0:
+                        Logger.success(f"{tool_name} added {new_count} new unique subdomains")
+                    else:
+                        Logger.info(f"{tool_name} found no new subdomains (all were duplicates)")
                 else:
-                    Logger.info("AssetFinder found no new subdomains (all were duplicates)")
-        except Exception as e:
-            Logger.warning(f"External assetfinder failed: {str(e)}")
-        
-        # Add external amass
-        try:
-            Logger.info("Running external amass for comprehensive discovery")
-            amass_results = run_external_amass(self.domain)
-            if amass_results:
-                # Add new subdomains found by amass (with duplicate checking)
-                initial_count = len(self.found_subdomains)
-                for subdomain in amass_results:
-                    # Clean and normalize subdomain
-                    cleaned_subdomain = subdomain.lower().strip()
-                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
-                        self.found_subdomains.add(cleaned_subdomain)
-                        Logger.found(f"Amass: {cleaned_subdomain}")
-                
-                new_count = len(self.found_subdomains) - initial_count
-                if new_count > 0:
-                    Logger.success(f"Amass added {new_count} new unique subdomains")
-                else:
-                    Logger.info("Amass found no new subdomains (all were duplicates)")
-        except Exception as e:
-            Logger.warning(f"External amass failed: {str(e)}")
-        
-        # Add external sublist3r
-        try:
-            Logger.info("Running external sublist3r for comprehensive discovery")
-            sublist3r_results = run_external_sublist3r(self.domain)
-            if sublist3r_results:
-                # Add new subdomains found by sublist3r (with duplicate checking)
-                initial_count = len(self.found_subdomains)
-                for subdomain in sublist3r_results:
-                    # Clean and normalize subdomain
-                    cleaned_subdomain = subdomain.lower().strip()
-                    if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
-                        self.found_subdomains.add(cleaned_subdomain)
-                        Logger.found(f"Sublist3r: {cleaned_subdomain}")
-                
-                new_count = len(self.found_subdomains) - initial_count
-                if new_count > 0:
-                    Logger.success(f"Sublist3r added {new_count} new unique subdomains")
-                else:
-                    Logger.info("Sublist3r found no new subdomains (all were duplicates)")
-        except Exception as e:
-            Logger.warning(f"External sublist3r failed: {str(e)}")
+                    Logger.info(f"{tool_name} found 0 subdomains")
+                    
+            except Exception as e:
+                Logger.warning(f"External {tool_name.lower()} failed: {str(e)}")
         
         # Wildcard detection
         self.wildcard_detection()
@@ -1279,20 +1240,24 @@ def main():
                 wordlist_size=args.wordlist
             )
             
-            print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}")
-            print(f"Found {len(subdomains)} subdomains:")
+            # Clean phase separation - ensure all threads are done
+            time.sleep(0.5)
             
-            categories = {}
-            for subdomain, info in subdomains.items():
-                category = info['category']
-                if category not in categories:
-                    categories[category] = []
-                categories[category].append((subdomain, info))
-            
-            for category, subs in sorted(categories.items()):
-                print(f"\n{Colors.YELLOW}{category}:{Colors.END}")
-                for subdomain, info in sorted(subs):
-                    print(f"  • {info['url']}")
+            with Logger._lock:
+                print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}", flush=True)
+                print(f"Found {len(subdomains)} subdomains:", flush=True)
+                
+                categories = {}
+                for subdomain, info in subdomains.items():
+                    category = info['category']
+                    if category not in categories:
+                        categories[category] = []
+                    categories[category].append((subdomain, info))
+                
+                for category, subs in sorted(categories.items()):
+                    print(f"\n{Colors.YELLOW}{category}:{Colors.END}", flush=True)
+                    for subdomain, info in sorted(subs):
+                        print(f"  • {info['url']}", flush=True)
         
         if run_parameters:
             # Use external parameter discovery tool
@@ -1376,16 +1341,20 @@ def main():
                             # End of parameter section
                             break
                     
-                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-                    print(f"Found {len(parameters)} parameters:")
+                    # Clean parameter results display
+                    time.sleep(0.3)  # Ensure all parameter discovery logs are done
                     
-                    # Display parameters in groups of 10
-                    for i in range(0, len(parameters), 10):
-                        group = parameters[i:i+10]
-                        print(f"  • {', '.join(group)}")
-                    
-                    # Store parameters in recon results
-                    recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
+                    with Logger._lock:
+                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}", flush=True)
+                        print(f"Found {len(parameters)} parameters:", flush=True)
+                        
+                        # Display parameters in groups of 10
+                        for i in range(0, len(parameters), 10):
+                            group = parameters[i:i+10]
+                            print(f"  • {', '.join(group)}", flush=True)
+                        
+                        # Store parameters in recon results
+                        recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
                     
                     # Clean up the external parameter file after reading
                     try:
