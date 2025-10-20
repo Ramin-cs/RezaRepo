@@ -1164,6 +1164,12 @@ def run_external_parameter_discovery(target, output_file=None):
                 if os.path.exists(result_file):
                     Logger.info(f"External parameter results saved to {result_file}")
                     return {'status': 'success', 'output_file': result_file}
+                else:
+                    # Check if parameter_simple.py created file without _external_params suffix
+                    simple_result_file = f"{output_file}_external_params.txt"
+                    if os.path.exists(simple_result_file):
+                        Logger.info(f"External parameter results saved to {simple_result_file}")
+                        return {'status': 'success', 'output_file': simple_result_file}
             
             return {'status': 'success', 'message': 'External parameter discovery completed'}
         else:
@@ -1247,6 +1253,7 @@ def main():
                     f"{domain_safe}_parameters.txt",
                     f"sabzlearn_ir_parameters.txt",  # Default from parameter_simple.py
                     f"dell_com_parameters.txt",     # For dell.com
+                    f"testphp_vulnweb_com_parameters.txt",  # For testphp.vulnweb.com
                 ]
                 
                 # Also check for any *_parameters.txt files
@@ -1254,18 +1261,29 @@ def main():
                 param_files = glob.glob("*_parameters.txt")
                 possible_files.extend(param_files)
                 
-                for possible_file in possible_files:
-                    if os.path.exists(possible_file):
-                        param_file = possible_file
-                        Logger.info(f"Found parameter results in {param_file}")
-                        break
+                # Check for external_params files
+                external_files = glob.glob("*external_params*.txt")
+                possible_files.extend(external_files)
                 
-                # If still not found, check if any external_params file exists
+                # Sort by modification time (newest first)
+                existing_files = [f for f in possible_files if os.path.exists(f)]
+                if existing_files:
+                    # Get the most recent file
+                    param_file = max(existing_files, key=os.path.getmtime)
+                    Logger.info(f"Found parameter results in {param_file}")
+                
+                # If still not found, create a test to see what files exist
                 if not param_file:
-                    external_files = glob.glob("*external_params*.txt")
-                    if external_files:
-                        param_file = external_files[0]
-                        Logger.info(f"Found external parameter results in {param_file}")
+                    Logger.warning("No parameter files found, checking directory...")
+                    all_txt_files = glob.glob("*.txt")
+                    Logger.info(f"Available .txt files: {all_txt_files}")
+                    
+                    # Try the most recent .txt file that might contain parameters
+                    for txt_file in sorted(all_txt_files, key=os.path.getmtime, reverse=True):
+                        if 'param' in txt_file.lower():
+                            param_file = txt_file
+                            Logger.info(f"Trying parameter file: {param_file}")
+                            break
             
             if param_file and os.path.exists(param_file):
                 try:

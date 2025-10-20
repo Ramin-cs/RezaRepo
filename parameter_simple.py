@@ -104,10 +104,11 @@ class SimpleHTTPClient:
 class SimpleParameterDiscovery:
     """Simple parameter discovery"""
     
-    def __init__(self, domain, include_subdomains=True, timeout=30):
+    def __init__(self, domain, include_subdomains=True, timeout=30, quiet=False):
         self.domain = self.clean_domain(domain)
         self.include_subdomains = include_subdomains
         self.timeout = timeout
+        self.quiet = quiet
         self.found_parameters = set()
         self.found_urls = []
         self.http_client = SimpleHTTPClient(timeout=timeout)
@@ -209,6 +210,12 @@ class SimpleParameterDiscovery:
         parameter_urls = list(set(parameter_urls))
         
         Logger.success(f"Found {len(parameters_found)} unique parameters in {len(parameter_urls)} URLs")
+        
+        # Display new parameters live
+        new_params = parameters_found - self.found_parameters
+        if new_params and not self.quiet:
+            for param in sorted(new_params):
+                Logger.found(f"Parameter: {param}")
         
         self.found_parameters.update(parameters_found)
         self.found_urls.extend(parameter_urls)
@@ -357,7 +364,8 @@ def main():
         discovery = SimpleParameterDiscovery(
             domain=domain,
             include_subdomains=not args.no_subs,
-            timeout=args.timeout
+            timeout=args.timeout,
+            quiet=args.quiet
         )
         
         # Run discovery
