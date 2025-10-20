@@ -253,53 +253,25 @@ class TechnologyDetector:
 
 
 class RateLimiter:
-    """Advanced rate limiter"""
+    """Ultra-fast rate limiter"""
     
     def __init__(self, rate_limit: int = 150, rate_limit_minute: int = None, delay: float = 0):
-        self.rate_limit = rate_limit  # requests per second
-        self.rate_limit_minute = rate_limit_minute  # requests per minute
-        self.delay = delay  # delay between requests
-        self.requests_this_second = []
-        self.requests_this_minute = []
-        self.lock = threading.Lock()
-    
+        self.rate_limit = rate_limit
+        self.delay = delay
+        self.last_request = 0
+        
     def wait(self):
-        """Optimized rate limiting"""
-        if self.rate_limit <= 0 and self.delay <= 0:
-            return  # Skip if no rate limiting needed
-            
-        with self.lock:
+        """Minimal rate limiting for maximum speed"""
+        if self.delay > 0:
+            time.sleep(self.delay)
+        elif self.rate_limit > 0:
+            # Simple rate limiting without locks
             now = time.time()
-            
-            # Clean old requests (more efficient)
-            cutoff_second = now - 1.0
-            cutoff_minute = now - 60.0
-            
-            self.requests_this_second = [t for t in self.requests_this_second if t > cutoff_second]
-            if self.rate_limit_minute:
-                self.requests_this_minute = [t for t in self.requests_this_minute if t > cutoff_minute]
-            
-            # Check rate limits
-            if self.rate_limit > 0 and len(self.requests_this_second) >= self.rate_limit:
-                sleep_time = 1.0 - (now - self.requests_this_second[0])
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-            
-            if self.rate_limit_minute and len(self.requests_this_minute) >= self.rate_limit_minute:
-                sleep_time = 60.0 - (now - self.requests_this_minute[0])
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-            
-            # Apply delay
-            if self.delay > 0:
-                time.sleep(self.delay)
-            
-            # Record this request
-            now = time.time()
-            if self.rate_limit > 0:
-                self.requests_this_second.append(now)
-            if self.rate_limit_minute:
-                self.requests_this_minute.append(now)
+            min_interval = 1.0 / self.rate_limit
+            elapsed = now - self.last_request
+            if elapsed < min_interval:
+                time.sleep(min_interval - elapsed)
+            self.last_request = time.time()
 
 
 class KatanaCrawler:
@@ -310,14 +282,15 @@ class KatanaCrawler:
         self.visited_urls = set()
         self.crawl_queue = deque()
         self.results = []
-        self.lock = threading.Lock()
+        self.results_lock = threading.Lock()
+        self.queue_lock = threading.Lock()
         
-        # Configuration
+        # Configuration (optimized for speed)
         self.max_depth = config.get('depth', 3)
-        self.timeout = config.get('timeout', 8)  # Reduced default timeout
-        self.concurrency = config.get('concurrency', 20)  # Increased default concurrency
-        self.parallelism = config.get('parallelism', 20)
-        self.max_response_size = config.get('max_response_size', 2 * 1024 * 1024)  # Reduced to 2MB for speed
+        self.timeout = config.get('timeout', 5)  # Further reduced
+        self.concurrency = config.get('concurrency', 50)  # Much higher default
+        self.parallelism = config.get('parallelism', 50)
+        self.max_response_size = config.get('max_response_size', 1024 * 1024)  # 1MB for speed
         self.js_crawl = config.get('js_crawl', False)
         self.form_fill = config.get('automatic_form_fill', False)
         self.tech_detect = config.get('tech_detect', False)
@@ -344,9 +317,9 @@ class KatanaCrawler:
         self.store_response = config.get('store_response', False)
         self.store_response_dir = config.get('store_response_dir', 'responses')
         
-        # Rate limiting (optimized defaults)
+        # Minimal rate limiting for speed
         self.rate_limiter = RateLimiter(
-            rate_limit=config.get('rate_limit', 300),  # Increased from 150 to 300
+            rate_limit=config.get('rate_limit', 1000),  # Much higher default
             rate_limit_minute=config.get('rate_limit_minute', None),
             delay=config.get('delay', 0)
         )
@@ -513,17 +486,17 @@ class KatanaCrawler:
             return url
     
     def fetch_url_standard(self, url: str) -> Optional[CrawlResult]:
-        """Optimized URL fetching using standard HTTP library"""
-        self.rate_limiter.wait()
+        """Ultra-fast URL fetching"""
+        # Minimal rate limiting
+        if self.rate_limiter.delay > 0 or self.rate_limiter.rate_limit > 0:
+            self.rate_limiter.wait()
         
         try:
             request = urllib.request.Request(url)
             
-            # Add headers (optimized)
-            for key, value in self.headers.items():
-                request.add_header(key, value)
+            # Essential headers only
+            request.add_header('User-Agent', self.headers['User-Agent'])
             
-            # Use optimized opener with shorter timeout for faster failures
             with urllib.request.urlopen(request, timeout=self.timeout, context=self.ssl_context) as response:
                 # Check response size
                 content_length = int(response.headers.get('Content-Length', 0))
@@ -706,21 +679,16 @@ class KatanaCrawler:
         if depth > self.max_depth:
             return None
         
+        # Fast duplicate check without locks
         if url in self.visited_urls:
             return None
         
-        if not self.is_in_scope(url, base_domain):
-            self.log_debug(f"URL out of scope: {url}")
+        # Quick scope and filter checks
+        if not self.is_in_scope(url, base_domain) or not self.should_crawl_url(url):
             return None
         
-        if not self.should_crawl_url(url):
-            self.log_debug(f"URL filtered out: {url}")
-            return None
-        
-        with self.lock:
-            if url in self.visited_urls:
-                return None
-            self.visited_urls.add(url)
+        # Add to visited (race condition acceptable for speed)
+        self.visited_urls.add(url)
         
         self.log_verbose(f"Crawling: {url} (depth: {depth})")
         
@@ -750,42 +718,48 @@ class KatanaCrawler:
                     # Let's skip JS content extraction for now and focus on HTML links
                     pass
         
-        # Normalize and queue new URLs
-        added_count = 0
+        # Fast URL queuing
+        new_urls = []
         for discovered_url in all_urls:
             normalized = self.normalize_url(discovered_url, url)
-            if normalized and normalized not in self.visited_urls:
-                self.crawl_queue.append((normalized, depth + 1))
-                added_count += 1
+            if normalized and normalized not in self.visited_urls and depth < self.max_depth:
+                new_urls.append((normalized, depth + 1))
         
-        if added_count > 0:
-            self.log_debug(f"Added {added_count} URLs to queue from {url}")
+        if new_urls:
+            with self.queue_lock:
+                self.crawl_queue.extend(new_urls)
+            self.log_debug(f"Added {len(new_urls)} URLs to queue")
         
         return result
     
     def worker(self, base_domain: str):
-        """Optimized worker thread for crawling"""
-        empty_queue_count = 0
-        max_empty_checks = 10  # Increased for better performance
+        """Ultra-fast worker thread"""
+        empty_count = 0
         
-        while empty_queue_count < max_empty_checks:
+        while empty_count < 5:  # Reduced checks for speed
             try:
-                url, depth = self.crawl_queue.popleft()
-                empty_queue_count = 0  # Reset counter when we get work
+                with self.queue_lock:
+                    if not self.crawl_queue:
+                        empty_count += 1
+                        continue
+                    url, depth = self.crawl_queue.popleft()
                 
+                empty_count = 0
                 result = self.crawl_url(url, depth, base_domain)
+                
                 if result:
-                    with self.lock:
+                    with self.results_lock:
                         self.results.append(result)
-                        self.output_result(result)
+                    # Output without lock for speed
+                    self.output_result(result)
                         
-            except IndexError:
-                # Queue is empty, wait a bit
-                empty_queue_count += 1
-                time.sleep(0.05)  # Reduced sleep time for faster response
             except Exception as e:
                 self.log_debug(f"Worker error: {e}")
-                # Continue working even if one request fails
+                continue
+            
+            # Minimal sleep to prevent CPU spinning
+            if empty_count > 0:
+                time.sleep(0.01)
     
     def output_result(self, result: CrawlResult):
         """Output crawl result"""
@@ -824,63 +798,48 @@ class KatanaCrawler:
             self.log_error(f"Error saving results: {e}")
     
     def crawl(self, urls: List[str]) -> List[CrawlResult]:
-        """Main crawling function with optimized threading"""
+        """Ultra-fast crawling with minimal overhead"""
         if not urls:
             return []
         
-        # Initialize queue with starting URLs
-        for url in urls:
-            self.crawl_queue.append((url, 0))
-        
-        # Get base domain for scope control
+        # Initialize queue
+        self.crawl_queue.extend([(url, 0) for url in urls])
         base_domain = urllib.parse.urlparse(urls[0]).netloc.lower()
         
-        self.log_info(f"Starting crawl with {len(urls)} URLs")
-        self.log_info(f"Max depth: {self.max_depth}, Concurrency: {self.concurrency}")
-        self.log_info(f"Mode: {'Headless' if self.headless else 'Standard'}")
+        self.log_info(f"Starting fast crawl: {len(urls)} URLs, depth: {self.max_depth}, concurrency: {self.concurrency}")
         
-        # Use ThreadPoolExecutor for better performance
-        with ThreadPoolExecutor(max_workers=self.concurrency) as executor:
-            futures = []
+        # Start workers immediately
+        with ThreadPoolExecutor(max_workers=self.concurrency, thread_name_prefix="katana") as executor:
+            # Submit all workers
+            futures = [executor.submit(self.worker, base_domain) for _ in range(self.concurrency)]
             
-            # Start workers
-            for _ in range(self.concurrency):
-                future = executor.submit(self.worker, base_domain)
-                futures.append(future)
-            
-            # Monitor progress
-            processed = 0
-            last_queue_size = len(self.crawl_queue)
-            no_progress_count = 0
+            # Minimal monitoring for speed
+            last_count = 0
+            stall_count = 0
             
             while any(not f.done() for f in futures):
-                time.sleep(0.5)  # Check more frequently
-                current_processed = len(self.results)
+                time.sleep(0.2)  # Very fast checking
+                current_count = len(self.results)
                 queue_size = len(self.crawl_queue)
                 
-                if current_processed > processed:
-                    processed = current_processed
-                    self.log_verbose(f"Processed: {processed}, Queue: {queue_size}")
-                    no_progress_count = 0
-                elif queue_size == last_queue_size:
-                    no_progress_count += 1
+                if current_count > last_count:
+                    last_count = current_count
+                    stall_count = 0
+                    if current_count % 20 == 0:  # Less frequent logging
+                        self.log_verbose(f"Found: {current_count}, Queue: {queue_size}")
                 else:
-                    no_progress_count = 0
+                    stall_count += 1
                 
-                last_queue_size = queue_size
-                
-                # If no progress for 3 seconds and queue is empty, stop
-                if no_progress_count >= 6 and queue_size == 0:
+                # Quick exit when done
+                if stall_count > 10 and queue_size == 0:
                     break
         
-        # Save results
-        self.save_results()
-        
         # Cleanup
+        self.save_results()
         if self.driver:
             self.driver.quit()
         
-        self.log_info(f"Crawling completed. Found {len(self.results)} URLs")
+        self.log_info(f"Fast crawl completed: {len(self.results)} URLs found")
         return self.results
 
 
@@ -950,7 +909,7 @@ Examples:
     config_group.add_argument('-jc', '--js-crawl', action='store_true', help='Enable JavaScript file crawling')
     config_group.add_argument('-ct', '--crawl-duration', help='Maximum duration to crawl (s, m, h, d)')
     config_group.add_argument('-mrs', '--max-response-size', type=int, default=4194304, help='Maximum response size')
-    config_group.add_argument('-timeout', type=int, default=8, help='Request timeout in seconds (default: 8)')
+    config_group.add_argument('-timeout', type=int, default=5, help='Request timeout in seconds (default: 5)')
     config_group.add_argument('-aff', '--automatic-form-fill', action='store_true', help='Enable automatic form filling')
     config_group.add_argument('-fx', '--form-extraction', action='store_true', help='Extract form elements')
     config_group.add_argument('-retry', type=int, default=1, help='Number of retries')
@@ -982,10 +941,10 @@ Examples:
     
     # Rate limit options
     rate_group = parser.add_argument_group('RATE-LIMIT')
-    rate_group.add_argument('-c', '--concurrency', type=int, default=20, help='Concurrent fetchers (default: 20)')
-    rate_group.add_argument('-p', '--parallelism', type=int, default=20, help='Concurrent inputs (default: 20)')
+    rate_group.add_argument('-c', '--concurrency', type=int, default=50, help='Concurrent fetchers (default: 50)')
+    rate_group.add_argument('-p', '--parallelism', type=int, default=50, help='Concurrent inputs (default: 50)')
     rate_group.add_argument('-rd', '--delay', type=int, default=0, help='Request delay in seconds')
-    rate_group.add_argument('-rl', '--rate-limit', type=int, default=300, help='Requests per second (default: 300)')
+    rate_group.add_argument('-rl', '--rate-limit', type=int, default=1000, help='Requests per second (default: 1000)')
     rate_group.add_argument('-rlm', '--rate-limit-minute', type=int, help='Requests per minute')
     
     # Output options
@@ -1043,18 +1002,18 @@ Examples:
     rate_limit = args.rate_limit
     
     if hasattr(args, 'fast') and args.fast:
-        concurrency = max(concurrency, 50)
-        timeout = min(timeout, 5)
-        rate_limit = max(rate_limit, 500)
-        if not args.silent:
-            print(f"{C.YELLOW}[INF]{C.WHITE} Fast mode enabled: concurrency={concurrency}, timeout={timeout}s, rate_limit={rate_limit}")
-    
-    if hasattr(args, 'aggressive') and args.aggressive:
         concurrency = max(concurrency, 100)
         timeout = min(timeout, 3)
+        rate_limit = max(rate_limit, 2000)
+        if not args.silent:
+            print(f"{C.YELLOW}[INF]{C.WHITE} Fast mode: concurrency={concurrency}, timeout={timeout}s, rate_limit={rate_limit}")
+    
+    if hasattr(args, 'aggressive') and args.aggressive:
+        concurrency = max(concurrency, 200)
+        timeout = min(timeout, 2)
         rate_limit = 0  # No rate limiting
         if not args.silent:
-            print(f"{C.RED}[WRN]{C.WHITE} Aggressive mode enabled: concurrency={concurrency}, timeout={timeout}s, no rate limiting")
+            print(f"{C.RED}[WRN]{C.WHITE} Aggressive mode: concurrency={concurrency}, timeout={timeout}s, no rate limiting")
     
     # Parse configuration
     config = {
