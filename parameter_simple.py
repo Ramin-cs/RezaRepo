@@ -214,8 +214,12 @@ class SimpleParameterDiscovery:
         # Display new parameters live
         new_params = parameters_found - self.found_parameters
         if new_params and not self.quiet:
-            for param in sorted(new_params):
-                Logger.found(f"Parameter: {param}")
+            Logger.info(f"Found {len(new_params)} new parameters:")
+            for i, param in enumerate(sorted(new_params), 1):
+                Logger.found(f"Parameter #{i}: {param}")
+                # Add small delay for better readability in live mode
+                if i % 10 == 0:
+                    time.sleep(0.1)
         
         self.found_parameters.update(parameters_found)
         self.found_urls.extend(parameter_urls)

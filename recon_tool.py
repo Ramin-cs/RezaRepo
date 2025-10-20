@@ -1089,18 +1089,30 @@ def run_external_amass(target):
         import subprocess
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         
-        if result.returncode == 0:
-            subdomains = set()
-            for line in result.stdout.strip().split('\n'):
-                subdomain = line.strip()
-                if subdomain and '.' in subdomain:
-                    subdomains.add(subdomain)
-            
+        # Amass outputs to both stdout and stderr, check both
+        output_lines = []
+        if result.stdout:
+            output_lines.extend(result.stdout.strip().split('\n'))
+        if result.stderr and 'domains' in result.stderr:
+            # Extract domains from stderr progress messages
+            for line in result.stderr.split('\n'):
+                if line.strip() and not line.startswith('[') and '.' in line:
+                    output_lines.append(line.strip())
+        
+        subdomains = set()
+        for line in output_lines:
+            subdomain = line.strip()
+            if subdomain and '.' in subdomain and len(subdomain) > 3:
+                # Validate subdomain format
+                if not subdomain.startswith('.') and not subdomain.endswith('.'):
+                    subdomains.add(subdomain.lower())
+        
+        if subdomains:
             Logger.success(f"Amass found {len(subdomains)} additional subdomains")
-            return subdomains
         else:
-            Logger.warning(f"Amass failed: {result.stderr}")
-            return set()
+            Logger.info(f"Amass found 0 additional subdomains")
+        
+        return subdomains
             
     except subprocess.TimeoutExpired:
         Logger.warning("Amass timed out (120 seconds)")
@@ -1127,7 +1139,8 @@ def run_external_sublist3r(target):
         import subprocess
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
         
-        if result.returncode == 0:
+        # Sublist3r might return exit code 1 but still have valid output
+        if result.returncode == 0 or (result.stdout and result.stdout.strip()):
             subdomains = set()
             for line in result.stdout.strip().split('\n'):
                 subdomain = line.strip()
@@ -1164,8 +1177,8 @@ def run_external_parameter_discovery(target, output_file=None):
         
         Logger.info(f"Running external parameter discovery for {target}")
         
-        # Prepare command
-        cmd = [sys.executable, param_tool_path, '-d', target, '-q']
+        # Prepare command (remove -q for live display)
+        cmd = [sys.executable, param_tool_path, '-d', target]
         if output_file:
             cmd.extend(['-o', f"{output_file}_external_params"])
         
@@ -1176,9 +1189,34 @@ def run_external_parameter_discovery(target, output_file=None):
         env = os.environ.copy()
         env['PYTHONPATH'] = os.path.dirname(__file__)
         
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)
+        # Run with live output by using Popen for real-time display
+        import subprocess
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                 text=True, env=env, bufsize=1, universal_newlines=True)
         
-        if result.returncode == 0:
+        output_lines = []
+        try:
+            # Read output line by line and display live
+            for line in iter(process.stdout.readline, ''):
+                if line.strip():
+                    print(line.rstrip())  # Display live
+                    output_lines.append(line.rstrip())
+            
+            process.wait(timeout=300)
+            result_returncode = process.returncode
+            result_stdout = '\n'.join(output_lines)
+            result_stderr = ''
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            Logger.error("External parameter discovery timed out (5 minutes)")
+            return {'status': 'timeout'}
+        except Exception as e:
+            process.kill()
+            Logger.error(f"Failed to run external parameter discovery: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+        
+        if result_returncode == 0:
             Logger.success("External parameter discovery completed successfully")
             
             # Try to parse results from output file
@@ -1196,8 +1234,8 @@ def run_external_parameter_discovery(target, output_file=None):
             
             return {'status': 'success', 'message': 'External parameter discovery completed'}
         else:
-            Logger.error(f"External parameter discovery failed: {result.stderr}")
-            return {'status': 'error', 'message': result.stderr}
+            Logger.error(f"External parameter discovery failed: {result_stderr}")
+            return {'status': 'error', 'message': result_stderr}
             
     except subprocess.TimeoutExpired:
         Logger.error("External parameter discovery timed out (5 minutes)")
