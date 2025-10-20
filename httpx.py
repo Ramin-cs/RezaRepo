@@ -153,14 +153,27 @@ class FastHTTPX:
                         return result
                 except Exception:
                     continue
-            return None
+            
+            # If no protocol worked, return a "Not Responding" result
+            return {
+                'url': f"http://{subdomain}",
+                'status_code': 0,
+                'category': "Not Responding",
+                'title': None,
+                'response_time': 0,
+                'server': 'Unknown',
+                'content_length': 0
+            }
         
         Logger.info(f"Probing {len(subdomains)} subdomains with {self.threads} threads")
         
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             futures = [executor.submit(probe_single, sub) for sub in subdomains]
             for future in as_completed(futures):
-                future.result()
+                result = future.result()
+                if result:  # Add all results, even "Not Responding" ones
+                    subdomain = result['url'].split('://', 1)[1]
+                    results.append((subdomain, result))
         
         # Return best result per subdomain (prefer HTTPS)
         subdomain_results = {}

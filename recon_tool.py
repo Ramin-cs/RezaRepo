@@ -667,10 +667,18 @@ class SubdomainHunter:
         except Exception as e:
             Logger.warning(f"External amass failed: {str(e)}")
         
+        # Wildcard detection
         self.wildcard_detection()
+        
+        # Verify live subdomains and get detailed results
         live_subdomains = self.verify_live_subdomains()
         
         Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} subdomains found")
+        
+        # Log summary of found subdomains
+        Logger.info(f"Total subdomains discovered: {len(self.found_subdomains)}")
+        Logger.info(f"Live subdomains verified: {len(live_subdomains)}")
+        
         return live_subdomains
 
 class ParameterHunter:
