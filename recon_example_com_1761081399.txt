@@ -1,0 +1,26 @@
+Professional Reconnaissance Report
+Target: https://example.com
+Timestamp: 2025-10-21 21:14:06
+================================================================================
+
+SUBDOMAINS (0 found):
+--------------------------------------------------
+
+
+PARAMETERS (0 found):
+--------------------------------------------------
+No parameters found.
+
+
+ENDPOINTS DISCOVERY:
+--------------------------------------------------
+Total endpoints found: 2
+
+NO_EXTENSION (1 found):
+  Status Unknown:
+    [GET] 200
+
+API_ENDPOINTS (1 found):
+  Status Unknown:
+    [GET] 404
+

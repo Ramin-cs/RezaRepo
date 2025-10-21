@@ -1,0 +1,623 @@
+Professional Reconnaissance Report
+Target: https://httpbin.org
+Timestamp: 2025-10-21 20:01:22
+================================================================================
+
+SUBDOMAINS (4 found):
+--------------------------------------------------
+
+Live (200 OK):
+  https://beta.httpbin.org - httpbin.org
+  https://eu.httpbin.org - httpbin.org
+  http://www.httpbin.org - httpbin.org
+
+Server Error (503):
+  https://httpbin.org
+
+
+PARAMETERS (495 found):
+--------------------------------------------------
+  1. A
+  2. Access-Control-Allow-Origin
+  3. Animal
+  4. Arguments
+  5. ArrowParameterPlaceHolder
+  6. BlockComment
+  7. BlockQuote
+  8. Cache-Control
+  9. Cancel
+ 10. ClosingTag
+ 11. Code
+ 12. CodeBlock
+ 13. Content-Type
+ 14. CustomBlock
+ 15. CustomInline
+ 16. Document
+ 17. Emph
+ 18. Enter
+ 19. Hardbreak
+ 20. Heading
+ 21. Hide
+ 22. HtmlBlock
+ 23. ID
+ 24. INSERT_MARKUP
+ 25. Image
+ 26. Item
+ 27. Iterable
+ 28. Line
+ 29. Link
+ 30. List
+ 31. Lives
+ 32. Location
+ 33. MOVE_EXISTING
+ 34. NT
+ 35. Param1
+ 36. Param2
+ 37. QueryParam1
+ 38. REMOVE_NODE
+ 39. SET_MARKUP
+ 40. Server
+ 41. Server-Timing
+ 42. Set-Cookie
+ 43. Softbreak
+ 44. TEXT_CONTENT
+ 45. TRUE
+ 46. Text
+ 47. ThematicBreak
+ 48. True
+ 49. Undefined
+ 50. Unidentified
+ 51. X-Frame-Options
+ 52. X-Rel
+ 53. X-Test
+ 54. _
+ 55. a
+ 56. aaaa
+ 57. aasdfdfa
+ 58. abc
+ 59. abcpi
+ 60. accc
+ 61. accessToken
+ 62. access_token\\
+ 63. additionalProperties
+ 64. age
+ 65. aid
+ 66. ajaxSuccess
+ 67. alfa
+ 68. alias
+ 69. allowedScopes
+ 70. alpha
+ 71. amp;age
+ 72. amp;b
+ 73. amp;bar
+ 74. amp;baz
+ 75. amp;c
+ 76. amp;chunk_size
+ 77. amp;duration
+ 78. amp;fiddle
+ 79. amp;foo
+ 80. amp;foo[a]
+ 81. amp;key1
+ 82. amp;key2
+ 83. amp;network
+ 84. amp;sa
+ 85. animal
+ 86. anonymous_block_producers
+ 87. another
+ 88. answer
+ 89. anyOf
+ 90. apiKey
+ 91. apikey
+ 92. arc
+ 93. arg1
+ 94. arg2
+ 95. argument
+ 96. arr
+ 97. array
+ 98. ascii
+ 99. assignment
+100. async
+101. audio
+102. authId
+103. author
+104. authorizationCode
+105. authorizationUrl
+106. authorized
+107. b
+108. bamboleyyo
+109. bar
+110. base64
+111. basePath
+112. basic
+113. baz
+114. best_api
+115. block
+116. body
+117. bold
+118. border
+119. break
+120. buffer
+121. c
+122. call
+123. callbacks
+124. camera
+125. cat
+126. cate
+127. center
+128. ch
+129. checked
+130. cheese
+131. chocolate
+132. chunk_size
+133. city
+134. ck
+135. class
+136. click
+137. clientCredentials
+138. clientId
+139. clientSecret
+140. client_id
+141. cn
+142. code
+143. code_block
+144. code_db
+145. code_type
+146. color
+147. comments
+148. configs
+149. const
+150. consumes
+151. consumes_value
+152. contact
+153. content
+154. cookie
+155. coolparam
+156. count
+157. country
+158. course
+159. custemail
+160. custname
+161. custom_inline
+162. custtel
+163. data
+164. dbp
+165. default
+166. definitions
+167. delay
+168. delivery
+169. deprecated
+170. description
+171. div
+172. document
+173. dog
+174. domain
+175. dos
+176. duration
+177. elite
+178. em
+179. email
+180. emph
+181. end
+182. enddate
+183. enum
+184. error
+185. errors
+186. example
+187. examples
+188. export
+189. externalDocs
+190. family
+191. fiddle
+192. file
+193. filter
+194. first
+195. firstname
+196. firtname
+197. float
+198. flow
+199. flows
+200. foo
+201. foo[]
+202. foo[a]
+203. foobar
+204. for
+205. form
+206. format
+207. freeform
+208. function
+209. g
+210. goto
+211. gv
+212. h2g2
+213. hardcoded_param
+214. headers
+215. heading
+216. hello
+217. hex
+218. hide
+219. hoge
+220. host
+221. hostname
+222. html
+223. html_inline
+224. http
+225. i
+226. iPhone
+227. id
+228. id[]
+229. iframe
+230. image
+231. img
+232. implements
+233. import
+234. in
+235. include
+236. indices
+237. info
+238. init
+239. input
+240. int
+241. invalid
+242. invariant
+243. ip
+244. iss
+245. items
+246. jfdksf
+247. js
+248. json
+249. k1
+250. k2
+251. key
+252. key1
+253. key2
+254. key2[]
+255. keys
+256. keyword
+257. label
+258. lang
+259. language
+260. last
+261. lastError
+262. lastname
+263. latin1
+264. lax
+265. layout
+266. let
+267. level
+268. license
+269. line
+270. linebreak
+271. link
+272. links
+273. list
+274. loadingStatus
+275. locate
+276. lowercase
+277. mapping
+278. margin
+279. mark
+280. math
+281. maxLength
+282. maximum
+283. mc_eid
+284. message
+285. message_id
+286. method
+287. metric
+288. minLength
+289. minimum
+290. mode
+291. more_to_say
+292. msg
+293. mutatedRequests
+294. myFirstParam
+295. mySecondParam
+296. myrizzity
+297. n
+298. name
+299. network
+300. nextSibling
+301. nocontent
+302. nom
+303. none
+304. not
+305. notDocumented
+306. nu
+307. null
+308. num
+309. number
+310. numbytes
+311. oak
+312. object
+313. on
+314. onClick
+315. oneOf
+316. openapi
+317. operation
+318. operationId
+319. operationRef
+320. operations
+321. option
+322. ordered_list_close
+323. original_url
+324. p
+325. p1
+326. page
+327. page_id
+328. page_url
+329. param1
+330. param2
+331. param3
+332. param4
+333. parameter
+334. parameters
+335. partnerId
+336. pass
+337. password
+338. passwordType
+339. path
+340. pathname
+341. paths
+342. pattern
+343. period
+344. port
+345. pp
+346. prenom
+347. produces
+348. properties
+349. property
+350. protocol
+351. pure
+352. px
+353. q
+354. query
+355. queryParam
+356. qwe
+357. r
+358. rainbow
+359. rand
+360. rdbms
+361. reactroot
+362. ref
+363. refusedcookie
+364. requestBody
+365. requestContentType
+366. requestVar
+367. request_id
+368. requests
+369. required
+370. resolved
+371. resolvedSubtrees
+372. response_current
+373. responses
+374. reverse
+375. rnd
+376. s
+377. sads
+378. salary
+379. schema
+380. scheme
+381. schemes
+382. scopes
+383. searchphrase
+384. searchword
+385. second
+386. secret
+387. security
+388. securityDefinitions
+389. select
+390. select-multiple
+391. servers
+392. session_id
+393. sessionid
+394. set
+395. set-cookie
+396. showDefinitions
+397. show_env
+398. shown
+399. sid
+400. sil
+401. site
+402. size
+403. some
+404. somethingElse
+405. sort
+406. source
+407. spanm
+408. spec
+409. specSource
+410. spm
+411. startdate
+412. state
+413. status
+414. status_code
+415. string
+416. strong
+417. stuff
+418. submit
+419. swagger
+420. symbol
+421. t
+422. tags
+423. tdf87
+424. temperatureSensor
+425. templateInURL
+426. termsOfService
+427. test
+428. test2
+429. text
+430. textContent
+431. textarea
+432. this
+433. throws
+434. title
+435. tokenUrl
+436. topAbort
+437. topBlur
+438. topCompositionEnd
+439. topCompositionStart
+440. topFocus
+441. topKeyUp
+442. topMouseDown
+443. topPaste
+444. topSelectionChange
+445. topTextInput
+446. topping
+447. trk
+448. true
+449. ts
+450. twenty
+451. type
+452. u
+453. ucs2
+454. uid
+455. ul
+456. undefined
+457. unique
+458. uno
+459. unsafe
+460. url
+461. urlparamwskey2
+462. us
+463. user
+464. username
+465. usernane
+466. usg
+467. ust
+468. utf16le
+469. utf8
+470. utm_campaign
+471. utm_content
+472. utm_medium
+473. utm_source
+474. v
+475. value
+476. value_xml
+477. var
+478. variables
+479. verb
+480. version
+481. vertical
+482. video
+483. view
+484. vsys
+485. website
+486. what
+487. wr_id
+488. x
+489. xml
+490. xxx
+491. y
+492. year
+493. z
+494. zaloopa
+495. zone
+
+
+ENDPOINTS DISCOVERY:
+--------------------------------------------------
+Total endpoints found: 100
+
+ARCHIVED_URLS (100 found):
+  Status 0:
+    [GET] http://httpbin.org:80/
+    [GET] http://httpbin.org/%22
+    [GET] http://httpbin.org:80/%22)
+    [GET] http://httpbin.org/%0A
+    [GET] https://httpbin.org/%20is%20another%20good%20one
+    [GET] https://httpbin.org/%23/
+    [GET] http://httpbin.org:80/%C2%A0%C2%A0
+    [GET] http://httpbin.org/%CB%93%E2%86%92
+    [GET] https://httpbin.org/%CB%93%E2%86%92anything/something
+    [GET] http://httpbin.org/%CB%93%E2%86%92post
+    [GET] http://httpbin.org:80/%D0%B7%D1%89%D1%8B%D0%B5
+    [GET] http://httpbin.org:80/%D0%BC%D0%B5%D1%82%D0%BE%D0%B4
+    [GET] http://httpbin.org:80/%D0%BF%D1%83%D0%B5
+    [GET] http://httpbin.org:80/%D9%84%D8%AB%D9%81
+    [GET] https://httpbin.org/%E2%80%8B
+    [GET] https://httpbin.org/%E2%80%8B%22
+    [GET] http://httpbin.org/%E2%80%8E
+    [GET] https://httpbin.org/%E2%80%99
+    [GET] http://httpbin.org/%E2%80%9D%E3%80%80
+    [GET] http://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3
+    [GET] https://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95
+    [GET] http://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE
+    [GET] https://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE14-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB
+    [GET] http://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE14-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5%E7%82%B9%E5%87%BB%E2%80%9CName%E2%80%9D%E4%B8%8B%E6%96%B9%E7%9A%84%E7%BD%91%E5%9D%80%EF%BC%8C
+    [GET] https://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE14-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5%E7%82%B9%E5%87%BB%E2%80%9CName%E2%80%9D%E4%B8%8B%E6%96%B9%E7%9A%84%E7%BD%91%E5%9D%80%EF%BC%8C%E5%B0%B1%E4%BC%9A%E5%87%BA%E7%8E%B0%E7%B1%BB%E4%BC%BC%E5%A6%82%E4%B8%8B%E7%9A%84Headers%E4%BF%A1%E6%81%AF%EF%BC%9A
+    [GET] http://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE14-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5%E7%82%B9%E5%87%BB%E2%80%9CName%E2%80%9D%E4%B8%8B%E6%96%B9%E7%9A%84%E7%BD%91%E5%9D%80%EF%BC%8C%E5%B0%B1%E4%BC%9A%E5%87%BA%E7%8E%B0%E7%B1%BB%E4%BC%BC%E5%A6%82%E4%B8%8B%E7%9A%84Headers%E4%BF%A1%E6%81%AF%EF%BC%9AUser-Agent:Mozilla/5.0
+    [GET] https://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE3-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5
+    [GET] https://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE3-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5%E7%82%B9%E5%87%BB%E2%80%9CName%E2%80%9D%E4%B8%8B%E6%96%B9%E7%9A%84%E7%BD%91%E5%9D%80%EF%BC%8C%E5%B0%B1%E4%BC%9A%E5%87%BA%E7%8E%B0%E7%B1%BB%E4%BC%BC%E5%A6%82%E4%B8%8B%E7%9A%84Headers%E4%BF%A1%E6%81%AF%EF%BC%9A
+    [GET] http://httpbin.org/%E2%80%9D%EF%BC%89%EF%BC%8C%E5%9C%A8%E7%BD%91%E9%A1%B5%E4%B8%8A%E5%8D%95%E5%87%BB%E9%BC%A0%E6%A0%87%E5%8F%B3%E9%94%AE%EF%BC%8C%E5%9C%A8%E5%BC%B9%E5%87%BA%E7%9A%84%E8%8F%9C%E5%8D%95%E4%B8%AD%E9%80%89%E6%8B%A9%E2%80%9C%E6%9F%A5%E7%9C%8B%E5%85%83%E7%B4%A0%E2%80%9D%EF%BC%8C%E7%84%B6%E5%90%8E%E5%88%B7%E6%96%B0%E7%BD%91%E9%A1%B5%EF%BC%8C%E5%86%8D%E6%8C%89%E7%85%A7%E5%A6%82%E5%9B%BE3-4%E6%89%80%E7%A4%BA%E7%9A%84%E6%AD%A5%E9%AA%A4%EF%BC%8C%E5%85%88%E7%82%B9%E5%87%BB%E2%80%9CNetwork%E2%80%9D%E9%80%89%E9%A1%B9%E5%8D%A1%EF%BC%8C%E5%86%8D%E7%82%B9%E5%87%BB%E2%80%9CDoc%E2%80%9D%EF%BC%8C%E6%8E%A5%E4%B8%8B%E6%9D%A5%E7%82%B9%E5%87%BB%E2%80%9CName%E2%80%9D%E4%B8%8B%E6%96%B9%E7%9A%84%E7%BD%91%E5%9D%80%EF%BC%8C%E5%B0%B1%E4%BC%9A%E5%87%BA%E7%8E%B0%E7%B1%BB%E4%BC%BC%E5%A6%82%E4%B8%8B%E7%9A%84Headers%E4%BF%A1%E6%81%AF%EF%BC%9AUser-Agent:Mozilla/5.0
+    [GET] https://httpbin.org/%E3%80%82%E5%AE%83%E9%82%84%E9%A1%AF%E7%A4%BA%E4%BA%86API%E5%91%BC
+    [GET] https://httpbin.org/%E3%80%82%E5%AE%83%E9%82%84%E9%A1%AF%E7%A4%BA%E4%BA%86API%E5%91%BC%E5%8F%AB%E7%9A%84HTTP%E8%AB%8B%E6%B1%82%E5%92%8C%E9%9F%BF%E6%87%89%E6%95%B8%E6%93%9A%E3%80%82
+    [GET] https://httpbin.org/%E6%88%96%E8%80%85%EF%BC%9Ahttp://httpbin.org/%E5%BC%80%E6%BA%90%E5%9C%B0%E5%9D%80%EF%BC%9Ahttps://github.com/Runscope/httpbin
+    [GET] https://httpbin.org/&
+    [GET] http://httpbin.org:80/&AlexaHash=0187==
+    [GET] https://httpbin.org/&amp;
+    [GET] http://httpbin.org/&cookie=_ga=GA1.2.17.142
+    [GET] http://httpbin.org/&gt;
+    [GET] https://httpbin.org/&quot
+    [GET] https://httpbin.org/&quot;&gt;httpbin&lt;/a&gt;
+    [GET] https://httpbin.org/&quot;)
+    [GET] https://httpbin.org/'
+    [GET] https://httpbin.org/')
+    [GET] https://httpbin.org/',
+    [GET] http://httpbin.org/%27%3C/span%3E%3Cspan
+    [GET] http://httpbin.org:80/)
+    [GET] https://httpbin.org/*
+    [GET] https://httpbin.org/%2A%3Cspan
+    [GET] https://httpbin.org/%2A%5C
+    [GET] https://httpbin.org/,
+    [GET] http://httpbin.org/,Servidor
+    [GET] http://httpbin.org/-.inf
+    [GET] http://httpbin.org/-0.0
+    [GET] https://httpbin.org/.well-known/ai-plugin.json
+    [GET] https://httpbin.org/.well-known/assetlinks.json
+    [GET] https://httpbin.org/.well-known/dnt-policy.txt
+    [GET] https://httpbin.org/.well-known/gpc.json
+    [GET] https://httpbin.org/.well-known/nodeinfo
+    [GET] https://httpbin.org/.well-known/openid-configuration
+    [GET] https://httpbin.org/.well-known/security.txt
+    [GET] https://httpbin.org/.well-known/trust.txt
+    [GET] http://httpbin.org/0.2em
+    [GET] https://httpbin.org/0.9.2
+    [GET] https://httpbin.org/0016bet/
+    [GET] http://httpbin.org/1.5em
+    [GET] http://httpbin.org:80/123
+    [GET] http://httpbin.org/146.70.184.105
+    [GET] http://httpbin.org:80/2
+    [GET] https://httpbin.org/2.0
+    [GET] http://httpbin.org:80/200
+    [GET] http://httpbin.org:80/201
+    [GET] https://httpbin.org/207.241.225.114
+    [GET] https://httpbin.org/207.241.225.134
+    [GET] https://httpbin.org/207.241.225.140
+    [GET] https://httpbin.org/207.241.230.166
+    [GET] https://httpbin.org/207.241.234.236
+    [GET] http://httpbin.org/207.241.235.133
+    [GET] https://httpbin.org/207.241.235.249
+    [GET] https://httpbin.org/207.241.236.82
+    [GET] http://httpbin.org/207.241.236.83
+    [GET] https://httpbin.org/207.241.237.21
+    [GET] http://httpbin.org/207.241.237.242
+    [GET] http://httpbin.org/207.241.237.99
+    [GET] http://httpbin.org/207.241.238.33
+    [GET] https://httpbin.org/22
+    [GET] https://httpbin.org/404
+    [GET] https://httpbin.org/45.87.212.123
+    [GET] http://httpbin.org:80/500
+    [GET] http://httpbin.org/777-igrovie-avtomati-igrat-na-dengi
+    [GET] http://httpbin.org/80
+    [GET] https://httpbin.org/%3C/a%3E
+    [GET] https://httpbin.org/%3C/li
+    [GET] https://httpbin.org/%3C/p
+    [GET] https://httpbin.org/%3C/span%3E%27%3C/span%3E
+    [GET] http://httpbin.org/%3C/span%3E%3Cspan
+    [GET] http://httpbin.org:80/=
+    [GET] https://httpbin.org/?aid=1&sid=OWNhYTg5MGU4Yw%3D%3D&dbp=1&gv=1022&method=lz_tracking_geo_result&spanm=lz_tracking_set_geo_span&oak=71393b5df13702edce2e9e98bfa4256d2f1f9a08&ip=207.241.xxx.xxx
+    [GET] https://httpbin.org/?aid=1&sid=OWNhYTg5MGU4Yw%3D%3D&dbp=1&gv=1022&method=lz_tracking_geo_result&spanm=lz_tracking_set_geo_span&oak=ac54c46e8d269b72b76325e6894ef9f21a1c6eb4&ip=207.241.xxx.xxx
+    [GET] https://httpbin.org/?page=5&count=10
+    [GET] http://httpbin.org/?foo=bar
+    [GET] http://httpbin.org/?foo=bar%2A
+
