@@ -107,11 +107,11 @@ class SimpleParameterDiscovery:
     def __init__(self, domain, include_subdomains=True, timeout=30, quiet=False):
         self.domain = self.clean_domain(domain)
         self.include_subdomains = include_subdomains
-        self.timeout = timeout
+        self.timeout = max(timeout, 30)  # Minimum 30 seconds
         self.quiet = quiet
         self.found_parameters = set()
         self.found_urls = []
-        self.http_client = SimpleHTTPClient(timeout=timeout)
+        self.http_client = SimpleHTTPClient(timeout=self.timeout)
         
         # Extensions to exclude
         self.blacklist_extensions = [
@@ -153,10 +153,15 @@ class SimpleParameterDiscovery:
                 response = self.http_client.get(wayback_url)
                 
                 if response.status_code == 200:
+                    response_text = response.text.strip()
+                    if not response_text:
+                        Logger.warning(f"Attempt {attempt} returned empty response")
+                        continue
+                        
                     if 'output=json' in wayback_url:
                         # Handle JSON response
                         try:
-                            data = json.loads(response.text)
+                            data = json.loads(response_text)
                             if data and len(data) > 1:
                                 urls = []
                                 for row in data[1:]:  # Skip header
@@ -166,16 +171,25 @@ class SimpleParameterDiscovery:
                                 if urls:
                                     Logger.success(f"Retrieved {len(urls)} URLs from Wayback Machine")
                                     return urls
-                        except json.JSONDecodeError:
+                            else:
+                                Logger.warning(f"Attempt {attempt} returned empty JSON data")
+                                continue
+                        except json.JSONDecodeError as e:
+                            Logger.warning(f"Attempt {attempt} JSON decode error: {e}")
                             continue
                     else:
                         # Handle text response
-                        urls = response.text.strip().split('\n')
-                        urls = [unquote(url) for url in urls if url.strip()]
+                        urls = response_text.split('\n')
+                        urls = [unquote(url.strip()) for url in urls if url.strip()]
                         
                         if urls:
                             Logger.success(f"Retrieved {len(urls)} URLs from Wayback Machine")
                             return urls
+                        else:
+                            Logger.warning(f"Attempt {attempt} returned no valid URLs from text response")
+                            continue
+                else:
+                    Logger.warning(f"Attempt {attempt} returned status code: {response.status_code}")
                 
                 Logger.warning(f"Attempt {attempt} returned no valid URLs")
                 
@@ -187,6 +201,30 @@ class SimpleParameterDiscovery:
                 continue
         
         Logger.error("No URLs retrieved from Wayback Machine")
+        
+        # Fallback: Try CommonCrawl as last resort
+        Logger.info("Trying CommonCrawl as fallback...")
+        try:
+            commoncrawl_url = f"http://index.commoncrawl.org/CC-MAIN-2024-10-index?url=*.{self.domain}/*&output=json"
+            response = self.http_client.get(commoncrawl_url)
+            
+            if response.status_code == 200:
+                lines = response.text.strip().split('\n')
+                urls = []
+                for line in lines:
+                    try:
+                        data = json.loads(line)
+                        if 'url' in data:
+                            urls.append(data['url'])
+                    except:
+                        continue
+                
+                if urls:
+                    Logger.success(f"Retrieved {len(urls)} URLs from CommonCrawl fallback")
+                    return urls
+        except Exception as e:
+            Logger.warning(f"CommonCrawl fallback also failed: {e}")
+        
         return []
     
     def has_excluded_extension(self, url):
