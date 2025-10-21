@@ -1,6 +1,6 @@
 Professional Reconnaissance Report
 Target: sabzlearn.ir
-Timestamp: 2025-10-20 21:01:29
+Timestamp: 2025-10-21 09:00:11
 ================================================================================
 
 SUBDOMAINS (27 found):
@@ -13,6 +13,7 @@ Forbidden (403):
 
 Live (200 OK):
   https://advisor.sabzlearn.ir
+  https://api.stage.sabzlearn.ir
   https://bkp.sabzlearn.ir - Akeeba Solo
   https://console.sabzlearn.ir - MinIO Console
   https://dl.sabzlearn.ir
@@ -21,7 +22,6 @@ Live (200 OK):
         سبز لرن
   https://files.sabzlearn.ir - SabzLearn Files
   https://hcp.sabzlearn.ir - Coming Soon
-  https://lms.stage.sabzlearn.ir
   https://mail.sabzlearn.ir - Roundcube Webmail :: Welcome to Roundcube Webmail
   https://my.sabzlearn.ir
   https://n8n.sabzlearn.ir - n8n.io - Workflow Automation
@@ -34,7 +34,7 @@ Live (200 OK):
 
 Not Found (404):
   https://advisor.stage.sabzlearn.ir
-  https://api.stage.sabzlearn.ir - Not Found
+  https://lms.stage.sabzlearn.ir
   https://my.stage.sabzlearn.ir
   https://pma.stage.sabzlearn.ir
   https://proxy.stage.sabzlearn.ir

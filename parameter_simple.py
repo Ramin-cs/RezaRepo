@@ -13,7 +13,7 @@ import time
 import json
 import random
 import ssl
-from urllib.parse import urlparse, parse_qs, urlencode, unquote
+from urllib.parse import urlparse, parse_qs, urlencode, unquote, unquote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.request
 import urllib.error
@@ -130,29 +130,64 @@ class SimpleParameterDiscovery:
         return domain
     
     def fetch_wayback_urls(self):
-        """Fetch URLs from Wayback Machine"""
+        """Fetch URLs from Wayback Machine with retry and fallback"""
         Logger.info(f"Fetching URLs from Wayback Machine for {self.domain}")
         
+        # Multiple endpoints for better reliability
         if self.include_subdomains:
-            wayback_url = f"https://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/"
+            wayback_urls = [
+                f"http://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/",
+                f"https://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/",
+                f"http://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=json&collapse=urlkey&limit=10000"
+            ]
         else:
-            wayback_url = f"https://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/"
+            wayback_urls = [
+                f"http://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/",
+                f"https://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=txt&fl=original&collapse=urlkey&page=/",
+                f"http://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=json&collapse=urlkey&limit=10000"
+            ]
         
-        try:
-            response = self.http_client.get(wayback_url)
-            
-            if response.status_code == 200:
-                urls = response.text.strip().split('\n')
-                urls = [unquote(url) for url in urls if url.strip()]
-                Logger.success(f"Retrieved {len(urls)} URLs from Wayback Machine")
-                return urls
-            else:
-                Logger.error("Failed to fetch URLs from Wayback Machine")
-                return []
+        for attempt, wayback_url in enumerate(wayback_urls, 1):
+            try:
+                Logger.info(f"Attempt {attempt}/{len(wayback_urls)}: Connecting to Wayback Machine...")
+                response = self.http_client.get(wayback_url)
                 
-        except Exception as e:
-            Logger.error(f"Failed to fetch URLs: {str(e)}")
-            return []
+                if response.status_code == 200:
+                    if 'output=json' in wayback_url:
+                        # Handle JSON response
+                        try:
+                            data = json.loads(response.text)
+                            if data and len(data) > 1:
+                                urls = []
+                                for row in data[1:]:  # Skip header
+                                    if len(row) >= 3:
+                                        urls.append(unquote(row[2]))
+                                
+                                if urls:
+                                    Logger.success(f"Retrieved {len(urls)} URLs from Wayback Machine")
+                                    return urls
+                        except json.JSONDecodeError:
+                            continue
+                    else:
+                        # Handle text response
+                        urls = response.text.strip().split('\n')
+                        urls = [unquote(url) for url in urls if url.strip()]
+                        
+                        if urls:
+                            Logger.success(f"Retrieved {len(urls)} URLs from Wayback Machine")
+                            return urls
+                
+                Logger.warning(f"Attempt {attempt} returned no valid URLs")
+                
+            except Exception as e:
+                Logger.warning(f"Attempt {attempt} failed: {str(e)}")
+                if attempt < len(wayback_urls):
+                    Logger.info("Trying alternative endpoint...")
+                    time.sleep(2)  # Wait before retry
+                continue
+        
+        Logger.error("No URLs retrieved from Wayback Machine")
+        return []
     
     def has_excluded_extension(self, url):
         """Check if URL has excluded extension"""

@@ -1177,8 +1177,8 @@ def run_external_parameter_discovery(target, output_file=None):
         
         Logger.info(f"Running external parameter discovery for {target}")
         
-        # Prepare command (remove -q for live display)
-        cmd = [sys.executable, param_tool_path, '-d', target]
+        # Prepare command (remove -q for live display, add longer timeout)
+        cmd = [sys.executable, param_tool_path, '-d', target, '--timeout', '60']
         if output_file:
             cmd.extend(['-o', f"{output_file}_external_params"])
         
