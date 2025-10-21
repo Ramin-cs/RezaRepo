@@ -1191,22 +1191,37 @@ def run_external_parameter_discovery(target, output_file=None):
         
         # Run with live output by using Popen for real-time display
         import subprocess
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+        
+        # Set environment variables for UTF-8 encoding
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONLEGACYWINDOWSFSENCODING'] = '0'
+        
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                  text=True, env=env, bufsize=1, universal_newlines=True, 
                                  encoding='utf-8', errors='ignore')
         
         output_lines = []
         try:
             # Read output line by line and display live
-            for line in iter(process.stdout.readline, ''):
-                if line.strip():
-                    print(line.rstrip())  # Display live
-                    output_lines.append(line.rstrip())
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    try:
+                        safe_line = output.rstrip()
+                        print(safe_line)  # Display live
+                        output_lines.append(safe_line)
+                    except UnicodeEncodeError:
+                        # Skip lines that can't be encoded safely
+                        print("[Line with special characters - skipped]")
+                        continue
             
-            process.wait(timeout=300)
+            # Wait for process to complete and get any remaining stderr
+            stdout, stderr = process.communicate(timeout=300)
             result_returncode = process.returncode
             result_stdout = '\n'.join(output_lines)
-            result_stderr = ''
+            result_stderr = stderr or ''
             
         except subprocess.TimeoutExpired:
             process.kill()
@@ -1365,6 +1380,29 @@ def main():
                     parameters = []
                     lines = content.split('\n')
                     
+                    # Try alternative parsing if standard method fails
+                    def try_alternative_parsing():
+                        alt_params = []
+                        # Look for [RESULTS for domain] section
+                        for i, line in enumerate(lines):
+                            if '[RESULTS for' in line:
+                                # Look for parameters in the next few lines
+                                for j in range(i+1, min(i+20, len(lines))):
+                                    if 'Parameters found:' in lines[j]:
+                                        # Try to extract from summary line or following lines
+                                        for k in range(j+1, min(j+10, len(lines))):
+                                            if lines[k].strip() and not lines[k].startswith('[') and '•' in lines[k]:
+                                                # Extract parameters from comma-separated list
+                                                param_line = lines[k].replace('•', '').strip()
+                                                if param_line:
+                                                    params_in_line = [p.strip() for p in param_line.split(',')]
+                                                    alt_params.extend(params_in_line)
+                                            elif 'parameters discovered without URLs' in lines[k]:
+                                                break
+                                        break
+                                break
+                        return alt_params
+                    
                     for i, line in enumerate(lines):
                         if 'DISCOVERED PARAMETERS' in line:
                             param_section = True
@@ -1372,20 +1410,36 @@ def main():
                             if param_count:
                                 total_params = param_count.group(1)
                             continue
-                        elif param_section and (line.startswith('•') or re.match(r'^\s*\d+\.\s+', line)):
-                            # Extract parameter name from both formats: "• param" and "123. param"
+                        elif param_section and 'Parameters with URLs' in line:
+                            # Skip section headers
+                            continue
+                        elif param_section and (line.startswith('•') or re.match(r'^\s*\d+\.\s+\w+', line)):
+                            # Extract parameter name from both formats: "• param" and "  123. param -> URL"
                             if line.startswith('•'):
                                 param_name = line.replace('•', '').strip()
                             else:
                                 param_name = re.sub(r'^\s*\d+\.\s+', '', line).strip()
                                 param_name = param_name.split(' ')[0].split('->')[0].strip()
                             
-                            if param_name and param_name not in parameters:
+                            if param_name and param_name not in parameters and len(param_name) > 0:
                                 parameters.append(param_name)
-                        elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line or 
-                                              'Parameters with URLs' in line or 'Parameters without URLs' in line):
+                        elif param_section and ('Parameters found:' in line):
+                            # Alternative parsing: look for "Parameters found: 395"
+                            param_count_match = re.search(r'Parameters found:\s*(\d+)', line)
+                            if param_count_match and not parameters:
+                                # If we haven't found parameters yet, try to extract from summary
+                                total_found = int(param_count_match.group(1))
+                                Logger.info(f"Found {total_found} parameters in external file")
+                        elif param_section and ('URLS WITH PARAMETERS' in line or 'STATISTICS:' in line):
                             # End of parameter section
                             break
+                    
+                    # If no parameters found with standard parsing, try alternative
+                    if not parameters:
+                        Logger.info("Trying alternative parameter parsing method...")
+                        parameters = try_alternative_parsing()
+                        if parameters:
+                            Logger.success(f"Alternative parsing found {len(parameters)} parameters")
                     
                     # Clean parameter results display
                     time.sleep(0.3)  # Ensure all parameter discovery logs are done
