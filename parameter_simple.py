@@ -164,10 +164,11 @@ class SimpleHTTPClient:
                 
                 # Simple response object
                 class SimpleResponse:
-                    def __init__(self, code, content):
+                    def __init__(self, code, content, headers=None):
                         self.status_code = code
                         self.text = content.decode('utf-8', errors='ignore')
                         self.content = content
+                        self.headers = headers or {}
                 
                 return SimpleResponse(response.getcode(), content)
                 
@@ -178,6 +179,7 @@ class SimpleHTTPClient:
                     self.status_code = 0
                     self.text = ''
                     self.content = b''
+                    self.headers = {}
             
             return ErrorResponse()
 
@@ -199,6 +201,8 @@ class SimpleParameterDiscovery:
         self.rate_limit_delay = 0.5  # 500ms between requests
         self.analyzed_js_files = set()  # Track analyzed JS files to avoid duplicates
         self.parameter_urls = {}  # Store parameter -> URLs mapping
+        self.parameter_contexts = {}  # Store parameter -> context mapping
+        self.js_parameter_sources = {}  # Store JS parameter -> source file mapping
         
         # Extensions to exclude
         self.blacklist_extensions = [
@@ -435,9 +439,11 @@ class SimpleParameterDiscovery:
                         for match in matches:
                             if isinstance(match, tuple):
                                 match = match[0]
-                            if match and len(match) > 1 and match.isalnum() or '_' in match:
+                            if match and len(match) > 1 and (match.replace('_', '').isalnum() or match.isalnum()):
                                 js_parameters.add(match)
                                 self.js_parameters.add(match)
+                                # Track source for context
+                                self.js_parameter_sources[match] = js_url
                     
                     # Look for API endpoints
                     api_endpoints = re.findall(r'["\']/?api/[^"\']*["\']', js_content, re.IGNORECASE)
@@ -755,6 +761,129 @@ class SimpleParameterDiscovery:
         
         return cookie_parameters
     
+    def analyze_parameter_contexts(self):
+        """Analyze parameter contexts and suggest usage strategies"""
+        Logger.info("Analyzing parameter contexts and generating usage strategies")
+        
+        # Parameter categories and their likely endpoints
+        parameter_categories = {
+            # WordPress/CMS Parameters
+            'wordpress': {
+                'patterns': ['wp_', '_wp', 'post_', 'page_', 'action', 'nonce'],
+                'endpoints': ['/wp-admin/', '/wp-json/', '/wp-content/', '/?'],
+                'methods': ['GET', 'POST']
+            },
+            
+            # API Parameters
+            'api': {
+                'patterns': ['api_', 'key', 'token', 'auth', 'session', 'endpoint'],
+                'endpoints': ['/api/', '/rest/', '/json/', '/graphql/'],
+                'methods': ['GET', 'POST', 'PUT', 'DELETE']
+            },
+            
+            # Search/Filter Parameters
+            'search': {
+                'patterns': ['s', 'search', 'query', 'q', 'filter', 'sort', 'category'],
+                'endpoints': ['/search/', '/courses/', '/products/', '/?'],
+                'methods': ['GET']
+            },
+            
+            # Authentication Parameters
+            'auth': {
+                'patterns': ['login', 'auth', 'user', 'pass', 'token', 'session'],
+                'endpoints': ['/login/', '/auth/', '/signin/', '/dashboard/'],
+                'methods': ['POST', 'GET']
+            },
+            
+            # E-commerce Parameters
+            'ecommerce': {
+                'patterns': ['cart', 'product', 'price', 'add_to', 'remove_item', 'checkout'],
+                'endpoints': ['/cart/', '/product/', '/checkout/', '/shop/'],
+                'methods': ['GET', 'POST']
+            },
+            
+            # Analytics/Tracking Parameters
+            'tracking': {
+                'patterns': ['utm_', 'ga_', 'gtm_', 'fbclid', 'gclid', '_ga'],
+                'endpoints': ['/*'],  # Can be on any page
+                'methods': ['GET']
+            },
+            
+            # Form Parameters
+            'form': {
+                'patterns': ['submit', 'form', 'input', 'field', 'validate'],
+                'endpoints': ['/contact/', '/register/', '/subscribe/'],
+                'methods': ['POST']
+            },
+            
+            # Editor/CMS Parameters (CKEditor, etc.)
+            'editor': {
+                'patterns': ['editor', 'toolbar', 'plugin', 'config', 'ckeditor', 'block'],
+                'endpoints': ['/admin/', '/editor/', '/wp-admin/'],
+                'methods': ['POST', 'GET']
+            },
+            
+            # Video/Media Parameters
+            'media': {
+                'patterns': ['video', 'audio', 'play', 'pause', 'volume', 'quality', 'autoplay'],
+                'endpoints': ['/media/', '/video/', '/course/', '/lesson/'],
+                'methods': ['GET', 'POST']
+            }
+        }
+        
+        # Analyze each parameter
+        for param in self.found_parameters:
+            context_info = {
+                'category': 'unknown',
+                'suggested_endpoints': [],
+                'methods': ['GET'],
+                'usage_strategy': 'Manual testing required',
+                'source': 'unknown'
+            }
+            
+            # Determine category
+            param_lower = param.lower()
+            for category, info in parameter_categories.items():
+                for pattern in info['patterns']:
+                    if pattern in param_lower:
+                        context_info['category'] = category
+                        context_info['suggested_endpoints'] = info['endpoints']
+                        context_info['methods'] = info['methods']
+                        break
+                if context_info['category'] != 'unknown':
+                    break
+            
+            # Generate usage strategy
+            if param in self.parameter_urls and self.parameter_urls[param]:
+                # Has URL context
+                example_url = list(self.parameter_urls[param])[0]
+                context_info['usage_strategy'] = f"Test with: {example_url}"
+                context_info['source'] = 'URL'
+            elif param in self.js_parameter_sources:
+                # From JS analysis
+                js_source = self.js_parameter_sources[param]
+                context_info['source'] = f'JavaScript: {js_source}'
+                
+                # Generate test URLs based on category
+                if context_info['category'] != 'unknown':
+                    test_urls = []
+                    for endpoint in context_info['suggested_endpoints']:
+                        if endpoint == '/*':
+                            test_urls.append(f"https://{self.domain}/?{param}=test")
+                        else:
+                            test_urls.append(f"https://{self.domain}{endpoint}?{param}=test")
+                    
+                    context_info['usage_strategy'] = f"Test on: {', '.join(test_urls[:3])}"
+                else:
+                    context_info['usage_strategy'] = f"Test manually on main pages with ?{param}=value"
+            else:
+                # Unknown source
+                context_info['usage_strategy'] = f"Try: https://{self.domain}/?{param}=test"
+            
+            self.parameter_contexts[param] = context_info
+        
+        return self.parameter_contexts
+    
     def has_excluded_extension(self, url):
         """Check if URL has excluded extension"""
         try:
@@ -909,6 +1038,10 @@ class SimpleParameterDiscovery:
         # Update found parameters
         self.found_parameters.update(all_parameters)
         
+        # Analyze parameter contexts for usage strategies
+        Logger.info("Phase 6: Parameter context analysis")
+        self.analyze_parameter_contexts()
+        
         execution_time = time.time() - start_time
         
         # Prepare comprehensive results
@@ -961,8 +1094,33 @@ class SimpleParameterDiscovery:
                 
                 f.write(f"DISCOVERED PARAMETERS ({results['statistics']['total_parameters']}):\n")
                 f.write("-" * 40 + "\n")
-                for param in results['parameters']:
-                    f.write(f"• {param}\n")
+                
+                # Parameters with URLs
+                url_params = [p for p in results['parameters'] 
+                            if p in self.parameter_urls and self.parameter_urls[p]]
+                
+                if url_params:
+                    f.write(f"\nParameters with URLs ({len(url_params)}):\n")
+                    for i, param in enumerate(url_params, 1):
+                        example_url = list(self.parameter_urls[param])[0]
+                        safe_url = example_url[:100] + "..." if len(example_url) > 100 else example_url
+                        f.write(f"{i:3d}. {param} -> {safe_url}\n")
+                
+                # Parameters without URLs
+                no_url_params = [p for p in results['parameters'] 
+                               if p not in self.parameter_urls or not self.parameter_urls[p]]
+                
+                if no_url_params:
+                    f.write(f"\nParameters without URLs - Usage Strategies ({len(no_url_params)}):\n")
+                    for i, param in enumerate(no_url_params, 1):
+                        if param in self.parameter_contexts:
+                            context = self.parameter_contexts[param]
+                            f.write(f"{i:3d}. {param}\n")
+                            f.write(f"     Category: {context['category']}\n")
+                            f.write(f"     Source: {context['source']}\n")
+                            f.write(f"     Strategy: {context['usage_strategy']}\n\n")
+                        else:
+                            f.write(f"{i:3d}. {param} -> Test manually\n")
                 
                 f.write(f"\n\nURLS WITH PARAMETERS ({results['statistics']['total_urls']}):\n")
                 f.write("-" * 40 + "\n")
@@ -1084,6 +1242,21 @@ def main():
                             print(f"... and {len(results['parameters']) - 10} more")
                 
                 print(f"URLs with parameters: {len(results['urls'])}")
+                
+                # Show parameter usage strategies for parameters without URLs
+                no_url_params = [p for p in results['parameters'] 
+                               if p not in discovery.parameter_urls or not discovery.parameter_urls[p]]
+                
+                if no_url_params and len(no_url_params) <= 20:
+                    print(f"\nUsage strategies for {len(no_url_params)} parameters without URLs:")
+                    for param in no_url_params[:10]:  # Show top 10
+                        if param in discovery.parameter_contexts:
+                            context = discovery.parameter_contexts[param]
+                            print(f"  • {param} ({context['category']}): {context['usage_strategy']}")
+                    if len(no_url_params) > 10:
+                        print(f"  ... and {len(no_url_params) - 10} more (check output file for details)")
+                elif no_url_params:
+                    print(f"\n{len(no_url_params)} parameters discovered without URLs - usage strategies saved to file")
             
             # Save individual results
             if args.output:

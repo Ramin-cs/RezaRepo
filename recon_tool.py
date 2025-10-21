@@ -1193,7 +1193,7 @@ def run_external_parameter_discovery(target, output_file=None):
         import subprocess
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                                  text=True, env=env, bufsize=1, universal_newlines=True, 
-                                 encoding='utf-8', errors='replace')
+                                 encoding='utf-8', errors='ignore')
         
         output_lines = []
         try:
@@ -1372,11 +1372,18 @@ def main():
                             if param_count:
                                 total_params = param_count.group(1)
                             continue
-                        elif param_section and line.startswith('•'):
-                            param_name = line.replace('•', '').strip()
-                            if param_name:
+                        elif param_section and (line.startswith('•') or re.match(r'^\s*\d+\.\s+', line)):
+                            # Extract parameter name from both formats: "• param" and "123. param"
+                            if line.startswith('•'):
+                                param_name = line.replace('•', '').strip()
+                            else:
+                                param_name = re.sub(r'^\s*\d+\.\s+', '', line).strip()
+                                param_name = param_name.split(' ')[0].split('->')[0].strip()
+                            
+                            if param_name and param_name not in parameters:
                                 parameters.append(param_name)
-                        elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line):
+                        elif param_section and (line.strip() == '' or 'URLS WITH PARAMETERS' in line or 
+                                              'Parameters with URLs' in line or 'Parameters without URLs' in line):
                             # End of parameter section
                             break
                     
