@@ -821,10 +821,15 @@ class SimpleParameterDiscovery:
         if new_params and not self.quiet:
             Logger.info(f"Found {len(new_params)} new parameters:")
             for i, param in enumerate(sorted(new_params), 1):
-                # Show parameter with example URL if available
+                # Show parameter with example URL if available (with encoding safety)
                 if param in self.parameter_urls and self.parameter_urls[param]:
                     example_url = list(self.parameter_urls[param])[0]
-                    Logger.found(f"Parameter #{i}: {param} (found in: {example_url})")
+                    try:
+                        # Safe URL display with encoding handling
+                        safe_url = example_url.encode('ascii', 'replace').decode('ascii') if len(example_url) > 100 else example_url
+                        Logger.found(f"Parameter #{i}: {param} (found in: {safe_url[:100]}...)")
+                    except:
+                        Logger.found(f"Parameter #{i}: {param} (found in URL)")
                 else:
                     Logger.found(f"Parameter #{i}: {param}")
                 # Add small delay for better readability in live mode
@@ -1051,32 +1056,32 @@ def main():
             
             # Display results if not in quiet mode
             if not args.quiet:
-                print(f"\n{Colors.GREEN}[RESULTS for {domain}]{Colors.END}")
-                print(f"Parameters found: {len(results['parameters'])}")
-                
-                # Display parameters with their URLs
-                if results['parameters']:
-                    if len(results['parameters']) <= 10:
-                        print("Parameters with example URLs:")
-                        for param in results['parameters']:
-                            if param in discovery.parameter_urls and discovery.parameter_urls[param]:
-                                example_url = list(discovery.parameter_urls[param])[0]
-                                print(f"  • {param}: {example_url}")
-                            else:
-                                print(f"  • {param}: (discovered via JS/API analysis)")
-                    else:
+                try:
+                    print(f"\n{Colors.GREEN}[RESULTS for {domain}]{Colors.END}")
+                    print(f"Parameters found: {len(results['parameters'])}")
+                    
+                    # Display parameters with their URLs
+                    if results['parameters']:
+                        if len(results['parameters']) <= 10:
+                            print("Parameters with example URLs:")
+                            for param in results['parameters']:
+                                if param in discovery.parameter_urls and discovery.parameter_urls[param]:
+                                    example_url = list(discovery.parameter_urls[param])[0]
+                                    try:
+                                        safe_url = example_url[:80] + "..." if len(example_url) > 80 else example_url
+                                        print(f"  • {param}: {safe_url}")
+                                    except UnicodeEncodeError:
+                                        print(f"  • {param}: [URL with special characters]")
+                                else:
+                                    print(f"  • {param}: (discovered via JS/API analysis)")
+                except UnicodeEncodeError as e:
+                    print(f"\n[RESULTS for {domain}]")
+                    print(f"Parameters found: {len(results['parameters'])}")
+                    print("Note: Some URLs contain special characters and cannot be displayed")
+                    if results['parameters']:
                         print("Parameters:", ", ".join(results['parameters'][:10]))
                         if len(results['parameters']) > 10:
                             print(f"... and {len(results['parameters']) - 10} more")
-                        print("\nTop 5 parameters with URLs:")
-                        count = 0
-                        for param in results['parameters']:
-                            if count >= 5:
-                                break
-                            if param in discovery.parameter_urls and discovery.parameter_urls[param]:
-                                example_url = list(discovery.parameter_urls[param])[0]
-                                print(f"  • {param}: {example_url}")
-                                count += 1
                 
                 print(f"URLs with parameters: {len(results['urls'])}")
             
@@ -1092,7 +1097,10 @@ def main():
             Logger.warning("Discovery interrupted by user")
             break
         except Exception as e:
-            Logger.error(f"Discovery failed for {domain}: {str(e)}")
+            try:
+                Logger.error(f"Discovery failed for {domain}: {str(e)}")
+            except UnicodeEncodeError:
+                Logger.error(f"Discovery failed for {domain}: [Error with special characters]")
             continue
     
     # Summary
