@@ -13,11 +13,13 @@ import time
 import json
 import random
 import ssl
-from urllib.parse import urlparse, parse_qs, urlencode, unquote, unquote
+from urllib.parse import urlparse, parse_qs, urlencode, unquote, urljoin
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib.request
 import urllib.error
 import warnings
+from html.parser import HTMLParser
+import threading
 warnings.filterwarnings("ignore")
 
 # Try to import requests with fallback
@@ -38,6 +40,84 @@ class Colors:
     WHITE = '\033[97m'
     BOLD = '\033[1m'
     END = '\033[0m'
+
+class WebCrawler(HTMLParser):
+    """HTML parser for crawling and extracting parameters"""
+    
+    def __init__(self, base_url):
+        super().__init__()
+        self.base_url = base_url
+        self.links = set()
+        self.forms = []
+        self.js_files = set()
+        self.parameters = set()
+        self.current_form = None
+        
+    def handle_starttag(self, tag, attrs):
+        attrs_dict = dict(attrs)
+        
+        # Extract links
+        if tag == 'a' and 'href' in attrs_dict:
+            href = attrs_dict['href']
+            if href:
+                full_url = urljoin(self.base_url, href)
+                self.links.add(full_url)
+                # Extract parameters from href
+                self._extract_params_from_url(full_url)
+        
+        # Extract JavaScript files
+        elif tag == 'script' and 'src' in attrs_dict:
+            src = attrs_dict['src']
+            if src:
+                js_url = urljoin(self.base_url, src)
+                self.js_files.add(js_url)
+        
+        # Extract forms
+        elif tag == 'form':
+            self.current_form = {
+                'action': urljoin(self.base_url, attrs_dict.get('action', '')),
+                'method': attrs_dict.get('method', 'GET').upper(),
+                'inputs': []
+            }
+        
+        # Extract form inputs
+        elif tag == 'input' and self.current_form is not None:
+            input_name = attrs_dict.get('name')
+            input_type = attrs_dict.get('type', 'text')
+            if input_name:
+                self.current_form['inputs'].append({
+                    'name': input_name,
+                    'type': input_type,
+                    'value': attrs_dict.get('value', '')
+                })
+                self.parameters.add(input_name)
+        
+        # Extract select and textarea
+        elif tag in ['select', 'textarea'] and self.current_form is not None:
+            name = attrs_dict.get('name')
+            if name:
+                self.current_form['inputs'].append({
+                    'name': name,
+                    'type': tag,
+                    'value': ''
+                })
+                self.parameters.add(name)
+    
+    def handle_endtag(self, tag):
+        if tag == 'form' and self.current_form:
+            self.forms.append(self.current_form)
+            self.current_form = None
+    
+    def _extract_params_from_url(self, url):
+        """Extract parameters from URL"""
+        try:
+            parsed = urlparse(url)
+            if parsed.query:
+                params = parse_qs(parsed.query)
+                for param in params.keys():
+                    self.parameters.add(param)
+        except:
+            pass
 
 class Logger:
     """Simple logging system"""
@@ -112,6 +192,11 @@ class SimpleParameterDiscovery:
         self.found_parameters = set()
         self.found_urls = []
         self.http_client = SimpleHTTPClient(timeout=self.timeout)
+        self.crawled_urls = set()
+        self.js_parameters = set()
+        self.form_parameters = set()
+        self.api_parameters = set()
+        self.rate_limit_delay = 0.5  # 500ms between requests
         
         # Extensions to exclude
         self.blacklist_extensions = [
@@ -227,6 +312,259 @@ class SimpleParameterDiscovery:
         
         return []
     
+    def crawl_website(self, max_pages=10):
+        """Crawl website to discover parameters from pages, forms, and JS"""
+        Logger.info(f"Starting website crawling for {self.domain} (max {max_pages} pages)")
+        
+        # Start with main domain URLs
+        start_urls = [
+            f"https://{self.domain}",
+            f"http://{self.domain}",
+            f"https://www.{self.domain}",
+            f"http://www.{self.domain}"
+        ]
+        
+        crawled_count = 0
+        urls_to_crawl = set(start_urls)
+        all_parameters = set()
+        
+        while urls_to_crawl and crawled_count < max_pages:
+            url = urls_to_crawl.pop()
+            
+            if url in self.crawled_urls:
+                continue
+                
+            try:
+                Logger.info(f"Crawling page {crawled_count + 1}/{max_pages}: {url}")
+                
+                # Rate limiting
+                time.sleep(self.rate_limit_delay)
+                
+                response = self.http_client.get(url)
+                if response.status_code == 200:
+                    self.crawled_urls.add(url)
+                    crawled_count += 1
+                    
+                    # Parse HTML content
+                    crawler = WebCrawler(url)
+                    try:
+                        crawler.feed(response.text)
+                        
+                        # Collect parameters from forms
+                        for form in crawler.forms:
+                            for input_field in form['inputs']:
+                                param_name = input_field['name']
+                                if param_name:
+                                    all_parameters.add(param_name)
+                                    self.form_parameters.add(param_name)
+                        
+                        # Collect parameters from links
+                        all_parameters.update(crawler.parameters)
+                        
+                        # Add new URLs to crawl (same domain only)
+                        for link in crawler.links:
+                            parsed_link = urlparse(link)
+                            if (parsed_link.netloc.endswith(self.domain) and 
+                                link not in self.crawled_urls and
+                                len(urls_to_crawl) < max_pages * 2):
+                                urls_to_crawl.add(link)
+                        
+                        # Analyze JavaScript files
+                        js_params = self.analyze_javascript_files(crawler.js_files)
+                        all_parameters.update(js_params)
+                        
+                        # Analyze HTML source for hidden parameters
+                        source_params = self.analyze_html_source(response.text)
+                        all_parameters.update(source_params)
+                        
+                    except Exception as e:
+                        Logger.warning(f"Error parsing HTML from {url}: {e}")
+                        
+            except Exception as e:
+                Logger.warning(f"Error crawling {url}: {e}")
+        
+        Logger.success(f"Website crawling completed: {len(all_parameters)} parameters from {crawled_count} pages")
+        return all_parameters
+    
+    def analyze_javascript_files(self, js_urls, max_files=5):
+        """Analyze JavaScript files for hidden parameters and API endpoints"""
+        if not js_urls:
+            return set()
+            
+        Logger.info(f"Analyzing {min(len(js_urls), max_files)} JavaScript files")
+        js_parameters = set()
+        
+        # Common JS parameter patterns
+        js_patterns = [
+            r'["\']([a-zA-Z_][a-zA-Z0-9_]*)["\']:\s*["\']?[^,}\]]+',  # Object properties
+            r'\.get\(["\']([^"\']+)["\']',  # GET requests
+            r'\.post\(["\']([^"\']+)["\']',  # POST requests
+            r'fetch\(["\']([^"\']+)["\']',  # Fetch API
+            r'ajax\(["\']([^"\']+)["\']',  # AJAX calls
+            r'param[s]?\[["\']([^"\']+)["\']',  # Parameter arrays
+            r'data\[["\']([^"\']+)["\']',  # Data objects
+            r'[?&]([a-zA-Z_][a-zA-Z0-9_]*)=',  # URL parameters
+            r'FormData\(\)\.append\(["\']([^"\']+)["\']',  # FormData
+            r'URLSearchParams\(["\']([^"\']+)["\']',  # URLSearchParams
+        ]
+        
+        processed_files = 0
+        for js_url in list(js_urls)[:max_files]:
+            if processed_files >= max_files:
+                break
+                
+            try:
+                Logger.info(f"Analyzing JS file: {js_url}")
+                time.sleep(self.rate_limit_delay)
+                
+                response = self.http_client.get(js_url)
+                if response.status_code == 200:
+                    js_content = response.text
+                    
+                    # Extract parameters using regex patterns
+                    for pattern in js_patterns:
+                        matches = re.findall(pattern, js_content, re.IGNORECASE)
+                        for match in matches:
+                            if isinstance(match, tuple):
+                                match = match[0]
+                            if match and len(match) > 1 and match.isalnum() or '_' in match:
+                                js_parameters.add(match)
+                                self.js_parameters.add(match)
+                    
+                    # Look for API endpoints
+                    api_endpoints = re.findall(r'["\']/?api/[^"\']*["\']', js_content, re.IGNORECASE)
+                    for endpoint in api_endpoints:
+                        endpoint = endpoint.strip('"\'')
+                        # Extract parameters from API endpoints
+                        api_params = re.findall(r'[?&]([a-zA-Z_][a-zA-Z0-9_]*)=', endpoint)
+                        js_parameters.update(api_params)
+                    
+                    processed_files += 1
+                    
+            except Exception as e:
+                Logger.warning(f"Error analyzing JS file {js_url}: {e}")
+        
+        if js_parameters:
+            Logger.success(f"JavaScript analysis found {len(js_parameters)} parameters")
+        
+        return js_parameters
+    
+    def analyze_html_source(self, html_content):
+        """Analyze HTML source code for hidden parameters in comments and meta tags"""
+        source_parameters = set()
+        
+        # Extract parameters from HTML comments
+        comment_patterns = [
+            r'<!--.*?param[s]?[:\s]*([a-zA-Z_][a-zA-Z0-9_,\s]*).*?-->',
+            r'<!--.*?[?&]([a-zA-Z_][a-zA-Z0-9_]*)=.*?-->',
+        ]
+        
+        for pattern in comment_patterns:
+            matches = re.findall(pattern, html_content, re.DOTALL | re.IGNORECASE)
+            for match in matches:
+                if ',' in match:
+                    params = [p.strip() for p in match.split(',')]
+                    source_parameters.update(params)
+                else:
+                    source_parameters.add(match.strip())
+        
+        # Extract from meta tags
+        meta_pattern = r'<meta[^>]*content=["\']([^"\']*[?&]([a-zA-Z_][a-zA-Z0-9_]*)=.*?)["\']'
+        meta_matches = re.findall(meta_pattern, html_content, re.IGNORECASE)
+        for match in meta_matches:
+            if len(match) > 1:
+                source_parameters.add(match[1])
+        
+        # Extract from data attributes
+        data_pattern = r'data-([a-zA-Z_][a-zA-Z0-9_-]*)'
+        data_matches = re.findall(data_pattern, html_content, re.IGNORECASE)
+        source_parameters.update(data_matches)
+        
+        # Clean up parameters
+        clean_params = set()
+        for param in source_parameters:
+            if param and len(param) > 1 and param.replace('_', '').replace('-', '').isalnum():
+                clean_params.add(param)
+        
+        return clean_params
+    
+    def discover_api_endpoints(self):
+        """Discover API endpoints and their parameters"""
+        Logger.info(f"Discovering API endpoints for {self.domain}")
+        api_parameters = set()
+        
+        # Common API paths to check
+        api_paths = [
+            '/api', '/api/v1', '/api/v2', '/api/v3',
+            '/rest', '/graphql', '/json', '/ajax',
+            '/wp-json', '/api.php', '/api.json'
+        ]
+        
+        base_urls = [f"https://{self.domain}", f"http://{self.domain}"]
+        
+        for base_url in base_urls:
+            for api_path in api_paths:
+                try:
+                    api_url = f"{base_url}{api_path}"
+                    Logger.info(f"Checking API endpoint: {api_url}")
+                    
+                    time.sleep(self.rate_limit_delay)
+                    response = self.http_client.get(api_url)
+                    
+                    if response.status_code in [200, 400, 401, 403]:
+                        try:
+                            # Try to parse as JSON
+                            json_data = json.loads(response.text)
+                            
+                            # Extract parameter names from JSON structure
+                            params = self.extract_json_parameters(json_data)
+                            api_parameters.update(params)
+                            self.api_parameters.update(params)
+                            
+                        except json.JSONDecodeError:
+                            # Look for parameters in plain text response
+                            param_matches = re.findall(r'["\']([a-zA-Z_][a-zA-Z0-9_]*)["\']', response.text)
+                            for match in param_matches:
+                                if len(match) > 2:
+                                    api_parameters.add(match)
+                    
+                except Exception as e:
+                    Logger.warning(f"Error checking API endpoint {api_url}: {e}")
+        
+        if api_parameters:
+            Logger.success(f"API analysis found {len(api_parameters)} parameters")
+        
+        return api_parameters
+    
+    def extract_json_parameters(self, json_data, max_depth=3, current_depth=0):
+        """Recursively extract parameter names from JSON data"""
+        parameters = set()
+        
+        if current_depth >= max_depth:
+            return parameters
+        
+        try:
+            if isinstance(json_data, dict):
+                for key, value in json_data.items():
+                    if isinstance(key, str) and key.replace('_', '').isalnum():
+                        parameters.add(key)
+                    
+                    # Recursively check nested structures
+                    if isinstance(value, (dict, list)):
+                        nested_params = self.extract_json_parameters(value, max_depth, current_depth + 1)
+                        parameters.update(nested_params)
+            
+            elif isinstance(json_data, list):
+                for item in json_data[:5]:  # Limit to first 5 items
+                    if isinstance(item, (dict, list)):
+                        nested_params = self.extract_json_parameters(item, max_depth, current_depth + 1)
+                        parameters.update(nested_params)
+        
+        except Exception:
+            pass
+        
+        return parameters
+    
     def has_excluded_extension(self, url):
         """Check if URL has excluded extension"""
         try:
@@ -300,45 +638,77 @@ class SimpleParameterDiscovery:
         return parameter_urls, parameters_found
     
     def run_discovery(self):
-        """Run parameter discovery"""
+        """Run comprehensive parameter discovery"""
         start_time = time.time()
+        Logger.info(f"Starting comprehensive parameter discovery for {self.domain}")
         
-        Logger.info(f"Starting parameter discovery for {self.domain}")
+        all_parameters = set()
+        sources_info = {}
         
-        # Fetch URLs from Wayback Machine
+        # 1. Wayback Machine Discovery
+        Logger.info("Phase 1: Historical URL analysis (Wayback Machine)")
         wayback_urls = self.fetch_wayback_urls()
-        if not wayback_urls:
-            Logger.error("No URLs retrieved from Wayback Machine")
-            return {
-                'domain': self.domain,
-                'parameters': list(self.found_parameters),
-                'urls': self.found_urls,
-                'statistics': {
-                    'total_parameters': 0,
-                    'total_urls': 0,
-                    'execution_time': time.time() - start_time
-                }
-            }
+        wayback_params = set()
         
-        # Extract parameters from URLs
-        parameter_urls, basic_params = self.extract_parameters_from_urls(wayback_urls)
+        if wayback_urls:
+            parameter_urls, wayback_params = self.extract_parameters_from_urls(wayback_urls)
+            all_parameters.update(wayback_params)
+            sources_info['wayback_machine'] = {
+                'urls_found': len(wayback_urls),
+                'parameters_found': len(wayback_params)
+            }
+            Logger.success(f"Wayback Machine: {len(wayback_params)} parameters from {len(wayback_urls)} URLs")
+        else:
+            Logger.warning("Wayback Machine: No URLs retrieved")
+            sources_info['wayback_machine'] = {'urls_found': 0, 'parameters_found': 0}
+        
+        # 2. Website Crawling
+        Logger.info("Phase 2: Website crawling and spidering")
+        crawl_params = self.crawl_website(max_pages=8)
+        all_parameters.update(crawl_params)
+        sources_info['website_crawling'] = {
+            'pages_crawled': len(self.crawled_urls),
+            'parameters_found': len(crawl_params)
+        }
+        
+        # 3. API Endpoint Discovery
+        Logger.info("Phase 3: API endpoint analysis")
+        api_params = self.discover_api_endpoints()
+        all_parameters.update(api_params)
+        sources_info['api_endpoints'] = {
+            'parameters_found': len(api_params)
+        }
+        
+        # Update found parameters
+        self.found_parameters.update(all_parameters)
         
         execution_time = time.time() - start_time
         
+        # Prepare comprehensive results
         results = {
             'domain': self.domain,
-            'parameters': sorted(list(self.found_parameters)),
+            'parameters': sorted(list(all_parameters)),
             'urls': sorted(list(set(self.found_urls))),
             'statistics': {
-                'total_parameters': len(self.found_parameters),
+                'total_parameters': len(all_parameters),
                 'total_urls': len(set(self.found_urls)),
-                'execution_time': execution_time
+                'execution_time': execution_time,
+                'pages_crawled': len(self.crawled_urls),
+                'comprehensive_scan': True
+            },
+            'sources': sources_info,
+            'parameter_breakdown': {
+                'wayback_machine': len(wayback_params),
+                'website_crawling': len(crawl_params),
+                'javascript_analysis': len(self.js_parameters),
+                'form_analysis': len(self.form_parameters),
+                'api_endpoints': len(self.api_parameters)
             }
         }
         
-        Logger.success(f"Parameter discovery completed in {execution_time:.2f} seconds")
-        Logger.success(f"Found {len(self.found_parameters)} unique parameters")
-        Logger.success(f"Found {len(set(self.found_urls))} URLs with parameters")
+        Logger.success(f"Comprehensive discovery completed in {execution_time:.2f} seconds")
+        Logger.success(f"Found {len(all_parameters)} unique parameters")
+        Logger.info(f"Sources: Wayback({len(wayback_params)}), Crawling({len(crawl_params)}), JS({len(self.js_parameters)}), Forms({len(self.form_parameters)}), API({len(self.api_parameters)})")
         
         return results
     
@@ -403,6 +773,9 @@ def main():
     # Discovery options
     parser.add_argument('--no-subs', action='store_true', help='Exclude subdomains from discovery')
     parser.add_argument('--timeout', type=int, default=30, help='Request timeout in seconds (default: 30)')
+    parser.add_argument('--comprehensive', action='store_true', help='Enable comprehensive discovery (crawling, JS analysis, API discovery)')
+    parser.add_argument('--max-pages', type=int, default=8, help='Maximum pages to crawl (default: 8)')
+    parser.add_argument('--rate-limit', type=float, default=0.5, help='Rate limit delay between requests in seconds (default: 0.5)')
     
     # Output options
     parser.add_argument('-o', '--output', help='Output filename (without extension)')
@@ -444,6 +817,10 @@ def main():
             timeout=args.timeout,
             quiet=args.quiet
         )
+        
+        # Set comprehensive mode options
+        if args.comprehensive:
+            discovery.rate_limit_delay = args.rate_limit
         
         # Run discovery
         try:
