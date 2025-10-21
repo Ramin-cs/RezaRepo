@@ -508,7 +508,7 @@ class SimpleParameterDiscovery:
             '/wp-json', '/api.php', '/api.json'
         ]
         
-        base_urls = [f"https://{self.domain}", f"http://{self.domain}"]
+        base_urls = [f"https://{self.domain}"]  # Only check HTTPS to avoid duplicates
         checked_endpoints = set()  # Track checked endpoints to avoid duplicates
         
         for base_url in base_urls:
@@ -597,10 +597,10 @@ class SimpleParameterDiscovery:
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
                 
-                if result.returncode == 0:
+                if result.returncode == 0 and result.stdout:
                     # Parse parameter.py output for parameters
                     param_py_params = set()
-                    lines = result.stdout.split('\n')
+                    lines = result.stdout.split('\n') if result.stdout else []
                     
                     for line in lines:
                         # Look for parameter patterns in output
@@ -628,6 +628,132 @@ class SimpleParameterDiscovery:
         except Exception as e:
             Logger.warning(f"parameter.py integration failed: {e}")
             return set()
+    
+    def analyze_http_headers(self):
+        """Analyze HTTP headers for parameter discovery"""
+        header_parameters = set()
+        
+        # Common URLs to check for header-based parameters
+        test_urls = [
+            f"https://{self.domain}",
+            f"https://{self.domain}/login",
+            f"https://{self.domain}/api",
+            f"https://{self.domain}/redirect"
+        ]
+        
+        for url in test_urls:
+            try:
+                time.sleep(self.rate_limit_delay)
+                response = self.http_client.get(url)
+                
+                # Check Location header for redirects
+                if hasattr(response, 'headers'):
+                    location = response.headers.get('Location', '')
+                    if location and '?' in location:
+                        parsed = urlparse(location)
+                        if parsed.query:
+                            params = parse_qs(parsed.query)
+                            for param in params.keys():
+                                header_parameters.add(param)
+                                if param not in self.parameter_urls:
+                                    self.parameter_urls[param] = set()
+                                self.parameter_urls[param].add(location)
+                
+                # Check Refresh header
+                refresh = response.headers.get('Refresh', '')
+                if refresh and 'url=' in refresh.lower():
+                    refresh_url = refresh.split('url=', 1)[1] if 'url=' in refresh else ''
+                    if refresh_url and '?' in refresh_url:
+                        parsed = urlparse(refresh_url)
+                        if parsed.query:
+                            params = parse_qs(parsed.query)
+                            for param in params.keys():
+                                header_parameters.add(param)
+                
+                # Check custom headers that might contain parameters
+                for header_name, header_value in response.headers.items():
+                    if any(keyword in header_name.lower() for keyword in ['param', 'arg', 'data']):
+                        # Extract parameter-like strings from header values
+                        param_matches = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', str(header_value))
+                        for match in param_matches:
+                            if len(match) > 2:
+                                header_parameters.add(match)
+                
+            except Exception as e:
+                Logger.warning(f"Error analyzing headers for {url}: {e}")
+        
+        if header_parameters:
+            Logger.success(f"HTTP headers analysis found {len(header_parameters)} parameters")
+        
+        return header_parameters
+    
+    def analyze_cookie_parameters(self):
+        """Analyze cookies for parameter discovery"""
+        cookie_parameters = set()
+        
+        # URLs to check for cookies
+        test_urls = [
+            f"https://{self.domain}",
+            f"https://{self.domain}/login",
+            f"https://{self.domain}/dashboard",
+            f"https://{self.domain}/profile"
+        ]
+        
+        for url in test_urls:
+            try:
+                time.sleep(self.rate_limit_delay)
+                response = self.http_client.get(url)
+                
+                # Check Set-Cookie headers
+                if hasattr(response, 'headers'):
+                    set_cookies = response.headers.get('Set-Cookie', '')
+                    if set_cookies:
+                        # Extract parameter names from cookie values
+                        cookie_parts = set_cookies.split(';')
+                        for part in cookie_parts:
+                            if '=' in part:
+                                cookie_name = part.split('=')[0].strip()
+                                cookie_value = part.split('=', 1)[1].strip()
+                                
+                                # Add cookie name as parameter
+                                if cookie_name and len(cookie_name) > 1:
+                                    cookie_parameters.add(cookie_name)
+                                
+                                # Check if cookie value contains URL parameters
+                                if '?' in cookie_value:
+                                    try:
+                                        parsed = urlparse(cookie_value)
+                                        if parsed.query:
+                                            params = parse_qs(parsed.query)
+                                            for param in params.keys():
+                                                cookie_parameters.add(param)
+                                    except:
+                                        pass
+                
+                # Check for JavaScript cookie access in page content
+                if hasattr(response, 'text') and response.text:
+                    # Look for document.cookie usage
+                    cookie_js_patterns = [
+                        r'document\.cookie\s*=\s*["\']([^"\']*)["\']',
+                        r'getCookie\(["\']([^"\']*)["\']',
+                        r'setCookie\(["\']([^"\']*)["\']'
+                    ]
+                    
+                    for pattern in cookie_js_patterns:
+                        matches = re.findall(pattern, response.text, re.IGNORECASE)
+                        for match in matches:
+                            if '=' in match:
+                                param_name = match.split('=')[0].strip()
+                                if param_name and len(param_name) > 1:
+                                    cookie_parameters.add(param_name)
+                
+            except Exception as e:
+                Logger.warning(f"Error analyzing cookies for {url}: {e}")
+        
+        if cookie_parameters:
+            Logger.success(f"Cookie analysis found {len(cookie_parameters)} parameters")
+        
+        return cookie_parameters
     
     def has_excluded_extension(self, url):
         """Check if URL has excluded extension"""
@@ -752,7 +878,23 @@ class SimpleParameterDiscovery:
             'parameters_found': len(api_params)
         }
         
-        # 4. parameter.py Integration (if available)
+        # 4. HTTP Headers Analysis
+        Logger.info("Phase 4: HTTP headers analysis")
+        header_params = self.analyze_http_headers()
+        all_parameters.update(header_params)
+        sources_info['http_headers'] = {
+            'parameters_found': len(header_params)
+        }
+        
+        # 5. Cookie Parameters Analysis
+        Logger.info("Phase 5: Cookie parameters analysis")
+        cookie_params = self.analyze_cookie_parameters()
+        all_parameters.update(cookie_params)
+        sources_info['cookie_params'] = {
+            'parameters_found': len(cookie_params)
+        }
+        
+        # 6. parameter.py Integration (if available)
         param_py_params = self.run_parameter_py_integration()
         all_parameters.update(param_py_params)
         sources_info['parameter_py'] = {
@@ -788,7 +930,7 @@ class SimpleParameterDiscovery:
         
         Logger.success(f"Comprehensive discovery completed in {execution_time:.2f} seconds")
         Logger.success(f"Found {len(all_parameters)} unique parameters")
-        Logger.info(f"Sources: Wayback({len(wayback_params)}), Crawling({len(crawl_params)}), JS({len(self.js_parameters)}), Forms({len(self.form_parameters)}), API({len(self.api_parameters)}), parameter.py({len(param_py_params)})")
+        Logger.info(f"Sources: Wayback({len(wayback_params)}), Crawling({len(crawl_params)}), JS({len(self.js_parameters)}), Forms({len(self.form_parameters)}), API({len(self.api_parameters)}), Headers({len(header_params)}), Cookies({len(cookie_params)}), parameter.py({len(param_py_params)})")
         
         return results
     

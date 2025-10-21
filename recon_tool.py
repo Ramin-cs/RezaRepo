@@ -1192,7 +1192,8 @@ def run_external_parameter_discovery(target, output_file=None):
         # Run with live output by using Popen for real-time display
         import subprocess
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                 text=True, env=env, bufsize=1, universal_newlines=True)
+                                 text=True, env=env, bufsize=1, universal_newlines=True, 
+                                 encoding='utf-8', errors='replace')
         
         output_lines = []
         try:

@@ -1,36 +1,33 @@
 Parameter Discovery Report
 Domain: sabzlearn.ir
-Timestamp: 2025-10-21 13:05:06
-Execution Time: 155.77 seconds
+Timestamp: 2025-10-21 16:27:35
+Execution Time: 3.21 seconds
 ============================================================
 
-DISCOVERED PARAMETERS (130):
+DISCOVERED PARAMETERS (104):
 ----------------------------------------
-• Cancel
-• FullScreen
-• MSFullscreenChange
-• Native
+• 744751be68d2ef174a9e1f66df9bd6a2
+• 83ebdf46c9db81eb1fe4eb5eba553c58
+• 98558d680c8ddd363d4b1c5465da5f21
+• Applied_projects_with_Python
+• Python_tricks
+• What_are_named_tuples_in_Python
 • _
 • __cf_chl_tk
-• _links
 • _wpnonce
+• a8595c4c65d071699228c7a361aa7083
 • action
-• add
-• addEventListener
 • add_to_wishlist
-• advertisement
 • after
 • ajax
-• ajaxSuccess
-• authentication
-• author
-• auto
-• autoplay
 • back
-• border
-• captions
-• captionsenabled
-• catch
+• blackjs
+• blackpy
+• blog
+• bootstrap5
+• burp
+• canvas
+• categories
 • category[49]
 • category[4]
 • category[50]
@@ -39,91 +36,69 @@ DISCOVERED PARAMETERS (130):
 • category[7]
 • category[8]
 • category[9]
-• change
-• char
-• class
-• code
-• collapse
-• controlshidden
-• curies
-• description
-• disabled
-• div
-• enabled
-• endpoints
-• enterfullscreen
+• ce01010101it
+• content
+• course
+• courses
+• css
+• css_grid
+• csspro
+• dir
+• dist
+• ecb958eda901d3f6a770a1aaee8fd209
+• electronjs
+• english_learning
+• expires
 • fbclid
-• focus
-• for
 • format
-• frameTitle
-• fullscreen
-• gmt_offset
-• height
-• help
-• hidden
-• hide
-• hl
-• home
-• id
-• insertAdjacentElement
+• frontrm
+• html
+• htmlpro
+• js
+• jspro
+• landing
 • lang
-• language
-• left
+• lazyload
+• lesson
+• livewire_master
 • login
-• loop
-• margin
-• menuBack
-• methods
-• mute
-• muted
-• name
-• namespace
-• namespaces
-• nextSibling
-• nocontent
-• normal
-• null
-• nval
-• object
-• on
+• logo
+• md5
+• min
+• mmonnet
+• npm
+• oembed
 • only_free
 • p
+• packages
 • page
 • paged
-• pause
-• pid
-• play
-• playing
-• playsinline
+• pages
 • post
 • post_type
-• presell
-• px
-• quality
+• posts
+• product
+• product_cat
+• reactjs
 • reauth
 • redirect_to
-• rel
+• regex
 • remove_item
 • req_id
 • route
-• routes
 • rp
 • s
-• seekLabel
-• site_icon
-• site_icon_url
-• site_logo
-• slot
+• scripts
+• session
+• smart_offers
 • sort
-• speed
-• timestamp
-• timeupdate
-• timezone_string
+• storm
+• tailwind
+• ticket_661
 • title
-• true
 • type
 • unique
+• uploads
 • url
 • utm_campaign
 • utm_content
@@ -131,11 +106,10 @@ DISCOVERED PARAMETERS (130):
 • utm_source
 • utm_term
 • ver
-• video
-• vimeo
-• visualization-with-python
-• volume
+• vscode
+• vuejs
 • wc-ajax
+• website
 
 
 URLS WITH PARAMETERS (211):
@@ -355,8 +329,8 @@ https://tech.sabzlearn.ir/?rp=FUZZ
 
 STATISTICS:
 ----------------------------------------
-Total Parameters: 130
+Total Parameters: 104
 Total Urls: 211
-Execution Time: 155.76773047447205
-Pages Crawled: 8
-Comprehensive Scan: True
+Basic Params: 44
+Advanced Params: 93
+Execution Time: 3.206829786300659
