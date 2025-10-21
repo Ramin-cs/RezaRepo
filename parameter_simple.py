@@ -197,6 +197,8 @@ class SimpleParameterDiscovery:
         self.form_parameters = set()
         self.api_parameters = set()
         self.rate_limit_delay = 0.5  # 500ms between requests
+        self.analyzed_js_files = set()  # Track analyzed JS files to avoid duplicates
+        self.parameter_urls = {}  # Store parameter -> URLs mapping
         
         # Extensions to exclude
         self.blacklist_extensions = [
@@ -275,6 +277,7 @@ class SimpleParameterDiscovery:
                             continue
                 else:
                     Logger.warning(f"Attempt {attempt} returned status code: {response.status_code}")
+                    continue
                 
                 Logger.warning(f"Attempt {attempt} returned no valid URLs")
                 
@@ -412,9 +415,14 @@ class SimpleParameterDiscovery:
         for js_url in list(js_urls)[:max_files]:
             if processed_files >= max_files:
                 break
+            
+            # Skip if already analyzed
+            if js_url in self.analyzed_js_files:
+                continue
                 
             try:
                 Logger.info(f"Analyzing JS file: {js_url}")
+                self.analyzed_js_files.add(js_url)
                 time.sleep(self.rate_limit_delay)
                 
                 response = self.http_client.get(js_url)
@@ -501,11 +509,15 @@ class SimpleParameterDiscovery:
         ]
         
         base_urls = [f"https://{self.domain}", f"http://{self.domain}"]
+        checked_endpoints = set()  # Track checked endpoints to avoid duplicates
         
         for base_url in base_urls:
             for api_path in api_paths:
+                api_url = f"{base_url}{api_path}"
+                if api_url in checked_endpoints:
+                    continue
+                checked_endpoints.add(api_url)
                 try:
-                    api_url = f"{base_url}{api_path}"
                     Logger.info(f"Checking API endpoint: {api_url}")
                     
                     time.sleep(self.rate_limit_delay)
@@ -565,6 +577,58 @@ class SimpleParameterDiscovery:
         
         return parameters
     
+    def run_parameter_py_integration(self):
+        """Run parameter.py tool for additional parameter discovery"""
+        Logger.info("Phase 4: Running parameter.py integration")
+        
+        try:
+            import subprocess
+            import os
+            
+            # Check if parameter.py exists
+            param_py_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+            if not os.path.exists(param_py_path):
+                Logger.warning("parameter.py not found, skipping integration")
+                return set()
+            
+            # Run parameter.py
+            cmd = [sys.executable, param_py_path, '-d', self.domain, '-t', str(self.timeout)]
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                
+                if result.returncode == 0:
+                    # Parse parameter.py output for parameters
+                    param_py_params = set()
+                    lines = result.stdout.split('\n')
+                    
+                    for line in lines:
+                        # Look for parameter patterns in output
+                        if 'Parameter:' in line or 'Found:' in line:
+                            # Extract parameter names
+                            param_matches = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', line)
+                            for match in param_matches:
+                                if len(match) > 1:
+                                    param_py_params.add(match)
+                    
+                    if param_py_params:
+                        Logger.success(f"parameter.py integration found {len(param_py_params)} additional parameters")
+                        return param_py_params
+                    else:
+                        Logger.info("parameter.py integration found no additional parameters")
+                        return set()
+                else:
+                    Logger.warning(f"parameter.py failed with exit code {result.returncode}")
+                    return set()
+                    
+            except subprocess.TimeoutExpired:
+                Logger.warning("parameter.py integration timed out")
+                return set()
+                
+        except Exception as e:
+            Logger.warning(f"parameter.py integration failed: {e}")
+            return set()
+    
     def has_excluded_extension(self, url):
         """Check if URL has excluded extension"""
         try:
@@ -603,10 +667,14 @@ class SimpleParameterDiscovery:
                     query_params = parse_qs(parsed_url.query)
                     
                     if query_params:
-                        # Extract parameter names
+                        # Extract parameter names and store URLs
                         for param_name in query_params.keys():
                             if param_name and len(param_name) > 0:
                                 parameters_found.add(param_name)
+                                # Store URL for this parameter
+                                if param_name not in self.parameter_urls:
+                                    self.parameter_urls[param_name] = set()
+                                self.parameter_urls[param_name].add(url)
                         
                         # Create URL with placeholder values
                         cleaned_params = {key: "FUZZ" for key in query_params if key}
@@ -627,7 +695,12 @@ class SimpleParameterDiscovery:
         if new_params and not self.quiet:
             Logger.info(f"Found {len(new_params)} new parameters:")
             for i, param in enumerate(sorted(new_params), 1):
-                Logger.found(f"Parameter #{i}: {param}")
+                # Show parameter with example URL if available
+                if param in self.parameter_urls and self.parameter_urls[param]:
+                    example_url = list(self.parameter_urls[param])[0]
+                    Logger.found(f"Parameter #{i}: {param} (found in: {example_url})")
+                else:
+                    Logger.found(f"Parameter #{i}: {param}")
                 # Add small delay for better readability in live mode
                 if i % 10 == 0:
                     time.sleep(0.1)
@@ -679,6 +752,13 @@ class SimpleParameterDiscovery:
             'parameters_found': len(api_params)
         }
         
+        # 4. parameter.py Integration (if available)
+        param_py_params = self.run_parameter_py_integration()
+        all_parameters.update(param_py_params)
+        sources_info['parameter_py'] = {
+            'parameters_found': len(param_py_params)
+        }
+        
         # Update found parameters
         self.found_parameters.update(all_parameters)
         
@@ -708,7 +788,7 @@ class SimpleParameterDiscovery:
         
         Logger.success(f"Comprehensive discovery completed in {execution_time:.2f} seconds")
         Logger.success(f"Found {len(all_parameters)} unique parameters")
-        Logger.info(f"Sources: Wayback({len(wayback_params)}), Crawling({len(crawl_params)}), JS({len(self.js_parameters)}), Forms({len(self.form_parameters)}), API({len(self.api_parameters)})")
+        Logger.info(f"Sources: Wayback({len(wayback_params)}), Crawling({len(crawl_params)}), JS({len(self.js_parameters)}), Forms({len(self.form_parameters)}), API({len(self.api_parameters)}), parameter.py({len(param_py_params)})")
         
         return results
     
@@ -831,10 +911,31 @@ def main():
             if not args.quiet:
                 print(f"\n{Colors.GREEN}[RESULTS for {domain}]{Colors.END}")
                 print(f"Parameters found: {len(results['parameters'])}")
+                
+                # Display parameters with their URLs
                 if results['parameters']:
-                    print("Parameters:", ", ".join(results['parameters'][:10]))
-                    if len(results['parameters']) > 10:
-                        print(f"... and {len(results['parameters']) - 10} more")
+                    if len(results['parameters']) <= 10:
+                        print("Parameters with example URLs:")
+                        for param in results['parameters']:
+                            if param in discovery.parameter_urls and discovery.parameter_urls[param]:
+                                example_url = list(discovery.parameter_urls[param])[0]
+                                print(f"  • {param}: {example_url}")
+                            else:
+                                print(f"  • {param}: (discovered via JS/API analysis)")
+                    else:
+                        print("Parameters:", ", ".join(results['parameters'][:10]))
+                        if len(results['parameters']) > 10:
+                            print(f"... and {len(results['parameters']) - 10} more")
+                        print("\nTop 5 parameters with URLs:")
+                        count = 0
+                        for param in results['parameters']:
+                            if count >= 5:
+                                break
+                            if param in discovery.parameter_urls and discovery.parameter_urls[param]:
+                                example_url = list(discovery.parameter_urls[param])[0]
+                                print(f"  • {param}: {example_url}")
+                                count += 1
+                
                 print(f"URLs with parameters: {len(results['urls'])}")
             
             # Save individual results
