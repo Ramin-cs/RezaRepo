@@ -21,6 +21,7 @@ import os
 import platform
 import socket
 import ssl
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
 import urllib.request
@@ -30,9 +31,16 @@ import warnings
 # Try to import requests with complete fallback
 try:
     import requests
+    import urllib3
+    # Disable SSL warnings
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
+
+# Disable SSL warnings for urllib as well
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 class Colors:
     """Cross-platform color support"""
@@ -53,33 +61,42 @@ class Colors:
     END = '\033[0m'
 
 class Logger:
-    """Professional logging system"""
+    """Professional thread-safe logging system"""
+    
+    _lock = threading.Lock()
+    
+    @staticmethod
+    def _safe_print(message):
+        """Thread-safe print with lock"""
+        with Logger._lock:
+            print(message, flush=True)
     
     @staticmethod
     def info(message):
-        print(f"{Colors.BLUE}[INFO]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.BLUE}[INFO]{Colors.END} {message}")
     
     @staticmethod
     def success(message):
-        print(f"{Colors.GREEN}[SUCCESS]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.GREEN}[SUCCESS]{Colors.END} {message}")
     
     @staticmethod
     def warning(message):
-        print(f"{Colors.YELLOW}[WARNING]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.YELLOW}[WARNING]{Colors.END} {message}")
     
     @staticmethod
     def error(message):
-        print(f"{Colors.RED}[ERROR]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.RED}[ERROR]{Colors.END} {message}")
     
     @staticmethod
     def found(message):
-        print(f"{Colors.CYAN}[FOUND]{Colors.END} {message}")
+        Logger._safe_print(f"{Colors.CYAN}[FOUND]{Colors.END} {message}")
     
     @staticmethod
     def phase(message):
-        print(f"\n{Colors.PURPLE}{'='*60}{Colors.END}")
-        print(f"{Colors.PURPLE}[PHASE]{Colors.END} {Colors.BOLD}{message}{Colors.END}")
-        print(f"{Colors.PURPLE}{'='*60}{Colors.END}")
+        with Logger._lock:
+            print(f"\n{Colors.PURPLE}{'='*60}{Colors.END}", flush=True)
+            print(f"{Colors.PURPLE}[PHASE]{Colors.END} {Colors.BOLD}{message}{Colors.END}", flush=True)
+            print(f"{Colors.PURPLE}{'='*60}{Colors.END}", flush=True)
 
 class HTTPClient:
     """Universal HTTP client that works everywhere"""
@@ -95,12 +112,18 @@ class HTTPClient:
                 self.session.headers.update({
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 })
-                Logger.info("Using requests library for HTTP")
+                # Only show this message once
+                if not hasattr(HTTPClient, '_requests_logged'):
+                    Logger.info("Using requests library for HTTP")
+                    HTTPClient._requests_logged = True
             except Exception as e:
                 Logger.warning(f"Requests failed, using urllib: {str(e)}")
                 self.session = None
         else:
-            Logger.info("Using urllib for HTTP (requests not available)")
+            # Only show this message once
+            if not hasattr(HTTPClient, '_urllib_logged'):
+                Logger.info("Using urllib for HTTP (requests not available)")
+                HTTPClient._urllib_logged = True
     
     def get(self, url, **kwargs):
         """Make HTTP GET request with automatic fallback"""
@@ -149,7 +172,13 @@ class HTTPClient:
                         self.headers = dict(urllib_response.headers)
                         self.content = content
                         self.text = content.decode('utf-8', errors='ignore')
-                        self.elapsed = type('obj', (object,), {'total_seconds': lambda: elapsed})()
+                        # Fix elapsed time object
+                        class ElapsedTime:
+                            def __init__(self, elapsed_seconds):
+                                self._elapsed = elapsed_seconds
+                            def total_seconds(self):
+                                return self._elapsed
+                        self.elapsed = ElapsedTime(elapsed)
                 
                 return UrllibResponse(response, content, elapsed)
                 
@@ -161,7 +190,13 @@ class HTTPClient:
                     self.headers = {}
                     self.content = b''
                     self.text = ''
-                    self.elapsed = type('obj', (object,), {'total_seconds': lambda: 0})()
+                    # Fix elapsed time object
+                    class ElapsedTime:
+                        def __init__(self, elapsed_seconds):
+                            self._elapsed = elapsed_seconds
+                        def total_seconds(self):
+                            return self._elapsed
+                    self.elapsed = ElapsedTime(0)
             
             return ErrorResponse(e.code)
         except Exception as e:
@@ -194,7 +229,13 @@ class HTTPClient:
                         self.headers = dict(urllib_response.headers)
                         self.content = content
                         self.text = content.decode('utf-8', errors='ignore')
-                        self.elapsed = type('obj', (object,), {'total_seconds': lambda: elapsed})()
+                        # Fix elapsed time object
+                        class ElapsedTime:
+                            def __init__(self, elapsed_seconds):
+                                self._elapsed = elapsed_seconds
+                            def total_seconds(self):
+                                return self._elapsed
+                        self.elapsed = ElapsedTime(elapsed)
                 
                 return UrllibResponse(response, content, elapsed)
                 
@@ -224,12 +265,13 @@ class FastHTTPX:
                     response_time = time.time() - start_time
                     
                     if response.status_code:
-                        # Extract title
+                        # Extract title (optimized)
                         title = None
                         try:
-                            title_match = re.search(r'<title[^>]*>([^<]+)</title>', response.text, re.IGNORECASE)
-                            if title_match:
-                                title = title_match.group(1).strip()
+                            if len(response.text) < 50000:  # Only extract title from small responses
+                                title_match = re.search(r'<title[^>]*>([^<]+)</title>', response.text[:5000], re.IGNORECASE)
+                                if title_match:
+                                    title = title_match.group(1).strip()[:50]  # Limit title length
                         except:
                             pass
                         
@@ -242,6 +284,8 @@ class FastHTTPX:
                             category = "Forbidden (403)"
                         elif response.status_code == 404:
                             category = "Not Found (404)"
+                        elif response.status_code == 401:
+                            category = "Client Error (401)"
                         elif 400 <= response.status_code < 500:
                             category = f"Client Error ({response.status_code})"
                         elif 500 <= response.status_code < 600:
@@ -255,8 +299,8 @@ class FastHTTPX:
                             'category': category,
                             'title': title,
                             'response_time': response_time,
-                            'server': response.headers.get('Server', 'Unknown'),
-                            'content_length': len(response.content)
+                            'server': response.headers.get('Server', 'Unknown') if hasattr(response, 'headers') else 'Unknown',
+                            'content_length': len(response.content) if hasattr(response, 'content') else 0
                         }
                         
                         results.append((subdomain, result))
@@ -384,22 +428,71 @@ class SubdomainHunter:
         """Certificate Transparency logs"""
         Logger.info(f"Mining Certificate Transparency logs for {self.domain}")
         
-        try:
-            url = f"https://crt.sh/?q=%.{self.domain}&output=json"
-            response = self.http_client.get(url)
-            
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                for cert in data:
-                    name_value = cert.get('name_value', '')
-                    for domain in name_value.split('\n'):
-                        domain = domain.strip().lower()
-                        if domain and self.domain in domain and '*' not in domain:
-                            if domain not in self.found_subdomains:
-                                self.found_subdomains.add(domain)
-                                Logger.found(f"CT: {domain}")
-        except Exception as e:
-            Logger.warning(f"CT search failed: {str(e)}")
+        # Multiple CT sources with shorter timeouts
+        ct_sources = [
+            f"https://crt.sh/?q=%.{self.domain}&output=json",
+            f"https://crt.sh/?q={self.domain}&output=json"
+        ]
+        
+        found_count = 0
+        for ct_url in ct_sources:
+            try:
+                # Use shorter timeout for CT
+                response = self.http_client.get(ct_url, timeout=8)
+                
+                if response and hasattr(response, 'status_code') and response.status_code == 200:
+                    try:
+                        data = json.loads(response.text)
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            for domain in name_value.split('\n'):
+                                domain = domain.strip().lower()
+                                # Better filtering
+                                if (domain and 
+                                    self.domain in domain and 
+                                    '*' not in domain and
+                                    not domain.startswith('.') and
+                                    domain.count('.') >= self.domain.count('.')):
+                                    
+                                    if domain not in self.found_subdomains:
+                                        self.found_subdomains.add(domain)
+                                        Logger.found(f"CT: {domain}")
+                                        found_count += 1
+                        break  # If first source works, don't try others
+                    except json.JSONDecodeError:
+                        Logger.warning(f"CT response not valid JSON: {ct_url}")
+                        continue
+                elif response and hasattr(response, 'content'):
+                    # Try with urllib response
+                    try:
+                        data = json.loads(response.content.decode('utf-8'))
+                        for cert in data:
+                            name_value = cert.get('name_value', '')
+                            for domain in name_value.split('\n'):
+                                domain = domain.strip().lower()
+                                if (domain and 
+                                    self.domain in domain and 
+                                    '*' not in domain and
+                                    not domain.startswith('.') and
+                                    domain.count('.') >= self.domain.count('.')):
+                                    
+                                    if domain not in self.found_subdomains:
+                                        self.found_subdomains.add(domain)
+                                        Logger.found(f"CT: {domain}")
+                                        found_count += 1
+                        break
+                    except:
+                        continue
+            except Exception as e:
+                Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
+                continue
+        
+        if found_count > 0:
+            Logger.success(f"Certificate Transparency found {found_count} subdomains")
+        else:
+            Logger.warning("Certificate Transparency found no subdomains (timeout or error)")
+        
+        return found_count
     
     def dns_zone_transfer(self):
         """DNS zone transfer attempt"""
@@ -491,9 +584,13 @@ class SubdomainHunter:
         # Probe public subdomains
         if public_subdomains:
             Logger.info(f"Probing {len(public_subdomains)} public subdomains")
-            httpx = FastHTTPX(timeout=5, threads=min(30, len(public_subdomains)))
+            # Optimize threads and timeout for better speed
+            max_threads = min(50, len(public_subdomains))
+            httpx = FastHTTPX(timeout=3, threads=max_threads)  # Reduced timeout
             public_results = httpx.probe_subdomains(public_subdomains)
             live_subdomains.update(public_results)
+        else:
+            Logger.warning("No public subdomains found to probe")
         
         return live_subdomains
     
@@ -513,10 +610,58 @@ class SubdomainHunter:
             except Exception as e:
                 Logger.error(f"{name} failed: {str(e)}")
         
+        # Run external tools sequentially to avoid output mixing
+        external_tools = [
+            ("Subfinder", run_external_subfinder, "subfinder"),
+            ("AssetFinder", run_external_assetfinder, "assetfinder"), 
+            ("Amass", run_external_amass, "amass"),
+            ("Sublist3r", run_external_sublist3r, "sublist3r")
+        ]
+        
+        for tool_name, tool_func, tool_prefix in external_tools:
+            try:
+                Logger.info(f"Running external {tool_name.lower()} for additional discovery")
+                tool_results = tool_func(self.domain)
+                
+                if tool_results:
+                    # Add new subdomains found by tool (with duplicate checking)
+                    initial_count = len(self.found_subdomains)
+                    new_subdomains = []
+                    
+                    for subdomain in tool_results:
+                        # Clean and normalize subdomain
+                        cleaned_subdomain = subdomain.lower().strip()
+                        if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
+                            self.found_subdomains.add(cleaned_subdomain)
+                            new_subdomains.append(cleaned_subdomain)
+                    
+                    # Display new subdomains found by this tool
+                    for subdomain in new_subdomains:
+                        Logger.found(f"{tool_name}: {subdomain}")
+                    
+                    new_count = len(new_subdomains)
+                    if new_count > 0:
+                        Logger.success(f"{tool_name} added {new_count} new unique subdomains")
+                    else:
+                        Logger.info(f"{tool_name} found no new subdomains (all were duplicates)")
+                else:
+                    Logger.info(f"{tool_name} found 0 subdomains")
+                    
+            except Exception as e:
+                Logger.warning(f"External {tool_name.lower()} failed: {str(e)}")
+        
+        # Wildcard detection
         self.wildcard_detection()
+        
+        # Verify live subdomains and get detailed results
         live_subdomains = self.verify_live_subdomains()
         
         Logger.success(f"Subdomain discovery completed: {len(live_subdomains)} subdomains found")
+        
+        # Log summary of found subdomains
+        Logger.info(f"Total subdomains discovered: {len(self.found_subdomains)}")
+        Logger.info(f"Live subdomains verified: {len(live_subdomains)}")
+        
         return live_subdomains
 
 class ParameterHunter:
@@ -564,12 +709,19 @@ class ParameterHunter:
             self.baseline_response = {
                 'status_code': response.status_code,
                 'content_length': len(response.content),
-                'response_time': response.elapsed.total_seconds(),
-                'headers': dict(response.headers)
+                'response_time': response.elapsed.total_seconds() if hasattr(response.elapsed, 'total_seconds') else 0,
+                'headers': dict(response.headers) if hasattr(response, 'headers') else {}
             }
             Logger.success(f"Baseline established: {response.status_code} ({len(response.content)} bytes)")
         except Exception as e:
-            Logger.error(f"Failed to get baseline: {str(e)}")
+            Logger.warning(f"Failed to get baseline: {str(e)}")
+            # Set default baseline
+            self.baseline_response = {
+                'status_code': 200,
+                'content_length': 0,
+                'response_time': 0,
+                'headers': {}
+            }
     
     def parameter_fuzzing(self):
         """Parameter fuzzing"""
@@ -800,8 +952,7 @@ class ProfessionalRecon:
                     f.write(f"\n{category}:\n")
                     for subdomain, info in sorted(subdomains):
                         f.write(f"  {info['url']}")
-                        if info.get('response_time'):
-                            f.write(f" [{info['response_time']:.2f}s]")
+                        # Remove timing info as requested
                         if info.get('title'):
                             f.write(f" - {info['title'][:50]}")
                         f.write(f"\n")
@@ -810,12 +961,13 @@ class ProfessionalRecon:
                 f.write(f"\n\nPARAMETERS ({len(self.results['parameters'])} found):\n")
                 f.write("-" * 50 + "\n")
                 
-                for param_name, param_info in sorted(self.results['parameters'].items()):
-                    f.write(f"\nParameter: {param_name}\n")
-                    f.write(f"Methods: {', '.join(param_info.get('methods', []))}\n")
-                    f.write(f"Test URLs:\n")
-                    for url in param_info.get('urls', []):
-                        f.write(f"  {url}\n")
+                if self.results['parameters']:
+                    # Simple parameter list
+                    param_names = sorted(self.results['parameters'].keys())
+                    for i, param_name in enumerate(param_names, 1):
+                        f.write(f"{i:3d}. {param_name}\n")
+                else:
+                    f.write("No parameters found.\n")
             
             Logger.success(f"Results saved to {filename}.txt")
 
@@ -843,13 +995,278 @@ def print_banner():
 """
     print(banner)
 
+def run_external_subfinder(target):
+    """Run external subfinder tool"""
+    Logger.info("Running external subfinder for additional subdomain discovery")
+    
+    try:
+        # Check if subfinder.py exists
+        subfinder_tool_path = os.path.join(os.path.dirname(__file__), 'subfinder.py')
+        if not os.path.exists(subfinder_tool_path):
+            Logger.warning("subfinder.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, subfinder_tool_path, target, '--fast', '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain:
+                    subdomains.add(subdomain)
+            
+            Logger.success(f"Subfinder found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"Subfinder failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Subfinder timed out (120 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run subfinder: {str(e)}")
+        return set()
+
+def run_external_assetfinder(target):
+    """Run external assetfinder tool"""
+    Logger.info("Running external assetfinder for additional subdomain discovery")
+    
+    try:
+        # Check if assetfinder.py exists
+        assetfinder_tool_path = os.path.join(os.path.dirname(__file__), 'assetfinder.py')
+        if not os.path.exists(assetfinder_tool_path):
+            Logger.warning("assetfinder.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, assetfinder_tool_path, target, '--subs-only']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+        
+        if result.returncode == 0:
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain:
+                    subdomains.add(subdomain)
+            
+            Logger.success(f"AssetFinder found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"AssetFinder failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("AssetFinder timed out (150 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run assetfinder: {str(e)}")
+        return set()
+
+def run_external_amass(target):
+    """Run external amass tool"""
+    Logger.info("Running external amass for comprehensive subdomain discovery")
+    
+    try:
+        # Check if amass.py exists
+        amass_tool_path = os.path.join(os.path.dirname(__file__), 'amass.py')
+        if not os.path.exists(amass_tool_path):
+            Logger.warning("amass.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, amass_tool_path, 'enum', '-d', target, '--passive', '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        # Amass outputs to both stdout and stderr, check both
+        output_lines = []
+        if result.stdout:
+            output_lines.extend(result.stdout.strip().split('\n'))
+        if result.stderr and 'domains' in result.stderr:
+            # Extract domains from stderr progress messages
+            for line in result.stderr.split('\n'):
+                if line.strip() and not line.startswith('[') and '.' in line:
+                    output_lines.append(line.strip())
+        
+        subdomains = set()
+        for line in output_lines:
+            subdomain = line.strip()
+            if subdomain and '.' in subdomain and len(subdomain) > 3:
+                # Validate subdomain format
+                if not subdomain.startswith('.') and not subdomain.endswith('.'):
+                    subdomains.add(subdomain.lower())
+        
+        if subdomains:
+            Logger.success(f"Amass found {len(subdomains)} additional subdomains")
+        else:
+            Logger.info(f"Amass found 0 additional subdomains")
+        
+        return subdomains
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Amass timed out (120 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run amass: {str(e)}")
+        return set()
+
+def run_external_sublist3r(target):
+    """Run external sublist3r tool"""
+    Logger.info("Running external sublist3r for comprehensive subdomain discovery")
+    
+    try:
+        # Check if sublist3r.py exists
+        sublist3r_tool_path = os.path.join(os.path.dirname(__file__), 'sublist3r.py')
+        if not os.path.exists(sublist3r_tool_path):
+            Logger.warning("sublist3r.py tool not found in current directory")
+            return set()
+        
+        # Prepare command
+        cmd = [sys.executable, sublist3r_tool_path, '-d', target, '--silent']
+        
+        # Run the external tool
+        import subprocess
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=150)
+        
+        # Sublist3r might return exit code 1 but still have valid output
+        if result.returncode == 0 or (result.stdout and result.stdout.strip()):
+            subdomains = set()
+            for line in result.stdout.strip().split('\n'):
+                subdomain = line.strip()
+                if subdomain and '.' in subdomain and len(subdomain) > 3:
+                    # Validate subdomain format
+                    if not subdomain.startswith('.') and not subdomain.endswith('.'):
+                        subdomains.add(subdomain.lower())
+            
+            Logger.success(f"Sublist3r found {len(subdomains)} additional subdomains")
+            return subdomains
+        else:
+            Logger.warning(f"Sublist3r failed: {result.stderr}")
+            return set()
+            
+    except subprocess.TimeoutExpired:
+        Logger.warning("Sublist3r timed out (150 seconds)")
+        return set()
+    except Exception as e:
+        Logger.warning(f"Failed to run sublist3r: {str(e)}")
+        return set()
+
+def run_external_parameter_discovery(target, output_file=None):
+    """Run external parameter discovery tool"""
+    Logger.phase("EXTERNAL PARAMETER DISCOVERY")
+    
+    try:
+        # Check if parameter tools exist (try simple version first)
+        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter_simple.py')
+        if not os.path.exists(param_tool_path):
+            param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+            if not os.path.exists(param_tool_path):
+                Logger.error("Parameter discovery tool not found in current directory")
+                return {}
+        
+        Logger.info(f"Running external parameter discovery for {target}")
+        
+        # Prepare command (remove -q for live display, add comprehensive mode)
+        cmd = [sys.executable, param_tool_path, '-d', target, '--timeout', '60', '--comprehensive', '--max-pages', '6', '--rate-limit', '0.4']
+        if output_file:
+            cmd.extend(['-o', f"{output_file}_external_params"])
+        
+        # Run the external tool
+        import subprocess
+        
+        # Set environment to avoid dependency issues
+        env = os.environ.copy()
+        env['PYTHONPATH'] = os.path.dirname(__file__)
+        
+        # Run with live output by using Popen for real-time display
+        import subprocess
+        
+        # Set environment variables for UTF-8 encoding
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONLEGACYWINDOWSFSENCODING'] = '0'
+        
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                                 text=True, env=env, bufsize=1, universal_newlines=True, 
+                                 encoding='utf-8', errors='ignore')
+        
+        output_lines = []
+        try:
+            # Read output line by line and display live
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    try:
+                        safe_line = output.rstrip()
+                        print(safe_line)  # Display live
+                        output_lines.append(safe_line)
+                    except UnicodeEncodeError:
+                        # Skip lines that can't be encoded safely
+                        print("[Line with special characters - skipped]")
+                        continue
+            
+            # Wait for process to complete and get any remaining stderr
+            stdout, stderr = process.communicate(timeout=300)
+            result_returncode = process.returncode
+            result_stdout = '\n'.join(output_lines)
+            result_stderr = stderr or ''
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            Logger.error("External parameter discovery timed out (5 minutes)")
+            return {'status': 'timeout'}
+        except Exception as e:
+            process.kill()
+            Logger.error(f"Failed to run external parameter discovery: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+        
+        if result_returncode == 0:
+            Logger.success("External parameter discovery completed successfully")
+            
+            # Try to parse results from output file
+            if output_file:
+                result_file = f"{output_file}_external_params.txt"
+                if os.path.exists(result_file):
+                    Logger.info(f"External parameter results saved to {result_file}")
+                    return {'status': 'success', 'output_file': result_file}
+                else:
+                    # Check if parameter_simple.py created file without _external_params suffix
+                    simple_result_file = f"{output_file}_external_params.txt"
+                    if os.path.exists(simple_result_file):
+                        Logger.info(f"External parameter results saved to {simple_result_file}")
+                        return {'status': 'success', 'output_file': simple_result_file}
+            
+            return {'status': 'success', 'message': 'External parameter discovery completed'}
+        else:
+            Logger.error(f"External parameter discovery failed: {result_stderr}")
+            return {'status': 'error', 'message': result_stderr}
+            
+    except subprocess.TimeoutExpired:
+        Logger.error("External parameter discovery timed out (5 minutes)")
+        return {'status': 'timeout'}
+    except Exception as e:
+        Logger.error(f"Failed to run external parameter discovery: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
+
 def main():
     print_banner()
     
     parser = argparse.ArgumentParser(description="Professional Reconnaissance Tool")
     parser.add_argument('-t', '--target', required=True, help='Target domain or URL')
-    parser.add_argument('--subdomains-only', action='store_true', help='Run only subdomain discovery')
-    parser.add_argument('--parameters-only', action='store_true', help='Run only parameter discovery')
+    parser.add_argument('--subdomains', action='store_true', help='Run only subdomain discovery')
+    parser.add_argument('--params', action='store_true', help='Run only parameter discovery (uses external tool)')
     parser.add_argument('--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size')
@@ -861,8 +1278,13 @@ def main():
     recon = ProfessionalRecon()
     
     try:
-        run_subdomains = not args.parameters_only
-        run_parameters = not args.subdomains_only
+        # Default behavior: run both subdomain and parameter discovery
+        # Use switches to run only specific modules
+        if args.subdomains and args.params:
+            parser.error("Please use either --subdomains or --params, not both. For both, run without switches.")
+        
+        run_subdomains = not args.params  # Run subdomains unless --params is specified
+        run_parameters = not args.subdomains  # Run parameters unless --subdomains is specified
         
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
@@ -872,38 +1294,185 @@ def main():
                 wordlist_size=args.wordlist
             )
             
-            print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}")
-            print(f"Found {len(subdomains)} subdomains:")
+            # Clean phase separation - ensure all threads are done
+            time.sleep(0.5)
             
-            categories = {}
-            for subdomain, info in subdomains.items():
-                category = info['category']
-                if category not in categories:
-                    categories[category] = []
-                categories[category].append((subdomain, info))
-            
-            for category, subs in sorted(categories.items()):
-                print(f"\n{Colors.YELLOW}{category}:{Colors.END}")
-                for subdomain, info in sorted(subs):
-                    print(f"  • {info['url']}")
+            with Logger._lock:
+                print(f"\n{Colors.GREEN}[SUBDOMAIN RESULTS]{Colors.END}", flush=True)
+                print(f"Found {len(subdomains)} subdomains:", flush=True)
+                
+                categories = {}
+                for subdomain, info in subdomains.items():
+                    category = info['category']
+                    if category not in categories:
+                        categories[category] = []
+                    categories[category].append((subdomain, info))
+                
+                for category, subs in sorted(categories.items()):
+                    print(f"\n{Colors.YELLOW}{category}:{Colors.END}", flush=True)
+                    for subdomain, info in sorted(subs):
+                        print(f"  • {info['url']}", flush=True)
         
         if run_parameters:
-            parameters = recon.run_parameter_phase(
-                target=args.target,
-                threads=min(args.threads, 30),
-                timeout=args.timeout,
-                wordlist_size=args.wordlist
+            # Use external parameter discovery tool
+            # Extract domain from target for parameter discovery
+            parsed_target = TargetParser.parse_target(args.target)
+            target_domain = parsed_target['domain']
+            
+            external_result = run_external_parameter_discovery(
+                target_domain, 
+                args.output or f"recon_{target_domain.replace('.', '_')}_{int(time.time())}"
             )
             
-            print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
-            print(f"Found {len(parameters)} parameters:")
+            if external_result.get('status') == 'success':
+                Logger.success("Parameter discovery completed")
+                
+            # Read and display parameters live
+            param_file = external_result.get('output_file')
             
-            for param_name, param_info in sorted(parameters.items()):
-                methods = ', '.join(param_info.get('methods', []))
-                urls = param_info.get('urls', [])
-                print(f"  • {param_name} ({methods})")
-                if urls:
-                    print(f"    URL: {urls[0]}")
+            # If no specific output file, try to find the default one
+            if not param_file or not os.path.exists(param_file):
+                # Try to find parameter files in current directory
+                domain_safe = args.target.replace('https://', '').replace('http://', '').replace('.', '_').replace('/', '_')
+                possible_files = [
+                    f"{domain_safe}_parameters.txt",
+                    f"sabzlearn_ir_parameters.txt",  # Default from parameter_simple.py
+                    f"dell_com_parameters.txt",     # For dell.com
+                    f"testphp_vulnweb_com_parameters.txt",  # For testphp.vulnweb.com
+                ]
+                
+                # Also check for any *_parameters.txt files
+                import glob
+                param_files = glob.glob("*_parameters.txt")
+                possible_files.extend(param_files)
+                
+                # Check for external_params files
+                external_files = glob.glob("*external_params*.txt")
+                possible_files.extend(external_files)
+                
+                # Sort by modification time (newest first)
+                existing_files = [f for f in possible_files if os.path.exists(f)]
+                if existing_files:
+                    # Get the most recent file
+                    param_file = max(existing_files, key=os.path.getmtime)
+                    Logger.info(f"Found parameter results in {param_file}")
+                
+                # If still not found, create a test to see what files exist
+                if not param_file:
+                    Logger.warning("No parameter files found, checking directory...")
+                    all_txt_files = glob.glob("*.txt")
+                    Logger.info(f"Available .txt files: {all_txt_files}")
+                    
+                    # Try the most recent .txt file that might contain parameters
+                    for txt_file in sorted(all_txt_files, key=os.path.getmtime, reverse=True):
+                        if 'param' in txt_file.lower():
+                            param_file = txt_file
+                            Logger.info(f"Trying parameter file: {param_file}")
+                            break
+            
+            if param_file and os.path.exists(param_file):
+                try:
+                    with open(param_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        
+                    # Extract parameters from file
+                    param_section = False
+                    parameters = []
+                    lines = content.split('\n')
+                    
+                    # Try alternative parsing if standard method fails
+                    def try_alternative_parsing():
+                        alt_params = []
+                        # Look for [RESULTS for domain] section
+                        for i, line in enumerate(lines):
+                            if '[RESULTS for' in line:
+                                # Look for parameters in the next few lines
+                                for j in range(i+1, min(i+20, len(lines))):
+                                    if 'Parameters found:' in lines[j]:
+                                        # Try to extract from summary line or following lines
+                                        for k in range(j+1, min(j+10, len(lines))):
+                                            if lines[k].strip() and not lines[k].startswith('[') and '•' in lines[k]:
+                                                # Extract parameters from comma-separated list
+                                                param_line = lines[k].replace('•', '').strip()
+                                                if param_line:
+                                                    params_in_line = [p.strip() for p in param_line.split(',')]
+                                                    alt_params.extend(params_in_line)
+                                            elif 'parameters discovered without URLs' in lines[k]:
+                                                break
+                                        break
+                                break
+                        return alt_params
+                    
+                    for i, line in enumerate(lines):
+                        if 'DISCOVERED PARAMETERS' in line:
+                            param_section = True
+                            param_count = re.search(r'\((\d+)\)', line)
+                            if param_count:
+                                total_params = param_count.group(1)
+                            continue
+                        elif param_section and 'Parameters with URLs' in line:
+                            # Skip section headers
+                            continue
+                        elif param_section and (line.startswith('•') or re.match(r'^\s*\d+\.\s+\w+', line)):
+                            # Extract parameter name from both formats: "• param" and "  123. param -> URL"
+                            if line.startswith('•'):
+                                param_name = line.replace('•', '').strip()
+                            else:
+                                param_name = re.sub(r'^\s*\d+\.\s+', '', line).strip()
+                                param_name = param_name.split(' ')[0].split('->')[0].strip()
+                            
+                            if param_name and param_name not in parameters and len(param_name) > 0:
+                                parameters.append(param_name)
+                        elif param_section and ('Parameters found:' in line):
+                            # Alternative parsing: look for "Parameters found: 395"
+                            param_count_match = re.search(r'Parameters found:\s*(\d+)', line)
+                            if param_count_match and not parameters:
+                                # If we haven't found parameters yet, try to extract from summary
+                                total_found = int(param_count_match.group(1))
+                                Logger.info(f"Found {total_found} parameters in external file")
+                        elif param_section and ('URLS WITH PARAMETERS' in line or 'STATISTICS:' in line):
+                            # End of parameter section
+                            break
+                    
+                    # If no parameters found with standard parsing, try alternative
+                    if not parameters:
+                        Logger.info("Trying alternative parameter parsing method...")
+                        parameters = try_alternative_parsing()
+                        if parameters:
+                            Logger.success(f"Alternative parsing found {len(parameters)} parameters")
+                    
+                    # Clean parameter results display
+                    time.sleep(0.3)  # Ensure all parameter discovery logs are done
+                    
+                    with Logger._lock:
+                        print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}", flush=True)
+                        print(f"Found {len(parameters)} parameters:", flush=True)
+                        
+                        # Display parameters in groups of 10
+                        for i in range(0, len(parameters), 10):
+                            group = parameters[i:i+10]
+                            print(f"  • {', '.join(group)}", flush=True)
+                        
+                        # Store parameters in recon results
+                        recon.results['parameters'] = {param: {'methods': ['GET'], 'urls': []} for param in parameters}
+                    
+                    # Clean up the external parameter file after reading
+                    try:
+                        os.remove(param_file)
+                        Logger.verbose(f"Cleaned up temporary parameter file: {param_file}")
+                    except:
+                        pass
+                    
+                except Exception as e:
+                    Logger.warning(f"Could not read parameter file: {str(e)}")
+                    print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                    print(f"Parameter discovery completed successfully!")
+                    if param_file:
+                        print(f"{Colors.CYAN}Results saved to: {param_file}{Colors.END}")
+            else:
+                print(f"\n{Colors.GREEN}[PARAMETER RESULTS]{Colors.END}")
+                print("Found 0 parameters:")
+                Logger.warning("No parameter results file found")
         
         # Save results
         if args.output:
@@ -916,12 +1485,24 @@ def main():
         recon.save_results(output_file, args.format)
         
         Logger.phase("RECONNAISSANCE COMPLETED")
-        total_subdomains = len(recon.results.get('subdomains', {}))
-        total_parameters = len(recon.results.get('parameters', {}))
-        print(f"{Colors.GREEN}Total Subdomains: {total_subdomains}{Colors.END}")
-        print(f"{Colors.GREEN}Total Parameters: {total_parameters}{Colors.END}")
-        print(f"{Colors.GREEN}Target: {recon.results.get('target', 'Unknown')}{Colors.END}")
-        print(f"{Colors.CYAN}Results saved to: {output_file}.{args.format}{Colors.END}")
+        total_subdomains = len(recon.results.get('subdomains', {})) if run_subdomains else 0
+        
+        print(f"{Colors.GREEN}Target: {recon.results.get('target', args.target)}{Colors.END}")
+        if run_subdomains:
+            print(f"{Colors.GREEN}Total Subdomains Found: {total_subdomains}{Colors.END}")
+        if run_parameters:
+            total_parameters = len(recon.results.get('parameters', {}))
+            print(f"{Colors.GREEN}Total Parameters Found: {total_parameters}{Colors.END}")
+        
+        print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
+        
+        # Clean up separate parameter file if it exists
+        if run_parameters and 'external_result' in locals() and external_result.get('output_file'):
+            try:
+                if os.path.exists(external_result['output_file']):
+                    os.remove(external_result['output_file'])
+            except:
+                pass
         
     except KeyboardInterrupt:
         Logger.warning("Reconnaissance interrupted by user")

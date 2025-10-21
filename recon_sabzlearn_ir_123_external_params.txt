@@ -1,0 +1,36 @@
+Parameter Discovery Report
+Domain: sabzlearn.ir
+Timestamp: 2025-10-21 18:30:00
+Execution Time: 120.50 seconds
+============================================================
+
+DISCOVERED PARAMETERS (12):
+----------------------------------------
+
+Parameters with URLs (10):
+  1. _ -> https://sabzlearn.ir/wp-content/uploads/2022/08/what-is-python.mp3?_=1
+  2. action -> https://sabzlearn.ir/wp-admin/post.php?post=4833&action=edit
+  3. after -> https://sabzlearn.ir/login?after=https://sabzlearn.ir/blog/test/
+  4. ajax -> https://sabzlearn.ir/courses/?paged=1&ajax=true
+  5. category[4] -> https://sabzlearn.ir/courses/?category[4]=yes
+  6. fbclid -> https://sabzlearn.ir/en-freelance-sites/?fbclid=test123
+  7. login -> https://sabzlearn.ir/my-account/?login=true&back=home
+  8. only_free -> https://sabzlearn.ir/courses/?only_free=yes
+  9. p -> https://sabzlearn.ir/?p=5717
+  10. page -> https://sabzlearn.ir/my-account/?page=1
+
+Parameters without URLs - Usage Strategies (2):
+  1. codeBlock
+     Category: editor
+     Source: JavaScript: https://sabzlearn.ir/wp-content/themes/sabzlearn-theme/scripts/ckeditor.js
+     Strategy: Test on: https://sabzlearn.ir/admin/?codeBlock=test
+
+  2. config
+     Category: editor
+     Source: JavaScript: https://sabzlearn.ir/wp-content/themes/sabzlearn-theme/scripts/app.js
+     Strategy: Test on: https://sabzlearn.ir/wp-admin/?config=test
+
+URLS WITH PARAMETERS (211):
+----------------------------------------
+https://sabzlearn.ir/wp-content/uploads/2022/08/what-is-python.mp3?_=1
+https://sabzlearn.ir/wp-admin/post.php?post=4833&action=edit
