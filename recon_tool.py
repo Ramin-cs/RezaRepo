@@ -27,6 +27,10 @@ from urllib.parse import urlparse, urljoin, parse_qs, urlunparse
 import urllib.request
 import urllib.error
 import warnings
+from dataclasses import dataclass, asdict
+from datetime import datetime
+from typing import List, Set, Optional, Dict, Any, Tuple
+from collections import deque
 
 # Try to import requests with complete fallback
 try:
@@ -664,6 +668,389 @@ class SubdomainHunter:
         
         return live_subdomains
 
+@dataclass
+class DiscoveryResult:
+    """Unified result structure for all discovery types"""
+    url: str
+    method: str = "GET"
+    status_code: int = 0
+    content_length: int = 0
+    content_type: str = ""
+    title: str = ""
+    source: str = ""  # bruteforce, crawl, archive, api, etc.
+    result_type: str = ""  # directory, file, endpoint, link, etc.
+    depth: int = 0
+    parameters: List[str] = None
+    headers: Dict[str, str] = None
+    timestamp: str = ""
+    
+    def __post_init__(self):
+        if self.parameters is None:
+            self.parameters = []
+        if self.headers is None:
+            self.headers = {}
+        if not self.timestamp:
+            self.timestamp = datetime.now().isoformat()
+
+class ThreadSafeResults:
+    """Thread-safe results container"""
+    def __init__(self):
+        self.results = []
+        self.seen_urls = set()
+        self.lock = threading.Lock()
+    
+    def add_result(self, result: DiscoveryResult) -> bool:
+        """Add result if not already seen"""
+        with self.lock:
+            url_key = f"{result.method}:{result.url}"
+            if url_key not in self.seen_urls:
+                self.seen_urls.add(url_key)
+                self.results.append(result)
+                return True
+            return False
+    
+    def get_results(self) -> List[DiscoveryResult]:
+        """Get all results"""
+        with self.lock:
+            return self.results.copy()
+    
+    def count(self) -> int:
+        """Get result count"""
+        with self.lock:
+            return len(self.results)
+
+class RateLimiter:
+    """Advanced rate limiter for stealth operations"""
+    def __init__(self, requests_per_second: float = 50, burst_size: int = 10):
+        self.requests_per_second = requests_per_second
+        self.burst_size = burst_size
+        self.tokens = burst_size
+        self.last_update = time.time()
+        self.lock = threading.Lock()
+    
+    def acquire(self):
+        """Acquire permission to make a request"""
+        with self.lock:
+            now = time.time()
+            elapsed = now - self.last_update
+            self.last_update = now
+            
+            # Add tokens based on elapsed time
+            self.tokens = min(self.burst_size, self.tokens + elapsed * self.requests_per_second)
+            
+            if self.tokens >= 1:
+                self.tokens -= 1
+                return True
+            else:
+                # Calculate wait time
+                wait_time = (1 - self.tokens) / self.requests_per_second
+                time.sleep(wait_time)
+                self.tokens = 0
+                return True
+
+class EndpointDiscovery:
+    """Professional endpoint discovery combining multiple techniques"""
+    
+    def __init__(self, target_url, threads=30, timeout=10, wordlist_size='medium'):
+        self.target_url = target_url
+        self.threads = threads
+        self.timeout = timeout
+        self.results = ThreadSafeResults()
+        self.rate_limiter = RateLimiter(requests_per_second=30, burst_size=10)
+        self.http_client = HTTPClient(timeout=timeout)
+        self.wordlist = self._load_wordlist(wordlist_size)
+        
+        # Parse target URL
+        parsed = urlparse(target_url)
+        self.base_url = f"{parsed.scheme}://{parsed.netloc}"
+        self.domain = parsed.netloc
+    
+    def _load_wordlist(self, size):
+        """Load directory/file wordlist"""
+        base_wordlist = [
+            'admin', 'administrator', 'api', 'backup', 'config', 'data', 'db', 
+            'debug', 'dev', 'docs', 'files', 'images', 'login', 'logs', 'private',
+            'public', 'root', 'static', 'test', 'tmp', 'upload', 'user', 'users',
+            'www', 'assets', 'css', 'js', 'media', 'content', 'dashboard', 'panel',
+            'control', 'manage', 'system', 'app', 'application', 'service', 'lib',
+            'include', 'src', 'bin', 'sbin', 'etc', 'var', 'opt', 'home', 'temp'
+        ]
+        
+        if size == 'small':
+            return base_wordlist[:20]
+        elif size == 'large':
+            extended = [
+                'webmail', 'mail', 'email', 'smtp', 'pop', 'imap', 'ftp', 'sftp',
+                'ssh', 'telnet', 'rdp', 'vnc', 'proxy', 'cache', 'cdn', 'backup',
+                'archive', 'old', 'new', 'beta', 'alpha', 'staging', 'prod', 'live',
+                'secure', 'ssl', 'tls', 'cert', 'key', 'token', 'session', 'auth',
+                'oauth', 'saml', 'ldap', 'ad', 'directory', 'search', 'index'
+            ]
+            return base_wordlist + extended
+        else:
+            return base_wordlist
+    
+    def directory_bruteforce(self):
+        """Directory and file bruteforcing"""
+        Logger.info(f"Directory bruteforce on {self.base_url} ({len(self.wordlist)} paths)")
+        
+        extensions = ['', '.php', '.html', '.htm', '.asp', '.aspx', '.jsp', '.do', 
+                     '.action', '.json', '.xml', '.txt', '.bak', '.old', '.backup']
+        
+        def test_path(path):
+            results = []
+            for ext in extensions:
+                test_url = f"{self.base_url}/{path}{ext}"
+                
+                self.rate_limiter.acquire()
+                
+                try:
+                    response = self.http_client.get(test_url)
+                    
+                    # Check for interesting responses
+                    if response.status_code in [200, 201, 202, 204, 301, 302, 307, 308, 401, 403]:
+                        # Determine result type
+                        if ext == '' and response.status_code in [301, 302]:
+                            result_type = "directory"
+                        elif ext != '':
+                            result_type = "file"
+                        elif response.status_code in [401, 403]:
+                            result_type = "protected"
+                        else:
+                            result_type = "endpoint"
+                        
+                        result = DiscoveryResult(
+                            url=test_url,
+                            method="GET",
+                            status_code=response.status_code,
+                            content_length=len(response.content) if hasattr(response, 'content') else 0,
+                            content_type=response.headers.get('Content-Type', '') if hasattr(response, 'headers') else '',
+                            source="bruteforce",
+                            result_type=result_type,
+                            headers=dict(response.headers) if hasattr(response, 'headers') else {}
+                        )
+                        
+                        if self.results.add_result(result):
+                            Logger.found(f"[{response.status_code}] {test_url} ({result_type})")
+                            results.append(result)
+                except Exception:
+                    pass
+            
+            return results
+        
+        with ThreadPoolExecutor(max_workers=self.threads) as executor:
+            futures = [executor.submit(test_path, path) for path in self.wordlist]
+            for future in as_completed(futures):
+                future.result()
+    
+    def api_endpoint_discovery(self):
+        """API endpoint discovery"""
+        Logger.info(f"API endpoint discovery on {self.base_url}")
+        
+        api_paths = [
+            'api', 'api/v1', 'api/v2', 'api/v3', 'rest', 'graphql',
+            'api/users', 'api/user', 'api/admin', 'api/auth', 'api/login',
+            'api/config', 'api/status', 'api/health', 'api/info', 'api/version',
+            'api/search', 'api/data', 'api/files', 'api/upload', 'api/download'
+        ]
+        
+        def test_api_endpoint(path):
+            methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+            
+            for method in methods:
+                test_url = f"{self.base_url}/{path}"
+                
+                self.rate_limiter.acquire()
+                
+                try:
+                    if method == 'GET':
+                        response = self.http_client.get(test_url)
+                    else:
+                        # For other methods, we'll use a simple approach
+                        response = self.http_client.get(test_url)  # Simplified for compatibility
+                    
+                    if response.status_code in [200, 201, 202, 204, 400, 401, 403, 404, 405, 500]:
+                        result = DiscoveryResult(
+                            url=test_url,
+                            method=method,
+                            status_code=response.status_code,
+                            content_length=len(response.content) if hasattr(response, 'content') else 0,
+                            content_type=response.headers.get('Content-Type', '') if hasattr(response, 'headers') else '',
+                            source="api_discovery",
+                            result_type="api_endpoint",
+                            headers=dict(response.headers) if hasattr(response, 'headers') else {}
+                        )
+                        
+                        if self.results.add_result(result):
+                            Logger.found(f"[{method}] [{response.status_code}] {test_url}")
+                            return result
+                except Exception:
+                    pass
+            
+            return None
+        
+        with ThreadPoolExecutor(max_workers=self.threads) as executor:
+            futures = [executor.submit(test_api_endpoint, path) for path in api_paths]
+            for future in as_completed(futures):
+                future.result()
+    
+    def web_crawling(self):
+        """Basic web crawling for endpoint discovery"""
+        Logger.info(f"Web crawling on {self.base_url}")
+        
+        visited_urls = set()
+        crawl_queue = deque([self.target_url])
+        max_depth = 2
+        
+        def extract_links(content, base_url):
+            """Extract links from HTML content"""
+            links = []
+            
+            # Simple regex patterns for link extraction
+            patterns = [
+                r'href=["\']([^"\']+)["\']',
+                r'src=["\']([^"\']+)["\']',
+                r'action=["\']([^"\']+)["\']',
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if match and not match.startswith(('#', 'javascript:', 'mailto:', 'tel:')):
+                        full_url = urljoin(base_url, match)
+                        if full_url.startswith(('http://', 'https://')) and self.domain in full_url:
+                            links.append(full_url)
+            
+            return list(set(links))
+        
+        depth = 0
+        while crawl_queue and depth < max_depth:
+            current_level = list(crawl_queue)
+            crawl_queue.clear()
+            
+            for url in current_level:
+                if url in visited_urls:
+                    continue
+                
+                visited_urls.add(url)
+                
+                self.rate_limiter.acquire()
+                
+                try:
+                    response = self.http_client.get(url)
+                    
+                    if response.status_code == 200:
+                        result = DiscoveryResult(
+                            url=url,
+                            method="GET",
+                            status_code=response.status_code,
+                            content_length=len(response.content) if hasattr(response, 'content') else 0,
+                            content_type=response.headers.get('Content-Type', '') if hasattr(response, 'headers') else '',
+                            source="crawl",
+                            result_type="page",
+                            depth=depth,
+                            headers=dict(response.headers) if hasattr(response, 'headers') else {}
+                        )
+                        
+                        if self.results.add_result(result):
+                            Logger.found(f"[CRAWLED] [{response.status_code}] {url}")
+                        
+                        # Extract links for next level
+                        if hasattr(response, 'text') and 'text/html' in response.headers.get('Content-Type', ''):
+                            links = extract_links(response.text, url)
+                            crawl_queue.extend(links[:10])  # Limit to avoid too many URLs
+                
+                except Exception:
+                    pass
+            
+            depth += 1
+    
+    def archive_url_collection(self):
+        """Collect URLs from web archives"""
+        Logger.info(f"Archive URL collection for {self.domain}")
+        
+        try:
+            # Wayback Machine API
+            wayback_url = f"http://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=json&collapse=urlkey&limit=100"
+            
+            response = self.http_client.get(wayback_url)
+            
+            if response.status_code == 200:
+                try:
+                    data = json.loads(response.text)
+                    for entry in data[1:]:  # Skip header
+                        if len(entry) > 2:
+                            url = entry[2]
+                            if url.startswith(('http://', 'https://')):
+                                result = DiscoveryResult(
+                                    url=url,
+                                    method="GET",
+                                    source="archive",
+                                    result_type="archived_url"
+                                )
+                                
+                                if self.results.add_result(result):
+                                    Logger.found(f"[ARCHIVE] {url}")
+                except:
+                    pass
+        except Exception as e:
+            Logger.warning(f"Archive collection failed: {str(e)}")
+    
+    def run_discovery(self):
+        """Execute all endpoint discovery techniques"""
+        Logger.phase(f"ENDPOINT DISCOVERY - {self.target_url}")
+        
+        techniques = [
+            ("Directory Bruteforce", self.directory_bruteforce),
+            ("API Endpoint Discovery", self.api_endpoint_discovery),
+            ("Web Crawling", self.web_crawling),
+            ("Archive URL Collection", self.archive_url_collection),
+        ]
+        
+        for name, technique in techniques:
+            try:
+                technique()
+            except Exception as e:
+                Logger.error(f"{name} failed: {str(e)}")
+        
+        # Get results and organize them
+        all_results = self.results.get_results()
+        
+        # Categorize results
+        categorized = {
+            'directories': [],
+            'files': [],
+            'endpoints': [],
+            'api_endpoints': [],
+            'pages': [],
+            'archived_urls': [],
+            'protected': []
+        }
+        
+        for result in all_results:
+            if result.result_type == 'directory':
+                categorized['directories'].append(result)
+            elif result.result_type == 'file':
+                categorized['files'].append(result)
+            elif result.result_type == 'api_endpoint':
+                categorized['api_endpoints'].append(result)
+            elif result.result_type == 'page':
+                categorized['pages'].append(result)
+            elif result.result_type == 'archived_url':
+                categorized['archived_urls'].append(result)
+            elif result.result_type == 'protected':
+                categorized['protected'].append(result)
+            else:
+                categorized['endpoints'].append(result)
+        
+        # Sort by status code
+        for category in categorized:
+            categorized[category].sort(key=lambda x: x.status_code)
+        
+        Logger.success(f"Endpoint discovery completed: {len(all_results)} total results found")
+        
+        return categorized
+
 class ParameterHunter:
     """Professional parameter discovery"""
     
@@ -888,6 +1275,7 @@ class ProfessionalRecon:
             'target': None,
             'subdomains': {},
             'parameters': {},
+            'endpoints': {},
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
             'statistics': {}
         }
@@ -922,6 +1310,22 @@ class ProfessionalRecon:
         parameters = hunter.run_discovery()
         self.results['parameters'] = parameters
         return parameters
+    
+    def run_endpoint_phase(self, target, threads=30, timeout=10, wordlist_size='medium'):
+        parsed_target = TargetParser.parse_target(target)
+        if not self.results['target']:
+            self.results['target'] = parsed_target['original']
+        
+        hunter = EndpointDiscovery(
+            target_url=parsed_target['base_url'],
+            threads=threads,
+            timeout=timeout,
+            wordlist_size=wordlist_size
+        )
+        
+        endpoints = hunter.run_discovery()
+        self.results['endpoints'] = endpoints
+        return endpoints
     
     def save_results(self, filename, format_type='txt'):
         """Save results"""
@@ -968,6 +1372,45 @@ class ProfessionalRecon:
                         f.write(f"{i:3d}. {param_name}\n")
                 else:
                     f.write("No parameters found.\n")
+                
+                # Endpoints
+                f.write(f"\n\nENDPOINTS DISCOVERY:\n")
+                f.write("-" * 50 + "\n")
+                
+                if self.results['endpoints']:
+                    endpoint_stats = {}
+                    total_endpoints = 0
+                    
+                    for category, items in self.results['endpoints'].items():
+                        if items:
+                            endpoint_stats[category] = len(items)
+                            total_endpoints += len(items)
+                    
+                    f.write(f"Total endpoints found: {total_endpoints}\n\n")
+                    
+                    # Write by category
+                    for category, items in self.results['endpoints'].items():
+                        if items:
+                            f.write(f"{category.upper()} ({len(items)} found):\n")
+                            
+                            # Group by status code
+                            status_groups = {}
+                            for item in items:
+                                status = item.status_code if hasattr(item, 'status_code') else 'Unknown'
+                                if status not in status_groups:
+                                    status_groups[status] = []
+                                status_groups[status].append(item)
+                            
+                            # Write sorted by status code
+                            for status in sorted(status_groups.keys()):
+                                f.write(f"  Status {status}:\n")
+                                for item in status_groups[status]:
+                                    url = item.url if hasattr(item, 'url') else str(item)
+                                    method = getattr(item, 'method', 'GET')
+                                    f.write(f"    [{method}] {url}\n")
+                            f.write("\n")
+                else:
+                    f.write("No endpoints found.\n")
             
             Logger.success(f"Results saved to {filename}.txt")
 
@@ -990,7 +1433,7 @@ def print_banner():
  ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝       ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝    
 {Colors.END}
 {Colors.BOLD}{Colors.GREEN}Professional Bug Bounty Reconnaissance Tool{Colors.END}
-{Colors.GREEN}Advanced Subdomain & Parameter Discovery{Colors.END}
+{Colors.GREEN}Advanced Subdomain, Parameter & Endpoint Discovery{Colors.END}
 {Colors.GREEN}Cross-Platform | Multi-Threaded | Zero Dependencies{Colors.END}
 """
     print(banner)
@@ -1267,6 +1710,7 @@ def main():
     parser.add_argument('-t', '--target', required=True, help='Target domain or URL')
     parser.add_argument('--subdomains', action='store_true', help='Run only subdomain discovery')
     parser.add_argument('--params', action='store_true', help='Run only parameter discovery (uses external tool)')
+    parser.add_argument('--endpoints', action='store_true', help='Run only endpoint discovery')
     parser.add_argument('--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout (default: 10)')
     parser.add_argument('--wordlist', choices=['small', 'medium', 'large'], default='medium', help='Wordlist size')
@@ -1278,13 +1722,16 @@ def main():
     recon = ProfessionalRecon()
     
     try:
-        # Default behavior: run both subdomain and parameter discovery
+        # Default behavior: run all phases unless specific switches are used
         # Use switches to run only specific modules
-        if args.subdomains and args.params:
-            parser.error("Please use either --subdomains or --params, not both. For both, run without switches.")
+        switches_used = sum([args.subdomains, args.params, args.endpoints])
         
-        run_subdomains = not args.params  # Run subdomains unless --params is specified
-        run_parameters = not args.subdomains  # Run parameters unless --subdomains is specified
+        if switches_used > 1:
+            parser.error("Please use only one phase switch at a time, or none to run all phases.")
+        
+        run_subdomains = not args.params and not args.endpoints  # Run subdomains unless other phases specified
+        run_parameters = not args.subdomains and not args.endpoints  # Run parameters unless other phases specified
+        run_endpoints = not args.subdomains and not args.params  # Run endpoints unless other phases specified
         
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
@@ -1312,6 +1759,51 @@ def main():
                     print(f"\n{Colors.YELLOW}{category}:{Colors.END}", flush=True)
                     for subdomain, info in sorted(subs):
                         print(f"  • {info['url']}", flush=True)
+        
+        if run_endpoints:
+            # Run endpoint discovery phase
+            parsed_target = TargetParser.parse_target(args.target)
+            target_url = parsed_target['base_url']
+            
+            endpoints = recon.run_endpoint_phase(
+                target=target_url,
+                threads=args.threads,
+                timeout=args.timeout,
+                wordlist_size=args.wordlist
+            )
+            
+            # Clean phase separation
+            time.sleep(0.5)
+            
+            with Logger._lock:
+                print(f"\n{Colors.GREEN}[ENDPOINT RESULTS]{Colors.END}", flush=True)
+                
+                total_endpoints = sum(len(items) for items in endpoints.values())
+                print(f"Found {total_endpoints} endpoints:", flush=True)
+                
+                # Display by category and status code
+                for category, items in endpoints.items():
+                    if items:
+                        print(f"\n{Colors.YELLOW}{category.upper()} ({len(items)}):{Colors.END}", flush=True)
+                        
+                        # Group by status code
+                        status_groups = {}
+                        for item in items:
+                            status = item.status_code if hasattr(item, 'status_code') else 'Unknown'
+                            if status not in status_groups:
+                                status_groups[status] = []
+                            status_groups[status].append(item)
+                        
+                        # Display sorted by status code
+                        for status in sorted(status_groups.keys()):
+                            status_color = Colors.GREEN if status == 200 else Colors.YELLOW if status < 400 else Colors.RED
+                            print(f"  {status_color}Status {status}:{Colors.END}", flush=True)
+                            for item in status_groups[status][:5]:  # Show first 5 per status
+                                url = item.url if hasattr(item, 'url') else str(item)
+                                method = getattr(item, 'method', 'GET')
+                                print(f"    [{method}] {url}", flush=True)
+                            if len(status_groups[status]) > 5:
+                                print(f"    ... and {len(status_groups[status]) - 5} more", flush=True)
         
         if run_parameters:
             # Use external parameter discovery tool
@@ -1493,6 +1985,9 @@ def main():
         if run_parameters:
             total_parameters = len(recon.results.get('parameters', {}))
             print(f"{Colors.GREEN}Total Parameters Found: {total_parameters}{Colors.END}")
+        if run_endpoints:
+            total_endpoints = sum(len(items) for items in recon.results.get('endpoints', {}).values())
+            print(f"{Colors.GREEN}Total Endpoints Found: {total_endpoints}{Colors.END}")
         
         print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
         
