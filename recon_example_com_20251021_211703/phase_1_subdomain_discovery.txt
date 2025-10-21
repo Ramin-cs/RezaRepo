@@ -1,0 +1,14 @@
+=== PHASE 1: SUBDOMAIN_DISCOVERY ===
+Target: https://example.com
+Timestamp: 2025-10-21 21:17:03
+============================================================
+
+SUBDOMAINS FOUND: 4
+----------------------------------------
+
+Live (200 OK):
+  • https://example.com - Example Domain
+  • https://jonlu.ca
+  • http://m.testexample.com
+  • https://www.example.com - Example Domain
+

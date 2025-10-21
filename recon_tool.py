@@ -996,8 +996,66 @@ class EndpointDiscovery:
         except Exception as e:
             Logger.warning(f"Archive collection failed: {str(e)}")
     
+    def categorize_by_extension(self, url):
+        """Categorize URL by file extension"""
+        try:
+            parsed = urlparse(url)
+            path = parsed.path.lower()
+            
+            # Remove query parameters for extension detection
+            if '?' in path:
+                path = path.split('?')[0]
+            
+            if '.' in path:
+                extension = path.split('.')[-1]
+                
+                # Sensitive files
+                sensitive_extensions = ['env', 'config', 'conf', 'ini', 'cfg', 'bak', 'backup', 'old', 'tmp', 'log', 'sql', 'db']
+                if extension in sensitive_extensions:
+                    return 'sensitive_files'
+                
+                # Scripts and executables
+                script_extensions = ['php', 'asp', 'aspx', 'jsp', 'py', 'rb', 'pl', 'cgi', 'sh']
+                if extension in script_extensions:
+                    return 'scripts'
+                
+                # Static files
+                static_extensions = ['css', 'js', 'html', 'htm', 'xml', 'json', 'txt']
+                if extension in static_extensions:
+                    return 'static_files'
+                
+                # Media files
+                media_extensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'ico', 'pdf', 'doc', 'docx', 'xls', 'xlsx']
+                if extension in media_extensions:
+                    return 'media_files'
+                
+                return f'{extension}_files'
+            else:
+                return 'no_extension'
+        except:
+            return 'unknown'
+    
+    def categorize_special_urls(self, url):
+        """Categorize special URLs like mailto:, javascript:, etc."""
+        url_lower = url.lower()
+        
+        if url_lower.startswith('mailto:'):
+            return 'mailto_links'
+        elif url_lower.startswith('javascript:'):
+            return 'javascript_links'
+        elif url_lower.startswith('tel:'):
+            return 'telephone_links'
+        elif url_lower.startswith('ftp:'):
+            return 'ftp_links'
+        elif url_lower.startswith('data:'):
+            return 'data_urls'
+        elif '#' in url:
+            return 'fragment_urls'
+        else:
+            return None
+    
     def run_discovery(self):
-        """Execute all endpoint discovery techniques"""
+        """Execute all endpoint discovery techniques with enhanced categorization"""
         Logger.phase(f"ENDPOINT DISCOVERY - {self.target_url}")
         
         techniques = [
@@ -1016,53 +1074,113 @@ class EndpointDiscovery:
         # Get results and organize them
         all_results = self.results.get_results()
         
-        # Categorize results
+        # Enhanced categorization
         categorized = {
-            'directories': [],
-            'files': [],
-            'endpoints': [],
-            'api_endpoints': [],
-            'pages': [],
-            'archived_urls': [],
-            'protected': []
+            # By extension
+            'sensitive_files': {},
+            'scripts': {},
+            'static_files': {},
+            'media_files': {},
+            'no_extension': {},
+            
+            # Special categories
+            'api_endpoints': {},
+            'directories': {},
+            'mailto_links': {},
+            'javascript_links': {},
+            'telephone_links': {},
+            'ftp_links': {},
+            'data_urls': {},
+            'fragment_urls': {},
+            
+            # Other
+            'archived_urls': {},
+            'protected': {},
+            'unknown': {}
         }
         
         for result in all_results:
-            if result.result_type == 'directory':
-                categorized['directories'].append(result)
-            elif result.result_type == 'file':
-                categorized['files'].append(result)
+            # First check for special URLs
+            special_category = self.categorize_special_urls(result.url)
+            if special_category:
+                category = special_category
             elif result.result_type == 'api_endpoint':
-                categorized['api_endpoints'].append(result)
-            elif result.result_type == 'page':
-                categorized['pages'].append(result)
+                category = 'api_endpoints'
+            elif result.result_type == 'directory':
+                category = 'directories'
             elif result.result_type == 'archived_url':
-                categorized['archived_urls'].append(result)
+                category = 'archived_urls'
             elif result.result_type == 'protected':
-                categorized['protected'].append(result)
+                category = 'protected'
             else:
-                categorized['endpoints'].append(result)
+                # Categorize by extension
+                category = self.categorize_by_extension(result.url)
+            
+            # Initialize status code dict if not exists
+            if category not in categorized:
+                categorized[category] = {}
+            
+            status_code = result.status_code
+            if status_code not in categorized[category]:
+                categorized[category][status_code] = []
+            
+            categorized[category][status_code].append(result)
         
-        # Sort by status code
+        # Sort each status code group by URL
         for category in categorized:
-            categorized[category].sort(key=lambda x: x.status_code)
+            for status_code in categorized[category]:
+                categorized[category][status_code].sort(key=lambda x: x.url)
         
-        Logger.success(f"Endpoint discovery completed: {len(all_results)} total results found")
+        # Count total results
+        total_results = sum(len(status_dict) for category_dict in categorized.values() 
+                          for status_dict in category_dict.values())
+        
+        Logger.success(f"Endpoint discovery completed: {total_results} total results found")
+        
+        # Log category summary
+        for category, status_dict in categorized.items():
+            if status_dict:
+                total_in_category = sum(len(results) for results in status_dict.values())
+                Logger.info(f"{category.replace('_', ' ').title()}: {total_in_category} results")
         
         return categorized
 
+@dataclass
+class ParameterResult:
+    """Enhanced parameter result with source tracking"""
+    name: str
+    source: str  # 'javascript', 'html_form', 'url_query', 'fuzzing', 'archive'
+    source_url: str = ""
+    methods: List[str] = None
+    urls: List[str] = None
+    category: str = "general"  # 'sensitive', 'redirect', 'file_inclusion', 'injection'
+    
+    def __post_init__(self):
+        if self.methods is None:
+            self.methods = []
+        if self.urls is None:
+            self.urls = []
+
 class ParameterHunter:
-    """Professional parameter discovery"""
+    """Professional parameter discovery with enhanced tracking"""
     
     def __init__(self, target_url, threads=20, timeout=10, wordlist_size='medium'):
         self.target_url = target_url
         self.threads = threads
         self.timeout = timeout
-        self.found_parameters = set()
+        self.found_parameters = {}  # Changed to dict for ParameterResult objects
         self.parameter_details = {}
         self.http_client = HTTPClient(timeout=timeout)
         self.wordlist = self._load_wordlist(wordlist_size)
         self.baseline_response = None
+        
+        # Sensitive parameter patterns
+        self.sensitive_patterns = {
+            'redirect': ['redirect', 'url', 'next', 'return', 'goto', 'continue', 'dest', 'destination', 'forward', 'target'],
+            'file_inclusion': ['file', 'path', 'page', 'include', 'template', 'view', 'load', 'read', 'open', 'get'],
+            'injection': ['id', 'user', 'search', 'q', 'query', 'cmd', 'exec', 'system', 'eval', 'sql'],
+            'xss': ['name', 'message', 'comment', 'content', 'text', 'data', 'input', 'value', 'search']
+        }
     
     def _load_wordlist(self, size):
         base_params = [
@@ -1110,8 +1228,18 @@ class ParameterHunter:
                 'headers': {}
             }
     
+    def categorize_parameter(self, param_name):
+        """Categorize parameter based on name patterns"""
+        param_lower = param_name.lower()
+        
+        for category, patterns in self.sensitive_patterns.items():
+            if any(pattern in param_lower for pattern in patterns):
+                return category
+        
+        return "general"
+    
     def parameter_fuzzing(self):
-        """Parameter fuzzing"""
+        """Enhanced parameter fuzzing with source tracking"""
         Logger.info(f"Parameter fuzzing on {self.target_url} ({len(self.wordlist)} parameters)")
         
         test_values = ['1', 'test', 'true', 'false', '0', '', 'admin']
@@ -1147,17 +1275,23 @@ class ParameterHunter:
                     continue
             
             if found_methods:
-                param_info = {
-                    'name': param,
-                    'methods': found_methods,
-                    'urls': working_urls
-                }
-                self.found_parameters.add(param)
+                # Create enhanced parameter result
+                param_result = ParameterResult(
+                    name=param,
+                    source='fuzzing',
+                    source_url=self.target_url,
+                    methods=found_methods,
+                    urls=working_urls,
+                    category=self.categorize_parameter(param)
+                )
+                
+                self.found_parameters[param] = param_result
                 
                 if working_urls:
-                    Logger.found(f"Parameter: {param} ({'/'.join(set(found_methods))}) -> {working_urls[0]}")
+                    category_label = f"[{param_result.category.upper()}]" if param_result.category != "general" else ""
+                    Logger.found(f"Parameter {category_label}: {param} ({'/'.join(set(found_methods))}) -> {working_urls[0]}")
                 
-                return param_info
+                return param_result
             return None
         
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
@@ -1165,7 +1299,7 @@ class ParameterHunter:
             for future in as_completed(futures):
                 result = future.result()
                 if result:
-                    self.parameter_details[result['name']] = result
+                    self.parameter_details[result.name] = result
     
     def _is_different_response(self, response, param, value):
         """Check if response is different from baseline"""
@@ -1197,7 +1331,7 @@ class ParameterHunter:
         return False
     
     def javascript_analysis(self):
-        """JavaScript parameter extraction"""
+        """Enhanced JavaScript parameter extraction with source tracking"""
         Logger.info(f"JavaScript analysis for {self.target_url}")
         
         try:
@@ -1206,9 +1340,25 @@ class ParameterHunter:
             # Find JS files
             js_urls = re.findall(r'<script[^>]+src=["\']([^"\']+\.js[^"\']*)["\']', response.text, re.IGNORECASE)
             inline_js = re.findall(r'<script[^>]*>(.*?)</script>', response.text, re.DOTALL | re.IGNORECASE)
-            all_js_content = '\n'.join(inline_js)
             
-            # Fetch external JS files (limit to 5)
+            # Process inline JavaScript
+            if inline_js:
+                all_inline_content = '\n'.join(inline_js)
+                js_params = self._extract_js_parameters(all_inline_content)
+                for param in js_params:
+                    if param not in self.found_parameters:
+                        param_result = ParameterResult(
+                            name=param,
+                            source='javascript_inline',
+                            source_url=self.target_url,
+                            category=self.categorize_parameter(param)
+                        )
+                        self.found_parameters[param] = param_result
+                        
+                        category_label = f"[{param_result.category.upper()}]" if param_result.category != "general" else ""
+                        Logger.found(f"JS Inline Parameter {category_label}: {param} (from {self.target_url})")
+            
+            # Process external JS files (limit to 5)
             for js_url in js_urls[:5]:
                 try:
                     if js_url.startswith('//'):
@@ -1220,32 +1370,47 @@ class ParameterHunter:
                         js_url = urljoin(self.target_url, js_url)
                     
                     js_response = self.http_client.get(js_url)
-                    all_js_content += '\n' + js_response.text
-                except:
+                    js_params = self._extract_js_parameters(js_response.text)
+                    
+                    for param in js_params:
+                        if param not in self.found_parameters:
+                            param_result = ParameterResult(
+                                name=param,
+                                source='javascript_external',
+                                source_url=js_url,
+                                category=self.categorize_parameter(param)
+                            )
+                            self.found_parameters[param] = param_result
+                            
+                            category_label = f"[{param_result.category.upper()}]" if param_result.category != "general" else ""
+                            Logger.found(f"JS External Parameter {category_label}: {param} (from {js_url})")
+                            
+                except Exception as e:
+                    Logger.warning(f"Failed to fetch JS file {js_url}: {str(e)}")
                     continue
-            
-            # Extract parameters
-            param_patterns = [
-                r'["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']:\s*["\']?[^,}]+',
-                r'\.([a-zA-Z_][a-zA-Z0-9_]{2,})\s*=',
-                r'[?&]([a-zA-Z_][a-zA-Z0-9_]{2,})=',
-                r'name=["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',
-            ]
-            
-            js_params = set()
-            for pattern in param_patterns:
-                matches = re.findall(pattern, all_js_content, re.IGNORECASE)
-                for match in matches:
-                    if len(match) > 2 and match.lower() not in ['function', 'return', 'var']:
-                        js_params.add(match)
-            
-            for param in js_params:
-                if param not in self.found_parameters:
-                    self.found_parameters.add(param)
-                    Logger.found(f"JS Parameter: {param}")
                     
         except Exception as e:
             Logger.warning(f"JavaScript analysis failed: {str(e)}")
+    
+    def _extract_js_parameters(self, js_content):
+        """Extract parameters from JavaScript content"""
+        param_patterns = [
+            r'["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']:\s*["\']?[^,}]+',
+            r'\.([a-zA-Z_][a-zA-Z0-9_]{2,})\s*=',
+            r'[?&]([a-zA-Z_][a-zA-Z0-9_]{2,})=',
+            r'name=["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',
+            r'getElementById\(["\']([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',
+            r'querySelector\(["\'][^"\']*#([a-zA-Z_][a-zA-Z0-9_]{2,})["\']',
+        ]
+        
+        js_params = set()
+        for pattern in param_patterns:
+            matches = re.findall(pattern, js_content, re.IGNORECASE)
+            for match in matches:
+                if len(match) > 2 and match.lower() not in ['function', 'return', 'var', 'const', 'let', 'true', 'false', 'null', 'undefined']:
+                    js_params.add(match)
+        
+        return js_params
     
     def run_discovery(self):
         """Execute parameter discovery"""
@@ -1264,8 +1429,30 @@ class ParameterHunter:
             except Exception as e:
                 Logger.error(f"{name} failed: {str(e)}")
         
-        Logger.success(f"Parameter discovery completed: {len(self.parameter_details)} parameters found")
-        return self.parameter_details
+        # Organize results by category
+        categorized_results = {
+            'general': {},
+            'sensitive': {},
+            'redirect': {},
+            'file_inclusion': {},
+            'injection': {},
+            'xss': {}
+        }
+        
+        for param_name, param_result in self.found_parameters.items():
+            category = param_result.category
+            if category not in categorized_results:
+                categorized_results[category] = {}
+            categorized_results[category][param_name] = param_result
+        
+        Logger.success(f"Parameter discovery completed: {len(self.found_parameters)} parameters found")
+        
+        # Log category summary
+        for category, params in categorized_results.items():
+            if params:
+                Logger.info(f"{category.title()} parameters: {len(params)}")
+        
+        return categorized_results
 
 class ProfessionalRecon:
     """Main reconnaissance orchestrator"""
@@ -1279,6 +1466,124 @@ class ProfessionalRecon:
             'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
             'statistics': {}
         }
+        self.target_folder = None
+    
+    def create_target_folder(self, target):
+        """Create organized folder structure for target"""
+        # Clean target name for folder
+        parsed = TargetParser.parse_target(target)
+        domain_name = parsed['domain'].replace('.', '_').replace(':', '_')
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        
+        self.target_folder = f"recon_{domain_name}_{timestamp}"
+        
+        try:
+            os.makedirs(self.target_folder, exist_ok=True)
+            Logger.info(f"Created target folder: {self.target_folder}")
+            return self.target_folder
+        except Exception as e:
+            Logger.error(f"Failed to create target folder: {e}")
+            return None
+    
+    def save_phase_results(self, phase_name, results, phase_number):
+        """Save individual phase results"""
+        if not self.target_folder:
+            return None
+        
+        try:
+            filename = f"phase_{phase_number}_{phase_name}.txt"
+            filepath = os.path.join(self.target_folder, filename)
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"=== PHASE {phase_number}: {phase_name.upper()} ===\n")
+                f.write(f"Target: {self.results.get('target', 'Unknown')}\n")
+                f.write(f"Timestamp: {self.results['timestamp']}\n")
+                f.write("=" * 60 + "\n\n")
+                
+                if phase_name == "subdomain_discovery":
+                    self._write_subdomain_results(f, results)
+                elif phase_name == "parameter_discovery":
+                    self._write_parameter_results(f, results)
+                elif phase_name == "endpoint_discovery":
+                    self._write_endpoint_results(f, results)
+            
+            Logger.success(f"Phase {phase_number} results saved to {filepath}")
+            return filepath
+            
+        except Exception as e:
+            Logger.error(f"Failed to save phase {phase_number} results: {e}")
+            return None
+    
+    def _write_subdomain_results(self, f, subdomains):
+        """Write subdomain results to file"""
+        f.write(f"SUBDOMAINS FOUND: {len(subdomains)}\n")
+        f.write("-" * 40 + "\n\n")
+        
+        # Group by category
+        categories = {}
+        for subdomain, info in subdomains.items():
+            category = info['category']
+            if category not in categories:
+                categories[category] = []
+            categories[category].append((subdomain, info))
+        
+        for category, subs in sorted(categories.items()):
+            f.write(f"{category}:\n")
+            for subdomain, info in sorted(subs):
+                f.write(f"  • {info['url']}")
+                if info.get('title'):
+                    f.write(f" - {info['title'][:50]}")
+                f.write(f"\n")
+            f.write("\n")
+    
+    def _write_parameter_results(self, f, parameters):
+        """Write parameter results to file"""
+        total_params = sum(len(params) for params in parameters.values())
+        f.write(f"PARAMETERS FOUND: {total_params}\n")
+        f.write("-" * 40 + "\n\n")
+        
+        for category, params in parameters.items():
+            if params:
+                f.write(f"{category.upper()} PARAMETERS ({len(params)}):\n")
+                f.write("-" * 30 + "\n")
+                
+                for param_name, param_result in params.items():
+                    f.write(f"• {param_name}\n")
+                    f.write(f"  Source: {param_result.source}\n")
+                    if param_result.source_url:
+                        f.write(f"  Source URL: {param_result.source_url}\n")
+                    if param_result.methods:
+                        f.write(f"  Methods: {', '.join(param_result.methods)}\n")
+                    if param_result.urls:
+                        f.write(f"  URLs: {param_result.urls[0]}\n")
+                    f.write("\n")
+                f.write("\n")
+    
+    def _write_endpoint_results(self, f, endpoints):
+        """Write endpoint results to file"""
+        total_endpoints = sum(len(status_dict) for category_dict in endpoints.values() 
+                            for status_dict in category_dict.values())
+        f.write(f"ENDPOINTS FOUND: {total_endpoints}\n")
+        f.write("-" * 40 + "\n\n")
+        
+        for category, status_dict in endpoints.items():
+            if status_dict:
+                category_total = sum(len(results) for results in status_dict.values())
+                f.write(f"{category.replace('_', ' ').upper()} ({category_total}):\n")
+                f.write("-" * 30 + "\n")
+                
+                # Sort status codes
+                for status_code in sorted(status_dict.keys()):
+                    results = status_dict[status_code]
+                    if results:
+                        f.write(f"  Status {status_code} ({len(results)} results):\n")
+                        for result in results[:10]:  # Limit to first 10 per status
+                            method = getattr(result, 'method', 'GET')
+                            f.write(f"    [{method}] {result.url}\n")
+                        if len(results) > 10:
+                            f.write(f"    ... and {len(results) - 10} more\n")
+                        f.write("\n")
+                f.write("\n")
     
     def run_subdomain_phase(self, target, threads=50, timeout=10, wordlist_size='medium'):
         parsed_target = TargetParser.parse_target(target)
@@ -1733,6 +2038,9 @@ def main():
         run_parameters = not args.subdomains and not args.endpoints  # Run parameters unless other phases specified
         run_endpoints = not args.subdomains and not args.params  # Run endpoints unless other phases specified
         
+        # Create target folder
+        recon.create_target_folder(args.target)
+        
         if run_subdomains:
             subdomains = recon.run_subdomain_phase(
                 target=args.target,
@@ -1740,6 +2048,9 @@ def main():
                 timeout=args.timeout,
                 wordlist_size=args.wordlist
             )
+            
+            # Save phase 1 results
+            recon.save_phase_results("subdomain_discovery", subdomains, 1)
             
             # Clean phase separation - ensure all threads are done
             time.sleep(0.5)
@@ -1772,6 +2083,9 @@ def main():
                 wordlist_size=args.wordlist
             )
             
+            # Save phase 3 results
+            recon.save_phase_results("endpoint_discovery", endpoints, 3)
+            
             # Clean phase separation
             time.sleep(0.5)
             
@@ -1795,8 +2109,12 @@ def main():
                             status_groups[status].append(item)
                         
                         # Display sorted by status code
-                        for status in sorted(status_groups.keys()):
-                            status_color = Colors.GREEN if status == 200 else Colors.YELLOW if status < 400 else Colors.RED
+                        for status in sorted(status_groups.keys(), key=lambda x: int(x) if isinstance(x, (int, str)) and str(x).isdigit() else 999):
+                            try:
+                                status_int = int(status) if str(status).isdigit() else 0
+                                status_color = Colors.GREEN if status_int == 200 else Colors.YELLOW if status_int < 400 else Colors.RED
+                            except:
+                                status_color = Colors.WHITE
                             print(f"  {status_color}Status {status}:{Colors.END}", flush=True)
                             for item in status_groups[status][:5]:  # Show first 5 per status
                                 url = item.url if hasattr(item, 'url') else str(item)
@@ -1818,6 +2136,11 @@ def main():
             
             if external_result.get('status') == 'success':
                 Logger.success("Parameter discovery completed")
+                
+                # Save phase 2 results (simulated structure for external tool)
+                if recon.target_folder:
+                    param_results = {'general': {}}  # Simplified for external tool
+                    recon.save_phase_results("parameter_discovery", param_results, 2)
                 
             # Read and display parameters live
             param_file = external_result.get('output_file')

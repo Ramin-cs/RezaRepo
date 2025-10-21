@@ -1,0 +1,24 @@
+=== PHASE 3: ENDPOINT_DISCOVERY ===
+Target: https://testphp.vulnweb.com
+Timestamp: 2025-10-21 21:05:29
+============================================================
+
+ENDPOINTS FOUND: 100
+----------------------------------------
+
+ARCHIVED URLS (100):
+------------------------------
+  Status 0 (100 results):
+    [GET] http://testphp.vulnweb.com/
+    [GET] http://testphp.vulnweb.com/%0A
+    [GET] http://testphp.vulnweb.com/%0A%0A%D9%87%D8%B0%D8%A7
+    [GET] http://testphp.vulnweb.com/%20,%20http://testphp.vulnweb.com/guestbook.php
+    [GET] http://testphp.vulnweb.com/%20I%20want%20to%20start%20testing%20on%20stealing%20cookies%20through%20exploit%20xss%20on%20search%20bar%20at%20testphp%20vulnweb
+    [GET] http://testphp.vulnweb.com/%25%25/index.php
+    [GET] http://testphp.vulnweb.com/%3C/a%3E
+    [GET] http://testphp.vulnweb.com/%3C/a%3E.%3C/p%3E%3Cp%3EFollow
+    [GET] http://testphp.vulnweb.com/%3Cspan
+    [GET] http://testphp.vulnweb.com/%CB%93%E2%86%92
+    ... and 90 more
+
+

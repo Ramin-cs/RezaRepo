@@ -1,0 +1,30 @@
+=== PHASE 3: ENDPOINT_DISCOVERY ===
+Target: https://example.com
+Timestamp: 2025-10-21 21:14:06
+============================================================
+
+ENDPOINTS FOUND: 22
+----------------------------------------
+
+NO EXTENSION (1):
+------------------------------
+  Status 200 (1 results):
+    [GET] https://example.com
+
+
+API ENDPOINTS (21):
+------------------------------
+  Status 404 (21 results):
+    [GET] https://example.com/api
+    [PUT] https://example.com/api/admin
+    [GET] https://example.com/api/auth
+    [GET] https://example.com/api/config
+    [GET] https://example.com/api/data
+    [GET] https://example.com/api/download
+    [GET] https://example.com/api/files
+    [GET] https://example.com/api/health
+    [GET] https://example.com/api/info
+    [POST] https://example.com/api/login
+    ... and 11 more
+
+
