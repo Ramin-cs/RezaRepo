@@ -414,7 +414,10 @@ class SubdomainHunter:
             try:
                 answers = dns.resolver.resolve(full_domain, 'A')
                 ips = [str(ip) for ip in answers]
-                self.found_subdomains.add(full_domain)
+                self.found_subdomains[full_domain] = {
+                    'source': 'dns_bruteforce',
+                    'ip_addresses': ips
+                }
                 Logger.found(f"{full_domain} -> {', '.join(ips)}")
                 return full_domain
             except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
@@ -526,7 +529,10 @@ class SubdomainHunter:
                                     domain.count('.') >= self.domain.count('.')):
                                     
                                     if domain not in self.found_subdomains:
-                                        self.found_subdomains.add(domain)
+                                        self.found_subdomains[domain] = {
+                                            'source': 'certificate_transparency',
+                                            'ip_addresses': []
+                                        }
                                         Logger.found(f"CT: {domain}")
                                         found_count += 1
                         break  # If first source works, don't try others
@@ -548,7 +554,10 @@ class SubdomainHunter:
                                     domain.count('.') >= self.domain.count('.')):
                                     
                                     if domain not in self.found_subdomains:
-                                        self.found_subdomains.add(domain)
+                                        self.found_subdomains[domain] = {
+                                            'source': 'certificate_transparency',
+                                            'ip_addresses': []
+                                        }
                                         Logger.found(f"CT: {domain}")
                                         found_count += 1
                         break
@@ -586,7 +595,10 @@ class SubdomainHunter:
                     for name, node in zone.nodes.items():
                         subdomain = f"{name}.{self.domain}" if name != '@' else self.domain
                         if subdomain not in self.found_subdomains:
-                            self.found_subdomains.add(subdomain)
+                            self.found_subdomains[subdomain] = {
+                                'source': 'dns_zone_transfer',
+                                'ip_addresses': []
+                            }
                             Logger.found(f"Zone Transfer: {subdomain}")
                 except Exception:
                     pass
@@ -711,7 +723,10 @@ class SubdomainHunter:
                         # Clean and normalize subdomain
                         cleaned_subdomain = subdomain.lower().strip()
                         if cleaned_subdomain and cleaned_subdomain not in self.found_subdomains:
-                            self.found_subdomains.add(cleaned_subdomain)
+                            self.found_subdomains[cleaned_subdomain] = {
+                                'source': tool_name.lower(),
+                                'ip_addresses': []
+                            }
                             new_subdomains.append(cleaned_subdomain)
                     
                     # Display new subdomains found by this tool
@@ -2226,9 +2241,19 @@ def main():
                         items_list = list(items) if not isinstance(items, list) else items
                         display_limit = min(20, len(items_list))  # Show up to 20 items
                         for i, item in enumerate(items_list[:display_limit]):
-                            url = item.get('url', str(item)) if isinstance(item, dict) else (item.url if hasattr(item, 'url') else str(item))
-                            status = item.get('status_code', 'Unknown') if isinstance(item, dict) else (getattr(item, 'status_code', 'Unknown'))
-                            method = item.get('method', 'GET') if isinstance(item, dict) else (getattr(item, 'method', 'GET'))
+                            # Handle different item types properly
+                            if hasattr(item, 'url'):
+                                url = item.url
+                                status = getattr(item, 'status_code', 'Unknown')
+                                method = getattr(item, 'method', 'GET')
+                            elif isinstance(item, dict):
+                                url = item.get('url', str(item))
+                                status = item.get('status_code', 'Unknown')
+                                method = item.get('method', 'GET')
+                            else:
+                                url = str(item)
+                                status = 'Unknown'
+                                method = 'GET'
                             
                             # Color code status
                             try:
@@ -2413,7 +2438,7 @@ def main():
                             Logger.success(f"Alternative parsing found {len(parameters)} parameters")
                         else:
                             # Check for fallback parameter files
-                            fallback_pattern = f"{target.replace('.', '_')}_fallback_parameters.txt"
+                            fallback_pattern = f"{args.target.replace('.', '_')}_fallback_parameters.txt"
                             if os.path.exists(fallback_pattern):
                                 Logger.info(f"Found fallback parameter file: {fallback_pattern}")
                                 try:
