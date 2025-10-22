@@ -1,0 +1,13 @@
+admin.example.com
+api.example.com
+app.example.com
+blog.example.com
+cdn.example.com
+dev.example.com
+ftp.example.com
+mail.example.com
+mobile.example.com
+shop.example.com
+staging.example.com
+test.example.com
+www.example.com
