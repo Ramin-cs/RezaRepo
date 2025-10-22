@@ -453,7 +453,7 @@ class SubdomainHunter:
                 req = urllib.request.Request(ct_url)
                 req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 
-                with urllib.request.urlopen(req, timeout=15, context=ssl_context) as response:
+                with urllib.request.urlopen(req, timeout=10, context=ssl_context) as response:
                     if response.getcode() == 200:
                         content = response.read().decode('utf-8')
                         
@@ -530,6 +530,14 @@ class SubdomainHunter:
                         break
                     except:
                         continue
+            except urllib.error.URLError as e:
+                if "timed out" in str(e) or "timeout" in str(e).lower():
+                    Logger.warning(f"CT source timed out: {ct_url}")
+                elif "502" in str(e) or "Bad Gateway" in str(e):
+                    Logger.warning(f"CT source returned 502 Bad Gateway: {ct_url}")
+                else:
+                    Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
+                continue
             except Exception as e:
                 Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
                 continue
@@ -1722,7 +1730,7 @@ class ProfessionalRecon:
                 '-t', str(threads),
                 '--timeout', str(timeout),
                 '--rate-limit', '50',
-                '-f', 'json',
+                '-f', 'txt',
                 '-o', f'temp_endpoint_results_{int(time.time())}'
             ]
             
@@ -2137,7 +2145,8 @@ def run_external_parameter_discovery(target, output_file=None):
         except Exception as e:
             process.kill()
             Logger.error(f"Failed to run external parameter discovery: {str(e)}")
-            return {'status': 'error', 'message': str(e)}
+            # Try fallback method
+            return run_fallback_parameter_discovery(target)
         
         if result_returncode == 0:
             Logger.success("External parameter discovery completed successfully")
@@ -2541,6 +2550,47 @@ def main():
     except Exception as e:
         Logger.error(f"Reconnaissance failed: {str(e)}")
         sys.exit(1)
+
+def run_fallback_parameter_discovery(target):
+    """Fallback parameter discovery using basic methods"""
+    Logger.info("Using fallback parameter discovery method")
+    
+    # Basic parameter list commonly found in web applications
+    common_params = [
+        'id', 'page', 'limit', 'offset', 'search', 's', 'q', 'query', 'keyword',
+        'sort', 'order', 'filter', 'category', 'type', 'format', 'lang', 'language',
+        'redirect', 'return', 'callback', 'jsonp', 'debug', 'test', 'admin',
+        'user', 'username', 'email', 'token', 'key', 'api_key', 'session',
+        'action', 'method', 'function', 'cmd', 'command', 'exec', 'file',
+        'path', 'url', 'link', 'src', 'source', 'target', 'dest', 'destination',
+        'name', 'title', 'description', 'content', 'data', 'value', 'param',
+        'arg', 'args', 'parameter', 'parameters', 'config', 'settings',
+        'mode', 'view', 'display', 'show', 'hide', 'enable', 'disable',
+        'start', 'end', 'from', 'to', 'min', 'max', 'count', 'size',
+        'width', 'height', 'x', 'y', 'lat', 'lng', 'latitude', 'longitude'
+    ]
+    
+    # Save fallback results
+    fallback_file = f"{target.replace('.', '_')}_fallback_parameters.txt"
+    try:
+        with open(fallback_file, 'w', encoding='utf-8') as f:
+            f.write(f"Fallback Parameter Discovery Results for {target}\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(f"Common parameters to test:\n\n")
+            for i, param in enumerate(common_params, 1):
+                f.write(f"{i}. {param}\n")
+        
+        Logger.success(f"Fallback parameter discovery completed: {len(common_params)} common parameters")
+        return {
+            'status': 'success',
+            'parameters': common_params,
+            'output_file': fallback_file,
+            'total_params': len(common_params),
+            'method': 'fallback'
+        }
+    except Exception as e:
+        Logger.error(f"Fallback parameter discovery failed: {str(e)}")
+        return {'status': 'failed', 'parameters': [], 'total_params': 0}
 
 if __name__ == "__main__":
     main()

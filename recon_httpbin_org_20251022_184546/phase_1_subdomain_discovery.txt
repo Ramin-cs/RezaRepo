@@ -1,0 +1,14 @@
+=== PHASE 1: SUBDOMAIN_DISCOVERY ===
+Target: httpbin.org
+Timestamp: 2025-10-22 18:45:46
+============================================================
+
+SUBDOMAINS FOUND: 4
+----------------------------------------
+
+Live (200 OK):
+  • https://beta.httpbin.org
+  • https://eu.httpbin.org
+  • https://httpbin.org
+  • https://www.httpbin.org
+
