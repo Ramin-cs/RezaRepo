@@ -751,10 +751,12 @@ class RateLimiter:
 class EndpointDiscovery:
     """Professional endpoint discovery combining multiple techniques"""
     
-    def __init__(self, target_url, threads=30, timeout=10, wordlist_size='medium'):
+    def __init__(self, target_url, threads=30, timeout=10, wordlist_size='medium', use_all=True, depth=4):
         self.target_url = target_url
         self.threads = threads
         self.timeout = timeout
+        self.use_all = use_all
+        self.depth = depth
         self.results = ThreadSafeResults()
         self.rate_limiter = RateLimiter(requests_per_second=30, burst_size=10)
         self.http_client = HTTPClient(timeout=timeout)
@@ -776,16 +778,25 @@ class EndpointDiscovery:
             'include', 'src', 'bin', 'sbin', 'etc', 'var', 'opt', 'home', 'temp'
         ]
         
+        extended = [
+            'webmail', 'mail', 'email', 'smtp', 'pop', 'imap', 'ftp', 'sftp',
+            'ssh', 'telnet', 'rdp', 'vnc', 'proxy', 'cache', 'cdn', 'backup',
+            'archive', 'old', 'new', 'beta', 'alpha', 'staging', 'prod', 'live',
+            'secure', 'ssl', 'tls', 'cert', 'key', 'token', 'session', 'auth',
+            'oauth', 'saml', 'ldap', 'ad', 'directory', 'search', 'index',
+            'wp-admin', 'wp-content', 'wp-includes', 'wp-config', 'wp-login',
+            'phpmyadmin', 'pma', 'mysql', 'database', 'sql', 'db_admin',
+            'cpanel', 'plesk', 'webmin', 'adminer', 'phpinfo', 'info',
+            'robots', 'sitemap', 'crossdomain', 'favicon', 'apple-touch-icon',
+            'manifest', 'browserconfig', 'humans', 'security', 'readme',
+            'changelog', 'license', 'install', 'setup', 'configure',
+            'maintenance', 'under-construction', 'coming-soon', '404', '500',
+            'error', 'errors', 'exception', 'exceptions', 'trace', 'traceback'
+        ]
+        
         if size == 'small':
             return base_wordlist[:20]
-        elif size == 'large':
-            extended = [
-                'webmail', 'mail', 'email', 'smtp', 'pop', 'imap', 'ftp', 'sftp',
-                'ssh', 'telnet', 'rdp', 'vnc', 'proxy', 'cache', 'cdn', 'backup',
-                'archive', 'old', 'new', 'beta', 'alpha', 'staging', 'prod', 'live',
-                'secure', 'ssl', 'tls', 'cert', 'key', 'token', 'session', 'auth',
-                'oauth', 'saml', 'ldap', 'ad', 'directory', 'search', 'index'
-            ]
+        elif size == 'large' or self.use_all:
             return base_wordlist + extended
         else:
             return base_wordlist
@@ -900,7 +911,7 @@ class EndpointDiscovery:
         
         visited_urls = set()
         crawl_queue = deque([self.target_url])
-        max_depth = 2
+        max_depth = self.depth if hasattr(self, 'depth') else 2
         
         def extract_links(content, base_url):
             """Extract links from HTML content"""
@@ -1056,7 +1067,7 @@ class EndpointDiscovery:
     
     def run_discovery(self):
         """Execute all endpoint discovery techniques with enhanced categorization"""
-        Logger.phase(f"ENDPOINT DISCOVERY - {self.target_url}")
+        Logger.phase(f"DIRECTORY DISCOVERY - {self.target_url}")
         
         techniques = [
             ("Directory Bruteforce", self.directory_bruteforce),
@@ -1485,7 +1496,7 @@ class ProfessionalRecon:
             Logger.error(f"Failed to create target folder: {e}")
             return None
     
-    def save_phase_results(self, phase_name, results, phase_number):
+    def save_phase_results(self, phase_name, results, phase_number, parameters_data=None):
         """Save individual phase results"""
         if not self.target_folder:
             return None
@@ -1501,10 +1512,20 @@ class ProfessionalRecon:
                 f.write("=" * 60 + "\n\n")
                 
                 if phase_name == "subdomain_discovery":
-                    self._write_subdomain_results(f, results)
+                    # Save subdomain results
+                    for subdomain, info in results.items():
+                        f.write(f"{info['url']} [{info['status_code']}] - {info['category']}\n")
+                
                 elif phase_name == "parameter_discovery":
-                    self._write_parameter_results(f, results)
-                elif phase_name == "endpoint_discovery":
+                    # Save parameter results with proper data
+                    if parameters_data:
+                        f.write(f"Found {len(parameters_data)} parameters:\n\n")
+                        for i, param in enumerate(parameters_data, 1):
+                            f.write(f"{i}. {param}\n")
+                    else:
+                        f.write("No parameters found or external tool used.\n")
+                
+                elif phase_name == "directory_discovery":
                     self._write_endpoint_results(f, results)
             
             Logger.success(f"Phase {phase_number} results saved to {filepath}")
@@ -1616,7 +1637,7 @@ class ProfessionalRecon:
         self.results['parameters'] = parameters
         return parameters
     
-    def run_endpoint_phase(self, target, threads=30, timeout=10, wordlist_size='medium'):
+    def run_endpoint_phase(self, target, threads=30, timeout=10, wordlist_size='medium', use_all=True, depth=4):
         parsed_target = TargetParser.parse_target(target)
         if not self.results['target']:
             self.results['target'] = parsed_target['original']
@@ -1625,7 +1646,9 @@ class ProfessionalRecon:
             target_url=parsed_target['base_url'],
             threads=threads,
             timeout=timeout,
-            wordlist_size=wordlist_size
+            wordlist_size=wordlist_size,
+            use_all=use_all,
+            depth=depth
         )
         
         endpoints = hunter.run_discovery()
@@ -2080,17 +2103,19 @@ def main():
                 target=target_url,
                 threads=args.threads,
                 timeout=args.timeout,
-                wordlist_size=args.wordlist
+                wordlist_size=args.wordlist,
+                use_all=True,
+                depth=4
             )
             
             # Save phase 3 results
-            recon.save_phase_results("endpoint_discovery", endpoints, 3)
+            recon.save_phase_results("directory_discovery", endpoints, 3)
             
             # Clean phase separation
             time.sleep(0.5)
             
             with Logger._lock:
-                print(f"\n{Colors.GREEN}[ENDPOINT RESULTS]{Colors.END}", flush=True)
+                print(f"\n{Colors.GREEN}[DIRECTORY RESULTS]{Colors.END}", flush=True)
                 
                 total_endpoints = sum(len(items) for items in endpoints.values())
                 print(f"Found {total_endpoints} endpoints:", flush=True)
@@ -2137,10 +2162,47 @@ def main():
             if external_result.get('status') == 'success':
                 Logger.success("Parameter discovery completed")
                 
-                # Save phase 2 results (simulated structure for external tool)
-                if recon.target_folder:
-                    param_results = {'general': {}}  # Simplified for external tool
-                    recon.save_phase_results("parameter_discovery", param_results, 2)
+            # Save phase 2 results with actual parameter data
+            if recon.target_folder:
+                # Extract parameters from external result for phase file
+                parameters = []
+                if external_result.get('output_file') and os.path.exists(external_result['output_file']):
+                    try:
+                        with open(external_result['output_file'], 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        # Extract parameters from external file
+                        lines = content.split('\n')
+                        
+                        for line in lines:
+                            if line.startswith('[FOUND] Parameter #'):
+                                # Extract parameter name from format: [FOUND] Parameter #1: param_name (found in: URL...)
+                                match = re.search(r'Parameter #\d+: ([^\s\(]+)', line)
+                                if match:
+                                    param_name = match.group(1)
+                                    if param_name not in parameters:
+                                        parameters.append(param_name)
+                        
+                        # If no parameters found with that method, try alternative parsing
+                        if not parameters:
+                            for line in lines:
+                                if '[RESULTS for' in line:
+                                    # Look for parameters in summary
+                                    for i, summary_line in enumerate(lines):
+                                        if 'Parameters found:' in summary_line:
+                                            # Extract number and create placeholder list
+                                            param_count = re.search(r'Parameters found: (\d+)', summary_line)
+                                            if param_count:
+                                                count = int(param_count.group(1))
+                                                # Generate placeholder parameters for count
+                                                parameters = [f"param_{i+1}" for i in range(min(count, 50))]  # Limit to 50 for display
+                                            break
+                                    break
+                    except Exception as e:
+                        Logger.warning(f"Could not extract parameters for phase file: {e}")
+                
+                param_results = {'general': {param: {'methods': ['GET'], 'urls': []} for param in parameters}}
+                recon.save_phase_results("parameter_discovery", param_results, 2, parameters)
                 
             # Read and display parameters live
             param_file = external_result.get('output_file')
@@ -2274,7 +2336,7 @@ def main():
                     # Clean up the external parameter file after reading
                     try:
                         os.remove(param_file)
-                        Logger.verbose(f"Cleaned up temporary parameter file: {param_file}")
+                        Logger.info(f"Cleaned up temporary parameter file: {param_file}")
                     except:
                         pass
                     
@@ -2310,15 +2372,26 @@ def main():
             print(f"{Colors.GREEN}Total Parameters Found: {total_parameters}{Colors.END}")
         if run_endpoints:
             total_endpoints = sum(len(items) for items in recon.results.get('endpoints', {}).values())
-            print(f"{Colors.GREEN}Total Endpoints Found: {total_endpoints}{Colors.END}")
+            print(f"{Colors.GREEN}Total Directories Found: {total_endpoints}{Colors.END}")
         
         print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
         
-        # Clean up separate parameter file if it exists
-        if run_parameters and 'external_result' in locals() and external_result.get('output_file'):
+        # Clean up temporary parameter files to avoid duplication
+        if run_parameters:
             try:
-                if os.path.exists(external_result['output_file']):
-                    os.remove(external_result['output_file'])
+                import glob
+                # Clean up all temporary parameter files
+                temp_param_files = glob.glob("*_parameters.txt")
+                temp_external_files = glob.glob("*external_params*.txt")
+                all_temp_files = temp_param_files + temp_external_files
+                
+                for temp_file in all_temp_files:
+                    try:
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+                            Logger.info(f"Cleaned up temporary file: {temp_file}")
+                    except:
+                        pass
             except:
                 pass
         

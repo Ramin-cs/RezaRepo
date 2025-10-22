@@ -1,0 +1,32 @@
+=== PHASE 1: SUBDOMAIN_DISCOVERY ===
+Target: sabzlearn.ir
+Timestamp: 2025-10-22 07:59:03
+============================================================
+
+https://my.sabzlearn.ir [200] - Live (200 OK)
+https://proxy.stage.sabzlearn.ir [404] - Not Found (404)
+https://hcp.sabzlearn.ir [200] - Live (200 OK)
+https://console.sabzlearn.ir [200] - Live (200 OK)
+https://chat.sabzlearn.ir [403] - Forbidden (403)
+https://my.stage.sabzlearn.ir [404] - Not Found (404)
+https://lms.stage.sabzlearn.ir [404] - Not Found (404)
+https://dl.sabzlearn.ir [200] - Live (200 OK)
+https://mail.sabzlearn.ir [200] - Live (200 OK)
+https://pma.stage.sabzlearn.ir [404] - Not Found (404)
+https://files.sabzlearn.ir [200] - Live (200 OK)
+https://up.sabzlearn.ir [403] - Forbidden (403)
+https://webmail.sabzlearn.ir [200] - Live (200 OK)
+https://n8n.sabzlearn.ir [401] - Client Error (401)
+https://edge.sabzlearn.ir [200] - Live (200 OK)
+https://advisor.stage.sabzlearn.ir [404] - Not Found (404)
+https://ipprs.sabzlearn.ir [403] - Forbidden (403)
+https://tech.sabzlearn.ir [200] - Live (200 OK)
+https://bkp.sabzlearn.ir [200] - Live (200 OK)
+https://erp.sabzlearn.ir [200] - Live (200 OK)
+https://advisor.sabzlearn.ir [200] - Live (200 OK)
+https://status.sabzlearn.ir [404] - Not Found (404)
+https://api.stage.sabzlearn.ir [200] - Live (200 OK)
+https://statistics.sabzlearn.ir [200] - Live (200 OK)
+https://storage.sabzlearn.ir [200] - Live (200 OK)
+https://sabzlearn.ir [200] - Live (200 OK)
+https://www.sabzlearn.ir [200] - Live (200 OK)
