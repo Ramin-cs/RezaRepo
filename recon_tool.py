@@ -372,7 +372,7 @@ class SubdomainHunter:
         self.domain = domain
         self.threads = threads
         self.timeout = timeout
-        self.found_subdomains = set()
+        self.found_subdomains = {}
         self.http_client = HTTPClient(timeout=timeout)
         self.wordlist = self._load_wordlist(wordlist_size)
     
@@ -986,7 +986,7 @@ class EndpointDiscovery:
         
         visited_urls = set()
         crawl_queue = deque([self.target_url])
-        max_depth = self.depth if hasattr(self, 'depth') else 2
+        max_depth = self.depth if hasattr(self, 'depth') else 4
         
         def extract_links(content, base_url):
             """Extract links from HTML content"""
@@ -1690,8 +1690,9 @@ class ProfessionalRecon:
                         for result in results[:10]:  # Limit to first 10 per status
                             method = getattr(result, 'method', 'GET')
                             f.write(f"    [{method}] {result.url}\n")
-                        if len(results) > 10:
-                            f.write(f"    ... and {len(results) - 10} more\n")
+                        # Show all results, not just first 10
+                        # if len(results) > 10:
+                        #     f.write(f"    ... and {len(results) - 10} more\n")
                         f.write("\n")
                 f.write("\n")
     
@@ -2221,9 +2222,10 @@ def main():
                     if items:
                         print(f"\n{Colors.YELLOW}{category.upper().replace('_', ' ')} ({len(items)}):{Colors.END}", flush=True)
                         
-                        # Display first 10 items with their status codes
+                        # Display first 20 items with their status codes (increased from 10)
                         items_list = list(items) if not isinstance(items, list) else items
-                        for i, item in enumerate(items_list[:10]):
+                        display_limit = min(20, len(items_list))  # Show up to 20 items
+                        for i, item in enumerate(items_list[:display_limit]):
                             url = item.get('url', str(item)) if isinstance(item, dict) else (item.url if hasattr(item, 'url') else str(item))
                             status = item.get('status_code', 'Unknown') if isinstance(item, dict) else (getattr(item, 'status_code', 'Unknown'))
                             method = item.get('method', 'GET') if isinstance(item, dict) else (getattr(item, 'method', 'GET'))
@@ -2237,8 +2239,8 @@ def main():
                             
                             print(f"  {status_color}[{status}]{Colors.END} [{method}] {url}", flush=True)
                         
-                        if len(items_list) > 10:
-                            print(f"  ... and {len(items_list) - 10} more", flush=True)
+                        if len(items_list) > display_limit:
+                            print(f"  ... and {len(items_list) - display_limit} more", flush=True)
         
         if run_parameters:
             # Use external parameter discovery tool
@@ -2409,6 +2411,22 @@ def main():
                         parameters = try_alternative_parsing()
                         if parameters:
                             Logger.success(f"Alternative parsing found {len(parameters)} parameters")
+                        else:
+                            # Check for fallback parameter files
+                            fallback_pattern = f"{target.replace('.', '_')}_fallback_parameters.txt"
+                            if os.path.exists(fallback_pattern):
+                                Logger.info(f"Found fallback parameter file: {fallback_pattern}")
+                                try:
+                                    with open(fallback_pattern, 'r', encoding='utf-8') as f:
+                                        fallback_content = f.read()
+                                        # Extract parameters from numbered list
+                                        import re
+                                        param_matches = re.findall(r'\d+\.\s+(\w+)', fallback_content)
+                                        if param_matches:
+                                            parameters = param_matches
+                                            Logger.success(f"Loaded {len(parameters)} fallback parameters")
+                                except Exception as e:
+                                    Logger.warning(f"Failed to parse fallback parameters: {e}")
                     
                     # Clean parameter results display
                     time.sleep(0.3)  # Ensure all parameter discovery logs are done
