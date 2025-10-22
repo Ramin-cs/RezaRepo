@@ -1512,9 +1512,23 @@ class ProfessionalRecon:
                 f.write("=" * 60 + "\n\n")
                 
                 if phase_name == "subdomain_discovery":
-                    # Save subdomain results
+                    # Save subdomain results grouped by category
+                    f.write(f"SUBDOMAINS FOUND: {len(results)}\n")
+                    f.write("-" * 40 + "\n\n")
+                    
+                    # Group by category
+                    categories = {}
                     for subdomain, info in results.items():
-                        f.write(f"{info['url']} [{info['status_code']}] - {info['category']}\n")
+                        category = info['category']
+                        if category not in categories:
+                            categories[category] = []
+                        categories[category].append((subdomain, info))
+                    
+                    for category, subs in sorted(categories.items()):
+                        f.write(f"{category}:\n")
+                        for subdomain, info in sorted(subs):
+                            f.write(f"  • {info['url']}\n")
+                        f.write("\n")
                 
                 elif phase_name == "parameter_discovery":
                     # Save parameter results with proper data
@@ -1948,8 +1962,8 @@ def run_external_parameter_discovery(target, output_file=None):
         
         Logger.info(f"Running external parameter discovery for {target}")
         
-        # Prepare command (remove -q for live display, add comprehensive mode)
-        cmd = [sys.executable, param_tool_path, '-d', target, '--timeout', '60', '--comprehensive', '--max-pages', '6', '--rate-limit', '0.4']
+        # Prepare command (use basic parameters that work)
+        cmd = [sys.executable, param_tool_path, '-d', target, '--timeout', '60']
         if output_file:
             cmd.extend(['-o', f"{output_file}_external_params"])
         
@@ -2108,8 +2122,8 @@ def main():
                 depth=4
             )
             
-            # Save phase 3 results
-            recon.save_phase_results("directory_discovery", endpoints, 3)
+            # Save phase 2 results
+            recon.save_phase_results("directory_discovery", endpoints, 2)
             
             # Clean phase separation
             time.sleep(0.5)
@@ -2202,7 +2216,7 @@ def main():
                         Logger.warning(f"Could not extract parameters for phase file: {e}")
                 
                 param_results = {'general': {param: {'methods': ['GET'], 'urls': []} for param in parameters}}
-                recon.save_phase_results("parameter_discovery", param_results, 2, parameters)
+                recon.save_phase_results("parameter_discovery", param_results, 3, parameters)
                 
             # Read and display parameters live
             param_file = external_result.get('output_file')
@@ -2359,7 +2373,12 @@ def main():
             domain_name = parsed_target['domain'].replace('.', '_')
             output_file = f"recon_{domain_name}_{int(time.time())}"
         
-        recon.save_results(output_file, args.format)
+        # Save results inside target folder
+        if recon.target_folder:
+            final_output_file = os.path.join(recon.target_folder, f"complete_results.{args.format}")
+            recon.save_results(final_output_file.replace(f'.{args.format}', ''), args.format)
+        else:
+            recon.save_results(output_file, args.format)
         
         Logger.phase("RECONNAISSANCE COMPLETED")
         total_subdomains = len(recon.results.get('subdomains', {})) if run_subdomains else 0
@@ -2374,7 +2393,11 @@ def main():
             total_endpoints = sum(len(items) for items in recon.results.get('endpoints', {}).values())
             print(f"{Colors.GREEN}Total Directories Found: {total_endpoints}{Colors.END}")
         
-        print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
+        if recon.target_folder:
+            final_path = os.path.join(recon.target_folder, f"complete_results.{args.format}")
+            print(f"{Colors.CYAN}Complete results saved to: {final_path}{Colors.END}")
+        else:
+            print(f"{Colors.CYAN}Complete results saved to: {output_file}.{args.format}{Colors.END}")
         
         # Clean up temporary parameter files to avoid duplication
         if run_parameters:
