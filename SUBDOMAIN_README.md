@@ -1,6 +1,22 @@
-# 🔍 Advanced Subdomain Enumerator
+# 🔍 Advanced Subdomain Enumerator v2.0
 
 **ابزار قدرتمند کشف و شمارش ساب‌دامین‌ها با ترکیب بهترین تکنیک‌های موجود**
+
+## 🚀 **What's New in Version 2.0?**
+
+### **🔧 مشکلات برطرف شده**
+- **UTF-8 Encoding**: پشتیبانی کامل از کاراکترهای فارسی و عربی
+- **Wildcard Filtering**: حذف خودکار ساب‌دامین‌های wildcard (*.domain.com)
+- **Enhanced Error Handling**: مدیریت بهتر خطاها و exceptions
+- **Improved Rate Limiting**: کنترل بهتر نرخ درخواست‌ها
+
+### **🚀 قابلیت‌های بهبود یافته**
+- **Certificate Transparency**: منابع متعدد و پارسر بهبود یافته
+- **Search Engine Discovery**: پشتیبانی از Google, Bing, DuckDuckGo
+- **GitHub Code Search**: جستجوی پیشرفته در انواع فایل‌ها
+- **Wayback Machine**: استخراج بهتر از آرشیو وب
+- **DNS Brute Force**: wordlist گسترده‌تر با کلمات فارسی
+- **Passive DNS**: منابع اضافی مانند Threatcrowd
 
 ## 🚀 ویژگی‌های کلیدی
 

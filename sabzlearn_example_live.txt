@@ -1,0 +1,53 @@
+# Live Subdomains for sabzlearn.ir
+# Generated on: 2024-10-22 00:43:14
+# Total live subdomains: 48
+
+## SUCCESS (32 subdomains)
+http://advisor.sabzlearn.ir [200] [749.0ms] مشاور برنامه نویسی آنلاین {توسط برترین مدرسین سال} - سبزلرن
+http://api.stage.sabzlearn.ir [200] [6166.57ms] SabzLMS
+http://bkp.sabzlearn.ir [200] [4907.44ms] Akeeba Solo
+http://console.sabzlearn.ir [200] [3638.04ms] MinIO Console
+http://dl.sabzlearn.ir [200] [1437.89ms] No Title
+http://edge.sabzlearn.ir [200] [4750.74ms] Hey, I'm imgproxy!
+http://erp.sabzlearn.ir [200] [2111.5ms] خانه | سبز لرن
+http://files.sabzlearn.ir [200] [1115.65ms] SabzLearn Files
+http://hcp.sabzlearn.ir [200] [4442.45ms] Coming Soon
+http://mail.sabzlearn.ir [200] [930.45ms] Roundcube Webmail :: Welcome to Roundcube Webmail
+http://my.sabzlearn.ir [200] [598.96ms] No Title
+http://n8n.sabzlearn.ir [200] [4045.96ms] n8n.io - Workflow Automation
+http://statistics.sabzlearn.ir [200] [3228.3ms] Metabase
+http://tech.sabzlearn.ir [200] [3319.0ms] SabzLearn Videos
+http://webmail.sabzlearn.ir [200] [1418.23ms] Roundcube Webmail :: Welcome to Roundcube Webmail
+http://www.sabzlearn.ir [200] [5448.24ms] آکادمی آموزش برنامه نویسی سبزلرن {از صفر تا استخدام} | Sabzlearn
+https://advisor.sabzlearn.ir [200] [4196.57ms] مشاور برنامه نویسی آنلاین {توسط برترین مدرسین سال} - سبزلرن
+https://api.stage.sabzlearn.ir [200] [560.42ms] SabzLMS
+https://bkp.sabzlearn.ir [200] [1476.79ms] Akeeba Solo
+https://console.sabzlearn.ir [200] [2202.14ms] MinIO Console
+https://dl.sabzlearn.ir [200] [2629.53ms] No Title
+https://edge.sabzlearn.ir [200] [1449.17ms] Hey, I'm imgproxy!
+https://erp.sabzlearn.ir [200] [3313.2ms] خانه | سبز لرن
+https://files.sabzlearn.ir [200] [3780.79ms] SabzLearn Files
+https://hcp.sabzlearn.ir [200] [1796.52ms] Coming Soon
+https://mail.sabzlearn.ir [200] [4175.9ms] Roundcube Webmail :: Welcome to Roundcube Webmail
+https://my.sabzlearn.ir [200] [2894.69ms] No Title
+https://n8n.sabzlearn.ir [200] [1345.28ms] n8n.io - Workflow Automation
+https://statistics.sabzlearn.ir [200] [1349.27ms] Metabase
+https://tech.sabzlearn.ir [200] [2827.62ms] SabzLearn Videos
+https://webmail.sabzlearn.ir [200] [2084.92ms] Roundcube Webmail :: Welcome to Roundcube Webmail
+https://www.sabzlearn.ir [200] [1654.61ms] آکادمی آموزش برنامه نویسی سبزلرن {از صفر تا استخدام} | Sabzlearn
+
+## CLIENT_ERROR (16 subdomains)
+http://chat.sabzlearn.ir [403] [1208.44ms] 403 Forbidden
+http://ipprs.sabzlearn.ir [403] [3052.84ms] No Title
+http://lms.stage.sabzlearn.ir [404] [602.62ms] No Title
+http://pma.stage.sabzlearn.ir [404] [3939.47ms] No Title
+http://status.sabzlearn.ir [404] [5230.75ms] Suspended Domain
+http://storage.sabzlearn.ir [403] [4240.8ms] No Title
+http://up.sabzlearn.ir [403] [5376.38ms] No Title
+https://chat.sabzlearn.ir [403] [3549.29ms] 403 Forbidden
+https://ipprs.sabzlearn.ir [403] [3155.7ms] No Title
+https://lms.stage.sabzlearn.ir [404] [3026.42ms] No Title
+https://pma.stage.sabzlearn.ir [404] [1458.77ms] No Title
+https://status.sabzlearn.ir [404] [1064.79ms] Suspended Domain
+https://storage.sabzlearn.ir [403] [1795.32ms] No Title
+https://up.sabzlearn.ir [403] [1107.96ms] No Title

@@ -204,7 +204,23 @@ class SubdomainEnumerator:
             'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5',
             '6', '7', '8', '9', '10', 'api1', 'api2', 'api3', 'app1', 'app2', 'app3', 'db1',
             'db2', 'db3', 'web01', 'web02', 'web03', 'prod', 'production', 'staging1', 'staging2',
-            'dev1', 'dev2', 'dev3', 'test1', 'test3', 'qa', 'uat', 'preprod', 'sandbox'
+            'dev1', 'dev2', 'dev3', 'test1', 'test3', 'qa', 'uat', 'preprod', 'sandbox',
+            # Persian/Farsi common subdomains
+            'panel', 'control', 'manage', 'manager', 'dashboard', 'console2', 'cp2', 'admin2',
+            'backend', 'internal', 'private', 'secure2', 'protected', 'restricted', 'hidden',
+            # Technical subdomains
+            'prometheus', 'grafana', 'kibana', 'elastic', 'redis', 'mongo', 'postgres', 'mysql2',
+            'docker', 'k8s', 'kubernetes', 'jenkins', 'gitlab', 'github', 'bitbucket', 'ci',
+            'cd', 'deploy', 'deployment', 'build', 'release', 'artifact', 'registry', 'repo',
+            # Cloud and CDN
+            'aws', 'azure', 'gcp', 'cloud2', 'cdn2', 'static2', 'assets2', 'media2', 'images2',
+            'uploads', 'downloads', 'files2', 'storage2', 'backup2', 'archive', 'vault',
+            # Monitoring and logging
+            'monitor2', 'logs2', 'metrics', 'analytics2', 'stats2', 'health', 'status2', 'ping',
+            'uptime', 'alerts', 'notifications', 'events', 'audit', 'trace', 'debug',
+            # API and services
+            'rest', 'soap', 'graphql', 'grpc', 'webhook', 'callback', 'notify', 'push',
+            'realtime', 'ws', 'websocket', 'stream', 'feed', 'rss2', 'atom', 'json', 'xml2'
         ]
 
     def print_banner(self):
@@ -238,7 +254,10 @@ class SubdomainEnumerator:
     def add_subdomain(self, subdomain):
         """Thread-safe method to add subdomain"""
         subdomain = subdomain.lower().strip()
-        if subdomain and subdomain.endswith(f'.{self.domain}'):
+        # Skip wildcard subdomains
+        if subdomain.startswith('*.'):
+            return
+        if subdomain and subdomain.endswith(f'.{self.domain}') and not subdomain.startswith('*'):
             with self.lock:
                 if subdomain not in self.subdomains:
                     self.subdomains.add(subdomain)
@@ -254,112 +273,221 @@ class SubdomainEnumerator:
         self.log("🔍 Searching Certificate Transparency logs...", Colors.CYAN)
         
         sources = [
-            f"https://crt.sh/?q=%.{self.domain}&output=json",
-            f"https://api.certspotter.com/v1/issuances?domain={self.domain}&include_subdomains=true&expand=dns_names"
+            {
+                'name': 'crt.sh',
+                'url': f"https://crt.sh/?q=%.{self.domain}&output=json",
+                'parser': self.parse_crtsh_response
+            },
+            {
+                'name': 'crt.sh_exact',
+                'url': f"https://crt.sh/?q={self.domain}&output=json",
+                'parser': self.parse_crtsh_response
+            },
+            {
+                'name': 'certspotter',
+                'url': f"https://api.certspotter.com/v1/issuances?domain={self.domain}&include_subdomains=true&expand=dns_names",
+                'parser': self.parse_certspotter_response
+            }
         ]
         
-        for url in sources:
+        found_count = 0
+        
+        for source in sources:
             try:
-                headers = {'User-Agent': self.get_random_user_agent()}
-                response = self.session.get(url, headers=headers, timeout=self.timeout)
+                headers = {
+                    'User-Agent': self.get_random_user_agent(),
+                    'Accept': 'application/json'
+                }
+                response = self.session.get(source['url'], headers=headers, timeout=self.timeout * 2)
                 
                 if response.status_code == 200:
-                    if 'crt.sh' in url:
-                        data = response.json()
-                        for cert in data:
-                            if 'name_value' in cert:
-                                names = cert['name_value'].split('\n')
-                                for name in names:
-                                    name = name.strip()
-                                    if name.endswith(f'.{self.domain}'):
-                                        self.add_subdomain(name)
-                    
-                    elif 'certspotter' in url:
-                        data = response.json()
-                        for cert in data:
-                            if 'dns_names' in cert:
-                                for name in cert['dns_names']:
-                                    if name.endswith(f'.{self.domain}'):
-                                        self.add_subdomain(name)
+                    count = source['parser'](response)
+                    found_count += count
+                    time.sleep(1)  # Rate limiting
+                elif response.status_code == 429:
+                    if self.verbose:
+                        self.log(f"{source['name']} rate limited", Colors.YELLOW)
+                    time.sleep(5)
                         
             except Exception as e:
                 if self.verbose:
-                    self.log(f"CT source error: {e}", Colors.RED)
+                    self.log(f"{source['name']} error: {e}", Colors.YELLOW)
+        
+        if self.verbose and found_count > 0:
+            self.log(f"Certificate Transparency found {found_count} subdomains", Colors.GREEN)
+    
+    def parse_crtsh_response(self, response):
+        """Parse crt.sh JSON response"""
+        count = 0
+        try:
+            data = response.json()
+            for cert in data:
+                if 'name_value' in cert:
+                    names = cert['name_value'].split('\n')
+                    for name in names:
+                        name = name.strip().lower()
+                        if name.endswith(f'.{self.domain}') and not name.startswith('*'):
+                            self.add_subdomain(name)
+                            count += 1
+        except Exception as e:
+            if self.verbose:
+                self.log(f"crt.sh parse error: {e}", Colors.YELLOW)
+        return count
+    
+    def parse_certspotter_response(self, response):
+        """Parse CertSpotter JSON response"""
+        count = 0
+        try:
+            data = response.json()
+            for cert in data:
+                if 'dns_names' in cert:
+                    for name in cert['dns_names']:
+                        name = name.strip().lower()
+                        if name.endswith(f'.{self.domain}') and not name.startswith('*'):
+                            self.add_subdomain(name)
+                            count += 1
+        except Exception as e:
+            if self.verbose:
+                self.log(f"CertSpotter parse error: {e}", Colors.YELLOW)
+        return count
 
     def search_engines(self):
         """Search engine enumeration"""
         self.log("🔎 Searching via Search Engines...", Colors.CYAN)
         
-        queries = [
-            f"site:{self.domain}",
-            f"site:*.{self.domain}",
-            f"inurl:{self.domain}",
-            f"intitle:{self.domain}"
+        # Multiple search engines and queries
+        search_sources = [
+            {
+                'name': 'Google',
+                'url': 'https://www.google.com/search?q={}&num=100',
+                'queries': [f"site:{self.domain}", f"site:*.{self.domain}", f"inurl:{self.domain}"]
+            },
+            {
+                'name': 'Bing',
+                'url': 'https://www.bing.com/search?q={}&count=100',
+                'queries': [f"site:{self.domain}", f"domain:{self.domain}"]
+            },
+            {
+                'name': 'DuckDuckGo',
+                'url': 'https://duckduckgo.com/html/?q={}',
+                'queries': [f"site:{self.domain}"]
+            }
         ]
         
-        for query in queries:
-            try:
-                # Google search
-                url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&num=100"
-                headers = {'User-Agent': self.get_random_user_agent()}
-                response = self.session.get(url, headers=headers, timeout=self.timeout)
-                
-                # Extract subdomains from search results
-                pattern = r'https?://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')'
-                matches = re.findall(pattern, response.text, re.IGNORECASE)
-                
-                for match in matches:
-                    self.add_subdomain(match)
+        for source in search_sources:
+            for query in source['queries']:
+                try:
+                    url = source['url'].format(urllib.parse.quote(query))
+                    headers = {
+                        'User-Agent': self.get_random_user_agent(),
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.5',
+                        'Accept-Encoding': 'gzip, deflate',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
                     
-                time.sleep(1)  # Rate limiting
-                
-            except Exception as e:
-                if self.verbose:
-                    self.log(f"Search engine error: {e}", Colors.RED)
+                    response = self.session.get(url, headers=headers, timeout=self.timeout)
+                    
+                    if response.status_code == 200:
+                        # Extract subdomains from search results
+                        patterns = [
+                            r'https?://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')',
+                            r'href="https?://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')',
+                            r'url=https?://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')'
+                        ]
+                        
+                        for pattern in patterns:
+                            matches = re.findall(pattern, response.text, re.IGNORECASE)
+                            for match in matches:
+                                self.add_subdomain(match)
+                    
+                    time.sleep(2)  # Rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"{source['name']} search error: {e}", Colors.RED)
 
     def github_search(self):
         """GitHub code search for subdomains"""
         self.log("📊 Searching GitHub repositories...", Colors.CYAN)
         
         try:
+            # Multiple search strategies
             queries = [
                 f'"{self.domain}" extension:txt',
-                f'"{self.domain}" extension:json',
+                f'"{self.domain}" extension:json', 
                 f'"{self.domain}" extension:xml',
                 f'"{self.domain}" extension:yml',
-                f'"{self.domain}" extension:yaml'
+                f'"{self.domain}" extension:yaml',
+                f'"{self.domain}" extension:config',
+                f'"{self.domain}" extension:conf',
+                f'"{self.domain}" extension:env',
+                f'"{self.domain}" filename:config',
+                f'"{self.domain}" filename:.env',
+                f'"*.{self.domain}"',
+                f'{self.domain} subdomain',
+                f'{self.domain} API endpoint'
             ]
             
-            for query in queries:
-                url = f"https://api.github.com/search/code?q={urllib.parse.quote(query)}"
-                headers = {
-                    'User-Agent': self.get_random_user_agent(),
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-                
-                response = self.session.get(url, headers=headers, timeout=self.timeout)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    for item in data.get('items', []):
-                        # Get file content
-                        download_url = item.get('download_url')
-                        if download_url:
-                            try:
-                                content_response = self.session.get(download_url, timeout=self.timeout)
-                                content = content_response.text
-                                
-                                # Extract subdomains from content
-                                pattern = r'([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')'
-                                matches = re.findall(pattern, content, re.IGNORECASE)
-                                
-                                for match in matches:
-                                    self.add_subdomain(match)
-                                    
-                            except:
-                                continue
-                
-                time.sleep(2)  # GitHub rate limiting
+            found_count = 0
+            
+            for query in queries[:5]:  # Limit to avoid rate limiting
+                try:
+                    url = f"https://api.github.com/search/code?q={urllib.parse.quote(query)}&per_page=30"
+                    headers = {
+                        'User-Agent': self.get_random_user_agent(),
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                    
+                    response = self.session.get(url, headers=headers, timeout=self.timeout)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        for item in data.get('items', [])[:10]:  # Limit items per query
+                            # Get file content
+                            download_url = item.get('download_url')
+                            if download_url:
+                                try:
+                                    content_response = self.session.get(download_url, timeout=5)
+                                    if content_response.status_code == 200:
+                                        content = content_response.text
+                                        
+                                        # Multiple patterns for subdomain extraction
+                                        patterns = [
+                                            r'([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')',
+                                            r'"([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')"',
+                                            r"'([a-zA-Z0-9.-]+\." + re.escape(self.domain) + r")'",
+                                            r'https?://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')',
+                                            r'://([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')'
+                                        ]
+                                        
+                                        for pattern in patterns:
+                                            matches = re.findall(pattern, content, re.IGNORECASE)
+                                            for match in matches:
+                                                if not match.startswith('*'):
+                                                    self.add_subdomain(match)
+                                                    found_count += 1
+                                        
+                                except Exception as e:
+                                    if self.verbose:
+                                        self.log(f"GitHub content error: {e}", Colors.YELLOW)
+                                    continue
+                    
+                    elif response.status_code == 403:
+                        if self.verbose:
+                            self.log("GitHub API rate limit reached", Colors.YELLOW)
+                        break
+                    
+                    time.sleep(3)  # GitHub rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"GitHub query error: {e}", Colors.YELLOW)
+                    continue
+            
+            if self.verbose and found_count > 0:
+                self.log(f"GitHub search found {found_count} subdomains", Colors.GREEN)
                 
         except Exception as e:
             if self.verbose:
@@ -370,21 +498,66 @@ class SubdomainEnumerator:
         self.log("🌍 Mining Web Archive data...", Colors.CYAN)
         
         try:
-            url = f"http://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=json&collapse=urlkey"
-            headers = {'User-Agent': self.get_random_user_agent()}
-            response = self.session.get(url, headers=headers, timeout=self.timeout)
+            # Multiple Wayback Machine queries
+            queries = [
+                f"http://web.archive.org/cdx/search/cdx?url=*.{self.domain}/*&output=json&collapse=urlkey&limit=1000",
+                f"http://web.archive.org/cdx/search/cdx?url={self.domain}/*&output=json&collapse=urlkey&limit=1000"
+            ]
             
-            if response.status_code == 200:
-                data = response.json()
-                for entry in data[1:]:  # Skip header
-                    if len(entry) > 2:
-                        archived_url = entry[2]
-                        parsed = urlparse(archived_url)
-                        hostname = parsed.hostname
-                        
-                        if hostname and hostname.endswith(f'.{self.domain}'):
-                            self.add_subdomain(hostname)
-                            
+            found_count = 0
+            
+            for query_url in queries:
+                try:
+                    headers = {
+                        'User-Agent': self.get_random_user_agent(),
+                        'Accept': 'application/json'
+                    }
+                    response = self.session.get(query_url, headers=headers, timeout=self.timeout)
+                    
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            if isinstance(data, list) and len(data) > 1:
+                                for entry in data[1:]:  # Skip header
+                                    if len(entry) > 2:
+                                        archived_url = entry[2]
+                                        try:
+                                            parsed = urlparse(archived_url)
+                                            hostname = parsed.hostname
+                                            
+                                            if hostname and hostname.endswith(f'.{self.domain}') and not hostname.startswith('*'):
+                                                self.add_subdomain(hostname)
+                                                found_count += 1
+                                        except:
+                                            continue
+                        except json.JSONDecodeError:
+                            # Try to extract from text response
+                            lines = response.text.split('\n')
+                            for line in lines[1:]:  # Skip header
+                                if line.strip():
+                                    parts = line.split(' ')
+                                    if len(parts) > 2:
+                                        try:
+                                            archived_url = parts[2]
+                                            parsed = urlparse(archived_url)
+                                            hostname = parsed.hostname
+                                            
+                                            if hostname and hostname.endswith(f'.{self.domain}') and not hostname.startswith('*'):
+                                                self.add_subdomain(hostname)
+                                                found_count += 1
+                                        except:
+                                            continue
+                    
+                    time.sleep(1)  # Rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"Wayback query error: {e}", Colors.YELLOW)
+                    continue
+            
+            if self.verbose and found_count > 0:
+                self.log(f"Wayback Machine found {found_count} subdomains", Colors.GREEN)
+                
         except Exception as e:
             if self.verbose:
                 self.log(f"Wayback Machine error: {e}", Colors.RED)
@@ -580,19 +753,41 @@ class SubdomainEnumerator:
         """Query multiple passive DNS sources"""
         self.log("📡 Querying passive DNS sources...", Colors.CYAN)
         
-        sources = [
-            f"https://dns.google/resolve?name={self.domain}&type=ANY",
-            f"https://cloudflare-dns.com/dns-query?name={self.domain}&type=ANY"
+        # DNS over HTTPS sources
+        dns_sources = [
+            {
+                'name': 'Google DNS',
+                'url': f"https://dns.google/resolve?name={self.domain}&type=ANY"
+            },
+            {
+                'name': 'Cloudflare DNS', 
+                'url': f"https://cloudflare-dns.com/dns-query?name={self.domain}&type=ANY"
+            }
         ]
         
-        for url in sources:
+        # Additional passive DNS sources
+        passive_sources = [
+            {
+                'name': 'DNSDumpster',
+                'url': f"https://dnsdumpster.com/",
+                'method': self.query_dnsdumpster
+            },
+            {
+                'name': 'Threatcrowd',
+                'url': f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={self.domain}",
+                'method': self.query_threatcrowd
+            }
+        ]
+        
+        # Query DNS over HTTPS
+        for source in dns_sources:
             try:
                 headers = {
                     'User-Agent': self.get_random_user_agent(),
                     'Accept': 'application/dns-json'
                 }
                 
-                response = self.session.get(url, headers=headers, timeout=self.timeout)
+                response = self.session.get(source['url'], headers=headers, timeout=self.timeout)
                 
                 if response.status_code == 200:
                     data = response.json()
@@ -608,7 +803,45 @@ class SubdomainEnumerator:
                                     
             except Exception as e:
                 if self.verbose:
-                    self.log(f"Passive DNS error: {e}", Colors.RED)
+                    self.log(f"{source['name']} error: {e}", Colors.YELLOW)
+        
+        # Query additional passive sources
+        for source in passive_sources:
+            try:
+                source['method']()
+                time.sleep(1)
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"{source['name']} error: {e}", Colors.YELLOW)
+    
+    def query_threatcrowd(self):
+        """Query Threatcrowd API"""
+        try:
+            url = f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={self.domain}"
+            headers = {'User-Agent': self.get_random_user_agent()}
+            
+            response = self.session.get(url, headers=headers, timeout=self.timeout)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'subdomains' in data:
+                    for subdomain in data['subdomains']:
+                        if subdomain.endswith(f'.{self.domain}'):
+                            self.add_subdomain(subdomain)
+                            
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Threatcrowd query error: {e}", Colors.YELLOW)
+    
+    def query_dnsdumpster(self):
+        """Query DNSDumpster (requires web scraping)"""
+        try:
+            # This would require more complex implementation with CSRF tokens
+            # For now, we'll skip this to avoid complexity
+            pass
+        except Exception as e:
+            if self.verbose:
+                self.log(f"DNSDumpster query error: {e}", Colors.YELLOW)
 
     def ssl_certificate_search(self):
         """SSL Certificate search and analysis"""
@@ -755,7 +988,7 @@ class SubdomainEnumerator:
                 })
             
             # Save categorized results
-            with open(live_output_file, 'w') as f:
+            with open(live_output_file, 'w', encoding='utf-8') as f:
                 f.write(f"# Live Subdomains for {self.domain}\n")
                 f.write(f"# Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"# Total live subdomains: {len(self.live_subdomains)}\n\n")
@@ -769,7 +1002,7 @@ class SubdomainEnumerator:
             
             # Also save simple list
             simple_output_file = self.output_file.replace('.txt', '_simple.txt')
-            with open(simple_output_file, 'w') as f:
+            with open(simple_output_file, 'w', encoding='utf-8') as f:
                 for url in sorted(self.live_subdomains.keys()):
                     f.write(f"{url}\n")
             
@@ -811,7 +1044,7 @@ class SubdomainEnumerator:
             # Fallback to original behavior if httpx is disabled
             sorted_subdomains = sorted(list(self.subdomains))
             
-            with open(self.output_file, 'w') as f:
+            with open(self.output_file, 'w', encoding='utf-8') as f:
                 for subdomain in sorted_subdomains:
                     f.write(f"{subdomain}\n")
             
