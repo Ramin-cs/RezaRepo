@@ -432,7 +432,7 @@ class SubdomainHunter:
         """Certificate Transparency logs"""
         Logger.info(f"Mining Certificate Transparency logs for {self.domain}")
         
-        # Multiple CT sources with shorter timeouts
+        # Multiple CT sources with fallback methods
         ct_sources = [
             f"https://crt.sh/?q=%.{self.domain}&output=json",
             f"https://crt.sh/?q={self.domain}&output=json"
@@ -441,8 +441,51 @@ class SubdomainHunter:
         found_count = 0
         for ct_url in ct_sources:
             try:
-                # Use shorter timeout for CT
-                response = self.http_client.get(ct_url, timeout=8)
+                # Use urllib directly for better reliability
+                import urllib.request
+                import ssl
+                
+                # Create SSL context that ignores certificates
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                
+                req = urllib.request.Request(ct_url)
+                req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+                
+                with urllib.request.urlopen(req, timeout=15, context=ssl_context) as response:
+                    if response.getcode() == 200:
+                        content = response.read().decode('utf-8')
+                        
+                        try:
+                            data = json.loads(content)
+                            for cert in data:
+                                name_value = cert.get('name_value', '')
+                                for domain in name_value.split('\n'):
+                                    domain = domain.strip().lower()
+                                    # Better filtering
+                                    if (domain and 
+                                        self.domain in domain and 
+                                        '*' not in domain and
+                                        not domain.startswith('.') and
+                                        domain.count('.') >= self.domain.count('.')):
+                                        
+                                        if domain not in self.found_subdomains:
+                                            self.found_subdomains[domain] = {
+                                                'source': 'certificate_transparency',
+                                                'ip_addresses': []
+                                            }
+                                            Logger.found(f"CT: {domain}")
+                                            found_count += 1
+                        except json.JSONDecodeError:
+                            Logger.warning(f"CT source returned invalid JSON: {ct_url}")
+                            continue
+                    else:
+                        Logger.warning(f"CT source failed with status {response.getcode()}: {ct_url}")
+                        
+            except Exception as e:
+                Logger.warning(f"CT source failed: {ct_url} - {str(e)}")
+                continue
                 
                 if response and hasattr(response, 'status_code') and response.status_code == 200:
                     try:
@@ -1656,18 +1699,97 @@ class ProfessionalRecon:
         if not self.results['target']:
             self.results['target'] = parsed_target['original']
         
-        hunter = EndpointDiscovery(
-            target_url=parsed_target['base_url'],
-            threads=threads,
-            timeout=timeout,
-            wordlist_size=wordlist_size,
-            use_all=use_all,
-            depth=depth
-        )
+        # Use external endpoint.py tool for better results
+        return self.run_external_endpoint_discovery(parsed_target['base_url'], threads, timeout, use_all, depth)
+    
+    def run_external_endpoint_discovery(self, target_url, threads=30, timeout=10, use_all=True, depth=4):
+        """Run external endpoint.py tool for comprehensive discovery"""
+        Logger.info(f"Running external endpoint discovery for {target_url}")
         
-        endpoints = hunter.run_discovery()
-        self.results['endpoints'] = endpoints
-        return endpoints
+        try:
+            # Check if endpoint.py exists
+            endpoint_tool_path = os.path.join(os.path.dirname(__file__), 'endpoint.py')
+            if not os.path.exists(endpoint_tool_path):
+                Logger.error("endpoint.py tool not found in current directory")
+                return {}
+            
+            # Prepare command with --all and --depth
+            cmd = [
+                sys.executable, endpoint_tool_path, 
+                '-u', target_url,
+                '--all',
+                '--depth', str(depth),
+                '-t', str(threads),
+                '--timeout', str(timeout),
+                '--rate-limit', '50',
+                '-f', 'json',
+                '-o', f'temp_endpoint_results_{int(time.time())}'
+            ]
+            
+            # Run the external tool
+            import subprocess
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                Logger.success("External endpoint discovery completed successfully")
+                
+                # Try to parse results from output file
+                output_file = f'temp_endpoint_results_{int(time.time())}.json'
+                if os.path.exists(output_file):
+                    try:
+                        with open(output_file, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                        
+                        # Convert to our format
+                        endpoints = {
+                            'directories': [],
+                            'files': [],
+                            'api_endpoints': [],
+                            'archived_urls': []
+                        }
+                        
+                        for item in data:
+                            if item.get('result_type') == 'directory':
+                                endpoints['directories'].append(item)
+                            elif item.get('result_type') == 'file':
+                                endpoints['files'].append(item)
+                            elif item.get('result_type') == 'api_endpoint':
+                                endpoints['api_endpoints'].append(item)
+                            elif item.get('result_type') == 'archived_url':
+                                endpoints['archived_urls'].append(item)
+                        
+                        # Clean up temp file
+                        os.remove(output_file)
+                        
+                        self.results['endpoints'] = endpoints
+                        return endpoints
+                        
+                    except Exception as e:
+                        Logger.warning(f"Could not parse endpoint results: {e}")
+                
+                # Fallback: parse from stdout
+                endpoints = {'general': []}
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if '[FOUND]' in line or '[CRAWLED]' in line:
+                        # Extract URL from line
+                        url_match = re.search(r'https?://[^\s]+', line)
+                        if url_match:
+                            url = url_match.group(0)
+                            endpoints['general'].append({'url': url, 'source': 'external_endpoint'})
+                
+                self.results['endpoints'] = endpoints
+                return endpoints
+            else:
+                Logger.error(f"External endpoint discovery failed: {result.stderr}")
+                return {}
+                
+        except subprocess.TimeoutExpired:
+            Logger.error("External endpoint discovery timed out (5 minutes)")
+            return {}
+        except Exception as e:
+            Logger.error(f"Failed to run external endpoint discovery: {str(e)}")
+            return {}
     
     def save_results(self, filename, format_type='txt'):
         """Save results"""
@@ -1867,8 +1989,8 @@ def run_external_amass(target):
             Logger.warning("amass.py tool not found in current directory")
             return set()
         
-        # Prepare command
-        cmd = [sys.executable, amass_tool_path, 'enum', '-d', target, '--passive', '--silent']
+        # Prepare command (remove --silent to get output)
+        cmd = [sys.executable, amass_tool_path, 'enum', '-d', target, '--passive']
         
         # Run the external tool
         import subprocess
@@ -1952,10 +2074,10 @@ def run_external_parameter_discovery(target, output_file=None):
     Logger.phase("EXTERNAL PARAMETER DISCOVERY")
     
     try:
-        # Check if parameter tools exist (try simple version first)
-        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter_simple.py')
+        # Check if parameter tools exist (try full version first)
+        param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
         if not os.path.exists(param_tool_path):
-            param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter.py')
+            param_tool_path = os.path.join(os.path.dirname(__file__), 'parameter_simple.py')
             if not os.path.exists(param_tool_path):
                 Logger.error("Parameter discovery tool not found in current directory")
                 return {}
@@ -2132,35 +2254,30 @@ def main():
                 print(f"\n{Colors.GREEN}[DIRECTORY RESULTS]{Colors.END}", flush=True)
                 
                 total_endpoints = sum(len(items) for items in endpoints.values())
-                print(f"Found {total_endpoints} endpoints:", flush=True)
+                print(f"Found {total_endpoints} directories/files/endpoints:", flush=True)
                 
-                # Display by category and status code
+                # Better display format
                 for category, items in endpoints.items():
                     if items:
-                        print(f"\n{Colors.YELLOW}{category.upper()} ({len(items)}):{Colors.END}", flush=True)
+                        print(f"\n{Colors.YELLOW}{category.upper().replace('_', ' ')} ({len(items)}):{Colors.END}", flush=True)
                         
-                        # Group by status code
-                        status_groups = {}
-                        for item in items:
-                            status = item.status_code if hasattr(item, 'status_code') else 'Unknown'
-                            if status not in status_groups:
-                                status_groups[status] = []
-                            status_groups[status].append(item)
-                        
-                        # Display sorted by status code
-                        for status in sorted(status_groups.keys(), key=lambda x: int(x) if isinstance(x, (int, str)) and str(x).isdigit() else 999):
+                        # Display first 10 items with their status codes
+                        for i, item in enumerate(items[:10]):
+                            url = item.get('url', str(item)) if isinstance(item, dict) else (item.url if hasattr(item, 'url') else str(item))
+                            status = item.get('status_code', 'Unknown') if isinstance(item, dict) else (getattr(item, 'status_code', 'Unknown'))
+                            method = item.get('method', 'GET') if isinstance(item, dict) else (getattr(item, 'method', 'GET'))
+                            
+                            # Color code status
                             try:
                                 status_int = int(status) if str(status).isdigit() else 0
                                 status_color = Colors.GREEN if status_int == 200 else Colors.YELLOW if status_int < 400 else Colors.RED
                             except:
                                 status_color = Colors.WHITE
-                            print(f"  {status_color}Status {status}:{Colors.END}", flush=True)
-                            for item in status_groups[status][:5]:  # Show first 5 per status
-                                url = item.url if hasattr(item, 'url') else str(item)
-                                method = getattr(item, 'method', 'GET')
-                                print(f"    [{method}] {url}", flush=True)
-                            if len(status_groups[status]) > 5:
-                                print(f"    ... and {len(status_groups[status]) - 5} more", flush=True)
+                            
+                            print(f"  {status_color}[{status}]{Colors.END} [{method}] {url}", flush=True)
+                        
+                        if len(items) > 10:
+                            print(f"  ... and {len(items) - 10} more", flush=True)
         
         if run_parameters:
             # Use external parameter discovery tool
