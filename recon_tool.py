@@ -435,7 +435,8 @@ class SubdomainHunter:
         # Multiple CT sources with fallback methods
         ct_sources = [
             f"https://crt.sh/?q=%.{self.domain}&output=json",
-            f"https://crt.sh/?q={self.domain}&output=json"
+            f"https://crt.sh/?q={self.domain}&output=json",
+            f"https://certspotter.com/api/v1/issuances?domain={self.domain}&include_subdomains=true&expand=dns_names"
         ]
         
         found_count = 0
@@ -459,24 +460,47 @@ class SubdomainHunter:
                         
                         try:
                             data = json.loads(content)
-                            for cert in data:
-                                name_value = cert.get('name_value', '')
-                                for domain in name_value.split('\n'):
-                                    domain = domain.strip().lower()
-                                    # Better filtering
-                                    if (domain and 
-                                        self.domain in domain and 
-                                        '*' not in domain and
-                                        not domain.startswith('.') and
-                                        domain.count('.') >= self.domain.count('.')):
-                                        
-                                        if domain not in self.found_subdomains:
-                                            self.found_subdomains[domain] = {
-                                                'source': 'certificate_transparency',
-                                                'ip_addresses': []
-                                            }
-                                            Logger.found(f"CT: {domain}")
-                                            found_count += 1
+                            
+                            # Handle different CT source formats
+                            if 'certspotter.com' in ct_url:
+                                # CertSpotter format
+                                for cert in data:
+                                    dns_names = cert.get('dns_names', [])
+                                    for domain in dns_names:
+                                        domain = domain.strip().lower()
+                                        if (domain and 
+                                            self.domain in domain and 
+                                            '*' not in domain and
+                                            not domain.startswith('.') and
+                                            domain.count('.') >= self.domain.count('.')):
+                                            
+                                            if domain not in self.found_subdomains:
+                                                self.found_subdomains[domain] = {
+                                                    'source': 'certificate_transparency',
+                                                    'ip_addresses': []
+                                                }
+                                                Logger.found(f"CT: {domain}")
+                                                found_count += 1
+                            else:
+                                # crt.sh format
+                                for cert in data:
+                                    name_value = cert.get('name_value', '')
+                                    for domain in name_value.split('\n'):
+                                        domain = domain.strip().lower()
+                                        # Better filtering
+                                        if (domain and 
+                                            self.domain in domain and 
+                                            '*' not in domain and
+                                            not domain.startswith('.') and
+                                            domain.count('.') >= self.domain.count('.')):
+                                            
+                                            if domain not in self.found_subdomains:
+                                                self.found_subdomains[domain] = {
+                                                    'source': 'certificate_transparency',
+                                                    'ip_addresses': []
+                                                }
+                                                Logger.found(f"CT: {domain}")
+                                                found_count += 1
                         except json.JSONDecodeError:
                             Logger.warning(f"CT source returned invalid JSON: {ct_url}")
                             continue
@@ -2198,7 +2222,8 @@ def main():
                         print(f"\n{Colors.YELLOW}{category.upper().replace('_', ' ')} ({len(items)}):{Colors.END}", flush=True)
                         
                         # Display first 10 items with their status codes
-                        for i, item in enumerate(items[:10]):
+                        items_list = list(items) if not isinstance(items, list) else items
+                        for i, item in enumerate(items_list[:10]):
                             url = item.get('url', str(item)) if isinstance(item, dict) else (item.url if hasattr(item, 'url') else str(item))
                             status = item.get('status_code', 'Unknown') if isinstance(item, dict) else (getattr(item, 'status_code', 'Unknown'))
                             method = item.get('method', 'GET') if isinstance(item, dict) else (getattr(item, 'method', 'GET'))
@@ -2212,8 +2237,8 @@ def main():
                             
                             print(f"  {status_color}[{status}]{Colors.END} [{method}] {url}", flush=True)
                         
-                        if len(items) > 10:
-                            print(f"  ... and {len(items) - 10} more", flush=True)
+                        if len(items_list) > 10:
+                            print(f"  ... and {len(items_list) - 10} more", flush=True)
         
         if run_parameters:
             # Use external parameter discovery tool
