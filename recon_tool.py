@@ -1707,97 +1707,19 @@ class ProfessionalRecon:
         if not self.results['target']:
             self.results['target'] = parsed_target['original']
         
-        # Use external endpoint.py tool for better results
-        return self.run_external_endpoint_discovery(parsed_target['base_url'], threads, timeout, use_all, depth)
-    
-    def run_external_endpoint_discovery(self, target_url, threads=30, timeout=10, use_all=True, depth=4):
-        """Run external endpoint.py tool for comprehensive discovery"""
-        Logger.info(f"Running external endpoint discovery for {target_url}")
+        hunter = EndpointDiscovery(
+            target_url=parsed_target['base_url'],
+            threads=threads,
+            timeout=timeout,
+            wordlist_size=wordlist_size,
+            use_all=use_all,
+            depth=depth
+        )
         
-        try:
-            # Check if endpoint.py exists
-            endpoint_tool_path = os.path.join(os.path.dirname(__file__), 'endpoint.py')
-            if not os.path.exists(endpoint_tool_path):
-                Logger.error("endpoint.py tool not found in current directory")
-                return {}
-            
-            # Prepare command with --all and --depth
-            cmd = [
-                sys.executable, endpoint_tool_path, 
-                '-u', target_url,
-                '--all',
-                '--depth', str(depth),
-                '-t', str(threads),
-                '--timeout', str(timeout),
-                '--rate-limit', '50',
-                '-f', 'txt',
-                '-o', f'temp_endpoint_results_{int(time.time())}'
-            ]
-            
-            # Run the external tool
-            import subprocess
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
-            if result.returncode == 0:
-                Logger.success("External endpoint discovery completed successfully")
-                
-                # Try to parse results from output file
-                output_file = f'temp_endpoint_results_{int(time.time())}.json'
-                if os.path.exists(output_file):
-                    try:
-                        with open(output_file, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
-                        
-                        # Convert to our format
-                        endpoints = {
-                            'directories': [],
-                            'files': [],
-                            'api_endpoints': [],
-                            'archived_urls': []
-                        }
-                        
-                        for item in data:
-                            if item.get('result_type') == 'directory':
-                                endpoints['directories'].append(item)
-                            elif item.get('result_type') == 'file':
-                                endpoints['files'].append(item)
-                            elif item.get('result_type') == 'api_endpoint':
-                                endpoints['api_endpoints'].append(item)
-                            elif item.get('result_type') == 'archived_url':
-                                endpoints['archived_urls'].append(item)
-                        
-                        # Clean up temp file
-                        os.remove(output_file)
-                        
-                        self.results['endpoints'] = endpoints
-                        return endpoints
-                        
-                    except Exception as e:
-                        Logger.warning(f"Could not parse endpoint results: {e}")
-                
-                # Fallback: parse from stdout
-                endpoints = {'general': []}
-                lines = result.stdout.split('\n')
-                for line in lines:
-                    if '[FOUND]' in line or '[CRAWLED]' in line:
-                        # Extract URL from line
-                        url_match = re.search(r'https?://[^\s]+', line)
-                        if url_match:
-                            url = url_match.group(0)
-                            endpoints['general'].append({'url': url, 'source': 'external_endpoint'})
-                
-                self.results['endpoints'] = endpoints
-                return endpoints
-            else:
-                Logger.error(f"External endpoint discovery failed: {result.stderr}")
-                return {}
-                
-        except subprocess.TimeoutExpired:
-            Logger.error("External endpoint discovery timed out (5 minutes)")
-            return {}
-        except Exception as e:
-            Logger.error(f"Failed to run external endpoint discovery: {str(e)}")
-            return {}
+        endpoints = hunter.run_discovery()
+        self.results['endpoints'] = endpoints
+        return endpoints
+    
     
     def save_results(self, filename, format_type='txt'):
         """Save results"""
@@ -2149,6 +2071,11 @@ def run_external_parameter_discovery(target, output_file=None):
             return run_fallback_parameter_discovery(target)
         
         if result_returncode == 0:
+            # Check if the output contains error messages even with exit code 0
+            if 'Discovery failed' in result_stdout or 'connection refused' in result_stdout or 'HTTP request failed' in result_stdout:
+                Logger.warning("Parameter discovery failed despite exit code 0, using fallback method")
+                return run_fallback_parameter_discovery(target)
+            
             Logger.success("External parameter discovery completed successfully")
             
             # Try to parse results from output file
@@ -2167,7 +2094,7 @@ def run_external_parameter_discovery(target, output_file=None):
             return {'status': 'success', 'message': 'External parameter discovery completed'}
         else:
             Logger.error(f"External parameter discovery failed: {result_stderr}")
-            return {'status': 'error', 'message': result_stderr}
+            return run_fallback_parameter_discovery(target)
             
     except subprocess.TimeoutExpired:
         Logger.error("External parameter discovery timed out (5 minutes)")
