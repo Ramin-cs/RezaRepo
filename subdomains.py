@@ -40,6 +40,11 @@ import subprocess
 import hashlib
 from collections import defaultdict
 import ipaddress
+from urllib3.exceptions import InsecureRequestWarning
+import warnings
+
+# Suppress SSL warnings
+warnings.filterwarnings('ignore', category=InsecureRequestWarning)
 
 class Colors:
     """ANSI color codes for terminal output"""
@@ -54,16 +59,114 @@ class Colors:
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
+class HttpxProbe:
+    """HTTP/HTTPS probing functionality similar to httpx"""
+    
+    def __init__(self, timeout=10, threads=50):
+        self.timeout = timeout
+        self.threads = threads
+        self.session = requests.Session()
+        self.session.verify = False
+        self.session.headers.update({
+            'User-Agent': 'httpx/1.3.0',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive'
+        })
+    
+    def probe_url(self, url, protocols=['http', 'https']):
+        """Probe a URL with HTTP/HTTPS protocols"""
+        results = {}
+        
+        for protocol in protocols:
+            full_url = f"{protocol}://{url}"
+            try:
+                start_time = time.time()
+                response = self.session.get(
+                    full_url, 
+                    timeout=self.timeout, 
+                    allow_redirects=True,
+                    stream=True
+                )
+                response_time = round((time.time() - start_time) * 1000, 2)
+                
+                # Get title from HTML
+                title = self.extract_title(response)
+                
+                # Get content length
+                content_length = len(response.content) if response.content else 0
+                
+                # Get server header
+                server = response.headers.get('Server', 'Unknown')
+                
+                results[protocol] = {
+                    'status_code': response.status_code,
+                    'title': title,
+                    'content_length': content_length,
+                    'response_time': response_time,
+                    'server': server,
+                    'url': full_url,
+                    'final_url': response.url
+                }
+                
+            except requests.exceptions.Timeout:
+                results[protocol] = {'error': 'timeout'}
+            except requests.exceptions.ConnectionError:
+                results[protocol] = {'error': 'connection_error'}
+            except requests.exceptions.RequestException as e:
+                results[protocol] = {'error': str(e)}
+            except Exception as e:
+                results[protocol] = {'error': f'unknown_error: {str(e)}'}
+        
+        return results
+    
+    def extract_title(self, response):
+        """Extract title from HTML response"""
+        try:
+            if 'text/html' in response.headers.get('Content-Type', ''):
+                content = response.text
+                title_match = re.search(r'<title[^>]*>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
+                if title_match:
+                    title = title_match.group(1).strip()
+                    # Clean up title
+                    title = re.sub(r'\s+', ' ', title)
+                    return title[:100]  # Limit title length
+            return 'No Title'
+        except:
+            return 'No Title'
+    
+    def categorize_status_code(self, status_code):
+        """Categorize HTTP status codes"""
+        if 200 <= status_code < 300:
+            return 'success', Colors.GREEN
+        elif 300 <= status_code < 400:
+            return 'redirect', Colors.YELLOW
+        elif 400 <= status_code < 500:
+            return 'client_error', Colors.RED
+        elif 500 <= status_code < 600:
+            return 'server_error', Colors.MAGENTA
+        else:
+            return 'unknown', Colors.WHITE
+
 class SubdomainEnumerator:
-    def __init__(self, domain, output_file=None, threads=50, timeout=10, verbose=False):
+    def __init__(self, domain, output_file=None, threads=50, timeout=10, verbose=False, httpx_check=True):
         self.domain = domain.lower().strip()
         self.output_file = output_file or f"{self.domain}_subdomains.txt"
         self.threads = threads
         self.timeout = timeout
         self.verbose = verbose
+        self.httpx_check = httpx_check
         self.subdomains = set()
+        self.live_subdomains = {}  # Store live subdomains with their status
         self.lock = threading.Lock()
         self.session = requests.Session()
+        
+        # Configure session for httpx-like behavior
+        self.session.verify = False
+        self.session.headers.update({
+            'User-Agent': 'httpx/1.3.0'
+        })
         
         # User agents for rotation
         self.user_agents = [
@@ -106,6 +209,7 @@ class SubdomainEnumerator:
 
     def print_banner(self):
         """Print tool banner"""
+        httpx_status = "✅ Enabled" if self.httpx_check else "❌ Disabled"
         banner = f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗
 ║                    🔍 ADVANCED SUBDOMAIN ENUMERATOR                         ║
@@ -113,7 +217,7 @@ class SubdomainEnumerator:
 ║                                                                              ║
 ║  🌐 Certificate Transparency  |  🔍 DNS Brute Force                        ║
 ║  🔎 Search Engine Discovery   |  📊 GitHub Code Search                      ║
-║  🚀 Chaos API Integration     |  🌍 Web Archive Mining                      ║
+║  🚀 httpx HTTP/HTTPS Probing  |  🌍 Web Archive Mining                      ║
 ║  🛡️  Security Intelligence    |  📡 Passive DNS Sources                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}
 
@@ -121,6 +225,7 @@ class SubdomainEnumerator:
 {Colors.YELLOW}[*] Output File: {Colors.WHITE}{self.output_file}{Colors.END}
 {Colors.YELLOW}[*] Threads: {Colors.WHITE}{self.threads}{Colors.END}
 {Colors.YELLOW}[*] Timeout: {Colors.WHITE}{self.timeout}s{Colors.END}
+{Colors.YELLOW}[*] HTTP Probing: {Colors.WHITE}{httpx_status}{Colors.END}
 {Colors.YELLOW}[*] Starting comprehensive subdomain enumeration...{Colors.END}
 """
         print(banner)
@@ -137,8 +242,8 @@ class SubdomainEnumerator:
             with self.lock:
                 if subdomain not in self.subdomains:
                     self.subdomains.add(subdomain)
-                    if self.verbose:
-                        self.log(f"Found: {subdomain}", Colors.GREEN)
+                    # Always show found subdomains live
+                    self.log(f"🎯 Found: {subdomain}", Colors.GREEN)
 
     def get_random_user_agent(self):
         """Get random user agent"""
@@ -532,6 +637,59 @@ class SubdomainEnumerator:
             full_domains = [f"{sub}.{self.domain}" for sub in known_subdomains]
             executor.map(check_ssl_cert, full_domains)
 
+    def httpx_probe_subdomains(self):
+        """Probe discovered subdomains using httpx-like functionality"""
+        if not self.httpx_check or not self.subdomains:
+            return
+        
+        self.log("🚀 Starting HTTP/HTTPS probing (httpx-style)...", Colors.CYAN)
+        
+        # Remove duplicates and sort
+        unique_subdomains = sorted(list(self.subdomains))
+        
+        self.log(f"📊 Probing {len(unique_subdomains)} unique subdomains...", Colors.YELLOW)
+        
+        httpx_prober = HttpxProbe(timeout=self.timeout, threads=self.threads)
+        
+        def probe_subdomain(subdomain):
+            try:
+                results = httpx_prober.probe_url(subdomain)
+                
+                for protocol, result in results.items():
+                    if 'error' not in result:
+                        status_code = result['status_code']
+                        title = result['title']
+                        response_time = result['response_time']
+                        content_length = result['content_length']
+                        
+                        # Categorize status code
+                        category, color = httpx_prober.categorize_status_code(status_code)
+                        
+                        # Store live subdomain
+                        with self.lock:
+                            key = f"{protocol}://{subdomain}"
+                            self.live_subdomains[key] = {
+                                'subdomain': subdomain,
+                                'protocol': protocol,
+                                'status_code': status_code,
+                                'title': title,
+                                'response_time': response_time,
+                                'content_length': content_length,
+                                'category': category,
+                                'url': result['url']
+                            }
+                        
+                        # Live display
+                        self.log(f"✅ {protocol.upper()}://{subdomain} [{color}{status_code}{Colors.END}] [{response_time}ms] {title}", Colors.WHITE)
+                    
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"❌ Error probing {subdomain}: {e}", Colors.RED)
+        
+        # Probe subdomains with threading
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
+            executor.map(probe_subdomain, unique_subdomains)
+
     def run_enumeration(self):
         """Run all enumeration techniques"""
         self.print_banner()
@@ -566,14 +724,93 @@ class SubdomainEnumerator:
             except Exception as e:
                 if self.verbose:
                     self.log(f"Method {method.__name__} failed: {e}", Colors.RED)
+        
+        # After enumeration, probe subdomains with httpx
+        if self.httpx_check:
+            self.httpx_probe_subdomains()
 
     def save_results(self):
         """Save results to file"""
-        if self.subdomains:
-            # Sort subdomains
+        if self.httpx_check and self.live_subdomains:
+            # Save live subdomains with status codes
+            live_output_file = self.output_file.replace('.txt', '_live.txt')
+            
+            # Categorize by status code
+            status_categories = {
+                'success': [],      # 2xx
+                'redirect': [],     # 3xx
+                'client_error': [], # 4xx
+                'server_error': [], # 5xx
+                'unknown': []       # others
+            }
+            
+            for url, info in self.live_subdomains.items():
+                category = info['category']
+                status_categories[category].append({
+                    'url': url,
+                    'status_code': info['status_code'],
+                    'title': info['title'],
+                    'response_time': info['response_time'],
+                    'content_length': info['content_length']
+                })
+            
+            # Save categorized results
+            with open(live_output_file, 'w') as f:
+                f.write(f"# Live Subdomains for {self.domain}\n")
+                f.write(f"# Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# Total live subdomains: {len(self.live_subdomains)}\n\n")
+                
+                for category, urls in status_categories.items():
+                    if urls:
+                        f.write(f"## {category.upper().replace('_', ' ')} ({len(urls)} subdomains)\n")
+                        for item in sorted(urls, key=lambda x: x['url']):
+                            f.write(f"{item['url']} [{item['status_code']}] [{item['response_time']}ms] {item['title']}\n")
+                        f.write("\n")
+            
+            # Also save simple list
+            simple_output_file = self.output_file.replace('.txt', '_simple.txt')
+            with open(simple_output_file, 'w') as f:
+                for url in sorted(self.live_subdomains.keys()):
+                    f.write(f"{url}\n")
+            
+            self.log(f"💾 Live results saved to: {live_output_file}", Colors.GREEN)
+            self.log(f"💾 Simple list saved to: {simple_output_file}", Colors.GREEN)
+            self.log(f"📊 Total live subdomains: {len(self.live_subdomains)}", Colors.GREEN)
+            
+            # Print summary
+            print(f"\n{Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗")
+            print(f"║                           🎯 HTTPX PROBING COMPLETE                         ║")
+            print(f"╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}")
+            
+            print(f"\n{Colors.GREEN}✅ Found {len(self.subdomains)} total subdomains for {self.domain}{Colors.END}")
+            print(f"{Colors.GREEN}🚀 Found {len(self.live_subdomains)} live subdomains{Colors.END}")
+            print(f"{Colors.YELLOW}📁 Live results: {live_output_file}{Colors.END}")
+            print(f"{Colors.YELLOW}📁 Simple list: {simple_output_file}{Colors.END}")
+            
+            # Show status code breakdown
+            print(f"\n{Colors.CYAN}📊 Status Code Breakdown:{Colors.END}")
+            for category, urls in status_categories.items():
+                if urls:
+                    color = Colors.GREEN if category == 'success' else Colors.YELLOW if category == 'redirect' else Colors.RED
+                    print(f"{color}  {category.replace('_', ' ').title()}: {len(urls)} subdomains{Colors.END}")
+            
+            # Show first 10 live results as preview
+            if self.live_subdomains:
+                print(f"\n{Colors.CYAN}🔍 Live Subdomains Preview (first 10):{Colors.END}")
+                live_list = sorted(self.live_subdomains.items())
+                for i, (url, info) in enumerate(live_list[:10], 1):
+                    status_code = info['status_code']
+                    title = info['title'][:50] + "..." if len(info['title']) > 50 else info['title']
+                    category, color = HttpxProbe(self.timeout, self.threads).categorize_status_code(status_code)
+                    print(f"{Colors.WHITE}{i:2d}. {url} {color}[{status_code}]{Colors.END} {title}{Colors.END}")
+                
+                if len(self.live_subdomains) > 10:
+                    print(f"{Colors.YELLOW}   ... and {len(self.live_subdomains) - 10} more{Colors.END}")
+        
+        elif self.subdomains:
+            # Fallback to original behavior if httpx is disabled
             sorted_subdomains = sorted(list(self.subdomains))
             
-            # Save to file
             with open(self.output_file, 'w') as f:
                 for subdomain in sorted_subdomains:
                     f.write(f"{subdomain}\n")
@@ -581,33 +818,24 @@ class SubdomainEnumerator:
             self.log(f"💾 Results saved to: {self.output_file}", Colors.GREEN)
             self.log(f"📊 Total subdomains found: {len(sorted_subdomains)}", Colors.GREEN)
             
-            # Print summary
             print(f"\n{Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗")
             print(f"║                           🎯 ENUMERATION COMPLETE                           ║")
             print(f"╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}")
             print(f"\n{Colors.GREEN}✅ Found {len(sorted_subdomains)} unique subdomains for {self.domain}{Colors.END}")
             print(f"{Colors.YELLOW}📁 Results saved to: {self.output_file}{Colors.END}")
-            
-            # Show first 10 results as preview
-            if sorted_subdomains:
-                print(f"\n{Colors.CYAN}🔍 Preview (first 10 results):{Colors.END}")
-                for i, subdomain in enumerate(sorted_subdomains[:10], 1):
-                    print(f"{Colors.WHITE}{i:2d}. {subdomain}{Colors.END}")
-                
-                if len(sorted_subdomains) > 10:
-                    print(f"{Colors.YELLOW}   ... and {len(sorted_subdomains) - 10} more{Colors.END}")
         else:
             self.log("❌ No subdomains found", Colors.RED)
 
 def main():
     parser = argparse.ArgumentParser(
-        description="🔍 Advanced Subdomain Enumeration Tool",
+        description="🔍 Advanced Subdomain Enumeration Tool with httpx Integration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   python3 subdomains.py -d example.com
   python3 subdomains.py -d example.com -o results.txt -t 100 -v
   python3 subdomains.py -d example.com --timeout 15 --verbose
+  python3 subdomains.py -d example.com --no-httpx  # Skip HTTP probing
         """
     )
     
@@ -616,6 +844,7 @@ Examples:
     parser.add_argument('-t', '--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout in seconds (default: 10)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+    parser.add_argument('--no-httpx', action='store_true', help='Skip HTTP/HTTPS probing (httpx functionality)')
     
     args = parser.parse_args()
     
@@ -635,7 +864,8 @@ Examples:
             output_file=args.output,
             threads=args.threads,
             timeout=args.timeout,
-            verbose=args.verbose
+            verbose=args.verbose,
+            httpx_check=not args.no_httpx
         )
         
         # Run enumeration

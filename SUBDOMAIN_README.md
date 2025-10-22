@@ -17,6 +17,11 @@
 - **SSL Certificate Analysis**: تجزیه و تحلیل گواهی‌نامه‌های SSL
 
 ### 🛡️ قابلیت‌های پیشرفته
+- **httpx Integration**: HTTP/HTTPS probing مشابه ابزار httpx
+- **Live Status Checking**: بررسی زنده بودن ساب‌دامین‌ها
+- **Status Code Categorization**: دسته‌بندی بر اساس کد وضعیت
+- **Response Time Measurement**: اندازه‌گیری زمان پاسخ
+- **Title Extraction**: استخراج عنوان صفحات
 - **حذف خودکار Duplicate**: سیستم هوشمند حذف تکراری‌ها
 - **Multi-threading**: پردازش موازی برای سرعت بالا
 - **User-Agent Rotation**: چرخش User-Agent برای جلوگیری از تشخیص
@@ -50,7 +55,7 @@ chmod +x subdomains.py
 
 ### دستورات پایه
 ```bash
-# اسکن ساده یک دامین
+# اسکن ساده یک دامین (با httpx probing)
 python3 subdomains.py -d example.com
 
 # تعیین فایل خروجی سفارشی
@@ -64,6 +69,9 @@ python3 subdomains.py -d example.com -v
 
 # تنظیم timeout سفارشی
 python3 subdomains.py -d example.com --timeout 15
+
+# غیرفعال کردن httpx probing (فقط enumeration)
+python3 subdomains.py -d example.com --no-httpx
 ```
 
 ### پارامترهای پیشرفته
@@ -87,7 +95,7 @@ python3 subdomains.py -d target.com -t 200 --timeout 20 -v
 ║                                                                              ║
 ║  🌐 Certificate Transparency  |  🔍 DNS Brute Force                        ║
 ║  🔎 Search Engine Discovery   |  📊 GitHub Code Search                      ║
-║  🚀 Chaos API Integration     |  🌍 Web Archive Mining                      ║
+║  🚀 httpx HTTP/HTTPS Probing  |  🌍 Web Archive Mining                      ║
 ║  🛡️  Security Intelligence    |  📡 Passive DNS Sources                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -107,24 +115,34 @@ python3 subdomains.py -d target.com -t 200 --timeout 20 -v
 [12:35:04] 🔎 Searching via Search Engines...
 [12:35:07] Found: blog.example.com
 [12:35:08] Found: shop.example.com
+[12:35:10] 🚀 Starting HTTP/HTTPS probing (httpx-style)...
+[12:35:11] 📊 Probing 25 unique subdomains...
+[12:35:12] ✅ HTTPS://www.example.com [200] [89ms] Example Domain
+[12:35:12] ✅ HTTP://api.example.com [200] [156ms] API Documentation
+[12:35:13] ✅ HTTPS://admin.example.com [403] [203ms] Access Denied
+[12:35:13] ✅ HTTP://blog.example.com [200] [178ms] Company Blog
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║                           🎯 ENUMERATION COMPLETE                           ║
+║                           🎯 HTTPX PROBING COMPLETE                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-✅ Found 25 unique subdomains for example.com
-📁 Results saved to: example.com_subdomains.txt
+✅ Found 25 total subdomains for example.com
+🚀 Found 18 live subdomains
+📁 Live results: example.com_subdomains_live.txt
+📁 Simple list: example.com_subdomains_simple.txt
 
-🔍 Preview (first 10 results):
- 1. admin.example.com
- 2. api.example.com
- 3. blog.example.com
- 4. dev.example.com
- 5. mail.example.com
- 6. shop.example.com
- 7. test.example.com
- 8. www.example.com
- ... and 17 more
+📊 Status Code Breakdown:
+  Success: 12 subdomains
+  Redirect: 4 subdomains
+  Client Error: 2 subdomains
+
+🔍 Live Subdomains Preview (first 10):
+ 1. https://www.example.com [200] Example Domain
+ 2. http://api.example.com [200] API Documentation  
+ 3. https://admin.example.com [403] Access Denied
+ 4. http://blog.example.com [200] Company Blog
+ 5. https://mail.example.com [301] Redirected
+ ... and 13 more
 ```
 
 ## 🔧 تکنیک‌های پیاده‌شده
@@ -178,6 +196,14 @@ python3 subdomains.py -d target.com -t 200 --timeout 20 -v
 - تست با Host header
 - شناسایی vhost های مختلف
 - مقایسه پاسخ‌های HTTP
+
+### 11. httpx HTTP/HTTPS Probing
+- بررسی زنده بودن ساب‌دامین‌ها
+- پشتیبانی از HTTP و HTTPS
+- اندازه‌گیری زمان پاسخ
+- استخراج عنوان صفحات
+- تشخیص سرور وب
+- دسته‌بندی بر اساس status code
 
 ## 🎯 نقاط قوت ابزار
 

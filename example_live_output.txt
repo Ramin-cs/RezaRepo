@@ -1,0 +1,24 @@
+# Live Subdomains for example.com
+# Generated on: 2024-10-22 21:45:30
+# Total live subdomains: 15
+
+## SUCCESS (12 subdomains)
+http://api.example.com [200] [156ms] API Documentation
+http://blog.example.com [200] [178ms] Company Blog
+http://www.example.com [200] [89ms] Example Domain
+https://admin.example.com [200] [203ms] Admin Panel
+https://app.example.com [200] [234ms] Web Application
+https://cdn.example.com [200] [67ms] CDN Service
+https://dev.example.com [200] [298ms] Development Environment
+https://docs.example.com [200] [145ms] Documentation
+https://mail.example.com [200] [187ms] Webmail Interface
+https://shop.example.com [200] [223ms] Online Store
+https://staging.example.com [200] [312ms] Staging Environment
+https://www.example.com [200] [89ms] Example Domain
+
+## REDIRECT (2 subdomains)
+http://admin.example.com [301] [98ms] Moved Permanently
+http://secure.example.com [302] [76ms] Found
+
+## CLIENT_ERROR (1 subdomains)
+https://private.example.com [403] [145ms] Access Denied
