@@ -49,7 +49,9 @@ import errno
 # Network scanning imports
 try:
     import nmap
-    NMAP_AVAILABLE = True
+    import shutil
+    # Check if nmap is actually available in PATH
+    NMAP_AVAILABLE = shutil.which('nmap') is not None
 except ImportError:
     NMAP_AVAILABLE = False
 
@@ -190,7 +192,8 @@ class HttpxProbe:
             except Exception as e:
                 results[protocol] = {'error': f'unknown_error: {str(e)}'}
         
-        return results
+        # Ensure we always return a dictionary, even if empty
+        return results if results else {}
     
     def extract_title(self, response):
         """Extract title from HTML response"""
@@ -555,12 +558,17 @@ class ActiveDiscoveryMethods(ActiveDiscovery):
                                         self.log(f"SSL cert found: {san_value} (port {port})", '\033[92m')
                             
                             # Extract from subject
-                            subject = dict(x[0] for x in cert['subject'])
-                            if 'commonName' in subject:
-                                cn = subject['commonName']
-                                if cn.endswith(f'.{self.domain}'):
-                                    self.add_subdomain(cn)
-                                    self.log(f"SSL CN found: {cn} (port {port})", '\033[92m')
+                            try:
+                                if 'subject' in cert and cert['subject']:
+                                    subject = dict(x[0] for x in cert['subject'])
+                                    if 'commonName' in subject:
+                                        cn = subject['commonName']
+                                        if cn.endswith(f'.{self.domain}'):
+                                            self.add_subdomain(cn)
+                                            self.log(f"SSL CN found: {cn} (port {port})", '\033[92m')
+                            except (KeyError, TypeError, IndexError) as e:
+                                if self.verbose:
+                                    self.log(f"SSL subject parsing error for port {port}: {e}", '\033[93m')
                 
                 except Exception as e:
                     if self.verbose and 'Connection refused' not in str(e):
@@ -2098,7 +2106,13 @@ class SubdomainEnumerator:
             try:
                 results = httpx_prober.probe_url(subdomain)
                 
-                if results and isinstance(results, dict):
+                # Safety check: ensure results is a dictionary
+                if not results or not isinstance(results, dict):
+                    if self.verbose:
+                        self.log(f"❌ Error probing {subdomain}: probe_url returned invalid result", Colors.RED)
+                    return
+                
+                if results:
                     for protocol, result in results.items():
                         if result and isinstance(result, dict) and 'error' not in result:
                             status_code = result.get('status_code')
@@ -2378,6 +2392,8 @@ class SubdomainEnumerator:
                 print(f"{Colors.MAGENTA}🏠 Found {len(self.internal_ips)} internal IPs{Colors.END}")
             print(f"{Colors.YELLOW}📁 Live results: {live_output_file}{Colors.END}")
             print(f"{Colors.YELLOW}📁 Simple list: {simple_output_file}{Colors.END}")
+            if self.csv_output and csv_output_file:
+                print(f"{Colors.YELLOW}📁 CSV results: {csv_output_file}{Colors.END}")
             if self.internal_ips:
                 internal_file = self.output_file.replace('.txt', '_internal_ips.txt')
                 print(f"{Colors.YELLOW}📁 Internal IPs: {internal_file}{Colors.END}")
