@@ -42,6 +42,28 @@ from collections import defaultdict
 import ipaddress
 from urllib3.exceptions import InsecureRequestWarning
 import warnings
+import struct
+import select
+import errno
+
+# Network scanning imports
+try:
+    import nmap
+    NMAP_AVAILABLE = True
+except ImportError:
+    NMAP_AVAILABLE = False
+
+try:
+    from scapy.all import *
+    SCAPY_AVAILABLE = True
+except ImportError:
+    SCAPY_AVAILABLE = False
+
+try:
+    import netaddr
+    NETADDR_AVAILABLE = True
+except ImportError:
+    NETADDR_AVAILABLE = False
 
 # Import API configuration
 try:
@@ -69,6 +91,44 @@ class Colors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'
+
+class ActiveDiscovery:
+    """Advanced Active Subdomain Discovery Methods"""
+    
+    def __init__(self, domain, timeout=10, threads=50, verbose=False):
+        self.domain = domain
+        self.timeout = timeout
+        self.threads = threads
+        self.verbose = verbose
+        self.discovered_subdomains = set()
+        self.internal_ips = set()
+        self.lock = threading.Lock()
+        
+        # Network ranges for internal IP discovery
+        self.internal_ranges = [
+            '192.168.0.0/16',
+            '10.0.0.0/8', 
+            '172.16.0.0/12',
+            '127.0.0.0/8',
+            '169.254.0.0/16'  # Link-local
+        ]
+    
+    def log(self, message, color='\033[97m'):
+        """Log message with color"""
+        if self.verbose:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"\033[94m[{timestamp}]\033[0m {color}{message}\033[0m")
+    
+    def add_subdomain(self, subdomain):
+        """Add discovered subdomain"""
+        if subdomain and subdomain.endswith(f'.{self.domain}'):
+            with self.lock:
+                self.discovered_subdomains.add(subdomain.lower().strip())
+    
+    def add_internal_ip(self, ip, hostname=None):
+        """Add discovered internal IP"""
+        with self.lock:
+            self.internal_ips.add((ip, hostname or 'Unknown'))
 
 class HttpxProbe:
     """HTTP/HTTPS probing functionality similar to httpx"""
@@ -151,14 +211,486 @@ class HttpxProbe:
         """Categorize HTTP status codes"""
         if 200 <= status_code < 300:
             return 'success', Colors.GREEN
-        elif 300 <= status_code < 400:
-            return 'redirect', Colors.YELLOW
-        elif 400 <= status_code < 500:
-            return 'client_error', Colors.RED
-        elif 500 <= status_code < 600:
-            return 'server_error', Colors.MAGENTA
-        else:
-            return 'unknown', Colors.WHITE
+
+# Active Discovery Methods
+class ActiveDiscoveryMethods(ActiveDiscovery):
+    """Implementation of all Active Subdomain Discovery techniques"""
+    
+    def __init__(self, domain, timeout=10, threads=50, verbose=False):
+        super().__init__(domain, timeout, threads, verbose)
+        self.dns_servers = ['8.8.8.8', '1.1.1.1', '208.67.222.222']
+        self.common_ports = [80, 443, 8080, 8443, 3000, 5000, 8000, 9000]
+    
+    # 1. DNS-Based Active Methods
+    def dns_zone_transfer_advanced(self):
+        """Advanced DNS Zone Transfer with multiple techniques"""
+        self.log("🔍 Advanced DNS Zone Transfer Attack...", '\033[96m')
+        
+        try:
+            # Get all nameservers
+            ns_records = dns.resolver.resolve(self.domain, 'NS')
+            
+            for ns in ns_records:
+                ns_name = str(ns)
+                try:
+                    # Try to get NS IP
+                    ns_ips = dns.resolver.resolve(ns_name, 'A')
+                    
+                    for ns_ip in ns_ips:
+                        ns_ip_str = str(ns_ip)
+                        self.log(f"Trying zone transfer from {ns_name} ({ns_ip_str})", '\033[93m')
+                        
+                        try:
+                            # Attempt AXFR
+                            zone = dns.zone.from_xfr(dns.query.xfr(ns_ip_str, self.domain, timeout=self.timeout))
+                            
+                            for name in zone.nodes.keys():
+                                subdomain = f"{name}.{self.domain}"
+                                if subdomain != self.domain:
+                                    self.add_subdomain(subdomain)
+                                    self.log(f"Zone Transfer found: {subdomain}", '\033[92m')
+                        
+                        except Exception as e:
+                            if self.verbose:
+                                self.log(f"AXFR failed for {ns_name}: {e}", '\033[91m')
+                            
+                            # Try IXFR as fallback
+                            try:
+                                ixfr_response = dns.query.xfr(ns_ip_str, self.domain, rdtype=dns.rdatatype.IXFR, timeout=self.timeout)
+                                for response in ixfr_response:
+                                    for rrset in response.answer:
+                                        if hasattr(rrset, 'name'):
+                                            subdomain = str(rrset.name)
+                                            if subdomain.endswith(f'.{self.domain}'):
+                                                self.add_subdomain(subdomain)
+                            except:
+                                pass
+                
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"NS resolution failed for {ns_name}: {e}", '\033[91m')
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Zone transfer error: {e}", '\033[91m')
+    
+    def dns_cache_snooping(self):
+        """DNS Cache Snooping for subdomain discovery"""
+        self.log("🔍 DNS Cache Snooping...", '\033[96m')
+        
+        common_subdomains = ['www', 'mail', 'ftp', 'admin', 'api', 'app', 'blog', 'dev', 'test']
+        
+        for dns_server in self.dns_servers:
+            try:
+                resolver = dns.resolver.Resolver()
+                resolver.nameservers = [dns_server]
+                resolver.timeout = self.timeout
+                
+                for subdomain in common_subdomains:
+                    full_domain = f"{subdomain}.{self.domain}"
+                    try:
+                        # Query with RD=0 (no recursion desired) to check cache
+                        query = dns.message.make_query(full_domain, dns.rdatatype.A)
+                        query.flags &= ~dns.flags.RD  # Remove recursion desired flag
+                        
+                        response = dns.query.udp(query, dns_server, timeout=self.timeout)
+                        
+                        if response.answer:
+                            self.add_subdomain(full_domain)
+                            self.log(f"Cache snooping found: {full_domain}", '\033[92m')
+                    
+                    except:
+                        continue
+            
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"Cache snooping error for {dns_server}: {e}", '\033[91m')
+    
+    def nsec_walking(self):
+        """NSEC/NSEC3 Walking for DNSSEC-enabled domains"""
+        self.log("🔍 NSEC/NSEC3 Walking...", '\033[96m')
+        
+        try:
+            # Check if domain has DNSSEC
+            try:
+                dnskey_response = dns.resolver.resolve(self.domain, 'DNSKEY')
+                self.log("DNSSEC detected, attempting NSEC walking", '\033[93m')
+            except:
+                self.log("No DNSSEC found, skipping NSEC walking", '\033[93m')
+                return
+            
+            # Try NSEC walking
+            current_name = self.domain
+            visited = set()
+            
+            for _ in range(100):  # Limit iterations
+                if current_name in visited:
+                    break
+                visited.add(current_name)
+                
+                try:
+                    # Query for non-existent record to trigger NSEC
+                    fake_name = f"nonexistent-{random.randint(1000,9999)}.{current_name}"
+                    try:
+                        dns.resolver.resolve(fake_name, 'A')
+                    except dns.resolver.NXDOMAIN as e:
+                        # Parse NSEC records from authority section
+                        if hasattr(e, 'response') and e.response.authority:
+                            for rrset in e.response.authority:
+                                if rrset.rdtype == dns.rdatatype.NSEC:
+                                    for rdata in rrset:
+                                        next_name = str(rdata.next)
+                                        if next_name.endswith(f'.{self.domain}') and next_name != self.domain:
+                                            self.add_subdomain(next_name)
+                                            self.log(f"NSEC walking found: {next_name}", '\033[92m')
+                                            current_name = next_name
+                                            break
+                except:
+                    break
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"NSEC walking error: {e}", '\033[91m')
+    
+    # 2. Network-Based Active Methods  
+    def network_range_scanning(self):
+        """Scan network ranges for internal services"""
+        self.log("🌐 Network Range Scanning...", '\033[96m')
+        
+        if not NMAP_AVAILABLE:
+            self.log("nmap not available, skipping network scanning", '\033[93m')
+            return
+        
+        try:
+            # Get domain's public IP first
+            domain_ip = socket.gethostbyname(self.domain)
+            self.log(f"Domain IP: {domain_ip}", '\033[93m')
+            
+            # Calculate network range
+            ip_obj = ipaddress.IPv4Address(domain_ip)
+            network = ipaddress.IPv4Network(f"{domain_ip}/24", strict=False)
+            
+            nm = nmap.PortScanner()
+            
+            # Scan the network range
+            self.log(f"Scanning network range: {network}", '\033[93m')
+            scan_result = nm.scan(str(network), '80,443,8080,8443', arguments='-sS -T4 --max-retries 1')
+            
+            for host in nm.all_hosts():
+                if nm[host].state() == 'up':
+                    try:
+                        # Try reverse DNS lookup
+                        hostname = socket.gethostbyaddr(host)[0]
+                        if hostname.endswith(f'.{self.domain}'):
+                            self.add_subdomain(hostname)
+                            self.log(f"Network scan found: {hostname} ({host})", '\033[92m')
+                    except:
+                        # Check if it's internal IP
+                        if any(ipaddress.IPv4Address(host) in ipaddress.IPv4Network(range_) for range_ in self.internal_ranges):
+                            self.add_internal_ip(host)
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Network scanning error: {e}", '\033[91m')
+    
+    def port_scanning_discovery(self):
+        """Port scanning for service discovery"""
+        self.log("🔍 Port Scanning for Service Discovery...", '\033[96m')
+        
+        if not NMAP_AVAILABLE:
+            self.log("nmap not available, skipping port scanning", '\033[93m')
+            return
+        
+        try:
+            nm = nmap.PortScanner()
+            
+            # Scan common web ports
+            ports = '80,443,8080,8443,3000,5000,8000,9000,4443,9443'
+            scan_result = nm.scan(self.domain, ports, arguments='-sV -T4')
+            
+            for host in nm.all_hosts():
+                for protocol in nm[host].all_protocols():
+                    ports = nm[host][protocol].keys()
+                    for port in ports:
+                        port_info = nm[host][protocol][port]
+                        if port_info['state'] == 'open':
+                            service = port_info.get('name', 'unknown')
+                            version = port_info.get('version', '')
+                            
+                            # Try to get hostname from service banner
+                            if 'product' in port_info:
+                                product = port_info['product']
+                                # Look for hostname patterns in product info
+                                hostname_patterns = re.findall(r'([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')', product)
+                                for hostname in hostname_patterns:
+                                    self.add_subdomain(hostname)
+                                    self.log(f"Port scan found: {hostname} (port {port})", '\033[92m')
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Port scanning error: {e}", '\033[91m')
+    
+    # 3. HTTP/HTTPS-Based Active Methods
+    def virtual_host_bruteforce(self):
+        """Advanced Virtual Host Brute Force"""
+        self.log("🌍 Advanced Virtual Host Brute Force...", '\033[96m')
+        
+        try:
+            # Get domain IP
+            domain_ip = socket.gethostbyname(self.domain)
+            
+            # Extended wordlist for vhost discovery
+            vhost_wordlist = [
+                'www', 'mail', 'ftp', 'admin', 'api', 'app', 'blog', 'dev', 'test', 'staging',
+                'cdn', 'static', 'assets', 'images', 'media', 'docs', 'support', 'help',
+                'shop', 'store', 'portal', 'dashboard', 'panel', 'console', 'manage',
+                'secure', 'ssl', 'vpn', 'remote', 'backup', 'monitor', 'status', 'health',
+                'internal', 'intranet', 'private', 'corp', 'corporate', 'company',
+                'office', 'staff', 'employee', 'hr', 'finance', 'accounting', 'billing'
+            ]
+            
+            def check_vhost(subdomain):
+                full_domain = f"{subdomain}.{self.domain}"
+                
+                for port in [80, 443, 8080, 8443]:
+                    try:
+                        protocol = 'https' if port in [443, 8443] else 'http'
+                        url = f"{protocol}://{domain_ip}:{port}" if port not in [80, 443] else f"{protocol}://{domain_ip}"
+                        
+                        headers = {
+                            'Host': full_domain,
+                            'User-Agent': 'Mozilla/5.0 (compatible; SubdomainScanner/1.0)',
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                        }
+                        
+                        response = requests.get(url, headers=headers, timeout=self.timeout, 
+                                              verify=False, allow_redirects=False)
+                        
+                        # Check for different response compared to default
+                        default_response = requests.get(url, timeout=self.timeout, 
+                                                      verify=False, allow_redirects=False)
+                        
+                        if (response.status_code != default_response.status_code or 
+                            len(response.content) != len(default_response.content) or
+                            response.headers.get('Server') != default_response.headers.get('Server')):
+                            
+                            self.add_subdomain(full_domain)
+                            self.log(f"VHost found: {full_domain} (port {port})", '\033[92m')
+                    
+                    except:
+                        continue
+            
+            # Use threading for faster scanning
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
+                executor.map(check_vhost, vhost_wordlist)
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Virtual host brute force error: {e}", '\033[91m')
+    
+    def ssl_certificate_probing(self):
+        """Active SSL Certificate Probing"""
+        self.log("🔒 Active SSL Certificate Probing...", '\033[96m')
+        
+        try:
+            # Get domain IP
+            domain_ip = socket.gethostbyname(self.domain)
+            
+            ssl_ports = [443, 8443, 9443, 4443]
+            
+            for port in ssl_ports:
+                try:
+                    context = ssl.create_default_context()
+                    context.check_hostname = False
+                    context.verify_mode = ssl.CERT_NONE
+                    
+                    with socket.create_connection((domain_ip, port), timeout=self.timeout) as sock:
+                        with context.wrap_socket(sock, server_hostname=self.domain) as ssock:
+                            cert = ssock.getpeercert()
+                            
+                            # Extract Subject Alternative Names
+                            if 'subjectAltName' in cert:
+                                for san_type, san_value in cert['subjectAltName']:
+                                    if san_type == 'DNS' and san_value.endswith(f'.{self.domain}'):
+                                        self.add_subdomain(san_value)
+                                        self.log(f"SSL cert found: {san_value} (port {port})", '\033[92m')
+                            
+                            # Extract from subject
+                            subject = dict(x[0] for x in cert['subject'])
+                            if 'commonName' in subject:
+                                cn = subject['commonName']
+                                if cn.endswith(f'.{self.domain}'):
+                                    self.add_subdomain(cn)
+                                    self.log(f"SSL CN found: {cn} (port {port})", '\033[92m')
+                
+                except Exception as e:
+                    if self.verbose and 'Connection refused' not in str(e):
+                        self.log(f"SSL probing error for port {port}: {e}", '\033[91m')
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"SSL certificate probing error: {e}", '\033[91m')
+    
+    # 4. Infrastructure-Based Active Methods
+    def cloud_infrastructure_probing(self):
+        """Cloud Infrastructure Active Probing"""
+        self.log("☁️ Cloud Infrastructure Probing...", '\033[96m')
+        
+        # AWS S3 bucket enumeration
+        s3_patterns = [
+            f"{self.domain}",
+            f"{self.domain.replace('.', '-')}",
+            f"{self.domain.replace('.', '')}",
+            f"www-{self.domain.replace('.', '-')}",
+            f"static-{self.domain.replace('.', '-')}",
+            f"assets-{self.domain.replace('.', '-')}",
+            f"cdn-{self.domain.replace('.', '-')}",
+            f"backup-{self.domain.replace('.', '-')}",
+            f"logs-{self.domain.replace('.', '-')}"
+        ]
+        
+        for pattern in s3_patterns:
+            try:
+                # Check S3 bucket existence
+                s3_url = f"https://{pattern}.s3.amazonaws.com"
+                response = requests.head(s3_url, timeout=self.timeout)
+                
+                if response.status_code in [200, 403, 301]:
+                    self.log(f"S3 bucket found: {pattern}.s3.amazonaws.com", '\033[92m')
+                    # This isn't technically a subdomain but related infrastructure
+            
+            except:
+                continue
+        
+        # Azure blob storage
+        azure_patterns = [pattern.replace('.', '') for pattern in s3_patterns]
+        for pattern in azure_patterns:
+            try:
+                azure_url = f"https://{pattern}.blob.core.windows.net"
+                response = requests.head(azure_url, timeout=self.timeout)
+                
+                if response.status_code in [200, 403, 400]:
+                    self.log(f"Azure blob found: {pattern}.blob.core.windows.net", '\033[92m')
+            
+            except:
+                continue
+    
+    # 5. Internal IP Discovery Methods
+    def internal_network_discovery(self):
+        """Discover internal network infrastructure"""
+        self.log("🏠 Internal Network Discovery...", '\033[96m')
+        
+        if not NETADDR_AVAILABLE:
+            self.log("netaddr not available, skipping internal network discovery", '\033[93m')
+            return
+        
+        try:
+            # Scan internal IP ranges
+            for ip_range in self.internal_ranges:
+                network = ipaddress.IPv4Network(ip_range)
+                
+                # Limit scan to smaller subnets for performance
+                if network.num_addresses > 1024:
+                    # Sample some subnets
+                    subnets = list(network.subnets(new_prefix=24))[:10]
+                else:
+                    subnets = [network]
+                
+                for subnet in subnets:
+                    self.scan_internal_subnet(str(subnet))
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Internal network discovery error: {e}", '\033[91m')
+    
+    def scan_internal_subnet(self, subnet):
+        """Scan internal subnet for services"""
+        try:
+            if NMAP_AVAILABLE:
+                nm = nmap.PortScanner()
+                
+                # Quick scan for common services
+                scan_result = nm.scan(subnet, '22,23,53,80,135,139,389,443,445,993,995,3389', 
+                                    arguments='-sS -T4 --max-retries 1 --host-timeout 30s')
+                
+                for host in nm.all_hosts():
+                    if nm[host].state() == 'up':
+                        try:
+                            # Try reverse DNS
+                            hostname = socket.gethostbyaddr(host)[0]
+                            self.add_internal_ip(host, hostname)
+                            
+                            if hostname.endswith(f'.{self.domain}'):
+                                self.add_subdomain(hostname)
+                                self.log(f"Internal subdomain found: {hostname} ({host})", '\033[92m')
+                            else:
+                                self.log(f"Internal host found: {hostname} ({host})", '\033[93m')
+                        
+                        except:
+                            self.add_internal_ip(host)
+                            self.log(f"Internal IP found: {host}", '\033[93m')
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Subnet scan error for {subnet}: {e}", '\033[91m')
+    
+    def active_directory_enumeration(self):
+        """Active Directory enumeration for internal domains"""
+        self.log("🏢 Active Directory Enumeration...", '\033[96m')
+        
+        try:
+            # Try to discover domain controllers
+            dc_queries = [
+                f"_ldap._tcp.dc._msdcs.{self.domain}",
+                f"_ldap._tcp.{self.domain}",
+                f"_kerberos._tcp.{self.domain}",
+                f"_gc._tcp.{self.domain}"
+            ]
+            
+            for query in dc_queries:
+                try:
+                    srv_records = dns.resolver.resolve(query, 'SRV')
+                    for srv in srv_records:
+                        dc_hostname = str(srv.target).rstrip('.')
+                        if dc_hostname.endswith(f'.{self.domain}'):
+                            self.add_subdomain(dc_hostname)
+                            self.log(f"Domain Controller found: {dc_hostname}", '\033[92m')
+                
+                except:
+                    continue
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Active Directory enumeration error: {e}", '\033[91m')
+    
+    def run_all_active_methods(self):
+        """Run all active discovery methods"""
+        methods = [
+            ("DNS Zone Transfer", self.dns_zone_transfer_advanced),
+            ("DNS Cache Snooping", self.dns_cache_snooping),
+            ("NSEC Walking", self.nsec_walking),
+            ("Network Range Scanning", self.network_range_scanning),
+            ("Port Scanning Discovery", self.port_scanning_discovery),
+            ("Virtual Host Brute Force", self.virtual_host_bruteforce),
+            ("SSL Certificate Probing", self.ssl_certificate_probing),
+            ("Cloud Infrastructure Probing", self.cloud_infrastructure_probing),
+            ("Internal Network Discovery", self.internal_network_discovery),
+            ("Active Directory Enumeration", self.active_directory_enumeration)
+        ]
+        
+        for method_name, method in methods:
+            try:
+                self.log(f"Starting {method_name}...", '\033[95m')
+                method()
+                time.sleep(1)  # Brief pause between methods
+            except KeyboardInterrupt:
+                self.log("Active discovery interrupted by user", '\033[93m')
+                break
+            except Exception as e:
+                if self.verbose:
+                    self.log(f"{method_name} failed: {e}", '\033[91m')
+        
+        return self.discovered_subdomains, self.internal_ips
 
 class SubdomainEnumerator:
     def __init__(self, domain, output_file=None, threads=100, timeout=15, verbose=True, 
@@ -193,8 +725,17 @@ class SubdomainEnumerator:
         
         self.subdomains = set()
         self.live_subdomains = {}  # Store live subdomains with their status
+        self.internal_ips = set()  # Store discovered internal IPs
         self.lock = threading.Lock()
         self.session = requests.Session()
+        
+        # Initialize active discovery
+        self.active_discovery = ActiveDiscoveryMethods(
+            domain=self.domain,
+            timeout=self.timeout,
+            threads=self.threads,
+            verbose=self.verbose
+        )
         
         # Configure session for httpx-like behavior
         self.session.verify = False
@@ -355,13 +896,14 @@ class SubdomainEnumerator:
         
         banner = f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗
-║                    🔍 ADVANCED SUBDOMAIN ENUMERATOR v2.0                   ║
-║              Comprehensive Subdomain Discovery & Intelligence               ║
+║                    🔍 ADVANCED SUBDOMAIN ENUMERATOR v3.0                   ║
+║           Comprehensive Passive & Active Subdomain Discovery                ║
 ║                                                                              ║
-║  🌐 Certificate Transparency  |  🔍 DNS Brute Force                        ║
+║  🌐 Certificate Transparency  |  🔍 DNS Brute Force & Zone Transfer         ║
 ║  🔎 Search Engine Discovery   |  📊 GitHub Code Search                      ║
 ║  🚀 httpx HTTP/HTTPS Probing  |  🌍 Web Archive Mining                      ║
-║  🛡️  Premium API Integration  |  📡 Passive DNS Sources                     ║
+║  🛡️  Premium API Integration  |  📡 Active Network Scanning                 ║
+║  🏠 Internal IP Discovery     |  ⚡ Virtual Host Enumeration                ║
 ╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}
 
 {Colors.YELLOW}[*] Target Domain: {Colors.WHITE}{self.domain}{Colors.END}
@@ -1383,6 +1925,44 @@ class SubdomainEnumerator:
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             full_domains = [f"{sub}.{self.domain}" for sub in known_subdomains]
             executor.map(check_ssl_cert, full_domains)
+    
+    def run_active_discovery(self):
+        """Run comprehensive active subdomain discovery"""
+        if not self.should_run_active():
+            return
+        
+        self.log("🚀 Starting Active Subdomain Discovery...", Colors.MAGENTA)
+        self.log("⚠️  Active methods may be detected by target systems", Colors.YELLOW)
+        
+        try:
+            # Run all active discovery methods
+            discovered_subs, internal_ips = self.active_discovery.run_all_active_methods()
+            
+            # Add discovered subdomains to main set
+            for subdomain in discovered_subs:
+                self.add_subdomain(subdomain)
+            
+            # Store internal IPs
+            self.internal_ips.update(internal_ips)
+            
+            if discovered_subs:
+                self.log(f"Active discovery found {len(discovered_subs)} additional subdomains", Colors.GREEN)
+            
+            if internal_ips:
+                self.log(f"Active discovery found {len(internal_ips)} internal IPs", Colors.GREEN)
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Active discovery error: {e}", Colors.RED)
+    
+    def should_run_active(self):
+        """Check if active methods should run"""
+        # Don't run active methods in passive-only mode
+        if self.passive_only:
+            return False
+        
+        # Run active methods if explicitly requested or in default mode
+        return self.active_only or self.use_all or 'active' in str(self.sources)
 
     def httpx_probe_subdomains(self):
         """Probe discovered subdomains using httpx-like functionality"""
@@ -1524,6 +2104,9 @@ class SubdomainEnumerator:
                 if self.verbose:
                     self.log(f"Method {method.__name__} failed: {e}", Colors.RED)
         
+        # Run active discovery methods
+        self.run_active_discovery()
+        
         # After enumeration, probe subdomains with httpx
         if self.httpx_check:
             self.httpx_probe_subdomains()
@@ -1639,8 +2222,26 @@ class SubdomainEnumerator:
                     for url, info in sorted(self.live_subdomains.items()):
                         f.write(f'"{url}","{info["subdomain"]}","{info["protocol"]}",{info["status_code"]},"{info["title"]}",{info["response_time"]},{info["content_length"]},"{info["category"]}"\n')
                 
+            if not self.silent:
+                self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
+            
+            # Save internal IPs if found
+            if self.internal_ips:
+                internal_ips_file = self.output_file.replace('.txt', '_internal_ips.txt')
+                with open(internal_ips_file, 'w', encoding='utf-8') as f:
+                    f.write(f"# Internal IPs discovered for {self.domain}\n")
+                    f.write(f"# Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"# Total internal IPs: {len(self.internal_ips)}\n\n")
+                    
+                    for ip_info in sorted(self.internal_ips):
+                        if isinstance(ip_info, tuple):
+                            ip, hostname = ip_info
+                            f.write(f"{ip}\t{hostname}\n")
+                        else:
+                            f.write(f"{ip_info}\tUnknown\n")
+                
                 if not self.silent:
-                    self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
+                    self.log(f"💾 Internal IPs saved to: {internal_ips_file}", Colors.GREEN)
             
             self.log(f"💾 Live results saved to: {live_output_file}", Colors.GREEN)
             self.log(f"💾 Simple list saved to: {simple_output_file}", Colors.GREEN)
@@ -1653,8 +2254,13 @@ class SubdomainEnumerator:
             
             print(f"\n{Colors.GREEN}✅ Found {len(self.subdomains)} total subdomains for {self.domain}{Colors.END}")
             print(f"{Colors.GREEN}🚀 Found {len(self.live_subdomains)} live subdomains{Colors.END}")
+            if self.internal_ips:
+                print(f"{Colors.MAGENTA}🏠 Found {len(self.internal_ips)} internal IPs{Colors.END}")
             print(f"{Colors.YELLOW}📁 Live results: {live_output_file}{Colors.END}")
             print(f"{Colors.YELLOW}📁 Simple list: {simple_output_file}{Colors.END}")
+            if self.internal_ips:
+                internal_file = self.output_file.replace('.txt', '_internal_ips.txt')
+                print(f"{Colors.YELLOW}📁 Internal IPs: {internal_file}{Colors.END}")
             
             # Show status code breakdown
             print(f"\n{Colors.CYAN}📊 Status Code Breakdown:{Colors.END}")

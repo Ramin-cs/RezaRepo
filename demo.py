@@ -12,7 +12,7 @@ def print_colored(text, color_code):
     print(f"\033[{color_code}m{text}\033[0m")
 
 def main():
-    print_colored("🔍 Advanced Subdomain Enumerator v2.0 - Demo", "96")
+    print_colored("🔍 Advanced Subdomain Enumerator v3.0 - Demo", "96")
     print_colored("=" * 60, "93")
     
     print("\n📋 Available commands:")
@@ -44,6 +44,12 @@ def main():
         "🌟 Censys, Shodan, VirusTotal APIs",
         "🔍 SecurityTrails, Chaos APIs",
         "🐙 GitHub, BinaryEdge APIs",
+        "⚡ Active Network Scanning (nmap)",
+        "🏠 Internal IP Discovery",
+        "🌐 Virtual Host Enumeration", 
+        "🔒 Advanced SSL Certificate Probing",
+        "☁️ Cloud Infrastructure Discovery",
+        "🏢 Active Directory Enumeration",
         "Automatic duplicate removal",
         "Clean TXT output with status codes"
     ]
@@ -55,20 +61,24 @@ def main():
     print_colored("✅ https://www.target.com [200] [89ms] Target Website", "92")
     print_colored("✅ http://api.target.com [200] [156ms] API Documentation", "92")
     print_colored("✅ https://admin.target.com [403] [203ms] Access Denied", "91")
-    print_colored("✅ http://blog.target.com [200] [178ms] Company Blog", "92")
-    print_colored("✅ https://mail.target.com [301] [87ms] Redirected", "93")
-    print_colored("✅ http://dev.target.com [200] [298ms] Development", "92")
-    print_colored("✅ https://app.target.com [200] [234ms] Web Application", "92")
+    print_colored("✅ http://internal.target.com [200] [298ms] Internal Portal", "95")
+    print_colored("🏠 192.168.1.100\tdc01.target.com (Active Discovery)", "94")
+    print_colored("🏠 10.0.0.50\tmail-server.target.com (Active Discovery)", "94")
+    print_colored("☁️ target-backup.s3.amazonaws.com (Cloud Discovery)", "93")
     
-    print("\n🔑 API Power:")
-    print_colored("  • Without APIs: 50-200 subdomains", "93")
-    print_colored("  • With APIs: 500-2000+ subdomains", "92")
+    print("\n🔑 Discovery Power:")
+    print_colored("  • Passive only: 50-200 subdomains", "93")
+    print_colored("  • Passive + APIs: 200-1000+ subdomains", "92")
+    print_colored("  • Passive + Active: 500-2000+ subdomains", "91")
+    print_colored("  • Full power (APIs + Active): 1000-5000+ subdomains", "95")
     print_colored("  • Setup guide: API_SETUP_GUIDE.md", "94")
     
     print("\n⚡ Performance Modes:")
-    print_colored("  • Quick mode: 30 seconds, essential subdomains", "93")
-    print_colored("  • Default mode: 2-5 minutes, comprehensive discovery", "92")
-    print_colored("  • Aggressive mode: 5-15 minutes, maximum coverage", "91")
+    print_colored("  • Quick mode: 30 seconds, essential discovery", "93")
+    print_colored("  • Passive mode: 2-5 minutes, safe discovery", "94")
+    print_colored("  • Default mode: 5-10 minutes, comprehensive discovery", "92")
+    print_colored("  • Active mode: 10-20 minutes, maximum coverage + internal IPs", "91")
+    print_colored("  • Aggressive mode: 15-30 minutes, everything + cloud discovery", "95")
     
     print("\n🚀 Ready to use!")
     print_colored("Just run: python3 subdomains.py -d YOUR_DOMAIN", "92")
