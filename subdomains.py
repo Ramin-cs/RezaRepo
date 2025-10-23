@@ -43,6 +43,17 @@ import ipaddress
 from urllib3.exceptions import InsecureRequestWarning
 import warnings
 
+# Import API configuration
+try:
+    from config import API_KEYS, API_ENDPOINTS, API_CONFIG, is_api_configured, get_api_key
+except ImportError:
+    print("⚠️  Warning: config.py not found. Premium APIs will be disabled.")
+    API_KEYS = {}
+    API_ENDPOINTS = {}
+    API_CONFIG = {'RATE_LIMITS': {}, 'TIMEOUTS': {'DEFAULT': 10}}
+    is_api_configured = lambda x: False
+    get_api_key = lambda x: ''
+
 # Suppress SSL warnings
 warnings.filterwarnings('ignore', category=InsecureRequestWarning)
 
@@ -226,15 +237,24 @@ class SubdomainEnumerator:
     def print_banner(self):
         """Print tool banner"""
         httpx_status = "✅ Enabled" if self.httpx_check else "❌ Disabled"
+        
+        # Count configured APIs
+        try:
+            from config import validate_api_keys
+            valid_keys, invalid_keys = validate_api_keys()
+            api_status = f"✅ {len(valid_keys)}/{len(valid_keys) + len(invalid_keys)} APIs"
+        except:
+            api_status = "❌ No config.py"
+        
         banner = f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗
-║                    🔍 ADVANCED SUBDOMAIN ENUMERATOR                         ║
+║                    🔍 ADVANCED SUBDOMAIN ENUMERATOR v2.0                   ║
 ║              Comprehensive Subdomain Discovery & Intelligence               ║
 ║                                                                              ║
 ║  🌐 Certificate Transparency  |  🔍 DNS Brute Force                        ║
 ║  🔎 Search Engine Discovery   |  📊 GitHub Code Search                      ║
 ║  🚀 httpx HTTP/HTTPS Probing  |  🌍 Web Archive Mining                      ║
-║  🛡️  Security Intelligence    |  📡 Passive DNS Sources                     ║
+║  🛡️  Premium API Integration  |  📡 Passive DNS Sources                     ║
 ╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}
 
 {Colors.YELLOW}[*] Target Domain: {Colors.WHITE}{self.domain}{Colors.END}
@@ -242,6 +262,7 @@ class SubdomainEnumerator:
 {Colors.YELLOW}[*] Threads: {Colors.WHITE}{self.threads}{Colors.END}
 {Colors.YELLOW}[*] Timeout: {Colors.WHITE}{self.timeout}s{Colors.END}
 {Colors.YELLOW}[*] HTTP Probing: {Colors.WHITE}{httpx_status}{Colors.END}
+{Colors.YELLOW}[*] API Status: {Colors.WHITE}{api_status}{Colors.END}
 {Colors.YELLOW}[*] Starting comprehensive subdomain enumeration...{Colors.END}
 """
         print(banner)
@@ -350,6 +371,98 @@ class SubdomainEnumerator:
             if self.verbose:
                 self.log(f"CertSpotter parse error: {e}", Colors.YELLOW)
         return count
+    
+    def censys_api(self):
+        """Censys API enumeration (requires API key)"""
+        if not is_api_configured('CENSYS'):
+            if self.verbose:
+                self.log("🔍 Censys API key not configured", Colors.YELLOW)
+            return
+            
+        self.log("🔍 Querying Censys API...", Colors.CYAN)
+        
+        try:
+            api_id = API_KEYS.get('CENSYS_API_ID', '')
+            api_secret = API_KEYS.get('CENSYS_SECRET', '')
+            
+            if not api_id or not api_secret:
+                if self.verbose:
+                    self.log("Censys API credentials incomplete", Colors.RED)
+                return
+            
+            # Censys search queries
+            queries = [
+                f"names: {self.domain}",
+                f"names: *.{self.domain}",
+                f"parsed.names: {self.domain}",
+                f"parsed.subject_dn: {self.domain}"
+            ]
+            
+            found_count = 0
+            
+            for query in queries:
+                try:
+                    url = f"{API_ENDPOINTS.get('CENSYS', 'https://search.censys.io/api/v2')}/certificates/search"
+                    
+                    headers = {
+                        'User-Agent': self.get_random_user_agent(),
+                        'Accept': 'application/json'
+                    }
+                    
+                    params = {
+                        'q': query,
+                        'per_page': 100
+                    }
+                    
+                    response = self.session.get(
+                        url, 
+                        params=params, 
+                        headers=headers, 
+                        auth=(api_id, api_secret),
+                        timeout=self.timeout
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        for result in data.get('result', {}).get('hits', []):
+                            # Extract names from certificate
+                            names = result.get('names', [])
+                            for name in names:
+                                if name.endswith(f'.{self.domain}') and not name.startswith('*'):
+                                    self.add_subdomain(name)
+                                    found_count += 1
+                            
+                            # Extract from parsed certificate data
+                            parsed = result.get('parsed', {})
+                            if 'names' in parsed:
+                                for name in parsed['names']:
+                                    if name.endswith(f'.{self.domain}') and not name.startswith('*'):
+                                        self.add_subdomain(name)
+                                        found_count += 1
+                    
+                    elif response.status_code == 401:
+                        if self.verbose:
+                            self.log("Censys API credentials invalid", Colors.RED)
+                        break
+                    elif response.status_code == 429:
+                        if self.verbose:
+                            self.log("Censys API rate limit reached", Colors.YELLOW)
+                        time.sleep(5)
+                    
+                    time.sleep(1)  # Rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"Censys query error: {e}", Colors.YELLOW)
+                    continue
+            
+            if self.verbose and found_count > 0:
+                self.log(f"Censys API found {found_count} subdomains", Colors.GREEN)
+                
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Censys API error: {e}", Colors.RED)
 
     def search_engines(self):
         """Search engine enumeration"""
@@ -439,6 +552,11 @@ class SubdomainEnumerator:
                         'User-Agent': self.get_random_user_agent(),
                         'Accept': 'application/vnd.github.v3+json'
                     }
+                    
+                    # Add GitHub token if available
+                    github_token = get_api_key('GITHUB')
+                    if github_token:
+                        headers['Authorization'] = f'token {github_token}'
                     
                     response = self.session.get(url, headers=headers, timeout=self.timeout)
                     
@@ -564,16 +682,50 @@ class SubdomainEnumerator:
 
     def virustotal_api(self):
         """VirusTotal API enumeration (requires API key)"""
+        if not is_api_configured('VIRUSTOTAL'):
+            if self.verbose:
+                self.log("🛡️ VirusTotal API key not configured", Colors.YELLOW)
+            return
+            
         self.log("🛡️ Querying VirusTotal API...", Colors.CYAN)
         
-        # This would require an API key - implementing passive version
         try:
-            url = f"https://www.virustotal.com/vtapi/v2/domain/report"
-            params = {'domain': self.domain, 'apikey': 'demo'}  # Demo key for passive
-            headers = {'User-Agent': self.get_random_user_agent()}
+            api_key = get_api_key('VIRUSTOTAL')
+            url = f"{API_ENDPOINTS.get('VIRUSTOTAL', 'https://www.virustotal.com/vtapi/v2')}/domain/report"
             
-            # Note: This is a demo implementation
-            # In real usage, you'd need a valid VirusTotal API key
+            params = {
+                'domain': self.domain,
+                'apikey': api_key
+            }
+            
+            headers = {'User-Agent': self.get_random_user_agent()}
+            response = self.session.get(url, params=params, headers=headers, timeout=self.timeout)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Extract subdomains from VirusTotal response
+                if 'subdomains' in data:
+                    for subdomain in data['subdomains']:
+                        if subdomain.endswith(f'.{self.domain}'):
+                            self.add_subdomain(subdomain)
+                
+                # Extract from detected URLs
+                if 'detected_urls' in data:
+                    for url_data in data['detected_urls']:
+                        url = url_data.get('url', '')
+                        parsed = urlparse(url)
+                        if parsed.hostname and parsed.hostname.endswith(f'.{self.domain}'):
+                            self.add_subdomain(parsed.hostname)
+            
+            elif response.status_code == 204:
+                if self.verbose:
+                    self.log("VirusTotal API rate limit reached", Colors.YELLOW)
+            elif response.status_code == 403:
+                if self.verbose:
+                    self.log("VirusTotal API key invalid", Colors.RED)
+                    
+            time.sleep(15)  # VirusTotal rate limiting
             
         except Exception as e:
             if self.verbose:
@@ -701,11 +853,94 @@ class SubdomainEnumerator:
                 self.log(f"VHost discovery error: {e}", Colors.RED)
 
     def shodan_search(self):
-        """Shodan passive search (without API key)"""
-        self.log("🔍 Searching Shodan data...", Colors.CYAN)
+        """Shodan API search (requires API key)"""
+        if not is_api_configured('SHODAN'):
+            # Fallback to passive search
+            self.shodan_passive_search()
+            return
+            
+        self.log("🔍 Querying Shodan API...", Colors.CYAN)
         
         try:
-            # Passive Shodan search via web interface
+            api_key = get_api_key('SHODAN')
+            
+            # Search for domain
+            search_queries = [
+                f"hostname:{self.domain}",
+                f"ssl:{self.domain}",
+                f"html:{self.domain}",
+                f"http.title:{self.domain}"
+            ]
+            
+            found_count = 0
+            
+            for query in search_queries:
+                try:
+                    url = f"{API_ENDPOINTS.get('SHODAN', 'https://api.shodan.io')}/shodan/host/search"
+                    params = {
+                        'key': api_key,
+                        'query': query,
+                        'facets': 'domain'
+                    }
+                    
+                    response = self.session.get(url, params=params, timeout=self.timeout)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        # Extract hostnames from results
+                        for result in data.get('matches', []):
+                            # From hostnames
+                            hostnames = result.get('hostnames', [])
+                            for hostname in hostnames:
+                                if hostname.endswith(f'.{self.domain}'):
+                                    self.add_subdomain(hostname)
+                                    found_count += 1
+                            
+                            # From SSL certificates
+                            ssl_data = result.get('ssl', {})
+                            if 'cert' in ssl_data:
+                                cert = ssl_data['cert']
+                                # Subject alternative names
+                                if 'extensions' in cert:
+                                    for ext in cert['extensions']:
+                                        if ext.get('name') == 'subjectAltName':
+                                            san_data = ext.get('data', '')
+                                            # Parse SAN data for subdomains
+                                            pattern = r'DNS:([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')'
+                                            matches = re.findall(pattern, san_data)
+                                            for match in matches:
+                                                self.add_subdomain(match)
+                                                found_count += 1
+                    
+                    elif response.status_code == 401:
+                        if self.verbose:
+                            self.log("Shodan API key invalid", Colors.RED)
+                        break
+                    elif response.status_code == 429:
+                        if self.verbose:
+                            self.log("Shodan API rate limit reached", Colors.YELLOW)
+                        time.sleep(5)
+                    
+                    time.sleep(1)  # Rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"Shodan query error: {e}", Colors.YELLOW)
+                    continue
+            
+            if self.verbose and found_count > 0:
+                self.log(f"Shodan API found {found_count} subdomains", Colors.GREEN)
+                
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Shodan API error: {e}", Colors.RED)
+    
+    def shodan_passive_search(self):
+        """Shodan passive search via web interface"""
+        self.log("🔍 Searching Shodan data (passive)...", Colors.CYAN)
+        
+        try:
             url = f"https://www.shodan.io/search?query=hostname:{self.domain}"
             headers = {'User-Agent': self.get_random_user_agent()}
             response = self.session.get(url, headers=headers, timeout=self.timeout)
@@ -719,32 +954,146 @@ class SubdomainEnumerator:
                 
         except Exception as e:
             if self.verbose:
-                self.log(f"Shodan search error: {e}", Colors.RED)
+                self.log(f"Shodan passive search error: {e}", Colors.RED)
 
     def chaos_api(self):
         """ProjectDiscovery Chaos API (requires API key)"""
+        if not is_api_configured('CHAOS'):
+            if self.verbose:
+                self.log("🚀 Chaos API key not configured", Colors.YELLOW)
+            return
+            
         self.log("🚀 Querying Chaos API...", Colors.CYAN)
         
-        # This would require a Chaos API key
-        # Implementing placeholder for now
         try:
-            # url = f"https://dns.projectdiscovery.io/dns/{self.domain}/subdomains"
-            # This requires authentication
-            pass
+            api_key = get_api_key('CHAOS')
+            url = f"{API_ENDPOINTS.get('CHAOS', 'https://dns.projectdiscovery.io/dns')}/{self.domain}/subdomains"
+            
+            headers = {
+                'User-Agent': self.get_random_user_agent(),
+                'Authorization': f'Bearer {api_key}',
+                'Accept': 'application/json'
+            }
+            
+            response = self.session.get(url, headers=headers, timeout=self.timeout)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Chaos API returns subdomains in different formats
+                if isinstance(data, dict):
+                    subdomains = data.get('subdomains', [])
+                elif isinstance(data, list):
+                    subdomains = data
+                else:
+                    subdomains = []
+                
+                found_count = 0
+                for subdomain in subdomains:
+                    if isinstance(subdomain, dict):
+                        subdomain = subdomain.get('subdomain', '')
+                    
+                    if subdomain and subdomain.endswith(f'.{self.domain}'):
+                        self.add_subdomain(subdomain)
+                        found_count += 1
+                
+                if self.verbose and found_count > 0:
+                    self.log(f"Chaos API found {found_count} subdomains", Colors.GREEN)
+            
+            elif response.status_code == 401:
+                if self.verbose:
+                    self.log("Chaos API key invalid", Colors.RED)
+            elif response.status_code == 429:
+                if self.verbose:
+                    self.log("Chaos API rate limit reached", Colors.YELLOW)
+            elif response.status_code == 404:
+                if self.verbose:
+                    self.log("Domain not found in Chaos dataset", Colors.YELLOW)
+                    
         except Exception as e:
             if self.verbose:
                 self.log(f"Chaos API error: {e}", Colors.RED)
 
     def security_trails_api(self):
         """SecurityTrails API enumeration (requires API key)"""
+        if not is_api_configured('SECURITYTRAILS'):
+            if self.verbose:
+                self.log("🛡️ SecurityTrails API key not configured", Colors.YELLOW)
+            return
+            
         self.log("🛡️ Querying SecurityTrails API...", Colors.CYAN)
         
-        # This would require a SecurityTrails API key
-        # Implementing placeholder for now
         try:
-            # url = f"https://api.securitytrails.com/v1/domain/{self.domain}/subdomains"
-            # This requires authentication
-            pass
+            api_key = get_api_key('SECURITYTRAILS')
+            
+            # Multiple SecurityTrails endpoints
+            endpoints = [
+                f"/domain/{self.domain}/subdomains",
+                f"/domain/{self.domain}/associated",
+                f"/history/{self.domain}/dns/a"
+            ]
+            
+            found_count = 0
+            
+            for endpoint in endpoints:
+                try:
+                    url = f"{API_ENDPOINTS.get('SECURITYTRAILS', 'https://api.securitytrails.com/v1')}{endpoint}"
+                    
+                    headers = {
+                        'User-Agent': self.get_random_user_agent(),
+                        'APIKEY': api_key,
+                        'Accept': 'application/json'
+                    }
+                    
+                    response = self.session.get(url, headers=headers, timeout=self.timeout)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        # Handle different response formats
+                        if 'subdomains' in data:
+                            # Subdomains endpoint
+                            for subdomain in data['subdomains']:
+                                full_subdomain = f"{subdomain}.{self.domain}"
+                                self.add_subdomain(full_subdomain)
+                                found_count += 1
+                        
+                        elif 'associated' in data:
+                            # Associated domains endpoint
+                            for domain in data['associated']:
+                                if domain.endswith(f'.{self.domain}'):
+                                    self.add_subdomain(domain)
+                                    found_count += 1
+                        
+                        elif 'records' in data:
+                            # DNS history endpoint
+                            for record in data['records']:
+                                if 'values' in record:
+                                    for value in record['values']:
+                                        hostname = value.get('hostname', '')
+                                        if hostname and hostname.endswith(f'.{self.domain}'):
+                                            self.add_subdomain(hostname)
+                                            found_count += 1
+                    
+                    elif response.status_code == 401:
+                        if self.verbose:
+                            self.log("SecurityTrails API key invalid", Colors.RED)
+                        break
+                    elif response.status_code == 429:
+                        if self.verbose:
+                            self.log("SecurityTrails API rate limit reached", Colors.YELLOW)
+                        time.sleep(5)
+                    
+                    time.sleep(1)  # Rate limiting
+                    
+                except Exception as e:
+                    if self.verbose:
+                        self.log(f"SecurityTrails endpoint error: {e}", Colors.YELLOW)
+                    continue
+            
+            if self.verbose and found_count > 0:
+                self.log(f"SecurityTrails API found {found_count} subdomains", Colors.GREEN)
+                
         except Exception as e:
             if self.verbose:
                 self.log(f"SecurityTrails API error: {e}", Colors.RED)
@@ -929,6 +1278,7 @@ class SubdomainEnumerator:
         
         # List of enumeration methods
         methods = [
+            # Free methods (no API key required)
             self.certificate_transparency,
             self.dns_brute_force,
             self.search_engines,
@@ -937,13 +1287,15 @@ class SubdomainEnumerator:
             self.zone_transfer,
             self.reverse_dns,
             self.vhost_discovery,
-            self.shodan_search,
+            self.shodan_search,  # Falls back to passive if no API key
             self.passive_dns_sources,
             self.ssl_certificate_search,
-            # API methods (require keys)
-            # self.chaos_api,
-            # self.virustotal_api,
-            # self.security_trails_api,
+            
+            # Premium API methods (require API keys)
+            self.chaos_api,
+            self.virustotal_api,
+            self.security_trails_api,
+            self.censys_api,
         ]
         
         # Run enumeration methods
@@ -1061,7 +1413,7 @@ class SubdomainEnumerator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="🔍 Advanced Subdomain Enumeration Tool with httpx Integration",
+        description="🔍 Advanced Subdomain Enumeration Tool with httpx Integration & Premium APIs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1069,19 +1421,35 @@ Examples:
   python3 subdomains.py -d example.com -o results.txt -t 100 -v
   python3 subdomains.py -d example.com --timeout 15 --verbose
   python3 subdomains.py -d example.com --no-httpx  # Skip HTTP probing
+  python3 subdomains.py --show-apis  # Show API configuration
         """
     )
     
-    parser.add_argument('-d', '--domain', required=True, help='Target domain')
+    parser.add_argument('-d', '--domain', help='Target domain')
     parser.add_argument('-o', '--output', help='Output file (default: domain_subdomains.txt)')
     parser.add_argument('-t', '--threads', type=int, default=50, help='Number of threads (default: 50)')
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout in seconds (default: 10)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
     parser.add_argument('--no-httpx', action='store_true', help='Skip HTTP/HTTPS probing (httpx functionality)')
+    parser.add_argument('--show-apis', action='store_true', help='Show API configuration status and exit')
     
     args = parser.parse_args()
     
+    # Show API status if requested
+    if args.show_apis:
+        try:
+            from config import print_api_status, USAGE_INSTRUCTIONS
+            print(USAGE_INSTRUCTIONS)
+            print_api_status()
+        except ImportError:
+            print(f"{Colors.RED}❌ config.py not found. Please create config.py with your API keys.{Colors.END}")
+        sys.exit(0)
+    
     # Validate domain
+    if not args.domain:
+        print(f"{Colors.RED}❌ Domain is required. Use -d/--domain to specify target domain.{Colors.END}")
+        sys.exit(1)
+        
     domain_pattern = re.compile(
         r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
     )

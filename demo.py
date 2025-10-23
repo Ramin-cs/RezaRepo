@@ -12,14 +12,15 @@ def print_colored(text, color_code):
     print(f"\033[{color_code}m{text}\033[0m")
 
 def main():
-    print_colored("🔍 Advanced Subdomain Enumerator - Demo", "96")
-    print_colored("=" * 50, "93")
+    print_colored("🔍 Advanced Subdomain Enumerator v2.0 - Demo", "96")
+    print_colored("=" * 60, "93")
     
     print("\n📋 Available commands:")
     print_colored("1. python3 subdomains.py -d example.com", "92")
     print_colored("2. python3 subdomains.py -d example.com -o results.txt -t 100 -v", "92")
     print_colored("3. python3 subdomains.py -d example.com --timeout 15 --verbose", "92")
     print_colored("4. python3 subdomains.py -d example.com --no-httpx  # Skip HTTP probing", "93")
+    print_colored("5. python3 subdomains.py --show-apis  # Show API status", "94")
     
     print("\n🎯 Features included:")
     features = [
@@ -34,10 +35,14 @@ def main():
         "Virtual Host discovery",
         "SSL Certificate analysis",
         "🚀 httpx HTTP/HTTPS probing",
-        "📊 Live subdomain checking",
+        "📊 Live subdomain checking", 
         "🎯 Status code categorization",
         "⚡ Response time measurement",
         "📝 Title extraction",
+        "🔑 Premium API integration (26 APIs)",
+        "🌟 Censys, Shodan, VirusTotal APIs",
+        "🔍 SecurityTrails, Chaos APIs",
+        "🐙 GitHub, BinaryEdge APIs",
         "Automatic duplicate removal",
         "Clean TXT output with status codes"
     ]
@@ -54,8 +59,14 @@ def main():
     print_colored("✅ http://dev.target.com [200] [298ms] Development", "92")
     print_colored("✅ https://app.target.com [200] [234ms] Web Application", "92")
     
+    print("\n🔑 API Power:")
+    print_colored("  • Without APIs: 20-50 subdomains", "93")
+    print_colored("  • With APIs: 200-1000+ subdomains", "92")
+    print_colored("  • Setup guide: API_SETUP_GUIDE.md", "94")
+    
     print("\n🚀 Ready to use!")
-    print_colored("Usage: python3 subdomains.py -d YOUR_DOMAIN", "93")
+    print_colored("Basic: python3 subdomains.py -d YOUR_DOMAIN", "93")
+    print_colored("APIs: python3 subdomains.py --show-apis", "94")
 
 if __name__ == "__main__":
     main()
