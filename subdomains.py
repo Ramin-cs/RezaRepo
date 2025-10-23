@@ -161,13 +161,28 @@ class HttpxProbe:
             return 'unknown', Colors.WHITE
 
 class SubdomainEnumerator:
-    def __init__(self, domain, output_file=None, threads=50, timeout=10, verbose=False, httpx_check=True):
+    def __init__(self, domain, output_file=None, threads=50, timeout=10, verbose=False, 
+                 httpx_check=True, passive_only=False, active_only=False, sources=None,
+                 wordlist_file=None, resolvers_file=None, max_depth=3, rate_limit=100,
+                 silent=False, json_output=False, csv_output=False, use_all=False):
         self.domain = domain.lower().strip()
         self.output_file = output_file or f"{self.domain}_subdomains.txt"
         self.threads = threads
         self.timeout = timeout
-        self.verbose = verbose
+        self.verbose = verbose and not silent
+        self.silent = silent
         self.httpx_check = httpx_check
+        self.passive_only = passive_only
+        self.active_only = active_only
+        self.sources = sources or ['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis']
+        self.wordlist_file = wordlist_file
+        self.resolvers_file = resolvers_file
+        self.max_depth = max_depth
+        self.rate_limit = rate_limit
+        self.json_output = json_output
+        self.csv_output = csv_output
+        self.use_all = use_all
+        
         self.subdomains = set()
         self.live_subdomains = {}  # Store live subdomains with their status
         self.lock = threading.Lock()
@@ -178,6 +193,14 @@ class SubdomainEnumerator:
         self.session.headers.update({
             'User-Agent': 'httpx/1.3.0'
         })
+        
+        # Load custom wordlist if provided
+        if self.wordlist_file and os.path.exists(self.wordlist_file):
+            self.load_custom_wordlist()
+        
+        # Load custom resolvers if provided
+        if self.resolvers_file and os.path.exists(self.resolvers_file):
+            self.load_custom_resolvers()
         
         # User agents for rotation
         self.user_agents = [
@@ -236,6 +259,9 @@ class SubdomainEnumerator:
 
     def print_banner(self):
         """Print tool banner"""
+        if self.silent:
+            return
+            
         httpx_status = "✅ Enabled" if self.httpx_check else "❌ Disabled"
         
         # Count configured APIs
@@ -245,6 +271,16 @@ class SubdomainEnumerator:
             api_status = f"✅ {len(valid_keys)}/{len(valid_keys) + len(invalid_keys)} APIs"
         except:
             api_status = "❌ No config.py"
+        
+        # Mode description
+        if self.passive_only:
+            mode = "🔍 Passive Only"
+        elif self.active_only:
+            mode = "⚡ Active Only"
+        elif self.use_all:
+            mode = "🚀 All Methods"
+        else:
+            mode = f"🎯 Selected Sources: {', '.join(self.sources)}"
         
         banner = f"""
 {Colors.CYAN}╔══════════════════════════════════════════════════════════════════════════════╗
@@ -258,6 +294,7 @@ class SubdomainEnumerator:
 ╚══════════════════════════════════════════════════════════════════════════════╝{Colors.END}
 
 {Colors.YELLOW}[*] Target Domain: {Colors.WHITE}{self.domain}{Colors.END}
+{Colors.YELLOW}[*] Mode: {Colors.WHITE}{mode}{Colors.END}
 {Colors.YELLOW}[*] Output File: {Colors.WHITE}{self.output_file}{Colors.END}
 {Colors.YELLOW}[*] Threads: {Colors.WHITE}{self.threads}{Colors.END}
 {Colors.YELLOW}[*] Timeout: {Colors.WHITE}{self.timeout}s{Colors.END}
@@ -269,8 +306,9 @@ class SubdomainEnumerator:
 
     def log(self, message, color=Colors.WHITE):
         """Log message with timestamp"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"{Colors.BLUE}[{timestamp}]{Colors.END} {color}{message}{Colors.END}")
+        if not self.silent:
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"{Colors.BLUE}[{timestamp}]{Colors.END} {color}{message}{Colors.END}")
 
     def add_subdomain(self, subdomain):
         """Thread-safe method to add subdomain"""
@@ -288,6 +326,51 @@ class SubdomainEnumerator:
     def get_random_user_agent(self):
         """Get random user agent"""
         return random.choice(self.user_agents)
+    
+    def load_custom_wordlist(self):
+        """Load custom wordlist from file"""
+        try:
+            with open(self.wordlist_file, 'r', encoding='utf-8') as f:
+                custom_words = [line.strip() for line in f if line.strip()]
+                self.wordlist.extend(custom_words)
+                if self.verbose:
+                    self.log(f"Loaded {len(custom_words)} words from custom wordlist", Colors.GREEN)
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error loading wordlist: {e}", Colors.RED)
+    
+    def load_custom_resolvers(self):
+        """Load custom DNS resolvers from file"""
+        try:
+            with open(self.resolvers_file, 'r') as f:
+                resolvers = [line.strip() for line in f if line.strip()]
+                # Configure DNS resolver
+                resolver = dns.resolver.Resolver()
+                resolver.nameservers = resolvers
+                if self.verbose:
+                    self.log(f"Loaded {len(resolvers)} custom DNS resolvers", Colors.GREEN)
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Error loading resolvers: {e}", Colors.RED)
+    
+    def should_run_method(self, method_name):
+        """Check if a method should run based on configuration"""
+        if self.use_all:
+            return True
+            
+        # Passive methods
+        passive_methods = ['ct', 'search', 'github', 'wayback', 'shodan', 'apis']
+        # Active methods  
+        active_methods = ['dns', 'zone', 'reverse', 'vhost', 'ssl']
+        
+        if self.passive_only:
+            return any(source in method_name.lower() for source in passive_methods)
+        
+        if self.active_only:
+            return any(source in method_name.lower() for source in active_methods)
+        
+        # Check specific sources
+        return any(source in method_name.lower() for source in self.sources)
 
     def certificate_transparency(self):
         """Certificate Transparency logs enumeration"""
@@ -1276,30 +1359,79 @@ class SubdomainEnumerator:
         """Run all enumeration techniques"""
         self.print_banner()
         
-        # List of enumeration methods
-        methods = [
-            # Free methods (no API key required)
-            self.certificate_transparency,
-            self.dns_brute_force,
-            self.search_engines,
-            self.github_search,
-            self.wayback_machine,
-            self.zone_transfer,
-            self.reverse_dns,
-            self.vhost_discovery,
-            self.shodan_search,  # Falls back to passive if no API key
-            self.passive_dns_sources,
-            self.ssl_certificate_search,
-            
-            # Premium API methods (require API keys)
-            self.chaos_api,
-            self.virustotal_api,
-            self.security_trails_api,
-            self.censys_api,
-        ]
+        # Define method mappings
+        method_map = {
+            'ct': self.certificate_transparency,
+            'dns': self.dns_brute_force,
+            'search': self.search_engines,
+            'github': self.github_search,
+            'wayback': self.wayback_machine,
+            'zone': self.zone_transfer,
+            'reverse': self.reverse_dns,
+            'vhost': self.vhost_discovery,
+            'shodan': self.shodan_search,
+            'passive': self.passive_dns_sources,
+            'ssl': self.ssl_certificate_search,
+            'apis': [self.chaos_api, self.virustotal_api, self.security_trails_api, self.censys_api]
+        }
+        
+        # Build methods list based on configuration
+        methods = []
+        
+        if self.use_all or not (self.passive_only or self.active_only):
+            # Use all methods
+            methods = [
+                self.certificate_transparency,
+                self.dns_brute_force,
+                self.search_engines,
+                self.github_search,
+                self.wayback_machine,
+                self.zone_transfer,
+                self.reverse_dns,
+                self.vhost_discovery,
+                self.shodan_search,
+                self.passive_dns_sources,
+                self.ssl_certificate_search,
+                self.chaos_api,
+                self.virustotal_api,
+                self.security_trails_api,
+                self.censys_api,
+            ]
+        else:
+            # Build based on sources and passive/active flags
+            for source in self.sources:
+                if source in method_map:
+                    if isinstance(method_map[source], list):
+                        methods.extend(method_map[source])
+                    else:
+                        methods.append(method_map[source])
+        
+        # Filter methods based on passive/active flags
+        if self.passive_only:
+            passive_methods = [
+                self.certificate_transparency, self.search_engines, self.github_search,
+                self.wayback_machine, self.shodan_search, self.passive_dns_sources,
+                self.chaos_api, self.virustotal_api, self.security_trails_api, self.censys_api
+            ]
+            methods = [m for m in methods if m in passive_methods]
+        
+        elif self.active_only:
+            active_methods = [
+                self.dns_brute_force, self.zone_transfer, self.reverse_dns,
+                self.vhost_discovery, self.ssl_certificate_search
+            ]
+            methods = [m for m in methods if m in active_methods]
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_methods = []
+        for method in methods:
+            if method not in seen:
+                seen.add(method)
+                unique_methods.append(method)
         
         # Run enumeration methods
-        for method in methods:
+        for method in unique_methods:
             try:
                 method()
                 time.sleep(0.5)  # Brief pause between methods
@@ -1320,7 +1452,7 @@ class SubdomainEnumerator:
             # Save live subdomains with status codes
             live_output_file = self.output_file.replace('.txt', '_live.txt')
             
-            # Categorize by status code
+            # Categorize by status code and title
             status_categories = {
                 'success': [],      # 2xx
                 'redirect': [],     # 3xx
@@ -1329,27 +1461,57 @@ class SubdomainEnumerator:
                 'unknown': []       # others
             }
             
+            # Group by title within each category
+            title_groups = {}
+            
             for url, info in self.live_subdomains.items():
                 category = info['category']
-                status_categories[category].append({
-                    'url': url,
-                    'status_code': info['status_code'],
-                    'title': info['title'],
-                    'response_time': info['response_time'],
-                    'content_length': info['content_length']
-                })
+                title = info['title']
+                
+                # Create title groups
+                if category not in title_groups:
+                    title_groups[category] = {}
+                
+                if title not in title_groups[category]:
+                    title_groups[category][title] = []
+                
+                title_groups[category][title].append(url)
             
-            # Save categorized results
+            # Save categorized results with improved format
             with open(live_output_file, 'w', encoding='utf-8') as f:
                 f.write(f"# Live Subdomains for {self.domain}\n")
                 f.write(f"# Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"# Total live subdomains: {len(self.live_subdomains)}\n\n")
                 
-                for category, urls in status_categories.items():
-                    if urls:
-                        f.write(f"## {category.upper().replace('_', ' ')} ({len(urls)} subdomains)\n")
-                        for item in sorted(urls, key=lambda x: x['url']):
-                            f.write(f"{item['url']} [{item['status_code']}] [{item['response_time']}ms] {item['title']}\n")
+                # Define category order and names
+                category_names = {
+                    'success': 'SUCCESS (2xx)',
+                    'redirect': 'REDIRECT (3xx)', 
+                    'client_error': 'CLIENT ERROR (4xx)',
+                    'server_error': 'SERVER ERROR (5xx)',
+                    'unknown': 'UNKNOWN'
+                }
+                
+                for category in ['success', 'redirect', 'client_error', 'server_error', 'unknown']:
+                    if category in title_groups and title_groups[category]:
+                        total_urls = sum(len(urls) for urls in title_groups[category].values())
+                        f.write(f"## {category_names[category]} ({total_urls} subdomains)\n\n")
+                        
+                        # Sort titles, put 'No Title' at the end
+                        sorted_titles = sorted(title_groups[category].keys(), 
+                                             key=lambda x: (x == 'No Title', x.lower()))
+                        
+                        for title in sorted_titles:
+                            urls = title_groups[category][title]
+                            if len(urls) > 1:
+                                f.write(f"### {title} ({len(urls)} subdomains)\n")
+                                for url in sorted(urls):
+                                    f.write(f"{url}\n")
+                                f.write("\n")
+                            else:
+                                # Single subdomain with unique title
+                                f.write(f"{urls[0]}\n")
+                        
                         f.write("\n")
             
             # Also save simple list
@@ -1357,6 +1519,46 @@ class SubdomainEnumerator:
             with open(simple_output_file, 'w', encoding='utf-8') as f:
                 for url in sorted(self.live_subdomains.keys()):
                     f.write(f"{url}\n")
+            
+            # Save JSON format if requested
+            if self.json_output:
+                json_output_file = self.output_file.replace('.txt', '.json')
+                json_data = {
+                    'domain': self.domain,
+                    'timestamp': datetime.now().isoformat(),
+                    'total_subdomains': len(self.subdomains),
+                    'live_subdomains': len(self.live_subdomains),
+                    'results': []
+                }
+                
+                for url, info in self.live_subdomains.items():
+                    json_data['results'].append({
+                        'url': url,
+                        'subdomain': info['subdomain'],
+                        'protocol': info['protocol'],
+                        'status_code': info['status_code'],
+                        'title': info['title'],
+                        'response_time': info['response_time'],
+                        'content_length': info['content_length'],
+                        'category': info['category']
+                    })
+                
+                with open(json_output_file, 'w', encoding='utf-8') as f:
+                    json.dump(json_data, f, indent=2, ensure_ascii=False)
+                
+                if not self.silent:
+                    self.log(f"💾 JSON results saved to: {json_output_file}", Colors.GREEN)
+            
+            # Save CSV format if requested
+            if self.csv_output:
+                csv_output_file = self.output_file.replace('.txt', '.csv')
+                with open(csv_output_file, 'w', encoding='utf-8') as f:
+                    f.write("URL,Subdomain,Protocol,Status Code,Title,Response Time (ms),Content Length,Category\n")
+                    for url, info in sorted(self.live_subdomains.items()):
+                        f.write(f'"{url}","{info["subdomain"]}","{info["protocol"]}",{info["status_code"]},"{info["title"]}",{info["response_time"]},{info["content_length"]},"{info["category"]}"\n')
+                
+                if not self.silent:
+                    self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
             
             self.log(f"💾 Live results saved to: {live_output_file}", Colors.GREEN)
             self.log(f"💾 Simple list saved to: {simple_output_file}", Colors.GREEN)
@@ -1433,6 +1635,20 @@ Examples:
     parser.add_argument('--no-httpx', action='store_true', help='Skip HTTP/HTTPS probing (httpx functionality)')
     parser.add_argument('--show-apis', action='store_true', help='Show API configuration status and exit')
     
+    # Advanced enumeration options (like real tools)
+    parser.add_argument('--all', action='store_true', help='Use all enumeration techniques (slower but comprehensive)')
+    parser.add_argument('--passive', action='store_true', help='Use only passive enumeration (no active DNS queries)')
+    parser.add_argument('--active', action='store_true', help='Use only active enumeration (DNS brute force, zone transfer)')
+    parser.add_argument('--sources', nargs='+', help='Specify sources to use', 
+                       choices=['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis'])
+    parser.add_argument('--wordlist', help='Custom wordlist file for DNS brute force')
+    parser.add_argument('--resolvers', help='Custom DNS resolvers file')
+    parser.add_argument('--max-depth', type=int, default=3, help='Maximum recursion depth for subdomain discovery')
+    parser.add_argument('--rate-limit', type=int, default=100, help='Rate limit requests per second (default: 100)')
+    parser.add_argument('--silent', action='store_true', help='Silent mode - only output results')
+    parser.add_argument('--json', action='store_true', help='Output results in JSON format')
+    parser.add_argument('--csv', action='store_true', help='Output results in CSV format')
+    
     args = parser.parse_args()
     
     # Show API status if requested
@@ -1466,7 +1682,18 @@ Examples:
             threads=args.threads,
             timeout=args.timeout,
             verbose=args.verbose,
-            httpx_check=not args.no_httpx
+            httpx_check=not args.no_httpx,
+            passive_only=args.passive,
+            active_only=args.active,
+            sources=args.sources,
+            wordlist_file=args.wordlist,
+            resolvers_file=args.resolvers,
+            max_depth=args.max_depth,
+            rate_limit=args.rate_limit,
+            silent=args.silent,
+            json_output=args.json,
+            csv_output=args.csv,
+            use_all=args.all
         )
         
         # Run enumeration
