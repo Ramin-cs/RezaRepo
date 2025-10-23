@@ -358,7 +358,8 @@ class ActiveDiscoveryMethods(ActiveDiscovery):
         self.log("🌐 Network Range Scanning...", '\033[96m')
         
         if not NMAP_AVAILABLE:
-            self.log("nmap not available, skipping network scanning", '\033[93m')
+            self.log("nmap not available, using alternative methods", '\033[93m')
+            self.alternative_network_scan()
             return
         
         try:
@@ -398,7 +399,8 @@ class ActiveDiscoveryMethods(ActiveDiscovery):
         self.log("🔍 Port Scanning for Service Discovery...", '\033[96m')
         
         if not NMAP_AVAILABLE:
-            self.log("nmap not available, skipping port scanning", '\033[93m')
+            self.log("nmap not available, using alternative port scanning", '\033[93m')
+            self.alternative_port_scan()
             return
         
         try:
@@ -429,6 +431,43 @@ class ActiveDiscoveryMethods(ActiveDiscovery):
         except Exception as e:
             if self.verbose:
                 self.log(f"Port scanning error: {e}", '\033[91m')
+    
+    def alternative_port_scan(self):
+        """Alternative port scanning without nmap"""
+        try:
+            domain_ip = socket.gethostbyname(self.domain)
+            common_ports = [80, 443, 8080, 8443, 3000, 5000, 8000, 9000, 22, 23, 21, 25, 53, 110, 143, 993, 995]
+            
+            def scan_port(port):
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(3)
+                    result = sock.connect_ex((domain_ip, port))
+                    
+                    if result == 0:
+                        try:
+                            # Try to get banner
+                            sock.send(b'GET / HTTP/1.0\r\n\r\n')
+                            banner = sock.recv(1024).decode('utf-8', errors='ignore')
+                            
+                            # Look for hostname patterns in banner
+                            hostname_patterns = re.findall(r'([a-zA-Z0-9.-]+\.' + re.escape(self.domain) + r')', banner)
+                            for hostname in hostname_patterns:
+                                self.add_subdomain(hostname)
+                                self.log(f"Port scan found: {hostname} (port {port})", '\033[92m')
+                        except:
+                            pass
+                    
+                    sock.close()
+                except:
+                    pass
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                executor.map(scan_port, common_ports)
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Alternative port scan error: {e}", '\033[91m')
     
     # 3. HTTP/HTTPS-Based Active Methods
     def virtual_host_bruteforce(self):
@@ -580,28 +619,105 @@ class ActiveDiscoveryMethods(ActiveDiscovery):
         """Discover internal network infrastructure"""
         self.log("🏠 Internal Network Discovery...", '\033[96m')
         
-        if not NETADDR_AVAILABLE:
-            self.log("netaddr not available, skipping internal network discovery", '\033[93m')
-            return
-        
         try:
-            # Scan internal IP ranges
-            for ip_range in self.internal_ranges:
-                network = ipaddress.IPv4Network(ip_range)
-                
-                # Limit scan to smaller subnets for performance
-                if network.num_addresses > 1024:
-                    # Sample some subnets
-                    subnets = list(network.subnets(new_prefix=24))[:10]
-                else:
-                    subnets = [network]
-                
-                for subnet in subnets:
-                    self.scan_internal_subnet(str(subnet))
+            # Use simple socket-based scanning instead of nmap
+            self.simple_internal_scan()
         
         except Exception as e:
             if self.verbose:
                 self.log(f"Internal network discovery error: {e}", '\033[91m')
+    
+    def simple_internal_scan(self):
+        """Simple internal network scanning without external tools"""
+        try:
+            # Get local network info
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            
+            # Determine local network range
+            if local_ip.startswith('192.168.'):
+                network_base = '.'.join(local_ip.split('.')[:-1]) + '.0/24'
+            elif local_ip.startswith('10.'):
+                network_base = '.'.join(local_ip.split('.')[:-1]) + '.0/24'  
+            elif local_ip.startswith('172.'):
+                network_base = '.'.join(local_ip.split('.')[:-1]) + '.0/24'
+            else:
+                return
+            
+            network = ipaddress.IPv4Network(network_base, strict=False)
+            
+            # Scan first 50 IPs for performance
+            hosts_to_scan = list(network.hosts())[:50]
+            
+            def check_internal_host(ip):
+                try:
+                    # Try reverse DNS lookup
+                    hostname = socket.gethostbyaddr(str(ip))[0]
+                    if hostname.endswith(f'.{self.domain}'):
+                        self.add_subdomain(hostname)
+                        self.log(f"Internal subdomain found: {hostname} ({ip})", '\033[92m')
+                    else:
+                        self.add_internal_ip(str(ip), hostname)
+                except:
+                    # Try ping equivalent (TCP connect)
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(1)
+                        result = sock.connect_ex((str(ip), 80))
+                        sock.close()
+                        if result == 0:
+                            self.add_internal_ip(str(ip))
+                    except:
+                        pass
+            
+            with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+                executor.map(check_internal_host, hosts_to_scan)
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Simple internal scan error: {e}", '\033[91m')
+    
+    def alternative_network_scan(self):
+        """Alternative network scanning without nmap"""
+        try:
+            # Get domain's public IP
+            domain_ip = socket.gethostbyname(self.domain)
+            self.log(f"Domain IP: {domain_ip}", '\033[93m')
+            
+            # Calculate network range (smaller range for performance)
+            ip_obj = ipaddress.IPv4Address(domain_ip)
+            network = ipaddress.IPv4Network(f"{domain_ip}/28", strict=False)  # Smaller range
+            
+            def check_host(ip):
+                try:
+                    # Try reverse DNS lookup
+                    hostname = socket.gethostbyaddr(str(ip))[0]
+                    if hostname.endswith(f'.{self.domain}'):
+                        self.add_subdomain(hostname)
+                        self.log(f"Network scan found: {hostname} ({ip})", '\033[92m')
+                    else:
+                        self.add_internal_ip(str(ip), hostname)
+                except:
+                    # Try simple TCP connect on common ports
+                    for port in [80, 443, 22, 23]:
+                        try:
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                            sock.settimeout(2)
+                            result = sock.connect_ex((str(ip), port))
+                            sock.close()
+                            if result == 0:
+                                self.add_internal_ip(str(ip))
+                                break
+                        except:
+                            continue
+            
+            # Scan network range
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                executor.map(check_host, network.hosts())
+        
+        except Exception as e:
+            if self.verbose:
+                self.log(f"Alternative network scan error: {e}", '\033[91m')
     
     def scan_internal_subnet(self, subnet):
         """Scan internal subnet for services"""
@@ -1982,32 +2098,34 @@ class SubdomainEnumerator:
             try:
                 results = httpx_prober.probe_url(subdomain)
                 
-                for protocol, result in results.items():
-                    if 'error' not in result:
-                        status_code = result['status_code']
-                        title = result['title']
-                        response_time = result['response_time']
-                        content_length = result['content_length']
-                        
-                        # Categorize status code
-                        category, color = httpx_prober.categorize_status_code(status_code)
-                        
-                        # Store live subdomain
-                        with self.lock:
-                            key = f"{protocol}://{subdomain}"
-                            self.live_subdomains[key] = {
-                                'subdomain': subdomain,
-                                'protocol': protocol,
-                                'status_code': status_code,
-                                'title': title,
-                                'response_time': response_time,
-                                'content_length': content_length,
-                                'category': category,
-                                'url': result['url']
-                            }
-                        
-                        # Live display
-                        self.log(f"✅ {protocol.upper()}://{subdomain} [{color}{status_code}{Colors.END}] [{response_time}ms] {title}", Colors.WHITE)
+                if results and isinstance(results, dict):
+                    for protocol, result in results.items():
+                        if result and isinstance(result, dict) and 'error' not in result:
+                            status_code = result.get('status_code')
+                            title = result.get('title', 'No Title')
+                            response_time = result.get('response_time', 0)
+                            content_length = result.get('content_length', 0)
+                            
+                            if status_code:
+                                # Categorize status code
+                                category, color = httpx_prober.categorize_status_code(status_code)
+                                
+                                # Store live subdomain
+                                with self.lock:
+                                    key = f"{protocol}://{subdomain}"
+                                    self.live_subdomains[key] = {
+                                        'subdomain': subdomain,
+                                        'protocol': protocol,
+                                        'status_code': status_code,
+                                        'title': title,
+                                        'response_time': response_time,
+                                        'content_length': content_length,
+                                        'category': category,
+                                        'url': result.get('url', f"{protocol}://{subdomain}")
+                                    }
+                                
+                                # Live display
+                                self.log(f"✅ {protocol.upper()}://{subdomain} [{color}{status_code}{Colors.END}] [{response_time}ms] {title}", Colors.WHITE)
                     
             except Exception as e:
                 if self.verbose:
@@ -2222,8 +2340,10 @@ class SubdomainEnumerator:
                     for url, info in sorted(self.live_subdomains.items()):
                         f.write(f'"{url}","{info["subdomain"]}","{info["protocol"]}",{info["status_code"]},"{info["title"]}",{info["response_time"]},{info["content_length"]},"{info["category"]}"\n')
                 
-            if not self.silent:
-                self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
+                if not self.silent:
+                    self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
+            else:
+                csv_output_file = None
             
             # Save internal IPs if found
             if self.internal_ips:
