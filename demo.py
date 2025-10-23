@@ -16,11 +16,12 @@ def main():
     print_colored("=" * 60, "93")
     
     print("\n📋 Available commands:")
-    print_colored("1. python3 subdomains.py -d example.com", "92")
-    print_colored("2. python3 subdomains.py -d example.com -o results.txt -t 100 -v", "92")
-    print_colored("3. python3 subdomains.py -d example.com --timeout 15 --verbose", "92")
-    print_colored("4. python3 subdomains.py -d example.com --no-httpx  # Skip HTTP probing", "93")
-    print_colored("5. python3 subdomains.py --show-apis  # Show API status", "94")
+    print_colored("1. python3 subdomains.py -d example.com  # Maximum discovery (default)", "92")
+    print_colored("2. python3 subdomains.py -d example.com --quick  # Fast scan", "93")
+    print_colored("3. python3 subdomains.py -d example.com --aggressive  # Maximum resources", "91")
+    print_colored("4. python3 subdomains.py -d example.com --passive  # Passive only", "94")
+    print_colored("5. python3 subdomains.py -d example.com --silent  # Silent mode", "95")
+    print_colored("6. python3 subdomains.py --show-apis  # Show API status", "96")
     
     print("\n🎯 Features included:")
     features = [
@@ -60,13 +61,18 @@ def main():
     print_colored("✅ https://app.target.com [200] [234ms] Web Application", "92")
     
     print("\n🔑 API Power:")
-    print_colored("  • Without APIs: 20-50 subdomains", "93")
-    print_colored("  • With APIs: 200-1000+ subdomains", "92")
+    print_colored("  • Without APIs: 50-200 subdomains", "93")
+    print_colored("  • With APIs: 500-2000+ subdomains", "92")
     print_colored("  • Setup guide: API_SETUP_GUIDE.md", "94")
     
+    print("\n⚡ Performance Modes:")
+    print_colored("  • Quick mode: 30 seconds, essential subdomains", "93")
+    print_colored("  • Default mode: 2-5 minutes, comprehensive discovery", "92")
+    print_colored("  • Aggressive mode: 5-15 minutes, maximum coverage", "91")
+    
     print("\n🚀 Ready to use!")
-    print_colored("Basic: python3 subdomains.py -d YOUR_DOMAIN", "93")
-    print_colored("APIs: python3 subdomains.py --show-apis", "94")
+    print_colored("Just run: python3 subdomains.py -d YOUR_DOMAIN", "92")
+    print_colored("That's it! Optimized defaults will do the rest.", "94")
 
 if __name__ == "__main__":
     main()

@@ -161,12 +161,14 @@ class HttpxProbe:
             return 'unknown', Colors.WHITE
 
 class SubdomainEnumerator:
-    def __init__(self, domain, output_file=None, threads=50, timeout=10, verbose=False, 
+    def __init__(self, domain, output_file=None, threads=100, timeout=15, verbose=True, 
                  httpx_check=True, passive_only=False, active_only=False, sources=None,
-                 wordlist_file=None, resolvers_file=None, max_depth=3, rate_limit=100,
-                 silent=False, json_output=False, csv_output=False, use_all=False):
+                 wordlist_file=None, resolvers_file=None, max_depth=5, rate_limit=200,
+                 silent=False, json_output=False, csv_output=False, use_all=True, quick_mode=False):
         self.domain = domain.lower().strip()
         self.output_file = output_file or f"{self.domain}_subdomains.txt"
+        
+        # Optimized defaults for maximum subdomain discovery
         self.threads = threads
         self.timeout = timeout
         self.verbose = verbose and not silent
@@ -174,13 +176,19 @@ class SubdomainEnumerator:
         self.httpx_check = httpx_check
         self.passive_only = passive_only
         self.active_only = active_only
-        self.sources = sources or ['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis']
+        self.quick_mode = quick_mode
+        
+        # Use ALL sources by default for maximum coverage
+        self.sources = sources or ['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis', 'zone', 'reverse', 'vhost', 'ssl', 'passive']
+        
         self.wordlist_file = wordlist_file
         self.resolvers_file = resolvers_file
         self.max_depth = max_depth
         self.rate_limit = rate_limit
         self.json_output = json_output
         self.csv_output = csv_output
+        
+        # Enable ALL methods by default for comprehensive discovery
         self.use_all = use_all
         
         self.subdomains = set()
@@ -211,8 +219,9 @@ class SubdomainEnumerator:
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0'
         ]
         
-        # Common subdomain wordlist
+        # Comprehensive subdomain wordlist for maximum discovery
         self.wordlist = [
+            # Basic and common
             'www', 'mail', 'ftp', 'localhost', 'webmail', 'smtp', 'pop', 'ns1', 'webdisk', 'ns2',
             'cpanel', 'whm', 'autodiscover', 'autoconfig', 'mx', 'm', 'imap', 'test', 'ns', 'blog',
             'pop3', 'dev', 'www2', 'admin', 'forum', 'news', 'vpn', 'ns3', 'mail2', 'new', 'mysql',
@@ -223,13 +232,73 @@ class SubdomainEnumerator:
             'mail1', 'sites', 'proxy', 'ads', 'host', 'crm', 'cms', 'backup', 'mx2', 'lyncdiscover',
             'info', 'apps', 'download', 'remote', 'db', 'forums', 'store', 'relay', 'files',
             'newsletter', 'app', 'live', 'owa', 'en', 'start', 'sms', 'office', 'exchange',
-            'ipv4', 'mail3', 'help', 'blogs', 'helpdesk', 'web1', 'home', 'library', 'ftp2',
-            'ntp', 'monitor', 'login', 'service', 'correo', 'www4', 'moodle', 'it', 'gateway',
-            'gw', 'i', 'stat', 'stage', 'ldap', 'tv', 'ssl', 'web2', 'ns5', 'upload', 'nagios',
-            'smtp2', 'online', 'ad', 'survey', 'data', 'radio', 'extranet', 'test2', 'mssql',
-            'dns3', 'jobs', 'services', 'panel', 'irc', 'hosting', 'cloud', 'de', 'gmail',
-            's', 'bbs', 'cs', 'ww', 'mrtg', 'review', 'avalon', 'cc', 'xe', 'www5', 'ovpn',
-            'links', 'logs', 'rss', 'move', 'weather', 'www6', 'c', 'find', 'ssl2', 'sql2'
+            
+            # Extended common subdomains
+            'api1', 'api2', 'api3', 'app1', 'app2', 'app3', 'web01', 'web02', 'web03', 'web1', 'web2', 'web3',
+            'srv1', 'srv2', 'srv3', 'server1', 'server2', 'server3', 'host1', 'host2', 'host3',
+            'node1', 'node2', 'node3', 'cluster1', 'cluster2', 'lb1', 'lb2', 'proxy1', 'proxy2',
+            
+            # Cloud and modern infrastructure
+            'aws', 'azure', 'gcp', 'cloud', 'k8s', 'kubernetes', 'docker', 'container', 'registry',
+            'harbor', 'nexus', 'artifactory', 'jenkins', 'ci', 'cd', 'pipeline', 'build', 'deploy',
+            'gitlab', 'github', 'bitbucket', 'git', 'repo', 'scm', 'source', 'code',
+            
+            # Monitoring and observability
+            'grafana', 'prometheus', 'kibana', 'elastic', 'elasticsearch', 'logstash', 'beats',
+            'splunk', 'datadog', 'newrelic', 'sentry', 'jaeger', 'zipkin', 'trace', 'metrics',
+            'logs', 'monitor', 'monitoring', 'observability', 'health', 'status', 'uptime',
+            'ping', 'check', 'probe', 'heartbeat', 'alerts', 'notifications', 'pager',
+            
+            # Databases and storage
+            'db1', 'db2', 'db3', 'database', 'mysql1', 'mysql2', 'postgres', 'postgresql', 'mongo',
+            'mongodb', 'redis', 'memcached', 'cassandra', 'elasticsearch', 'solr', 'neo4j',
+            'influxdb', 'clickhouse', 'bigquery', 'snowflake', 'redshift', 'athena',
+            'storage', 'minio', 's3', 'blob', 'bucket', 'vault', 'secrets', 'kms',
+            
+            # Security and authentication
+            'auth', 'oauth', 'sso', 'saml', 'ldap', 'ad', 'directory', 'identity', 'iam',
+            'keycloak', 'okta', 'auth0', 'cognito', 'firebase', 'supabase',
+            'security', 'sec', 'firewall', 'waf', 'ids', 'ips', 'siem', 'soar',
+            'vault', 'secrets', 'cert', 'certificate', 'ca', 'pki', 'ssl', 'tls',
+            
+            # API and microservices
+            'rest', 'graphql', 'grpc', 'soap', 'webhook', 'callback', 'notify', 'push',
+            'realtime', 'ws', 'websocket', 'socket', 'stream', 'sse', 'mqtt', 'amqp',
+            'kafka', 'rabbitmq', 'redis', 'pubsub', 'queue', 'worker', 'job', 'task',
+            'scheduler', 'cron', 'batch', 'etl', 'pipeline', 'workflow', 'orchestrator',
+            
+            # Content and media
+            'assets', 'static', 'cdn1', 'cdn2', 'edge', 'cache', 'images', 'img1', 'img2',
+            'media1', 'media2', 'video', 'audio', 'podcast', 'stream', 'live', 'broadcast',
+            'upload', 'downloads', 'files1', 'files2', 'share', 'drive', 'sync',
+            
+            # Business applications
+            'crm1', 'crm2', 'erp', 'hr', 'finance', 'accounting', 'billing', 'invoice',
+            'payment', 'checkout', 'cart', 'shop1', 'shop2', 'ecommerce', 'store1', 'store2',
+            'inventory', 'warehouse', 'logistics', 'shipping', 'tracking', 'orders',
+            'customers', 'users', 'accounts', 'profiles', 'settings', 'preferences',
+            
+            # Development and testing
+            'dev1', 'dev2', 'dev3', 'development', 'test1', 'test2', 'test3', 'testing',
+            'qa', 'qe', 'uat', 'acceptance', 'integration', 'e2e', 'performance', 'load',
+            'stress', 'chaos', 'canary', 'blue', 'green', 'preview', 'review', 'pr',
+            'feature', 'hotfix', 'patch', 'release', 'rc', 'alpha', 'beta', 'gamma',
+            
+            # Geographic and language
+            'us', 'eu', 'asia', 'apac', 'emea', 'latam', 'na', 'sa', 'af', 'oc',
+            'us-east', 'us-west', 'eu-west', 'eu-central', 'ap-south', 'ap-southeast',
+            'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko', 'ar', 'fa',
+            'www-en', 'www-es', 'www-fr', 'www-de', 'api-us', 'api-eu', 'cdn-us', 'cdn-eu',
+            
+            # Single letters and numbers (for comprehensive coverage)
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+            'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15',
+            '01', '02', '03', '04', '05', '06', '07', '08', '09',
+            
+            # Persian/Farsi specific
+            'panel', 'control', 'manage', 'manager', 'dashboard', 'console', 'admin1', 'admin2',
+            'backend', 'internal', 'private', 'restricted', 'hidden', 'secret', 'protected'
         ]
         
         # Extended wordlist for thorough enumeration
@@ -273,12 +342,14 @@ class SubdomainEnumerator:
             api_status = "❌ No config.py"
         
         # Mode description
-        if self.passive_only:
+        if self.quick_mode:
+            mode = "🚀 Quick Mode (Fast & Essential)"
+        elif self.passive_only:
             mode = "🔍 Passive Only"
         elif self.active_only:
             mode = "⚡ Active Only"
         elif self.use_all:
-            mode = "🚀 All Methods"
+            mode = "🔥 Maximum Discovery (All Methods)"
         else:
             mode = f"🎯 Selected Sources: {', '.join(self.sources)}"
         
@@ -834,8 +905,19 @@ class SubdomainEnumerator:
                 except:
                     return False
         
-        # Combine wordlists
-        all_wordlist = self.wordlist + self.extended_wordlist
+        # Combine wordlists based on mode
+        if self.quick_mode:
+            # Quick mode: use only essential subdomains
+            quick_wordlist = [
+                'www', 'mail', 'ftp', 'admin', 'api', 'app', 'blog', 'dev', 'test', 'staging',
+                'cdn', 'static', 'assets', 'images', 'media', 'docs', 'support', 'help',
+                'shop', 'store', 'portal', 'dashboard', 'panel', 'console', 'manage',
+                'secure', 'ssl', 'vpn', 'remote', 'backup', 'monitor', 'status', 'health'
+            ]
+            all_wordlist = quick_wordlist
+        else:
+            # Full mode: use comprehensive wordlist
+            all_wordlist = self.wordlist + self.extended_wordlist
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
             executor.map(check_subdomain, all_wordlist)
@@ -1619,35 +1701,52 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Maximum discovery (default - comprehensive scan)
   python3 subdomains.py -d example.com
-  python3 subdomains.py -d example.com -o results.txt -t 100 -v
-  python3 subdomains.py -d example.com --timeout 15 --verbose
-  python3 subdomains.py -d example.com --no-httpx  # Skip HTTP probing
-  python3 subdomains.py --show-apis  # Show API configuration
+  
+  # Quick scan (fast results)
+  python3 subdomains.py -d example.com --quick
+  
+  # Aggressive scan (maximum resources)
+  python3 subdomains.py -d example.com --aggressive
+  
+  # Passive only (no active DNS queries)
+  python3 subdomains.py -d example.com --passive
+  
+  # Custom output formats
+  python3 subdomains.py -d example.com --json --csv
+  
+  # Silent mode (only results)
+  python3 subdomains.py -d example.com --silent
+  
+  # Check API configuration
+  python3 subdomains.py --show-apis
         """
     )
     
     parser.add_argument('-d', '--domain', help='Target domain')
     parser.add_argument('-o', '--output', help='Output file (default: domain_subdomains.txt)')
-    parser.add_argument('-t', '--threads', type=int, default=50, help='Number of threads (default: 50)')
-    parser.add_argument('--timeout', type=int, default=10, help='Request timeout in seconds (default: 10)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
+    parser.add_argument('-t', '--threads', type=int, default=100, help='Number of threads (default: 100 - optimized for speed)')
+    parser.add_argument('--timeout', type=int, default=15, help='Request timeout in seconds (default: 15 - optimized for reliability)')
+    parser.add_argument('-v', '--verbose', action='store_true', default=True, help='Verbose output (default: enabled)')
     parser.add_argument('--no-httpx', action='store_true', help='Skip HTTP/HTTPS probing (httpx functionality)')
     parser.add_argument('--show-apis', action='store_true', help='Show API configuration status and exit')
     
-    # Advanced enumeration options (like real tools)
-    parser.add_argument('--all', action='store_true', help='Use all enumeration techniques (slower but comprehensive)')
-    parser.add_argument('--passive', action='store_true', help='Use only passive enumeration (no active DNS queries)')
-    parser.add_argument('--active', action='store_true', help='Use only active enumeration (DNS brute force, zone transfer)')
-    parser.add_argument('--sources', nargs='+', help='Specify sources to use', 
-                       choices=['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis'])
-    parser.add_argument('--wordlist', help='Custom wordlist file for DNS brute force')
-    parser.add_argument('--resolvers', help='Custom DNS resolvers file')
-    parser.add_argument('--max-depth', type=int, default=3, help='Maximum recursion depth for subdomain discovery')
-    parser.add_argument('--rate-limit', type=int, default=100, help='Rate limit requests per second (default: 100)')
+    # Advanced enumeration options (optimized defaults for maximum discovery)
+    parser.add_argument('--all', action='store_true', default=True, help='Use all enumeration techniques (default: enabled for comprehensive discovery)')
+    parser.add_argument('--passive', action='store_true', help='Use only passive enumeration (overrides --all)')
+    parser.add_argument('--active', action='store_true', help='Use only active enumeration (overrides --all)')
+    parser.add_argument('--sources', nargs='+', help='Specify sources to use (default: all sources)', 
+                       choices=['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis', 'zone', 'reverse', 'vhost', 'ssl', 'passive'])
+    parser.add_argument('--wordlist', help='Custom wordlist file for DNS brute force (default: comprehensive built-in wordlist)')
+    parser.add_argument('--resolvers', help='Custom DNS resolvers file (default: system resolvers)')
+    parser.add_argument('--max-depth', type=int, default=5, help='Maximum recursion depth for subdomain discovery (default: 5 - deep discovery)')
+    parser.add_argument('--rate-limit', type=int, default=200, help='Rate limit requests per second (default: 200 - optimized for speed)')
     parser.add_argument('--silent', action='store_true', help='Silent mode - only output results')
     parser.add_argument('--json', action='store_true', help='Output results in JSON format')
     parser.add_argument('--csv', action='store_true', help='Output results in CSV format')
+    parser.add_argument('--quick', action='store_true', help='Quick scan mode (reduced wordlist and sources for faster results)')
+    parser.add_argument('--aggressive', action='store_true', help='Aggressive mode (maximum threads, timeout, and comprehensive discovery)')
     
     args = parser.parse_args()
     
@@ -1675,25 +1774,67 @@ Examples:
         sys.exit(1)
     
     try:
-        # Initialize enumerator
+        # Apply mode-specific optimizations
+        threads = args.threads
+        timeout = args.timeout
+        use_all = args.all
+        sources = args.sources
+        max_depth = args.max_depth
+        rate_limit = args.rate_limit
+        
+        # Override defaults based on mode
+        if args.quick:
+            # Quick mode: faster but less comprehensive
+            threads = min(50, threads)
+            timeout = min(8, timeout)
+            use_all = False
+            sources = sources or ['ct', 'dns', 'search']
+            max_depth = min(2, max_depth)
+            rate_limit = min(100, rate_limit)
+            if not args.silent:
+                print(f"{Colors.YELLOW}🚀 Quick mode enabled: faster scan with reduced coverage{Colors.END}")
+        
+        elif args.aggressive:
+            # Aggressive mode: maximum discovery
+            threads = max(200, threads)
+            timeout = max(20, timeout)
+            use_all = True
+            sources = ['ct', 'dns', 'search', 'github', 'wayback', 'shodan', 'apis', 'zone', 'reverse', 'vhost', 'ssl', 'passive']
+            max_depth = max(7, max_depth)
+            rate_limit = max(300, rate_limit)
+            if not args.silent:
+                print(f"{Colors.RED}🔥 Aggressive mode enabled: maximum discovery with high resource usage{Colors.END}")
+        
+        # Override if passive/active specified
+        if args.passive:
+            use_all = False
+            if not args.silent:
+                print(f"{Colors.CYAN}🔍 Passive mode: using only passive enumeration techniques{Colors.END}")
+        elif args.active:
+            use_all = False
+            if not args.silent:
+                print(f"{Colors.MAGENTA}⚡ Active mode: using only active enumeration techniques{Colors.END}")
+        
+        # Initialize enumerator with optimized settings
         enumerator = SubdomainEnumerator(
             domain=args.domain,
             output_file=args.output,
-            threads=args.threads,
-            timeout=args.timeout,
-            verbose=args.verbose,
+            threads=threads,
+            timeout=timeout,
+            verbose=args.verbose and not args.silent,
             httpx_check=not args.no_httpx,
             passive_only=args.passive,
             active_only=args.active,
-            sources=args.sources,
+            sources=sources,
             wordlist_file=args.wordlist,
             resolvers_file=args.resolvers,
-            max_depth=args.max_depth,
-            rate_limit=args.rate_limit,
+            max_depth=max_depth,
+            rate_limit=rate_limit,
             silent=args.silent,
             json_output=args.json,
             csv_output=args.csv,
-            use_all=args.all
+            use_all=use_all,
+            quick_mode=args.quick
         )
         
         # Run enumeration
