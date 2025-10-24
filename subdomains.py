@@ -148,49 +148,52 @@ class HttpxProbe:
     
     def probe_url(self, url, protocols=['http', 'https']):
         """Probe a URL with HTTP/HTTPS protocols"""
-        results = {}
-        
-        for protocol in protocols:
-            full_url = f"{protocol}://{url}"
-            try:
-                start_time = time.time()
-                response = self.session.get(
-                    full_url, 
-                    timeout=self.timeout, 
-                    allow_redirects=True,
-                    stream=True
-                )
-                response_time = round((time.time() - start_time) * 1000, 2)
-                
-                # Get title from HTML
-                title = self.extract_title(response)
-                
-                # Get content length
-                content_length = len(response.content) if response.content else 0
-                
-                # Get server header
-                server = response.headers.get('Server', 'Unknown')
-                
-                results[protocol] = {
-                    'status_code': response.status_code,
-                    'title': title,
-                    'content_length': content_length,
-                    'response_time': response_time,
-                    'server': server,
-                    'url': full_url,
-                    'final_url': response.url
-                }
-                
-            except requests.exceptions.Timeout:
-                results[protocol] = {'error': 'timeout'}
-            except requests.exceptions.ConnectionError:
-                results[protocol] = {'error': 'connection_error'}
-            except requests.exceptions.RequestException as e:
-                results[protocol] = {'error': str(e)}
-            except Exception as e:
-                results[protocol] = {'error': f'unknown_error: {str(e)}'}
-        
-        return results
+        try:
+            results = {}
+            
+            for protocol in protocols:
+                full_url = f"{protocol}://{url}"
+                try:
+                    start_time = time.time()
+                    response = self.session.get(
+                        full_url, 
+                        timeout=self.timeout, 
+                        allow_redirects=True,
+                        stream=True
+                    )
+                    response_time = round((time.time() - start_time) * 1000, 2)
+                    
+                    # Get title from HTML
+                    title = self.extract_title(response)
+                    
+                    # Get content length
+                    content_length = len(response.content) if response.content else 0
+                    
+                    # Get server header
+                    server = response.headers.get('Server', 'Unknown')
+                    
+                    results[protocol] = {
+                        'status_code': response.status_code,
+                        'title': title,
+                        'content_length': content_length,
+                        'response_time': response_time,
+                        'server': server,
+                        'url': full_url,
+                        'final_url': response.url
+                    }
+                    
+                except requests.exceptions.Timeout:
+                    results[protocol] = {'error': 'timeout'}
+                except requests.exceptions.ConnectionError:
+                    results[protocol] = {'error': 'connection_error'}
+                except requests.exceptions.RequestException as e:
+                    results[protocol] = {'error': str(e)}
+                except Exception as e:
+                    results[protocol] = {'error': f'unknown_error: {str(e)}'}
+            
+            return results
+        except Exception as e:
+            return {}
     
     def extract_title(self, response):
         """Extract title from HTML response"""
@@ -211,6 +214,14 @@ class HttpxProbe:
         """Categorize HTTP status codes"""
         if 200 <= status_code < 300:
             return 'success', Colors.GREEN
+        elif 300 <= status_code < 400:
+            return 'redirect', Colors.YELLOW
+        elif 400 <= status_code < 500:
+            return 'client_error', Colors.RED
+        elif 500 <= status_code < 600:
+            return 'server_error', Colors.RED
+        else:
+            return 'unknown', Colors.WHITE
 
 # Active Discovery Methods
 class ActiveDiscoveryMethods(ActiveDiscovery):
@@ -2097,6 +2108,8 @@ class SubdomainEnumerator:
         def probe_subdomain(subdomain):
             try:
                 results = httpx_prober.probe_url(subdomain)
+                if not results:
+                    return
                 
                 if results and isinstance(results, dict):
                     for protocol, result in results.items():
@@ -2108,7 +2121,10 @@ class SubdomainEnumerator:
                             
                             if status_code:
                                 # Categorize status code
-                                category, color = httpx_prober.categorize_status_code(status_code)
+                                try:
+                                    category, color = httpx_prober.categorize_status_code(status_code)
+                                except Exception as e:
+                                    category, color = 'unknown', Colors.WHITE
                                 
                                 # Store live subdomain
                                 with self.lock:
@@ -2251,6 +2267,10 @@ class SubdomainEnumerator:
                 category = info['category']
                 title = info['title']
                 
+                # Populate status_categories
+                if category in status_categories:
+                    status_categories[category].append(url)
+                
                 # Create title groups
                 if category not in title_groups:
                     title_groups[category] = {}
@@ -2333,6 +2353,7 @@ class SubdomainEnumerator:
                     self.log(f"💾 JSON results saved to: {json_output_file}", Colors.GREEN)
             
             # Save CSV format if requested
+            csv_output_file = None
             if self.csv_output:
                 csv_output_file = self.output_file.replace('.txt', '.csv')
                 with open(csv_output_file, 'w', encoding='utf-8') as f:
@@ -2342,8 +2363,6 @@ class SubdomainEnumerator:
                 
                 if not self.silent:
                     self.log(f"💾 CSV results saved to: {csv_output_file}", Colors.GREEN)
-            else:
-                csv_output_file = None
             
             # Save internal IPs if found
             if self.internal_ips:
