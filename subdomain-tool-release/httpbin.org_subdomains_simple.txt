@@ -1,0 +1,4 @@
+http://eu.httpbin.org
+http://www.httpbin.org
+https://eu.httpbin.org
+https://www.httpbin.org
