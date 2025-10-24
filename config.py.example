@@ -1,0 +1,55 @@
+# API Keys Configuration
+# Copy this file to config.py and add your API keys
+
+API_KEYS = {
+    'shodan': '',  # Get from: https://account.shodan.io/
+    'virustotal': '',  # Get from: https://www.virustotal.com/gui/my-apikey
+    'securitytrails': '',  # Get from: https://securitytrails.com/corp/api
+    'chaos': '',  # Get from: https://chaos.projectdiscovery.io/
+    'censys': ''  # Get from: https://censys.io/account/api
+}
+
+# Usage instructions for each API
+USAGE_INSTRUCTIONS = """
+🔑 API Keys Setup Instructions:
+
+1. Shodan (https://account.shodan.io/):
+   - Sign up for a free account
+   - Go to Account > API Key
+   - Copy your API key
+
+2. VirusTotal (https://www.virustotal.com/gui/my-apikey):
+   - Sign up for a free account
+   - Go to your profile > API key
+   - Copy your API key
+
+3. SecurityTrails (https://securitytrails.com/corp/api):
+   - Sign up for a free account
+   - Go to Account > API Keys
+   - Copy your API key
+
+4. Chaos (https://chaos.projectdiscovery.io/):
+   - Sign up for a free account
+   - Go to Account > API Keys
+   - Copy your API key
+
+5. Censys (https://censys.io/account/api):
+   - Sign up for a free account
+   - Go to Account > API Keys
+   - Copy your API key
+
+Note: All APIs offer free tiers with limited requests per month.
+For production use, consider upgrading to paid plans.
+"""
+
+def print_api_status():
+    """Print API configuration status"""
+    print("🔑 API Configuration Status:")
+    print("=" * 50)
+    
+    for api_name, api_key in API_KEYS.items():
+        status = "✅ Configured" if api_key else "❌ Not configured"
+        print(f"{api_name.capitalize()}: {status}")
+    
+    print("\n💡 Tip: Configure API keys in config.py for enhanced discovery")
+    print("📖 See API_SETUP_GUIDE.md for detailed setup instructions")
