@@ -1,0 +1,21 @@
+# 📁 فایل‌های آماده برای آپلود در GitHub
+
+## فایل‌های اصلی:
+- API_SETUP_GUIDE.md (6411 bytes)
+- config.py (8647 bytes)
+- config.py.example (1785 bytes)
+- demo.py (3951 bytes)
+- DOWNLOAD_GUIDE.md (3358 bytes)
+- DOWNLOAD_INSTRUCTIONS.md (2248 bytes)
+- GITHUB_SETUP_GUIDE.md (5692 bytes)
+- httpbin.org_subdomains_live.txt (256 bytes)
+- httpbin.org_subdomains_simple.txt (92 bytes)
+- install.sh (2303 bytes)
+- QUICK_GITHUB_SETUP.md (2523 bytes)
+- README.md (4925 bytes)
+- RELEASE_README.md (3358 bytes)
+- requirements.txt (119 bytes)
+- setup.py (1756 bytes)
+- SUBDOMAIN_README.md (13316 bytes)
+- subdomains.py (120089 bytes)
+- test.py (4162 bytes)
