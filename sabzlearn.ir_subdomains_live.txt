@@ -1,0 +1,90 @@
+# Live Subdomains for sabzlearn.ir
+# Generated on: 2025-10-24 09:42:53
+# Total live subdomains: 46
+
+## SUCCESS (2xx) (32 subdomains)
+
+### Akeeba Solo (2 subdomains)
+http://bkp.sabzlearn.ir
+https://bkp.sabzlearn.ir
+
+### Coming Soon (2 subdomains)
+http://hcp.sabzlearn.ir
+https://hcp.sabzlearn.ir
+
+### Hey, I'm imgproxy! (2 subdomains)
+http://edge.sabzlearn.ir
+https://edge.sabzlearn.ir
+
+### Metabase (2 subdomains)
+http://statistics.sabzlearn.ir
+https://statistics.sabzlearn.ir
+
+### MinIO Console (2 subdomains)
+http://console.sabzlearn.ir
+https://console.sabzlearn.ir
+
+### n8n.io - Workflow Automation (2 subdomains)
+http://n8n.sabzlearn.ir
+https://n8n.sabzlearn.ir
+
+### Roundcube Webmail :: Welcome to Roundcube Webmail (4 subdomains)
+http://mail.sabzlearn.ir
+http://webmail.sabzlearn.ir
+https://mail.sabzlearn.ir
+https://webmail.sabzlearn.ir
+
+### SabzLearn Files (2 subdomains)
+http://files.sabzlearn.ir
+https://files.sabzlearn.ir
+
+### SabzLearn Videos (2 subdomains)
+http://tech.sabzlearn.ir
+https://tech.sabzlearn.ir
+
+### SabzLMS (2 subdomains)
+http://api.stage.sabzlearn.ir
+https://api.stage.sabzlearn.ir
+
+### آکادمی آموزش برنامه نویسی سبزلرن {از صفر تا استخدام} | Sabzlearn (2 subdomains)
+http://www.sabzlearn.ir
+https://www.sabzlearn.ir
+
+### خانه | سبز لرن (2 subdomains)
+http://erp.sabzlearn.ir
+https://erp.sabzlearn.ir
+
+### مشاور برنامه نویسی آنلاین {توسط برترین مدرسین سال} - سبزلرن (2 subdomains)
+http://advisor.sabzlearn.ir
+https://advisor.sabzlearn.ir
+
+### No Title (4 subdomains)
+http://dl.sabzlearn.ir
+http://my.sabzlearn.ir
+https://dl.sabzlearn.ir
+https://my.sabzlearn.ir
+
+
+## CLIENT ERROR (4xx) (14 subdomains)
+
+### 403 Forbidden (2 subdomains)
+http://chat.sabzlearn.ir
+https://chat.sabzlearn.ir
+
+### Suspended Domain (2 subdomains)
+http://status.sabzlearn.ir
+https://status.sabzlearn.ir
+
+### No Title (10 subdomains)
+http://ipprs.sabzlearn.ir
+http://lms.stage.sabzlearn.ir
+http://pma.stage.sabzlearn.ir
+http://storage.sabzlearn.ir
+http://up.sabzlearn.ir
+https://ipprs.sabzlearn.ir
+https://lms.stage.sabzlearn.ir
+https://pma.stage.sabzlearn.ir
+https://storage.sabzlearn.ir
+https://up.sabzlearn.ir
+
+
